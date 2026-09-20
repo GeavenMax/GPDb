@@ -96,6 +96,24 @@ CREATE TABLE IF NOT EXISTS scrape_progress (
 
 CREATE INDEX IF NOT EXISTS idx_progress_type_status ON scrape_progress(item_type, status);
 
+-- 5b. 源头确实没有的字段 (Fields verified absent at the source)
+--
+-- Some records genuinely lack data: GEVI prints "?" where it has no release year,
+-- and many films simply have no cover image. Without this table the scraper cannot
+-- tell "the site has no year for this film" from "our parser failed to read the
+-- year", so 缺字段 mode would re-fetch the same films forever and never improve
+-- anything. One row means: we fetched this item and the field did not come back.
+CREATE TABLE IF NOT EXISTS scrape_voids (
+    item_type TEXT NOT NULL,        -- 'movie' 或 'performer'
+    item_id INTEGER NOT NULL,
+    field TEXT NOT NULL,            -- description / year / duration / cover / cast / ...
+    attempts INTEGER NOT NULL DEFAULT 1,   -- 多少次抓取后该字段仍然为空
+    noted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (item_type, item_id, field)
+);
+
+CREATE INDEX IF NOT EXISTS idx_voids_item ON scrape_voids(item_type, item_id);
+
 -- 6. FTS5 全文检索引擎虚拟表
 CREATE VIRTUAL TABLE IF NOT EXISTS movies_fts USING fts5(
     id UNINDEXED,

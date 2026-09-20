@@ -100,6 +100,182 @@ class DatabaseManager:
         )
         return [row[0] for row in cur.fetchall()]
 
+    def get_status_ids(self, item_type: str, status: int) -> set[int]:
+        """Fetch all IDs recorded with a specific status."""
+        cur = self.conn.cursor()
+        cur.execute(
+            "SELECT item_id FROM scrape_progress WHERE item_type = ? AND status = ?",
+            (item_type, status)
+        )
+        return {row[0] for row in cur.fetchall()}
+
+    def record_progress(self, item_type: str, item_id: int, status: int) -> None:
+        """Record the outcome of one scrape attempt.
+
+        Status codes: 200 = saved, 404 = does not exist, 500 = transient failure,
+        0 = interrupted. A 200 also refreshes the row's scraped_at timestamp.
+        """
+        with self._write_lock, self.conn:
+            self.conn.execute(
+                "INSERT OR REPLACE INTO scrape_progress (item_type, item_id, status) VALUES (?, ?, ?)",
+                (item_type, item_id, status)
+            )
+            if status == 200:
+                table = "movies" if item_type == "movie" else "performers"
+                self.conn.execute(
+                    f"UPDATE {table} SET scraped_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (item_id,)
+                )
+
+    # Fields a movie record is expected to have. Used to find rows that are marked
+    # "scraped" (status 200) but whose content is actually incomplete - those are the
+    # ones worth re-fetching, as opposed to blindly re-scraping everything.
+    MOVIE_GAP_CHECKS: dict[str, str] = {
+        "description": "(description IS NULL OR trim(description) = '')",
+        "year": "release_year IS NULL",
+        "duration": "duration_mins IS NULL",
+        "cover": "((cover_full IS NULL OR cover_full = '') AND (cover_icon IS NULL OR cover_icon = ''))",
+        "cast": "NOT EXISTS (SELECT 1 FROM movie_performers mp WHERE mp.movie_id = movies.id)",
+        "studio": "(studio_name IS NULL OR trim(studio_name) = '')",
+        "director": "(director_name IS NULL OR trim(director_name) = '')",
+    }
+
+    PERFORMER_GAP_CHECKS: dict[str, str] = {
+        "attributes": """(COALESCE(hair,'') = '' AND COALESCE(eyes,'') = '' AND COALESCE(height,'') = ''
+                         AND COALESCE(weight,'') = '' AND COALESCE(build,'') = '' AND COALESCE(skin,'') = '')""",
+        "image": "(image_url IS NULL OR image_url = '')",
+        "notes": "(notes IS NULL OR trim(notes) = '')",
+    }
+
+    def get_incomplete_movies(self, gaps: list[str] | None = None,
+                              void_min_attempts: int = 2) -> list[dict]:
+        """Movies whose stored row is missing one or more of the given fields.
+
+        Defaults to the fields whose absence means the earlier scrape of that movie
+        failed to read something real (see MOVIE_GAP_CHECKS).
+
+        A field recorded in `scrape_voids` with at least `void_min_attempts` failed
+        fetches is left out: the source has no value for it, so asking again is a
+        wasted request. Pass 0 to ignore voids and see every gap.
+        """
+        keys = gaps or ["description", "year", "duration", "cover", "cast"]
+        unknown = [k for k in keys if k not in self.MOVIE_GAP_CHECKS]
+        if unknown:
+            raise ValueError(f"未知的字段检查项: {unknown}")
+        voids = self.get_voids("movie", void_min_attempts)
+        cols = ", ".join(
+            f"CASE WHEN {self.MOVIE_GAP_CHECKS[k]} THEN 1 ELSE 0 END AS missing_{k}" for k in keys
+        )
+        rows = self.conn.execute(f"SELECT id, title, {cols} FROM movies ORDER BY id").fetchall()
+        out = []
+        for r in rows:
+            voided = voids.get(r[0], frozenset())
+            missing = [keys[i] for i, flag in enumerate(r[2:]) if flag and keys[i] not in voided]
+            if missing:
+                out.append({"id": r[0], "title": r[1], "missing": missing})
+        return out
+
+    def get_incomplete_performers(self, gaps: list[str] | None = None,
+                                  void_min_attempts: int = 2) -> list[dict]:
+        """Performers whose stored row is missing one or more of the given fields."""
+        keys = gaps or ["attributes"]
+        unknown = [k for k in keys if k not in self.PERFORMER_GAP_CHECKS]
+        if unknown:
+            raise ValueError(f"未知的字段检查项: {unknown}")
+        voids = self.get_voids("performer", void_min_attempts)
+        cols = ", ".join(
+            f"CASE WHEN {self.PERFORMER_GAP_CHECKS[k]} THEN 1 ELSE 0 END AS missing_{k}" for k in keys
+        )
+        rows = self.conn.execute(f"SELECT id, name, {cols} FROM performers ORDER BY id").fetchall()
+        out = []
+        for r in rows:
+            voided = voids.get(r[0], frozenset())
+            missing = [keys[i] for i, flag in enumerate(r[2:]) if flag and keys[i] not in voided]
+            if missing:
+                out.append({"id": r[0], "name": r[1], "missing": missing})
+        return out
+
+    def movie_field_state(self, movie_id: int, fields: list[str]) -> dict[str, bool]:
+        """For each field, True when this movie's *stored* row now has a value for it.
+
+        Read back after a write rather than trusting the parse, which is what makes
+        the "does the source actually have this?" bookkeeping exact.
+        """
+        unknown = [f for f in fields if f not in self.MOVIE_GAP_CHECKS]
+        if unknown:
+            raise ValueError(f"未知的字段检查项: {unknown}")
+        cols = ", ".join(
+            f"CASE WHEN {self.MOVIE_GAP_CHECKS[f]} THEN 0 ELSE 1 END" for f in fields
+        )
+        row = self.conn.execute(f"SELECT {cols} FROM movies WHERE id = ?", (movie_id,)).fetchone()
+        if row is None:
+            return {f: False for f in fields}
+        return {f: bool(row[i]) for i, f in enumerate(fields)}
+
+    def performer_field_state(self, performer_id: int, fields: list[str]) -> dict[str, bool]:
+        """For each field, True when this performer's stored row now has a value for it."""
+        unknown = [f for f in fields if f not in self.PERFORMER_GAP_CHECKS]
+        if unknown:
+            raise ValueError(f"未知的字段检查项: {unknown}")
+        cols = ", ".join(
+            f"CASE WHEN {self.PERFORMER_GAP_CHECKS[f]} THEN 0 ELSE 1 END" for f in fields
+        )
+        row = self.conn.execute(f"SELECT {cols} FROM performers WHERE id = ?", (performer_id,)).fetchone()
+        if row is None:
+            return {f: False for f in fields}
+        return {f: bool(row[i]) for i, f in enumerate(fields)}
+
+    def get_voids(self, item_type: str, min_attempts: int = 1) -> dict[int, set[str]]:
+        """Fields known to be absent at the source: {item_id: {field, ...}}."""
+        cur = self.conn.execute(
+            "SELECT item_id, field FROM scrape_voids WHERE item_type = ? AND attempts >= ?",
+            (item_type, min_attempts)
+        )
+        out: dict[int, set[str]] = {}
+        for item_id, field in cur.fetchall():
+            out.setdefault(item_id, set()).add(field)
+        return out
+
+    def record_void(self, item_type: str, item_id: int, field: str) -> None:
+        """Note that a fetch of this item did not produce this field.
+
+        Counted rather than boolean: a single miss can be a parser hiccup, so callers
+        only act on voids that have accumulated (see void_min_attempts).
+        """
+        with self._write_lock, self.conn:
+            self.conn.execute("""
+                INSERT INTO scrape_voids (item_type, item_id, field, attempts)
+                VALUES (?, ?, ?, 1)
+                ON CONFLICT(item_type, item_id, field) DO UPDATE SET
+                    attempts = scrape_voids.attempts + 1,
+                    noted_at = CURRENT_TIMESTAMP
+            """, (item_type, item_id, field))
+
+    def clear_void(self, item_type: str, item_id: int, field: str) -> None:
+        """Drop a void: the source turned out to have the value after all."""
+        with self._write_lock, self.conn:
+            self.conn.execute(
+                "DELETE FROM scrape_voids WHERE item_type = ? AND item_id = ? AND field = ?",
+                (item_type, item_id, field)
+            )
+
+    def clear_voids(self, item_type: str | None = None) -> int:
+        """Forget every recorded void (use when the source may have filled them in)."""
+        with self._write_lock, self.conn:
+            if item_type:
+                cur = self.conn.execute("DELETE FROM scrape_voids WHERE item_type = ?", (item_type,))
+            else:
+                cur = self.conn.execute("DELETE FROM scrape_voids")
+            return cur.rowcount
+
+    def void_summary(self, item_type: str) -> dict[str, int]:
+        """How many items have each field recorded as absent at the source."""
+        cur = self.conn.execute(
+            "SELECT field, COUNT(*) FROM scrape_voids WHERE item_type = ? GROUP BY field ORDER BY 2 DESC",
+            (item_type,)
+        )
+        return {row[0]: row[1] for row in cur.fetchall()}
+
     def clear_progress(self, item_type: str, statuses: tuple[int, ...]) -> int:
         """Delete progress rows with the given statuses so those IDs get re-scraped."""
         if not statuses:
@@ -173,7 +349,13 @@ class DatabaseManager:
             )
 
     def save_movie(self, m: dict, status: int = 200):
-        """Save a single movie record with all related entities in a transaction."""
+        """Save a single movie record with all related entities in a transaction.
+
+        Re-scrapes merge rather than replace: a field is only overwritten when the
+        new parse actually produced a value. A site redesign that silently breaks
+        one of the scraper's regexes would otherwise blank out thousands of rows
+        that are already correct.
+        """
         with self._write_lock, self.conn:
             # 1. Movie record
             covers_val = json.dumps(m["covers"]) if m.get("covers") else None
@@ -186,20 +368,20 @@ class DatabaseManager:
                     covers_json, director_id, director_name
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
-                    title = excluded.title,
-                    studio_id = excluded.studio_id,
-                    studio_name = excluded.studio_name,
-                    release_year = excluded.release_year,
-                    duration_mins = excluded.duration_mins,
-                    category = excluded.category,
-                    rating = excluded.rating,
-                    movie_type = excluded.movie_type,
-                    description = excluded.description,
-                    cover_icon = excluded.cover_icon,
-                    cover_full = excluded.cover_full,
-                    covers_json = excluded.covers_json,
-                    director_id = excluded.director_id,
-                    director_name = excluded.director_name,
+                    title = COALESCE(NULLIF(excluded.title, ''), movies.title),
+                    studio_id = COALESCE(excluded.studio_id, movies.studio_id),
+                    studio_name = COALESCE(NULLIF(excluded.studio_name, ''), movies.studio_name),
+                    release_year = COALESCE(excluded.release_year, movies.release_year),
+                    duration_mins = COALESCE(excluded.duration_mins, movies.duration_mins),
+                    category = COALESCE(NULLIF(excluded.category, ''), movies.category),
+                    rating = COALESCE(NULLIF(excluded.rating, ''), movies.rating),
+                    movie_type = COALESCE(NULLIF(excluded.movie_type, ''), movies.movie_type),
+                    description = COALESCE(NULLIF(excluded.description, ''), movies.description),
+                    cover_icon = COALESCE(NULLIF(excluded.cover_icon, ''), movies.cover_icon),
+                    cover_full = COALESCE(NULLIF(excluded.cover_full, ''), movies.cover_full),
+                    covers_json = COALESCE(NULLIF(excluded.covers_json, ''), movies.covers_json),
+                    director_id = COALESCE(excluded.director_id, movies.director_id),
+                    director_name = COALESCE(NULLIF(excluded.director_name, ''), movies.director_name),
                     scraped_at = CURRENT_TIMESTAMP
             """, (
                 m["id"], m["title"], m.get("studio_id"), m.get("studio_name"),
@@ -209,14 +391,18 @@ class DatabaseManager:
                 covers_val, m.get("director_id"), m.get("director_name")
             ))
 
-            # 2. Performers link
-            self.conn.execute("DELETE FROM movie_performers WHERE movie_id = ?", (m["id"],))
-            for pid, pname in m.get("performers", []):
-                self.conn.execute("INSERT OR IGNORE INTO performers (id, name) VALUES (?, ?)", (pid, pname))
-                self.conn.execute(
-                    "INSERT OR REPLACE INTO movie_performers (movie_id, performer_id, performer_name) VALUES (?, ?, ?)",
-                    (m["id"], pid, pname)
-                )
+            # 2. Performers link. An empty cast list means "we failed to read the
+            # cast", not "this film has no cast" - deleting on that basis throws
+            # away every cast link the movie already had.
+            new_performers = m.get("performers") or []
+            if new_performers:
+                self.conn.execute("DELETE FROM movie_performers WHERE movie_id = ?", (m["id"],))
+                for pid, pname in new_performers:
+                    self.conn.execute("INSERT OR IGNORE INTO performers (id, name) VALUES (?, ?)", (pid, pname))
+                    self.conn.execute(
+                        "INSERT OR REPLACE INTO movie_performers (movie_id, performer_id, performer_name) VALUES (?, ?, ?)",
+                        (m["id"], pid, pname)
+                    )
 
             # 3. Episodes
             for ep in m.get("episodes", []):
@@ -253,27 +439,29 @@ class DatabaseManager:
     def save_performer(self, p: dict, status: int = 200):
         """Save a single performer record and update FTS5."""
         with self._write_lock, self.conn:
-            # Upsert, keeping a previously discovered portrait when a re-scrape finds none.
+            # Upsert. Every attribute merges rather than replaces, so a re-scrape that
+            # reads the page incompletely cannot blank out fields we already have -
+            # including a previously discovered portrait.
             self.conn.execute("""
                 INSERT INTO performers (
                     id, name, hair, eyes, body_hair, facial_hair, height, weight,
                     build, skin, dick_size, foreskin, tattoos, notes, image_url
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
-                    name = excluded.name,
-                    hair = excluded.hair,
-                    eyes = excluded.eyes,
-                    body_hair = excluded.body_hair,
-                    facial_hair = excluded.facial_hair,
-                    height = excluded.height,
-                    weight = excluded.weight,
-                    build = excluded.build,
-                    skin = excluded.skin,
-                    dick_size = excluded.dick_size,
-                    foreskin = excluded.foreskin,
-                    tattoos = excluded.tattoos,
-                    notes = excluded.notes,
-                    image_url = COALESCE(excluded.image_url, performers.image_url),
+                    name = COALESCE(NULLIF(excluded.name, ''), performers.name),
+                    hair = COALESCE(NULLIF(excluded.hair, ''), performers.hair),
+                    eyes = COALESCE(NULLIF(excluded.eyes, ''), performers.eyes),
+                    body_hair = COALESCE(NULLIF(excluded.body_hair, ''), performers.body_hair),
+                    facial_hair = COALESCE(NULLIF(excluded.facial_hair, ''), performers.facial_hair),
+                    height = COALESCE(NULLIF(excluded.height, ''), performers.height),
+                    weight = COALESCE(NULLIF(excluded.weight, ''), performers.weight),
+                    build = COALESCE(NULLIF(excluded.build, ''), performers.build),
+                    skin = COALESCE(NULLIF(excluded.skin, ''), performers.skin),
+                    dick_size = COALESCE(NULLIF(excluded.dick_size, ''), performers.dick_size),
+                    foreskin = COALESCE(NULLIF(excluded.foreskin, ''), performers.foreskin),
+                    tattoos = COALESCE(NULLIF(excluded.tattoos, ''), performers.tattoos),
+                    notes = COALESCE(NULLIF(excluded.notes, ''), performers.notes),
+                    image_url = COALESCE(NULLIF(excluded.image_url, ''), performers.image_url),
                     scraped_at = CURRENT_TIMESTAMP
             """, (
                 p["id"], p["name"], p.get("hair"), p.get("eyes"), p.get("body_hair"),
@@ -282,11 +470,14 @@ class DatabaseManager:
                 p.get("notes"), p.get("image_url")
             ))
 
-            self.conn.execute("DELETE FROM performers_fts WHERE id = ?", (p["id"],))
-            self.conn.execute("""
-                INSERT INTO performers_fts (id, name, tattoos, notes)
-                VALUES (?, ?, ?, ?)
-            """, (p["id"], p["name"], p.get("tattoos"), p.get("notes")))
+            # Only rewrite the search index when the parse actually found a name;
+            # reindexing an empty name would make the performer unsearchable.
+            if p.get("name"):
+                self.conn.execute("DELETE FROM performers_fts WHERE id = ?", (p["id"],))
+                self.conn.execute("""
+                    INSERT INTO performers_fts (id, name, tattoos, notes)
+                    VALUES (?, ?, ?, ?)
+                """, (p["id"], p["name"], p.get("tattoos"), p.get("notes")))
 
             self.conn.execute(
                 "INSERT OR REPLACE INTO scrape_progress (item_type, item_id, status) VALUES (?, ?, ?)",
