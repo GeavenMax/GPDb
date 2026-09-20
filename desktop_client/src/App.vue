@@ -146,6 +146,23 @@ const translationStats = ref<TranslationStats | null>(null);
 const isTranslating = ref(false);
 const translateMsg = ref('');
 
+/**
+ * How new synopses get translated.
+ *
+ * 'single' translates one film at a time, when its detail view is opened, and
+ * nothing else - the library stays mostly untranslated until browsed, which is
+ * the point: a full library is ~3,500 API calls, a browsing session is a handful.
+ * 'batch' leaves translation to the explicit buttons in Settings.
+ */
+const translateMode = ref<'single' | 'batch'>(
+  localStorage.getItem('gevi_translate_mode') === 'batch' ? 'batch' : 'single'
+);
+
+function setTranslateMode(mode: 'single' | 'batch') {
+  translateMode.value = mode;
+  localStorage.setItem('gevi_translate_mode', mode);
+}
+
 // Translation sources (multiple saved API providers, switchable by hand).
 const providerList = ref<TranslationProfile[]>([]);
 const providerPresets = ref<TranslationPreset[]>([]);
@@ -434,6 +451,14 @@ async function handleImportFile(e: Event) {
   };
   reader.readAsText(file);
   target.value = '';
+}
+
+/** A single-synopsis translation finished; fold it into the lists already loaded. */
+function onMovieTranslated(movieId: number, zh: string) {
+  const m = movies.value.find(x => x.id === movieId);
+  if (m) m.description_zh = zh;
+  if (selectedMovie.value?.id === movieId) selectedMovie.value.description_zh = zh;
+  loadTranslationStats();
 }
 
 async function onUserDataChanged(movieId: number) {
@@ -1215,6 +1240,57 @@ onMounted(async () => {
               ></div>
             </div>
 
+            <!-- Translation mode: one film at a time vs. explicit batch runs -->
+            <div v-if="!IS_TAURI" class="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 space-y-3">
+              <div class="text-xs font-semibold text-zinc-300">翻译方式</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  @click="setTranslateMode('single')"
+                  class="text-left p-3 rounded-xl border transition"
+                  :class="translateMode === 'single'
+                    ? 'bg-amber-500/10 border-amber-500/40'
+                    : 'bg-zinc-900 border-zinc-700 hover:border-zinc-600'"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold"
+                      :class="translateMode === 'single' ? 'text-amber-300' : 'text-zinc-200'">
+                      单部自动翻译
+                    </span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">省 token</span>
+                  </div>
+                  <div class="text-[11px] text-zinc-500 mt-1 leading-relaxed">
+                    打开某部影片时才翻译那一部。适合边看边译，不会一次性消耗大量额度。
+                  </div>
+                </button>
+
+                <button
+                  @click="setTranslateMode('batch')"
+                  class="text-left p-3 rounded-xl border transition"
+                  :class="translateMode === 'batch'
+                    ? 'bg-amber-500/10 border-amber-500/40'
+                    : 'bg-zinc-900 border-zinc-700 hover:border-zinc-600'"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold"
+                      :class="translateMode === 'batch' ? 'text-amber-300' : 'text-zinc-200'">
+                      批量翻译
+                    </span>
+                  </div>
+                  <div class="text-[11px] text-zinc-500 mt-1 leading-relaxed">
+                    打开影片时不翻译，改由下方按钮一次性批量处理。适合把整库译完。
+                  </div>
+                </button>
+              </div>
+              <div class="text-[11px] text-zinc-500">
+                <template v-if="translateMode === 'single'">
+                  已开启单部自动翻译：之后每打开一部尚未翻译的影片会自动翻译它，同一部影片本次运行内只翻译一次。
+                </template>
+                <template v-else>
+                  当前为批量模式：打开影片不会触发翻译，请用下方按钮批量处理。
+                </template>
+              </div>
+            </div>
+
             <!-- Translation sources: several saved API providers, one active -->
             <div v-if="!IS_TAURI" class="pt-1 space-y-3">
               <div class="flex items-center justify-between">
@@ -1472,11 +1548,13 @@ onMounted(async () => {
       :lang="descLang"
       :z-index="layerOf('movie')"
       :is-top="modalStack[modalStack.length - 1] === 'movie'"
+      :auto-translate="translateMode === 'single'"
       @close="closeMovieDetail"
       @select-performer="openPerformerDetail"
       @filter-studio="filterByStudio"
       @toggle-favorite="toggleFavorite"
       @user-data-changed="onUserDataChanged"
+      @translated="onMovieTranslated"
     />
 
     <PerformerDetailModal

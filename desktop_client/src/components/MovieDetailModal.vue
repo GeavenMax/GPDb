@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2 } from '@lucide/vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown } from '@lucide/vue';
 import type { Movie, UserTag } from '../types';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
@@ -24,6 +24,11 @@ const props = defineProps<{
    * without this a single Escape would dismiss the whole stack.
    */
   isTop?: boolean;
+  /**
+   * Translate this film's synopsis on open, if it has none yet. Driven by the
+   * single/batch switch in Settings; the parent owns that choice.
+   */
+  autoTranslate?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -32,7 +37,18 @@ const emit = defineEmits<{
   (e: 'filter-studio', studioName: string): void;
   (e: 'toggle-favorite', movie: Movie): void;
   (e: 'user-data-changed', movieId: number): void;
+  (e: 'translated', movieId: number, descriptionZh: string): void;
 }>();
+
+/**
+ * Films this session has already tried to auto-translate.
+ *
+ * Module-scoped on purpose: the parent re-fetches a film's detail on every open,
+ * so without this, closing and reopening the same untranslated film - or one
+ * whose translation keeps failing - would call the API again each time. Reset by
+ * reloading the app, which is when a fresh attempt is reasonable.
+ */
+const autoAttempted = new Set<number>();
 
 const activeCoverIndex = ref(0);
 
@@ -54,6 +70,18 @@ watch(() => props.movie, (m) => {
   showOriginal.value = false;
   translateError.value = '';
   showPrivate.value = false;
+
+  // Single-translation mode: fill in this one film's synopsis as it is opened.
+  // Skipped when there is nothing to translate, when a translation already
+  // exists, and on the desktop build, which has no server to run the request.
+  const id = m?.id;
+  if (
+    props.autoTranslate && !IS_TAURI && id && !autoAttempted.has(id) &&
+    (m?.description || '').trim() && !(m?.description_zh || '').trim()
+  ) {
+    autoAttempted.add(id);
+    nextTick(() => translateNow());
+  }
 }, { immediate: true });
 
 const hasZh = computed(() => Boolean(zhDescription.value?.trim()));
@@ -64,17 +92,52 @@ const displayedDescription = computed(() => {
   return props.movie?.description || '';
 });
 
+// Hint for long synopses: they scroll inside their own box, which is not obvious
+// without a scrollbar, so the hint stays visible until the user reaches the end.
+const descriptionBoxRef = ref<HTMLElement | null>(null);
+const descriptionOverflows = ref(false);
+const descriptionAtEnd = ref(false);
+
+function measureDescription() {
+  const el = descriptionBoxRef.value;
+  if (!el) {
+    descriptionOverflows.value = false;
+    return;
+  }
+  descriptionOverflows.value = el.scrollHeight > el.clientHeight + 4;
+  descriptionAtEnd.value = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+}
+
+function onDescriptionScroll() {
+  const el = descriptionBoxRef.value;
+  if (!el) return;
+  descriptionAtEnd.value = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+}
+
+// Re-measure when the text or its language changes, and when the window resizes
+// (the modal reflows, so a synopsis can start or stop overflowing).
+watch([displayedDescription, showPrivate], async () => {
+  await nextTick();
+  measureDescription();
+});
+
+watch(() => props.isTop, (top) => {
+  if (top) nextTick(() => measureDescription());
+});
+
 async function translateNow() {
   if (!props.movie) return;
   isTranslating.value = true;
   translateError.value = '';
-  const result = await api.translateMovie(props.movie.id);
+  const id = props.movie.id;
+  const result = await api.translateMovie(id);
   if (result) {
     zhDescription.value = result;
     showOriginal.value = false;
-    emit('user-data-changed', props.movie.id);
+    emit('translated', id, result);
+    emit('user-data-changed', id);
   } else {
-    translateError.value = '翻译失败，请确认已在终端配置好翻译服务的 API Key';
+    translateError.value = '翻译失败。请到「设置 → 翻译服务来源」确认 API Key 可用（可点「测试」验证）。';
   }
   isTranslating.value = false;
 }
@@ -184,8 +247,15 @@ function onKeydown(e: KeyboardEvent) {
   emit('close');
 }
 
-onMounted(() => window.addEventListener('keydown', onKeydown));
-onUnmounted(() => window.removeEventListener('keydown', onKeydown));
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown);
+  window.addEventListener('resize', measureDescription);
+  nextTick(() => measureDescription());
+});
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown);
+  window.removeEventListener('resize', measureDescription);
+});
 </script>
 
 <template>
@@ -207,8 +277,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <X class="w-4 h-4" />
       </button>
 
-      <!-- Hero Section with blurred backdrop -->
-      <div class="relative w-full overflow-hidden bg-zinc-950 p-6 md:p-8 border-b border-zinc-800">
+      <!--
+        Hero Section with blurred backdrop.
+
+        shrink-0 is load-bearing: the modal card is a flex column capped at 90vh, so
+        without it this section is squashed down to whatever height is left over.
+        Its own overflow-hidden then clips the rest of the synopsis away entirely -
+        a long description used to be unreachable, not just awkward to scroll.
+      -->
+      <div class="relative w-full shrink-0 overflow-hidden bg-zinc-950 p-6 md:p-8 border-b border-zinc-800">
         <!-- Blurred background image -->
         <div
           v-if="movie.cover_full"
@@ -364,7 +441,27 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 </div>
               </div>
 
-              <p class="whitespace-pre-line">{{ displayedDescription }}</p>
+              <!--
+                Long synopses scroll in place instead of stretching the card: some
+                descriptions run to 8,000+ characters, which would otherwise push the
+                cast list and everything below it far out of view.
+              -->
+              <div
+                ref="descriptionBoxRef"
+                class="max-h-72 overflow-y-auto darkScrollbars pr-2 -mr-2"
+                @scroll.passive="onDescriptionScroll"
+              >
+                <p class="whitespace-pre-line">{{ displayedDescription }}</p>
+              </div>
+
+              <!-- Fades in while there is more text below, so the cut-off is visible -->
+              <div
+                v-if="descriptionOverflows && !descriptionAtEnd"
+                class="mt-1 text-[10px] text-zinc-500 flex items-center gap-1"
+              >
+                <ChevronDown class="w-3 h-3" />
+                简介较长，可在框内滚动查看
+              </div>
 
               <div v-if="translateError" class="text-[11px] text-rose-400 mt-2">
                 {{ translateError }}
