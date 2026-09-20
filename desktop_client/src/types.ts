@@ -68,6 +68,36 @@ export interface Performer {
   episodes_count?: number;
 }
 
+/** Sort keys accepted by the studio library, on both the HTTP and Tauri paths. */
+export type StudioSortBy = 'works_desc' | 'episodes_desc' | 'name_asc';
+
+/**
+ * One row of the studio library grid.
+ *
+ * Studios have no table of their own — they exist only as `movies.studio_name` —
+ * so this is the grouping of that column rather than a stored record, and there is
+ * no artwork to show.
+ */
+export interface StudioSummary {
+  name: string;
+  works_count: number;
+  episodes_count: number;
+}
+
+export interface StudioLibraryResponse {
+  items: StudioSummary[];
+  total: number;
+}
+
+/** A studio's films and episodes, as the detail modal shows them. */
+export interface StudioWorks {
+  studio_name: string;
+  movies: Movie[];
+  movies_count: number;
+  episodes: Episode[];
+  episodes_count: number;
+}
+
 /** Performer attributes that can be filtered on, keyed by API facet name. */
 export type PerformerFacetKey =
   | 'bodyType'
@@ -201,6 +231,9 @@ export interface FilterState {
 
 /** The five kinds of thing that can be favorited. Values match `entity_type`. */
 export type FavoriteType = 'movie' | 'performer' | 'studio' | 'director' | 'episode';
+
+/** Every top-level view, i.e. everything the sidebar can switch to. */
+export type AppTab = 'movies' | 'performers' | 'studios' | 'favorites' | 'settings';
 
 export const FAVORITE_TYPES: FavoriteType[] = ['movie', 'performer', 'studio', 'director', 'episode'];
 

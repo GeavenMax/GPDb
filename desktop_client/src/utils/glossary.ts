@@ -42,6 +42,31 @@ export function glossaryCount(): number {
 }
 
 /**
+ * Units inside the measurement attributes (height / weight / dick size).
+ *
+ * Matches the digits and the unit together so `in` can only be the inch
+ * abbreviation here and never a stray preposition, and refuses to match when a
+ * letter follows so it cannot bite into a longer word.
+ */
+const MEASURE_RE = /(\d[\d.\-]*)\s*(ft|in|lbs|kg|cm)(?![A-Za-z])/gi;
+
+/**
+ * Rewrite the units in a measurement value: "5ft 10in / 178cm" → "5英尺 10英寸 / 178厘米".
+ *
+ * The values already carry both systems, and which values exist is open-ended —
+ * "6ft 2in / 188cm" for one performer, a malformed "6-00ft 6-00in / 19812cm" for
+ * another, something new after every re-scrape. So only the unit token is
+ * translated: five glossary entries cover every measurement in the library,
+ * forever. Digits, separators and anything unrecognised pass through untouched,
+ * and a unit with no entry yet falls back to itself, so this is a no-op until the
+ * glossary has been run.
+ */
+export function trMeasure(value: string | null | undefined): string {
+  if (!value) return '';
+  return value.replace(MEASURE_RE, (_match, digits: string, unit: string) => digits + tr(unit.toLowerCase()));
+}
+
+/**
  * Translate only the location words out of a `tattoos` value.
  *
  * The stored format is "Deltoid left Deltoid: \"USMC\", Chest left chest: dragon",

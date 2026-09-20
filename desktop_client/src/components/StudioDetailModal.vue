@@ -1,0 +1,253 @@
+<script setup lang="ts">
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { X, Film, Layers, Calendar, Heart, Building2, Loader2 } from '@lucide/vue';
+import type { Movie, StudioWorks, FavoriteType } from '../types';
+import MovieCard from './MovieCard.vue';
+import { getImageUrl } from '../utils/image';
+import { claimEscape } from '../utils/escape';
+
+/**
+ * A studio, as the library grid and the favorites page know it.
+ *
+ * Deliberately not the `StudioSummary` type: the favorites page only carries a
+ * name and a works count, and a studio with no row on screen has no counts at all,
+ * so both fields stay optional and the header falls back to the loaded works.
+ */
+interface StudioRef {
+  name: string;
+  works_count?: number;
+  episodes_count?: number;
+}
+
+const props = defineProps<{
+  studio: StudioRef | null;
+  /** Films and episodes, fetched by the parent; null while loading. */
+  works: StudioWorks | null;
+  loading?: boolean;
+  /** Synopsis language for the embedded movie cards. */
+  lang?: 'zh' | 'en';
+  /** Stacking order supplied by the parent; see MovieDetailModal. */
+  zIndex?: number;
+  /** Topmost view owns Escape — see MovieDetailModal. */
+  isTop?: boolean;
+  /** Whether this studio is favorited. */
+  isFavorite?: boolean;
+  /** Favorited keys by type — used for the movie and episode hearts in this modal. */
+  favoriteKeys?: Partial<Record<FavoriteType, Set<string>>>;
+}>();
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+  (e: 'select-movie', movie: Movie): void;
+  (e: 'select-movie-id', movieId: number): void;
+  (e: 'toggle-favorite', studioName: string): void;
+  /** Movie / episode hearts; the studio itself has its own event above. */
+  (e: 'toggle-entity-favorite', type: FavoriteType, key: string): void;
+}>();
+
+const activeTab = ref<'movies' | 'episodes'>('movies');
+
+const movies = computed(() => props.works?.movies || []);
+const episodes = computed(() => props.works?.episodes || []);
+
+// Counts come from the loaded works, falling back to whatever the caller knew
+// before the fetch landed so the header is populated from the first frame.
+const worksCount = computed(() => props.works?.movies_count ?? props.studio?.works_count ?? 0);
+const episodesCount = computed(() => props.works?.episodes_count ?? props.studio?.episodes_count ?? 0);
+
+function isFav(type: FavoriteType, key: string | null | undefined): boolean {
+  if (!key) return false;
+  return Boolean(props.favoriteKeys?.[type]?.has(key));
+}
+
+// A different studio means a different pairing of tabs, so the one that was open
+// is not carried over — as in PerformerDetailModal.
+watch(() => props.studio?.name, () => {
+  activeTab.value = 'movies';
+});
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key !== 'Escape' || props.isTop === false) return;
+  if (!claimEscape(e)) return;
+  emit('close');
+}
+
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onUnmounted(() => window.removeEventListener('keydown', onKeydown));
+</script>
+
+<template>
+  <div
+    v-if="studio"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-md animate-fade-in"
+    :style="{ zIndex: zIndex ?? 50 }"
+    @click.self="emit('close')"
+  >
+    <div
+      class="relative w-full max-w-4xl max-h-[90vh] bg-zinc-900 border border-zinc-700/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col darkScrollbars text-zinc-100"
+    >
+      <!-- Close Button -->
+      <button
+        @click="emit('close')"
+        class="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 border border-white/20 flex items-center justify-center text-zinc-300 hover:text-white transition"
+      >
+        <X class="w-4 h-4" />
+      </button>
+
+      <!-- Profile Header. No logo exists in the library, so the tile is the name's
+           initial, matching the favorites page's studio chips. -->
+      <div class="p-6 md:p-8 bg-zinc-950 border-b border-zinc-800 flex items-center gap-6">
+        <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-amber-500/10 ring-1 ring-zinc-700/60">
+          <div class="w-full h-full bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-3xl font-black text-black">
+            {{ studio.name.charAt(0).toUpperCase() }}
+          </div>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider">片商档案</div>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-white truncate">{{ studio.name }}</h1>
+          <div class="text-xs text-zinc-400 mt-1 flex items-center gap-3 flex-wrap">
+            <span class="text-amber-400/80">{{ worksCount }} 部作品</span>
+            <span v-if="episodesCount">{{ episodesCount }} 个片段</span>
+          </div>
+        </div>
+
+        <!-- Fav button leaves room for the absolutely-positioned close button -->
+        <button
+          @click="emit('toggle-favorite', studio.name)"
+          :class="[
+            'mr-10 shrink-0 self-start px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
+            isFavorite
+              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-400 hover:text-rose-400'
+          ]"
+        >
+          <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
+          <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+        </button>
+      </div>
+
+      <!-- Works Section -->
+      <div class="p-6 md:p-8 space-y-6">
+        <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
+          <div class="flex items-center gap-2">
+            <button
+              @click="activeTab = 'movies'"
+              :class="[
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition',
+                activeTab === 'movies'
+                  ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
+                  : 'bg-zinc-800/70 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+              ]"
+            >
+              <Film class="w-3.5 h-3.5" />
+              <span>完整电影 ({{ movies.length }})</span>
+            </button>
+
+            <button
+              @click="activeTab = 'episodes'"
+              :class="[
+                'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition',
+                activeTab === 'episodes'
+                  ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
+                  : 'bg-zinc-800/70 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+              ]"
+            >
+              <Layers class="w-3.5 h-3.5" />
+              <span>片段 / 分集 ({{ episodes.length }})</span>
+            </button>
+          </div>
+
+          <Loader2 v-if="loading" class="w-4 h-4 text-amber-400 animate-spin shrink-0" />
+        </div>
+
+        <!-- 1. Feature Movies Tab -->
+        <div v-if="activeTab === 'movies'">
+          <div v-if="movies.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <MovieCard
+              v-for="m in movies"
+              :key="m.id"
+              :movie="m"
+              :lang="lang"
+              :is-favorite="isFav('movie', String(m.id))"
+              @select="emit('select-movie', m)"
+              @toggle-favorite="emit('toggle-entity-favorite', 'movie', String(m.id))"
+            />
+          </div>
+          <div v-else-if="loading" class="text-center py-12 text-zinc-500 text-xs">正在读取作品清单…</div>
+          <div v-else class="text-center py-12 text-zinc-500 text-xs">该片商暂未收录长片电影</div>
+        </div>
+
+        <!-- 2. Episodes & Scenes Tab -->
+        <div v-else-if="activeTab === 'episodes'">
+          <div v-if="episodes.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div
+              v-for="ep in episodes"
+              :key="ep.id"
+              @click="ep.movie_id && emit('select-movie-id', ep.movie_id)"
+              class="flex flex-col bg-zinc-950/80 rounded-2xl border border-zinc-800/80 overflow-hidden hover:border-amber-500/40 transition group cursor-pointer"
+            >
+              <!-- Episode thumbnail -->
+              <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-zinc-900 overflow-hidden">
+                <img
+                  :src="getImageUrl(ep.thumbnail_url)"
+                  :alt="ep.title"
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+
+              <!-- Episode info -->
+              <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-amber-300">{{ ep.title }}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span v-if="ep.release_year" class="text-[10px] text-zinc-500 font-mono flex items-center gap-1">
+                        <Calendar class="w-2.5 h-2.5" /> {{ ep.release_year }}
+                      </span>
+                      <button
+                        @click.stop="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+                        :title="isFav('episode', String(ep.id)) ? '取消收藏该片段' : '收藏该片段'"
+                        class="transition"
+                        :class="isFav('episode', String(ep.id)) ? 'text-rose-400' : 'text-zinc-600 hover:text-rose-400'"
+                      >
+                        <Heart class="w-3.5 h-3.5" :fill="isFav('episode', String(ep.id)) ? 'currentColor' : 'none'" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="ep.movie_title" class="text-xs font-medium text-zinc-300 mt-1 flex items-center gap-1">
+                    <Building2 class="w-3 h-3 text-zinc-500" />
+                    <span>出处: {{ ep.movie_title }}</span>
+                  </div>
+
+                  <!-- Chinese once the parent film has been translated, original otherwise -->
+                  <div v-if="ep.description_zh || ep.description" class="text-xs text-zinc-400 mt-1.5 line-clamp-3 leading-relaxed">
+                    {{ ep.description_zh || ep.description }}
+                  </div>
+                </div>
+
+                <div v-if="ep.action_notes" class="text-[10px] text-zinc-500 bg-zinc-900 px-2 py-1 rounded font-mono mt-2">
+                  动作标签: {{ ep.action_notes }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else-if="loading" class="text-center py-12 text-zinc-500 text-xs">正在读取片段清单…</div>
+          <div v-else class="text-center py-12 text-zinc-500 text-xs">该片商暂未收录独立分集片段</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+</style>

@@ -814,11 +814,14 @@ class DatabaseManager:
         }
 
     # --- Episode Works Queries (Separated from Movies) ---
+    # Both episode queries below carry description_zh so the client can show the
+    # translated synopsis without a second round-trip. The desktop build reads the
+    # same column through its own EPISODE_SQL, so the two must stay in step.
     def get_performer_episodes(self, performer_id: int) -> list[dict]:
         cur = self.conn.cursor()
         cur.execute("""
-            SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.action_notes,
-                   m.title as movie_title, m.studio_name, m.release_year
+            SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh,
+                   e.action_notes, m.title as movie_title, m.studio_name, m.release_year
             FROM episodes e
             JOIN episode_performers ep ON e.id = ep.episode_id
             LEFT JOIN movies m ON e.movie_id = m.id
@@ -833,18 +836,19 @@ class DatabaseManager:
                 "title": r[2],
                 "thumbnail_url": r[3],
                 "description": r[4],
-                "action_notes": r[5],
-                "movie_title": r[6],
-                "studio_name": r[7],
-                "release_year": r[8]
+                "description_zh": r[5],
+                "action_notes": r[6],
+                "movie_title": r[7],
+                "studio_name": r[8],
+                "release_year": r[9]
             })
         return eps
 
     def get_studio_episodes(self, studio_name: str) -> list[dict]:
         cur = self.conn.cursor()
         cur.execute("""
-            SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.action_notes,
-                   m.title as movie_title, m.studio_name, m.release_year
+            SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh,
+                   e.action_notes, m.title as movie_title, m.studio_name, m.release_year
             FROM episodes e
             JOIN movies m ON e.movie_id = m.id
             WHERE m.studio_name = ?
@@ -858,12 +862,58 @@ class DatabaseManager:
                 "title": r[2],
                 "thumbnail_url": r[3],
                 "description": r[4],
-                "action_notes": r[5],
-                "movie_title": r[6],
-                "studio_name": r[7],
-                "release_year": r[8]
+                "description_zh": r[5],
+                "action_notes": r[6],
+                "movie_title": r[7],
+                "studio_name": r[8],
+                "release_year": r[9]
             })
         return eps
+
+    def list_studios(self, query: str = "", sort: str = "works",
+                     limit: int = 24, offset: int = 0) -> tuple[list[dict], int]:
+        """One page of the studio library, plus how many studios match the search.
+
+        Studios exist only as a column on `movies` — there is no table for them and
+        no artwork — so both counts come from grouping that column. The episode
+        count needs the LEFT JOIN rather than a second GROUP BY, because a studio
+        whose films have no episodes must still be listed, with 0. joined row count
+        is movies + episodes, and idx_movies_studio / idx_episodes_movie_id cover it.
+        """
+        where = "WHERE m.studio_name IS NOT NULL AND trim(m.studio_name) != ''"
+        args: list = []
+        if query:
+            where += " AND m.studio_name LIKE ? ESCAPE '\\'"
+            # The search box is free text, so % and _ must reach LIKE as literals.
+            escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            args.append(f"%{escaped}%")
+
+        order = {
+            "name": "m.studio_name COLLATE NOCASE ASC",
+            "episodes": "episodes_count DESC, works_count DESC, m.studio_name COLLATE NOCASE ASC",
+        }.get(sort, "works_count DESC, m.studio_name COLLATE NOCASE ASC")
+
+        row = self.conn.execute(
+            f"SELECT count(DISTINCT m.studio_name) FROM movies m {where}", args
+        ).fetchone()
+        total = row[0] if row else 0
+
+        cur = self.conn.execute(f"""
+            SELECT m.studio_name,
+                   count(DISTINCT m.id) AS works_count,
+                   count(e.id) AS episodes_count
+            FROM movies m
+            LEFT JOIN episodes e ON e.movie_id = m.id
+            {where}
+            GROUP BY m.studio_name
+            ORDER BY {order}
+            LIMIT ? OFFSET ?
+        """, [*args, limit, offset])
+        items = [
+            {"name": r[0], "works_count": r[1], "episodes_count": r[2]}
+            for r in cur.fetchall()
+        ]
+        return items, total
 
     def get_stats(self) -> dict[str, int]:
         cur = self.conn.cursor()

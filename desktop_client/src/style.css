@@ -12,6 +12,13 @@ body {
   overflow-x: hidden;
 }
 
+/* Every image opens the full-screen viewer on double-click (see utils/lightbox.ts);
+   the cursor is the only hint that the gesture exists. Tailwind utilities on the
+   element itself still win, which is how the viewer's own image opts out. */
+img {
+  cursor: zoom-in;
+}
+
 /* Custom smooth dark scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

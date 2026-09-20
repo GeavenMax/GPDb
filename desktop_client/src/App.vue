@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import Navbar from './components/Navbar.vue';
 import Sidebar from './components/Sidebar.vue';
 import MovieCard from './components/MovieCard.vue';
 import MovieDetailModal from './components/MovieDetailModal.vue';
 import PerformerDetailModal from './components/PerformerDetailModal.vue';
+import StudioDetailModal from './components/StudioDetailModal.vue';
+import ImageLightbox from './components/ImageLightbox.vue';
 import FilterDrawer from './components/FilterDrawer.vue';
 import SyncModal from './components/SyncModal.vue';
 import PaginationBar from './components/PaginationBar.vue';
 import { api, createPerformerFilters, countActivePerformerFilters, FACET_KEYS, FACET_LABELS, IS_TAURI } from './api';
 import { getImageUrl } from './utils/image';
+import { openLightbox, viewableImageFrom, lightboxImage } from './utils/lightbox';
 import type {
   Movie,
   Performer,
@@ -23,9 +26,13 @@ import type {
   FavoriteType,
   FavoriteItem,
   FavoritesResponse,
+  AppTab,
+  StudioSummary,
+  StudioSortBy,
+  StudioWorks,
 } from './types';
 import { FAVORITE_TYPES } from './types';
-import { loadGlossary, glossaryCount } from './utils/glossary';
+import { loadGlossary, glossaryCount, trMeasure } from './utils/glossary';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers,
@@ -41,7 +48,7 @@ const FAVORITE_LABELS: Record<FavoriteType, string> = {
 };
 
 // State
-const currentTab = ref<'movies' | 'performers' | 'favorites' | 'settings'>('movies');
+const currentTab = ref<AppTab>('movies');
 const viewMode = ref<'grid' | 'list'>('grid');
 const isFilterOpen = ref(false);
 const isSyncOpen = ref(false);
@@ -54,6 +61,17 @@ const movies = ref<Movie[]>([]);
 const totalMovies = ref(0);
 const performers = ref<Performer[]>([]);
 const totalPerformers = ref(0);
+const studioRows = ref<StudioSummary[]>([]);
+const totalStudioRows = ref(0);
+const studioQuery = ref('');
+const studioSortBy = ref<StudioSortBy>('works_desc');
+
+/** Orderings offered on the studio tab. Studios have no facets to filter by. */
+const STUDIO_SORTS = [
+  { id: 'works_desc', label: '按作品数' },
+  { id: 'episodes_desc', label: '按片段数' },
+  { id: 'name_asc', label: '按名称' },
+] as const;
 
 /**
  * Favorited keys, grouped by type. Kept as plain string sets so a heart can be
@@ -77,23 +95,31 @@ function emptyKeys(): Record<FavoriteType, Set<string>> {
 const selectedMovie = ref<Movie | null>(null);
 const selectedPerformer = ref<Performer | null>(null);
 
+/** The studio being viewed, and its works. Fetched here so the modal stays presentational. */
+const selectedStudio = ref<{ name: string; works_count?: number; episodes_count?: number } | null>(null);
+const studioWorks = ref<StudioWorks | null>(null);
+const studioWorksLoading = ref(false);
+
 /**
  * Detail views can open one another — a performer's filmography links to a
- * movie, a movie's cast links to a performer. Both must stay mounted so the
- * user can navigate back, so the open order decides which one sits on top.
- * Openers push to the end; the last entry gets the highest layer.
+ * movie, a movie's cast links to a performer, a studio's films link to both.
+ * All must stay mounted so the user can navigate back, so the open order decides
+ * which one sits on top. Openers push to the end; the last entry gets the highest
+ * layer.
  */
-const modalStack = ref<string[]>([]);
+type ModalKind = 'movie' | 'performer' | 'studio';
 
-function pushModal(kind: 'movie' | 'performer') {
+const modalStack = ref<ModalKind[]>([]);
+
+function pushModal(kind: ModalKind) {
   modalStack.value = [...modalStack.value.filter(k => k !== kind), kind];
 }
 
-function popModal(kind: 'movie' | 'performer') {
+function popModal(kind: ModalKind) {
   modalStack.value = modalStack.value.filter(k => k !== kind);
 }
 
-function layerOf(kind: 'movie' | 'performer') {
+function layerOf(kind: ModalKind) {
   const i = modalStack.value.indexOf(kind);
   return 50 + (i < 0 ? 0 : i) * 10;
 }
@@ -236,6 +262,7 @@ const listMode = ref<'scroll' | 'paged'>(
 );
 const moviePage = ref(1);
 const performerPage = ref(1);
+const studioPage = ref(1);
 const isLoading = ref(false);
 const isLoadingMore = ref(false);
 
@@ -257,6 +284,7 @@ function setPageSize(size: number) {
 function goToPage(n: number) {
   if (currentTab.value === 'movies') fetchMovies(true, n);
   else if (currentTab.value === 'performers') fetchPerformers(true, n);
+  else if (currentTab.value === 'studios') fetchStudios(true, n);
   scrollContainerRef.value?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -264,6 +292,7 @@ function goToPage(n: number) {
 function reloadCurrentTab() {
   if (currentTab.value === 'movies') fetchMovies(true);
   else if (currentTab.value === 'performers') fetchPerformers(true);
+  else if (currentTab.value === 'studios') fetchStudios(true);
   else return;
   nextTick(() => fillViewport());
 }
@@ -599,6 +628,35 @@ async function loadMorePerformers() {
   await fetchPerformers(false, performerPage.value + 1);
 }
 
+async function fetchStudios(replace = true, targetPage = 1) {
+  studioPage.value = targetPage;
+  if (replace) isLoading.value = true;
+  else isLoadingMore.value = true;
+
+  try {
+    const res = await api.getStudioLibrary(
+      studioQuery.value, studioSortBy.value, studioPage.value, pageSize.value
+    );
+    if (replace) {
+      studioRows.value = res.items;
+    } else {
+      // Studios are keyed by name, since the library has no table for them.
+      const existing = new Set(studioRows.value.map(s => s.name));
+      studioRows.value.push(...res.items.filter(s => !existing.has(s.name)));
+    }
+    totalStudioRows.value = res.total;
+  } finally {
+    isLoading.value = false;
+    isLoadingMore.value = false;
+  }
+}
+
+async function loadMoreStudios() {
+  if (isLoading.value || isLoadingMore.value) return;
+  if (studioRows.value.length >= totalStudioRows.value) return;
+  await fetchStudios(false, studioPage.value + 1);
+}
+
 // Waterfall Infinite Scroll
 //
 // This used to be an IntersectionObserver rooted at the scroll container. That
@@ -624,6 +682,8 @@ function handleScroll() {
     if (!isLoading.value && !isLoadingMore.value && movies.value.length < totalMovies.value) loadMoreMovies();
   } else if (currentTab.value === 'performers') {
     if (!isLoading.value && !isLoadingMore.value && performers.value.length < totalPerformers.value) loadMorePerformers();
+  } else if (currentTab.value === 'studios') {
+    if (!isLoading.value && !isLoadingMore.value && studioRows.value.length < totalStudioRows.value) loadMoreStudios();
   }
 }
 
@@ -646,6 +706,9 @@ async function fillViewport() {
     } else if (currentTab.value === 'performers') {
       if (isLoading.value || isLoadingMore.value || performers.value.length >= totalPerformers.value) return;
       await loadMorePerformers();
+    } else if (currentTab.value === 'studios') {
+      if (isLoading.value || isLoadingMore.value || studioRows.value.length >= totalStudioRows.value) return;
+      await loadMoreStudios();
     } else {
       return;
     }
@@ -655,9 +718,14 @@ async function fillViewport() {
 // The navbar search box drives whichever tab is on screen; each tab keeps
 // its own query so switching back does not clobber the other's results.
 const searchQuery = computed({
-  get: () => (currentTab.value === 'performers' ? performerFilters.query : filters.query),
+  get: () => {
+    if (currentTab.value === 'performers') return performerFilters.query;
+    if (currentTab.value === 'studios') return studioQuery.value;
+    return filters.query;
+  },
   set: (val: string) => {
     if (currentTab.value === 'performers') performerFilters.query = val;
+    else if (currentTab.value === 'studios') studioQuery.value = val;
     else filters.query = val;
   },
 });
@@ -682,6 +750,11 @@ watch(performerFilters, () => {
   if (currentTab.value === 'performers') reloadCurrentTab();
 }, { deep: true });
 
+// Studio search and sort have no filter drawer, so they are plain refs.
+watch([studioQuery, studioSortBy], () => {
+  if (currentTab.value === 'studios') reloadCurrentTab();
+});
+
 watch(currentTab, (newTab) => {
   scrollContainerRef.value?.scrollTo({ top: 0 });
   if (newTab === 'movies') {
@@ -691,6 +764,8 @@ watch(currentTab, (newTab) => {
   } else if (newTab === 'performers') {
     if (performers.value.length === 0) reloadCurrentTab();
     loadPerformerFacets();
+  } else if (newTab === 'studios') {
+    if (studioRows.value.length === 0) reloadCurrentTab();
   } else if (newTab === 'favorites') {
     // Always refetched: the page is a server-side snapshot of five tables and the
     // scrape running in the background keeps adding rows it can point at.
@@ -715,6 +790,11 @@ function toggleFavorite(m: Movie) {
 /** Same for the performer modal, which emits the performer. */
 function togglePerformerFavorite(p: Performer) {
   void toggleFavoriteEntity('performer', String(p.id));
+}
+
+/** Studios have no id — the name is the key, here and in the library filter. */
+function toggleStudioFavorite(name: string) {
+  void toggleFavoriteEntity('studio', name);
 }
 
 async function toggleFavoriteEntity(type: FavoriteType, key: string) {
@@ -849,6 +929,27 @@ async function openPerformerDetail(id: number) {
   selectedPerformer.value = detail || { id, name: `Performer #${id}` };
 }
 
+/**
+ * Open a studio's page.
+ *
+ * Callers only ever have a name (the library grid has counts with it, the favorites
+ * page just the name), so the films and episodes are fetched here rather than being
+ * handed in the way they are for a movie or a performer.
+ */
+async function openStudioDetail(studio: { name: string; works_count?: number; episodes_count?: number }) {
+  pushModal('studio');
+  selectedStudio.value = studio;
+  studioWorks.value = null;
+  studioWorksLoading.value = true;
+  try {
+    const works = await api.getStudioWorks(studio.name);
+    // A slower fetch for studio A must not land on top of studio B's page.
+    if (selectedStudio.value?.name === studio.name) studioWorks.value = works;
+  } finally {
+    studioWorksLoading.value = false;
+  }
+}
+
 function closeMovieDetail() {
   selectedMovie.value = null;
   popModal('movie');
@@ -859,6 +960,28 @@ function closePerformerDetail() {
   popModal('performer');
 }
 
+function closeStudioDetail() {
+  selectedStudio.value = null;
+  studioWorks.value = null;
+  popModal('studio');
+}
+
+/**
+ * Double-clicking any image opens it in the full-screen viewer.
+ *
+ * One listener on window rather than a binding per image: covers appear in a dozen
+ * places and all of them should behave the same. On a cover that is itself
+ * click-to-open the two gestures both happen — the detail page opens underneath and
+ * the viewer covers it — which is the agreed behaviour; Escape unwinds one layer at
+ * a time. Images inside the viewer are ignored so it cannot open on itself.
+ */
+function onGlobalDblClick(e: MouseEvent) {
+  if (lightboxImage.value) return;
+  const img = viewableImageFrom(e.target);
+  if (!img) return;
+  openLightbox(img.currentSrc || img.src, img.alt);
+}
+
 onMounted(async () => {
   // Hearts come from the database, not localStorage — so they survive a browser
   // change and travel with an export. Both loads are fire-and-forget: a failure
@@ -866,11 +989,15 @@ onMounted(async () => {
   loadFavoriteKeys();
   loadGlossary();
 
+  window.addEventListener('dblclick', onGlobalDblClick);
+
   loadStats();
   await fetchMovies(true);
   loadPerformerFacets();
   nextTick(() => fillViewport());
 });
+
+onUnmounted(() => window.removeEventListener('dblclick', onGlobalDblClick));
 </script>
 
 <template>
@@ -1185,7 +1312,7 @@ onMounted(async () => {
                 {{ p.name }}
               </h3>
               <div v-if="p.build || p.height" class="text-[10px] text-zinc-500 mt-1 truncate w-full">
-                {{ p.build || p.height }}
+                {{ p.build || trMeasure(p.height) }}
               </div>
               <div v-if="p.movies_count" class="text-[10px] text-zinc-600 mt-0.5">
                 {{ p.movies_count }} 部作品
@@ -1228,7 +1355,136 @@ onMounted(async () => {
           />
         </div>
 
-        <!-- 3. Favorites Tab — five server-driven sections -->
+        <!-- 3. Studio Library — the third axis of the library, next to films and performers -->
+        <div v-else-if="currentTab === 'studios'" class="space-y-6">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-bold text-white tracking-tight">片商库</h1>
+              <span class="text-xs text-zinc-500 font-mono">({{ studioRows.length }} / {{ totalStudioRows.toLocaleString() }} 家)</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <!-- Sort: there is no filter drawer for studios, so the ordering lives here -->
+              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+                <button
+                  v-for="s in STUDIO_SORTS"
+                  :key="s.id"
+                  @click="studioSortBy = s.id"
+                  :class="[
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    studioSortBy === s.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                  ]"
+                >
+                  {{ s.label }}
+                </button>
+              </div>
+
+              <!-- How the list pages in: auto-load on scroll, or explicit pages -->
+              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+                <button
+                  v-for="m in [
+                    { id: 'scroll', label: '滑动加载' },
+                    { id: 'paged', label: '翻页' }
+                  ]"
+                  :key="m.id"
+                  @click="setListMode(m.id as 'scroll' | 'paged')"
+                  :class="[
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    listMode === m.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                  ]"
+                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                >
+                  {{ m.label }}
+                </button>
+              </div>
+
+              <!-- Grid columns adjuster -->
+              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-zinc-500 text-[11px]">每行</span>
+                <button
+                  @click="decreaseCols"
+                  :disabled="activeCols <= 2"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="减少每行列数"
+                >
+                  &lt;
+                </button>
+                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <button
+                  @click="increaseCols"
+                  :disabled="activeCols >= activeColsMax"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="增加每行列数"
+                >
+                  &gt;
+                </button>
+                <span class="text-zinc-500 text-[11px]">列</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cards carry no artwork: the library has no studio logo, and picking one
+               of the studio's film covers per card would cost a scan per group. -->
+          <div
+            v-if="studioRows.length > 0"
+            class="grid gap-4 transition-all duration-200"
+            :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
+          >
+            <div
+              v-for="s in studioRows"
+              :key="s.name"
+              @click="openStudioDetail(s)"
+              class="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 hover:border-amber-500/40 hover:bg-zinc-900 transition-all cursor-pointer flex flex-col items-center text-center group"
+            >
+              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-zinc-700/60 group-hover:ring-amber-500/50 transition">
+                <div class="w-full h-full bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-2xl font-black text-black/70">
+                  {{ s.name.charAt(0).toUpperCase() }}
+                </div>
+              </div>
+              <h3 class="text-xs font-semibold text-zinc-200 mt-3 group-hover:text-amber-400 transition truncate w-full">
+                {{ s.name }}
+              </h3>
+              <div class="text-[10px] text-zinc-500 mt-1">{{ s.works_count }} 部作品</div>
+              <div v-if="s.episodes_count" class="text-[10px] text-zinc-600 mt-0.5">
+                {{ s.episodes_count }} 个片段
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
+            <Building2 class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-zinc-400">没有符合条件的片商</div>
+            <div class="text-xs text-zinc-600">试试更换关键词，或清空搜索框</div>
+          </div>
+
+          <!-- Infinite-scroll footer: the list grows as the container bottom nears -->
+          <div v-if="listMode === 'scroll' && studioRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500">
+            <div v-if="isLoadingMore" class="flex items-center gap-2 text-amber-400 font-medium">
+              <Loader2 class="w-4 h-4 animate-spin" />
+              <span>滑动加载更多片商中...</span>
+            </div>
+            <div v-else-if="studioRows.length >= totalStudioRows && totalStudioRows > 0" class="flex items-center gap-2 text-zinc-500 text-xs">
+              <span class="w-12 h-px bg-zinc-800"></span>
+              <span>已加载全部 {{ totalStudioRows.toLocaleString() }} 家片商</span>
+              <span class="w-12 h-px bg-zinc-800"></span>
+            </div>
+          </div>
+
+          <!-- Paged mode: explicit controls, incl. a customisable page size -->
+          <PaginationBar
+            v-if="listMode === 'paged' && studioRows.length > 0"
+            :page="studioPage"
+            :page-size="pageSize"
+            :total="totalStudioRows"
+            :loading="isLoading"
+            :page-size-options="PAGE_SIZE_OPTIONS"
+            @update:page="goToPage"
+            @update:page-size="setPageSize"
+          />
+        </div>
+
+        <!-- 4. Favorites Tab — five server-driven sections -->
         <div v-else-if="currentTab === 'favorites'" class="space-y-8">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <h1 class="text-xl font-bold text-white tracking-tight">我的收藏</h1>
@@ -1390,7 +1646,7 @@ onMounted(async () => {
               </div>
             </section>
 
-            <!-- 4. Studios — clicking jumps to the library filtered by that studio -->
+            <!-- 4. Studios — clicking opens the studio page, as a favorited performer does -->
             <section v-if="favStudios.length > 0" class="space-y-3">
               <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
                 <Building2 class="w-4 h-4 text-amber-400" />
@@ -1403,7 +1659,11 @@ onMounted(async () => {
                   :key="f.key"
                   class="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-amber-500/50 transition"
                 >
-                  <button @click="filterByStudio(f.key)" class="text-xs font-medium text-zinc-300 hover:text-amber-300 transition" :title="`查看 ${f.key} 的全部影片`">
+                  <button
+                    @click="openStudioDetail({ name: f.key, works_count: f.works_count ?? undefined })"
+                    class="text-xs font-medium text-zinc-300 hover:text-amber-300 transition"
+                    :title="`打开 ${f.key} 的片商档案`"
+                  >
                     {{ f.key }}
                   </button>
                   <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 font-mono">{{ f.works_count || 0 }}</span>
@@ -1454,7 +1714,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- 4. Settings & Cache Tab -->
+        <!-- 5. Settings & Cache Tab -->
         <div v-else-if="currentTab === 'settings'" class="max-w-3xl space-y-6">
           <h1 class="text-xl font-bold text-white tracking-tight">存储、缓存与系统设置</h1>
 
@@ -1996,6 +2256,22 @@ onMounted(async () => {
       @filter-studio="filterByStudio"
     />
 
+    <StudioDetailModal
+      :studio="selectedStudio"
+      :works="studioWorks"
+      :loading="studioWorksLoading"
+      :lang="descLang"
+      :z-index="layerOf('studio')"
+      :is-top="modalStack[modalStack.length - 1] === 'studio'"
+      :is-favorite="selectedStudio ? isFavorite('studio', selectedStudio.name) : false"
+      :favorite-keys="favorites"
+      @close="closeStudioDetail"
+      @select-movie="openMovieDetail"
+      @select-movie-id="openMovieDetailById"
+      @toggle-favorite="toggleStudioFavorite"
+      @toggle-entity-favorite="toggleFavoriteEntity"
+    />
+
     <FilterDrawer
       :open="isFilterOpen"
       :tab="currentTab"
@@ -2018,5 +2294,8 @@ onMounted(async () => {
       @close="isSyncOpen = false"
       @sync-complete="loadStats(); fetchMovies();"
     />
+
+    <!-- Above the whole modal stack: it is opened from inside those modals. -->
+    <ImageLightbox />
   </div>
 </template>

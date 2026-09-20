@@ -151,6 +151,29 @@ pub struct MoviesResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct StudioSummary {
+    pub name: String,
+    pub works_count: i64,
+    pub episodes_count: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StudioLibrary {
+    pub items: Vec<StudioSummary>,
+    pub total: i64,
+}
+
+/// One studio's films and episodes — the shape `/api/studios/<name>/works` returns.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StudioWorks {
+    pub studio_name: String,
+    pub movies: Vec<Movie>,
+    pub movies_count: i64,
+    pub episodes: Vec<Episode>,
+    pub episodes_count: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Performer {
     pub id: i64,
     pub name: String,
@@ -993,6 +1016,137 @@ fn get_studios() -> Result<Vec<String>, String> {
     Ok(rows.filter_map(Result::ok).collect())
 }
 
+/// Studio library: every studio with its film and episode counts, paged.
+///
+/// Kept in step with db_manager.list_studios, which serves the same page over HTTP.
+/// Studios exist only as a column on `movies` — no table, no artwork — so both
+/// counts come out of one grouping pass; the LEFT JOIN is what keeps a studio whose
+/// films have no episodes in the list, with 0.
+#[tauri::command]
+fn get_studio_library(
+    query: Option<String>,
+    sort_by: Option<String>,
+    page: Option<i64>,
+    page_size: Option<i64>,
+) -> Result<StudioLibrary, String> {
+    let conn = open_db()?;
+    let page = page.unwrap_or(1).max(1);
+    let page_size = page_size.unwrap_or(24).clamp(1, 100);
+    let offset = (page - 1) * page_size;
+
+    let mut conditions = vec![
+        "m.studio_name IS NOT NULL".to_string(),
+        "trim(m.studio_name) != ''".to_string(),
+    ];
+    let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+    if let Some(q) = query {
+        let q = q.trim().to_string();
+        if !q.is_empty() {
+            // ESCAPE so a literal % or _ typed into the search box stays literal.
+            conditions.push("m.studio_name LIKE ? ESCAPE '\\'".to_string());
+            let escaped = q.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+            params_vec.push(Box::new(format!("%{}%", escaped)));
+        }
+    }
+    let where_clause = format!("WHERE {}", conditions.join(" AND "));
+
+    let sort_clause = match sort_by.as_deref() {
+        Some("name_asc") => "m.studio_name COLLATE NOCASE ASC",
+        Some("episodes_desc") => {
+            "episodes_count DESC, works_count DESC, m.studio_name COLLATE NOCASE ASC"
+        }
+        _ => "works_count DESC, m.studio_name COLLATE NOCASE ASC",
+    };
+
+    let params_slice: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
+    let total: i64 = conn.query_row(
+        &format!("SELECT count(DISTINCT m.studio_name) FROM movies m {}", where_clause),
+        &params_slice[..],
+        |r| r.get(0),
+    ).map_err(|e| e.to_string())?;
+
+    let select_query = format!(
+        "SELECT m.studio_name, count(DISTINCT m.id) AS works_count, count(e.id) AS episodes_count \
+         FROM movies m LEFT JOIN episodes e ON e.movie_id = m.id \
+         {} GROUP BY m.studio_name ORDER BY {} LIMIT ? OFFSET ?",
+        where_clause, sort_clause
+    );
+
+    let mut full_params = params_vec;
+    full_params.push(Box::new(page_size));
+    full_params.push(Box::new(offset));
+    let full_slice: Vec<&dyn rusqlite::ToSql> = full_params.iter().map(|p| p.as_ref()).collect();
+
+    let mut stmt = conn.prepare(&select_query).map_err(|e| e.to_string())?;
+    let rows = stmt.query_map(&full_slice[..], |r| {
+        Ok(StudioSummary {
+            name: r.get(0)?,
+            works_count: r.get(1)?,
+            episodes_count: r.get(2)?,
+        })
+    }).map_err(|e| e.to_string())?;
+
+    Ok(StudioLibrary {
+        items: rows.filter_map(Result::ok).collect(),
+        total,
+    })
+}
+
+/// One studio's complete works, matching `/api/studios/<name>/works`.
+#[tauri::command]
+fn get_studio_works(studio_name: String) -> Result<StudioWorks, String> {
+    let conn = open_db()?;
+
+    let mut m_stmt = conn.prepare(
+        "SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year, \
+                m.duration_mins, m.category, m.rating, m.cover_icon, m.cover_full \
+         FROM movies m \
+         WHERE m.studio_name = ?1 \
+         ORDER BY m.release_year DESC, m.id DESC"
+    ).map_err(|e| e.to_string())?;
+
+    let m_iter = m_stmt.query_map(params![studio_name], |r| {
+        Ok(Movie {
+            id: r.get(0)?,
+            title: r.get(1)?,
+            studio_id: r.get(2)?,
+            studio_name: r.get(3)?,
+            release_year: r.get(4)?,
+            duration_mins: r.get(5)?,
+            category: r.get(6)?,
+            rating: r.get(7)?,
+            movie_type: None,
+            description: None,
+            description_zh: None,
+            cover_icon: r.get(8)?,
+            cover_full: r.get(9)?,
+            covers: None,
+            director_id: None,
+            director_name: None,
+            performers: None,
+            episodes: None,
+        })
+    }).map_err(|e| e.to_string())?;
+    let movies: Vec<Movie> = m_iter.filter_map(Result::ok).collect();
+
+    let mut e_stmt = conn.prepare(&format!(
+        "{} WHERE m.studio_name = ?1 ORDER BY m.release_year DESC, e.id DESC",
+        EPISODE_SQL
+    )).map_err(|e| e.to_string())?;
+    let e_iter = e_stmt.query_map(params![studio_name], map_episode_row)
+        .map_err(|e| e.to_string())?;
+    let episodes: Vec<Episode> = e_iter.filter_map(Result::ok).collect();
+
+    Ok(StudioWorks {
+        studio_name,
+        movies_count: movies.len() as i64,
+        movies,
+        episodes_count: episodes.len() as i64,
+        episodes,
+    })
+}
+
 #[tauri::command]
 fn get_categories() -> Result<Vec<String>, String> {
     let conn = open_db()?;
@@ -1058,6 +1212,8 @@ pub fn run() {
             get_performer_facets,
             get_performer_detail,
             get_studios,
+            get_studio_library,
+            get_studio_works,
             get_categories,
             get_favorites,
             toggle_favorite,

@@ -12,6 +12,9 @@ import type {
   FavoriteType,
   FavoriteItem,
   FavoritesResponse,
+  StudioLibraryResponse,
+  StudioSortBy,
+  StudioWorks,
 } from './types';
 import { FAVORITE_TYPES } from './types';
 
@@ -329,6 +332,37 @@ export const api = {
       if (res.ok) return await res.json();
     } catch {}
     return ['Corbin Fisher', 'Staxus', 'Driveshaft', 'Adult Time', 'Sean Cody', 'Bareback Network'];
+  },
+
+  /**
+   * The studio library grid, paged and searchable.
+   *
+   * Deliberately not `getStudios()`: that one returns a bare name list for the
+   * filter drawer's chips (capped at 200, names only), which is a different query
+   * from a paged list with per-studio counts.
+   */
+  async getStudioLibrary(
+    query: string = '',
+    sortBy: StudioSortBy = 'works_desc',
+    page: number = 1,
+    pageSize: number = 24
+  ): Promise<StudioLibraryResponse> {
+    if (isTauri) {
+      return tauriInvoke<StudioLibraryResponse>('get_studio_library', {
+        query, sortBy, page, pageSize,
+      });
+    }
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        sortBy,
+      });
+      if (query) params.set('query', query);
+      const res = await fetch(`/api/studio-library?${params.toString()}`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return { items: [], total: 0 };
   },
 
   async getCategories(): Promise<string[]> {
@@ -656,13 +690,12 @@ export const api = {
   },
 
   // Studio Works (Separated Movies & Episodes)
-  async getStudioWorks(studioName: string): Promise<{
-    studio_name: string;
-    movies: Movie[];
-    movies_count: number;
-    episodes: any[];
-    episodes_count: number;
-  }> {
+  async getStudioWorks(studioName: string): Promise<StudioWorks> {
+    if (isTauri) {
+      // Without this branch the desktop build fell through to fetch() and got the
+      // empty fallback below, because there is no HTTP server in Tauri.
+      return tauriInvoke<StudioWorks>('get_studio_works', { studioName });
+    }
     try {
       const res = await fetch(`/api/studios/${encodeURIComponent(studioName)}/works`);
       if (res.ok) return await res.json();

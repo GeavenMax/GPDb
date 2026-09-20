@@ -223,6 +223,12 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/studios":
                 return self.handle_studios()
 
+            # 8b. /api/studio-library
+            # Separate from /api/studios, which the filter drawer's studio chips
+            # (and the desktop build's own get_studios) consume as a bare name list.
+            if path == "/api/studio-library":
+                return self.handle_studio_library(query_params)
+
             # 9. /api/categories
             if path == "/api/categories":
                 return self.handle_categories()
@@ -1130,6 +1136,28 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             """).fetchall()
             studios = [r["studio_name"] for r in rows]
             self.send_json(studios)
+
+    def handle_studio_library(self, params: dict):
+        query = params.get("query", [""])[0].strip()
+        page = max(1, int(params.get("page", [1])[0]))
+        page_size = max(1, min(100, int(params.get("pageSize", [24])[0])))
+        sort_by = params.get("sortBy", ["works_desc"])[0].strip()
+        sort = {"name_asc": "name", "episodes_desc": "episodes"}.get(sort_by, "works")
+
+        db = DatabaseManager(str(DB_PATH))
+        try:
+            items, total = db.list_studios(
+                query=query, sort=sort, limit=page_size, offset=(page - 1) * page_size
+            )
+        finally:
+            db.close()
+
+        self.send_json({
+            "items": items,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+        })
 
     def handle_categories(self):
         with get_db_connection() as conn:

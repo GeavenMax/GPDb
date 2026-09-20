@@ -5,7 +5,7 @@ import type { Performer, Movie, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
-import { tr, trTattoo } from '../utils/glossary';
+import { tr, trTattoo, trMeasure } from '../utils/glossary';
 
 const props = defineProps<{
   performer: Performer | null;
@@ -49,17 +49,27 @@ function attrValues(key: string, fallback: string | null | undefined): string[] 
 
 /**
  * The measurement fields (height / weight / dick size) hold "5ft 10in / 178cm"
- * strings — numbers and units are language-neutral, so they have no glossary entry
- * and `tr` passes them through untouched.
+ * strings. Their numbers need no translation but their units do, and the units are
+ * the only part of the value in the glossary — see trMeasure.
  */
-const SPECS = computed(() => {
+interface Spec {
+  key: string;
+  label: string;
+  /** Rendered in amber rather than zinc. */
+  accent: boolean;
+  /** Translate the value's units as well as the value — see trMeasure. */
+  measure?: boolean;
+  values: string[];
+}
+
+const SPECS = computed<Spec[]>(() => {
   const p = props.performer;
   if (!p) return [];
   return [
-    { key: 'height', label: '身高', accent: false, values: attrValues('height', p.height) },
-    { key: 'weight', label: '体重', accent: false, values: attrValues('weight', p.weight) },
+    { key: 'height', label: '身高', accent: false, measure: true, values: attrValues('height', p.height) },
+    { key: 'weight', label: '体重', accent: false, measure: true, values: attrValues('weight', p.weight) },
     { key: 'bodyType', label: '体型', accent: false, values: attrValues('bodyType', p.build) },
-    { key: 'dickSize', label: '尺寸规格', accent: true, values: attrValues('dickSize', p.dick_size) },
+    { key: 'dickSize', label: '尺寸规格', accent: true, measure: true, values: attrValues('dickSize', p.dick_size) },
     { key: 'skin', label: '肤色', accent: false, values: attrValues('skin', p.skin) },
     { key: 'hair', label: '发色', accent: false, values: attrValues('hair', p.hair) },
     { key: 'eyes', label: '瞳色', accent: false, values: attrValues('eyes', p.eyes) },
@@ -212,7 +222,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                   spec.accent ? 'text-amber-400' : 'text-zinc-200'
                 ]"
               >
-                {{ tr(v) }}
+                {{ spec.measure ? trMeasure(v) : tr(v) }}
               </span>
             </div>
           </div>

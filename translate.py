@@ -570,7 +570,7 @@ def build_provider(settings: dict, system_prompt: str | None = None) -> Provider
 
 GLOSSARY_SYSTEM_PROMPT = """你是一名成人影片资料库的术语译者。你会收到一批演员档案里的英文属性词，需要逐个翻译成简体中文。
 
-这些词来自固定的小词表：体型（Swimmer、Trim）、肤色（Olive、Caramel）、眼睛颜色、发型、体毛、胡须、包皮，以及纹身部位（Deltoid、Groin、Chest）。
+这些词来自固定的小词表：体型（Swimmer、Trim）、肤色（Olive、Caramel）、眼睛颜色、发型、体毛、胡须、包皮，以及纹身部位（Deltoid、Groin、Chest）。此外还会收到几个度量单位缩写。
 
 翻译要求：
 1. 简洁、直接，用中文资料库里常见的说法，不要解释、不要加括号补充。
@@ -578,7 +578,9 @@ GLOSSARY_SYSTEM_PROMPT = """你是一名成人影片资料库的术语译者。�
 2. 颜色词（Brown、Blond、Dark Brown）译成对应颜色即可。
 3. 身体部位词（Deltoid、Biceps、Forearm、Chest、Groin、Glans、Sternum、Thigh）用解剖学常用中文说法，例如 Deltoid→三角肌，Biceps→肱二头肌，Forearm→前臂，Glans→龟头。
 4. 位置短语（left chest、right bicep、base of spine）译成"左胸""右肱二头肌""脊柱底部"这类说法。
-5. 大小写与单复数保持原意；不确定时按字面直译，不要臆造。
+5. 度量单位只译单位本身，不要带数字、不要换算：
+   ft→英尺，in→英寸（此处是 inch 的缩写，不是介词），lbs→磅，kg→千克，cm→厘米。
+6. 大小写与单复数保持原意；不确定时按字面直译，不要臆造。
 
 只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
 
@@ -588,6 +590,15 @@ GLOSSARY_SYSTEM_PROMPT = """你是一名成人影片资料库的术语译者。�
 
 # Columns whose values are measurement strings or otherwise untranslatable.
 GLOSSARY_SKIP_COLUMNS = frozenset({"dick_size"})
+
+# The unit abbreviations inside those measurement strings.
+#
+# height / weight / dick_size store "5ft 10in / 178cm" — both systems at once — and
+# are the reason this set exists rather than a whole-value glossary entry per
+# measurement: the units are five fixed tokens, while the values are unbounded and
+# churn on every re-scrape. The client rewrites the units inside each value with
+# trMeasure(), so a height it has never seen still renders in Chinese.
+GLOSSARY_UNIT_TERMS = ("ft", "in", "lbs", "kg", "cm")
 
 # Tattoo values are junkier than the facet columns. A single stored value looks like
 #   "Deltoid left Deltoid: \"USMC\", Chest left chest: Chinese dragon"
@@ -657,6 +668,8 @@ def collect_glossary_terms(db: DatabaseManager) -> list[str]:
     from server import PERFORMER_FACETS, split_facet_value
 
     terms: set[str] = set()
+    # Not a facet or a column: the units embedded in the measurement strings.
+    terms.update(GLOSSARY_UNIT_TERMS)
     for column in PERFORMER_FACETS:
         if column in GLOSSARY_SKIP_COLUMNS:
             continue
