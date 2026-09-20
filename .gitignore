@@ -8,6 +8,9 @@ gevi.db-wal
 gevi.db.backup-*
 image_cache/
 
+# --- 刮削脚本的运行日志 ---
+logs/
+
 # --- Python ---
 __pycache__/
 *.py[cod]
