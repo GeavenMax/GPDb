@@ -1,0 +1,1257 @@
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue';
+import Navbar from './components/Navbar.vue';
+import Sidebar from './components/Sidebar.vue';
+import MovieCard from './components/MovieCard.vue';
+import MovieDetailModal from './components/MovieDetailModal.vue';
+import PerformerDetailModal from './components/PerformerDetailModal.vue';
+import FilterDrawer from './components/FilterDrawer.vue';
+import SyncModal from './components/SyncModal.vue';
+import PaginationBar from './components/PaginationBar.vue';
+import { api, createPerformerFilters, countActivePerformerFilters, FACET_KEYS, FACET_LABELS, IS_TAURI } from './api';
+import { getImageUrl } from './utils/image';
+import type {
+  Movie,
+  Performer,
+  FilterState,
+  DatabaseStats,
+  PerformerFilterState,
+  PerformerFacets,
+  TranslationStats,
+} from './types';
+import {
+  Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
+  Languages, User as UserIcon, Sparkles,
+} from '@lucide/vue';
+
+// State
+const currentTab = ref<'movies' | 'performers' | 'favorites' | 'settings'>('movies');
+const viewMode = ref<'grid' | 'list'>('grid');
+const isFilterOpen = ref(false);
+const isSyncOpen = ref(false);
+
+const stats = ref<DatabaseStats | null>(null);
+const studios = ref<string[]>([]);
+const categories = ref<string[]>([]);
+
+const movies = ref<Movie[]>([]);
+const totalMovies = ref(0);
+const performers = ref<Performer[]>([]);
+const totalPerformers = ref(0);
+
+const favorites = ref<Set<number>>(new Set());
+
+const selectedMovie = ref<Movie | null>(null);
+const selectedPerformer = ref<Performer | null>(null);
+
+/**
+ * Detail views can open one another — a performer's filmography links to a
+ * movie, a movie's cast links to a performer. Both must stay mounted so the
+ * user can navigate back, so the open order decides which one sits on top.
+ * Openers push to the end; the last entry gets the highest layer.
+ */
+const modalStack = ref<string[]>([]);
+
+function pushModal(kind: 'movie' | 'performer') {
+  modalStack.value = [...modalStack.value.filter(k => k !== kind), kind];
+}
+
+function popModal(kind: 'movie' | 'performer') {
+  modalStack.value = modalStack.value.filter(k => k !== kind);
+}
+
+function layerOf(kind: 'movie' | 'performer') {
+  const i = modalStack.value.indexOf(kind);
+  return 50 + (i < 0 ? 0 : i) * 10;
+}
+
+const filters = reactive<FilterState>({
+  query: '',
+  studio: '',
+  yearMin: null,
+  yearMax: null,
+  category: '',
+  sortBy: 'year_desc',
+});
+
+// Synopsis language preference (issue #4). Falls back to English per-movie
+// whenever a Chinese translation has not been generated yet.
+const descLang = ref<'zh' | 'en'>(
+  (localStorage.getItem('gevi_desc_lang') as 'zh' | 'en') || 'zh'
+);
+
+function setDescLang(lang: 'zh' | 'en') {
+  descLang.value = lang;
+  localStorage.setItem('gevi_desc_lang', lang);
+}
+
+// Dynamic Grid Columns state (persisted to localStorage)
+const gridCols = ref<number>(Number(localStorage.getItem('gevi_grid_cols')) || 5);
+// List view uses its own column count: the cards are horizontal and much wider,
+// so the useful range is 2-4 rather than 2-8.
+const listCols = ref<number>(Number(localStorage.getItem('gevi_list_cols')) || 3);
+
+function decreaseCols() {
+  if (viewMode.value === 'list') {
+    if (listCols.value > 2) {
+      listCols.value--;
+      localStorage.setItem('gevi_list_cols', String(listCols.value));
+    }
+    return;
+  }
+  if (gridCols.value > 2) {
+    gridCols.value--;
+    localStorage.setItem('gevi_grid_cols', String(gridCols.value));
+  }
+}
+
+function increaseCols() {
+  if (viewMode.value === 'list') {
+    if (listCols.value < 4) {
+      listCols.value++;
+      localStorage.setItem('gevi_list_cols', String(listCols.value));
+    }
+    return;
+  }
+  if (gridCols.value < 8) {
+    gridCols.value++;
+    localStorage.setItem('gevi_grid_cols', String(gridCols.value));
+  }
+}
+
+/** Column count driving whichever view is active. */
+const activeCols = computed(() => (viewMode.value === 'list' ? listCols.value : gridCols.value));
+const activeColsMax = computed(() => (viewMode.value === 'list' ? 4 : 8));
+
+// Performer filtering (issue #7)
+const performerFilters = reactive<PerformerFilterState>(createPerformerFilters());
+const performerFacets = ref<PerformerFacets>({ facets: {}, total: 0, withImage: 0, enriched: 0 });
+const activePerformerFilterCount = computed(() => countActivePerformerFilters(performerFilters));
+
+/** Flat list of the currently selected facet values, for the chip row. */
+const activeFacetChips = computed(() =>
+  FACET_KEYS.flatMap(key =>
+    (performerFilters[key] as string[]).map(value => ({
+      key: key as string,
+      value,
+      label: FACET_LABELS[key] || key,
+    }))
+  )
+);
+
+// Machine translation progress (issue #4)
+const translationStats = ref<TranslationStats | null>(null);
+const isTranslating = ref(false);
+const translateMsg = ref('');
+
+// List loading state
+//
+// 'scroll' pulls the next page automatically near the bottom; 'paged' shows an
+// explicit pagination bar. Both share `pageSize`; the page cursor is kept per
+// tab, since one counter would carry "page 7 of the movies grid" over to the
+// performer grid the moment the user switched.
+// Ceiling is 96: the performer endpoint and both Tauri commands clamp pageSize
+// to 100, so anything larger would desync the page count from the backend.
+const PAGE_SIZE_OPTIONS = [24, 48, 96]; // all divide by 2, 3, 4, 6, 8
+const pageSize = ref(snapPageSize(Number(localStorage.getItem('gevi_page_size'))));
+
+/** Snap to an offered option, so a stale stored value is not sent to the API. */
+function snapPageSize(size: number): number {
+  if (!Number.isFinite(size) || size <= 0) return 48;
+  return PAGE_SIZE_OPTIONS.reduce(
+    (best, option) => (Math.abs(option - size) < Math.abs(best - size) ? option : best),
+    PAGE_SIZE_OPTIONS[0]
+  );
+}
+const listMode = ref<'scroll' | 'paged'>(
+  localStorage.getItem('gevi_list_mode') === 'paged' ? 'paged' : 'scroll'
+);
+const moviePage = ref(1);
+const performerPage = ref(1);
+const isLoading = ref(false);
+const isLoadingMore = ref(false);
+
+function setListMode(mode: 'scroll' | 'paged') {
+  if (listMode.value === mode) return;
+  listMode.value = mode;
+  localStorage.setItem('gevi_list_mode', mode);
+  // Page counts mean different things per mode; start each switch from the top.
+  reloadCurrentTab();
+}
+
+function setPageSize(size: number) {
+  if (size === pageSize.value) return;
+  pageSize.value = size;
+  localStorage.setItem('gevi_page_size', String(size));
+  reloadCurrentTab();
+}
+
+function goToPage(n: number) {
+  if (currentTab.value === 'movies') fetchMovies(true, n);
+  else if (currentTab.value === 'performers') fetchPerformers(true, n);
+  scrollContainerRef.value?.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/** Refetch the visible tab at page 1 — for filter, page-size and mode changes. */
+function reloadCurrentTab() {
+  if (currentTab.value === 'movies') fetchMovies(true);
+  else if (currentTab.value === 'performers') fetchPerformers(true);
+  else return;
+  nextTick(() => fillViewport());
+}
+
+const scrollContainerRef = ref<HTMLElement | null>(null);
+
+// Cache & User Data Management State
+const cacheStats = ref<{ count: number; size_mb: number; path: string }>({ count: 0, size_mb: 0, path: '' });
+const isCacheLoading = ref(false);
+const cacheStatusMsg = ref('');
+const importStatusMsg = ref('');
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+// Load data
+async function loadStats() {
+  stats.value = await api.getStats();
+  studios.value = await api.getStudios();
+  categories.value = await api.getCategories();
+  loadCacheStats();
+  loadTranslationStats();
+}
+
+async function loadTranslationStats() {
+  translationStats.value = await api.getTranslationStats();
+}
+
+async function handleRunTranslation(limit: number | null) {
+  isTranslating.value = true;
+  translateMsg.value = '';
+  const res = await api.runTranslation(limit);
+  if (res.success) {
+    translateMsg.value = res.message || '翻译任务已启动';
+    // Poll until the background job reports completion.
+    const poll = setInterval(async () => {
+      await loadTranslationStats();
+      if (!translationStats.value?.running) {
+        clearInterval(poll);
+        isTranslating.value = false;
+        translateMsg.value = '翻译完成';
+        fetchMovies(true);
+      }
+    }, 3000);
+  } else {
+    translateMsg.value = res.error || '启动失败';
+    isTranslating.value = false;
+  }
+}
+
+async function loadPerformerFacets() {
+  performerFacets.value = await api.getPerformerFacets();
+}
+
+/** Toggle one facet value; multiple values within a facet are OR-ed. */
+function togglePerformerFacet(key: keyof PerformerFilterState, value: string) {
+  const list = performerFilters[key] as string[];
+  const idx = list.indexOf(value);
+  if (idx === -1) list.push(value);
+  else list.splice(idx, 1);
+}
+
+function resetPerformerFilters() {
+  Object.assign(performerFilters, createPerformerFilters());
+}
+
+async function loadCacheStats() {
+  cacheStats.value = await api.getCacheStats();
+}
+
+async function handleClearCache() {
+  if (!confirm('确定清空本地所有缓存的封面和分集图片吗？')) return;
+  isCacheLoading.value = true;
+  await api.clearCache();
+  await loadCacheStats();
+  isCacheLoading.value = false;
+  cacheStatusMsg.value = '图片缓存已清空';
+  setTimeout(() => { cacheStatusMsg.value = ''; }, 3000);
+}
+
+async function handleBatchDownloadCache() {
+  isCacheLoading.value = true;
+  const res = await api.downloadAllCache();
+  cacheStatusMsg.value = res.message || '全量后台下载已启动，请稍候...';
+  isCacheLoading.value = false;
+  setTimeout(loadCacheStats, 4000);
+}
+
+async function handleExportUserData() {
+  const data = await api.exportUserData();
+  if (!data) return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gevi_user_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function triggerImportFileInput() {
+  fileInputRef.value?.click();
+}
+
+async function handleImportFile(e: Event) {
+  const target = e.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) return;
+  const file = target.files[0];
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
+    try {
+      const json = JSON.parse(evt.target?.result as string);
+      const res = await api.importUserData(json);
+      importStatusMsg.value = `导入成功: 恢复了 ${res.tags_imported} 个标签与 ${res.movies_updated} 部影片的用户标记！`;
+      setTimeout(() => { importStatusMsg.value = ''; }, 5000);
+      fetchMovies();
+    } catch (err: any) {
+      alert('导入失败，请检查 JSON 格式是否正确: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  target.value = '';
+}
+
+async function onUserDataChanged(movieId: number) {
+  const updated = await api.getMovieDetail(movieId);
+  if (updated) {
+    const idx = movies.value.findIndex(m => m.id === movieId);
+    if (idx !== -1) {
+      movies.value[idx] = updated;
+    }
+  }
+}
+
+/**
+ * Load one page of movies.
+ *
+ * `replace` swaps the page in for the list instead of appending to it. The
+ * cursor is always whatever `targetPage` says, so filter changes (page 1) and
+ * the pagination bar (page N) both go through the same path.
+ */
+async function fetchMovies(replace = true, targetPage = 1) {
+  moviePage.value = targetPage;
+  if (replace) isLoading.value = true;
+  else isLoadingMore.value = true;
+
+  try {
+    const res = await api.getMovies(filters, moviePage.value, pageSize.value);
+    if (replace) {
+      movies.value = res.items;
+    } else {
+      const existingIds = new Set(movies.value.map(m => m.id));
+      const nextItems = res.items.filter(m => !existingIds.has(m.id));
+      movies.value.push(...nextItems);
+    }
+    totalMovies.value = res.total;
+  } finally {
+    isLoading.value = false;
+    isLoadingMore.value = false;
+  }
+}
+
+async function loadMoreMovies() {
+  if (isLoading.value || isLoadingMore.value) return;
+  if (movies.value.length >= totalMovies.value) return;
+  await fetchMovies(false, moviePage.value + 1);
+}
+
+async function fetchPerformers(replace = true, targetPage = 1) {
+  performerPage.value = targetPage;
+  if (replace) isLoading.value = true;
+  else isLoadingMore.value = true;
+
+  try {
+    const res = await api.getPerformers(performerFilters, performerPage.value, pageSize.value);
+    if (replace) {
+      performers.value = res.items;
+    } else {
+      const existingIds = new Set(performers.value.map(p => p.id));
+      const nextItems = res.items.filter(p => !existingIds.has(p.id));
+      performers.value.push(...nextItems);
+    }
+    totalPerformers.value = res.total;
+  } finally {
+    isLoading.value = false;
+    isLoadingMore.value = false;
+  }
+}
+
+async function loadMorePerformers() {
+  if (isLoading.value || isLoadingMore.value) return;
+  if (performers.value.length >= totalPerformers.value) return;
+  await fetchPerformers(false, performerPage.value + 1);
+}
+
+// Waterfall Infinite Scroll
+//
+// This used to be an IntersectionObserver rooted at the scroll container. That
+// silently stalled after the first batch: the sentinel element was created by a
+// `v-if` inside the very list it was meant to observe, so each rebuild swapped
+// the observed node for a fresh one the observer was not watching, and the
+// intersection change that should have triggered the next page never arrived.
+// A plain scroll handler on the container is both simpler and immune to that
+// class of bug — the sentinel no longer has to exist for loading to work.
+const SCROLL_TRIGGER_PX = 800;
+
+function atScrollEnd(): boolean {
+  const el = scrollContainerRef.value;
+  if (!el) return false;
+  return el.scrollTop + el.clientHeight >= el.scrollHeight - SCROLL_TRIGGER_PX;
+}
+
+/** Load the next page when the container is scrolled near the bottom. */
+function handleScroll() {
+  if (listMode.value !== 'scroll') return;
+  if (!atScrollEnd()) return;
+  if (currentTab.value === 'movies') {
+    if (!isLoading.value && !isLoadingMore.value && movies.value.length < totalMovies.value) loadMoreMovies();
+  } else if (currentTab.value === 'performers') {
+    if (!isLoading.value && !isLoadingMore.value && performers.value.length < totalPerformers.value) loadMorePerformers();
+  }
+}
+
+/**
+ * A short first page (or a tall window) can leave the container unscrollable,
+ * so no scroll event ever fires and loading stops with the list half full.
+ * Keep pulling pages until the content overflows or everything is loaded.
+ */
+async function fillViewport() {
+  if (listMode.value !== 'scroll') return;
+  const el = scrollContainerRef.value;
+  if (!el) return;
+  // Five pages of headroom is plenty; the guard stops a runaway loop if the
+  // server keeps returning rows the dedupe filter discards.
+  for (let i = 0; i < 5; i++) {
+    if (el.scrollHeight > el.clientHeight + SCROLL_TRIGGER_PX) return;
+    if (currentTab.value === 'movies') {
+      if (isLoading.value || isLoadingMore.value || movies.value.length >= totalMovies.value) return;
+      await loadMoreMovies();
+    } else if (currentTab.value === 'performers') {
+      if (isLoading.value || isLoadingMore.value || performers.value.length >= totalPerformers.value) return;
+      await loadMorePerformers();
+    } else {
+      return;
+    }
+  }
+}
+
+// The navbar search box drives whichever tab is on screen; each tab keeps
+// its own query so switching back does not clobber the other's results.
+const searchQuery = computed({
+  get: () => (currentTab.value === 'performers' ? performerFilters.query : filters.query),
+  set: (val: string) => {
+    if (currentTab.value === 'performers') performerFilters.query = val;
+    else filters.query = val;
+  },
+});
+
+// Movie filters only re-query the movie grid.
+watch(
+  [() => filters.query, () => filters.studio, () => filters.category, () => filters.sortBy],
+  () => {
+    if (currentTab.value === 'movies') reloadCurrentTab();
+  }
+);
+
+// Performer facets re-query the performer grid. Deep, because the facet
+// selections are arrays mutated in place.
+watch(performerFilters, () => {
+  if (currentTab.value === 'performers') reloadCurrentTab();
+}, { deep: true });
+
+watch(currentTab, (newTab) => {
+  scrollContainerRef.value?.scrollTo({ top: 0 });
+  if (newTab === 'movies') {
+    // Already-loaded lists are kept as they are, so returning to a tab does not
+    // throw away the page the user had scrolled to.
+    if (movies.value.length === 0) reloadCurrentTab();
+  } else if (newTab === 'performers') {
+    if (performers.value.length === 0) reloadCurrentTab();
+    loadPerformerFacets();
+  } else if (newTab === 'settings') {
+    loadCacheStats();
+    loadTranslationStats();
+  }
+});
+
+function toggleFavorite(m: Movie) {
+  if (favorites.value.has(m.id)) {
+    favorites.value.delete(m.id);
+  } else {
+    favorites.value.add(m.id);
+  }
+  // Persist to localStorage
+  localStorage.setItem('gevi_favs', JSON.stringify(Array.from(favorites.value)));
+}
+
+async function openMovieDetail(m: Movie) {
+  pushModal('movie');
+  const detail = await api.getMovieDetail(m.id);
+  selectedMovie.value = detail || m;
+}
+
+async function openMovieDetailById(id: number) {
+  pushModal('movie');
+  const detail = await api.getMovieDetail(id);
+  if (detail) selectedMovie.value = detail;
+}
+
+async function openPerformerDetail(id: number) {
+  pushModal('performer');
+  const detail = await api.getPerformerDetail(id);
+  selectedPerformer.value = detail || { id, name: `Performer #${id}` };
+}
+
+function closeMovieDetail() {
+  selectedMovie.value = null;
+  popModal('movie');
+}
+
+function closePerformerDetail() {
+  selectedPerformer.value = null;
+  popModal('performer');
+}
+
+function filterByStudio(studioName: string) {
+  filters.studio = studioName;
+  if (selectedMovie.value) closeMovieDetail();
+  currentTab.value = 'movies';
+  fetchMovies(true);
+}
+
+onMounted(async () => {
+  const savedFavs = localStorage.getItem('gevi_favs');
+  if (savedFavs) {
+    try {
+      favorites.value = new Set(JSON.parse(savedFavs));
+    } catch {}
+  }
+  loadStats();
+  await fetchMovies(true);
+  loadPerformerFacets();
+  nextTick(() => fillViewport());
+});
+</script>
+
+<template>
+  <!--
+    h-screen, not min-h-screen: with a minimum the shell grows to fit the grid
+    and `<main>`'s overflow-y-auto never engages, so the *document* ends up
+    scrolling. Everything bound to `<main>` — the scroll-based loader in
+    particular — then sits on an element that never scrolls.
+  -->
+  <div class="h-screen overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col antialiased">
+    <!-- Navbar -->
+    <Navbar
+      v-model="searchQuery"
+      :movie-count="stats ? stats.movies : 0"
+      :view-mode="viewMode"
+      :filter-active="
+        currentTab === 'performers'
+          ? activePerformerFilterCount > 0
+          : Boolean(filters.studio || filters.category || filters.sortBy !== 'year_desc')
+      "
+      @toggle-filter="isFilterOpen = !isFilterOpen"
+      @toggle-sync="isSyncOpen = true"
+      @change-view="(mode) => viewMode = mode"
+    />
+
+    <!-- Main App Body -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Sidebar -->
+      <Sidebar
+        :current-tab="currentTab"
+        @change-tab="(t) => currentTab = t"
+      />
+
+      <!-- Main Stage -->
+      <main
+        ref="scrollContainerRef"
+        class="flex-1 overflow-y-auto p-6 md:p-8 darkScrollbars"
+        @scroll.passive="handleScroll"
+      >
+        <!-- 1. Movies Tab -->
+        <div v-if="currentTab === 'movies'" class="space-y-6">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-bold text-white tracking-tight">探索全量影片</h1>
+              <span class="text-xs text-zinc-500 font-mono">({{ movies.length }} / {{ totalMovies.toLocaleString() }})</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <!-- Active filter chips -->
+              <div class="flex items-center gap-2">
+                <span v-if="filters.studio" class="text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                  厂牌: {{ filters.studio }}
+                  <button @click="filters.studio = ''" class="hover:text-white">×</button>
+                </span>
+                <span v-if="filters.category" class="text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                  分类: {{ filters.category }}
+                  <button @click="filters.category = ''" class="hover:text-white">×</button>
+                </span>
+              </div>
+
+              <!-- Synopsis language toggle (issue #4) -->
+              <div class="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+                <Languages class="w-3 h-3 text-zinc-500 ml-1.5" />
+                <button
+                  v-for="l in [{ id: 'zh', label: '中文' }, { id: 'en', label: '原文' }]"
+                  :key="l.id"
+                  @click="setDescLang(l.id as 'zh' | 'en')"
+                  :class="[
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    descLang === l.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                  ]"
+                  :title="l.id === 'zh' ? '优先显示中文简介（未翻译的影片自动回落原文）' : '始终显示英文原文'"
+                >
+                  {{ l.label }}
+                </button>
+              </div>
+
+              <!-- How the list pages in: auto-load on scroll, or explicit pages -->
+              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+                <button
+                  v-for="m in [
+                    { id: 'scroll', label: '滑动加载' },
+                    { id: 'paged', label: '翻页' }
+                  ]"
+                  :key="m.id"
+                  @click="setListMode(m.id as 'scroll' | 'paged')"
+                  :class="[
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    listMode === m.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                  ]"
+                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                >
+                  {{ m.label }}
+                </button>
+              </div>
+
+              <!-- Grid / list columns adjuster (both modes) -->
+              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-zinc-500 text-[11px]">每行</span>
+                <button
+                  @click="decreaseCols"
+                  :disabled="activeCols <= 2"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="减少每行列数"
+                >
+                  &lt;
+                </button>
+                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <button
+                  @click="increaseCols"
+                  :disabled="activeCols >= activeColsMax"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="增加每行列数"
+                >
+                  &gt;
+                </button>
+                <span class="text-zinc-500 text-[11px]">列</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Movie Grid / Multi-Column List -->
+          <div
+            v-if="movies.length > 0"
+            class="grid transition-all duration-200"
+            :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
+            :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
+          >
+            <MovieCard
+              v-for="m in movies"
+              :key="m.id"
+              :movie="m"
+              :is-favorite="favorites.has(m.id)"
+              :view="viewMode"
+              :lang="descLang"
+              @select="openMovieDetail"
+              @toggle-favorite="toggleFavorite"
+            />
+          </div>
+
+          <!-- Infinite-scroll footer: the list grows as the container bottom nears -->
+          <div v-if="listMode === 'scroll' && movies.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500">
+            <div v-if="isLoadingMore" class="flex items-center gap-2 text-amber-400 font-medium">
+              <Loader2 class="w-4 h-4 animate-spin" />
+              <span>滑动加载更多作品中...</span>
+            </div>
+            <div v-else-if="movies.length >= totalMovies && totalMovies > 0" class="flex items-center gap-2 text-zinc-500 text-xs">
+              <span class="w-12 h-px bg-zinc-800"></span>
+              <span>已加载全部 {{ totalMovies.toLocaleString() }} 部作品</span>
+              <span class="w-12 h-px bg-zinc-800"></span>
+            </div>
+          </div>
+
+          <!-- Paged mode: explicit controls, incl. a customisable page size -->
+          <PaginationBar
+            v-if="listMode === 'paged' && movies.length > 0"
+            :page="moviePage"
+            :page-size="pageSize"
+            :total="totalMovies"
+            :loading="isLoading"
+            :page-size-options="PAGE_SIZE_OPTIONS"
+            @update:page="goToPage"
+            @update:page-size="setPageSize"
+          />
+
+          <!-- Empty State -->
+          <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
+            <Film class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-zinc-400">未找到符合条件的影片</div>
+            <div class="text-xs text-zinc-600">尝试更换搜索关键词或重置筛选条件</div>
+          </div>
+        </div>
+
+        <!-- 2. Performers Tab -->
+        <div v-else-if="currentTab === 'performers'" class="space-y-6">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-bold text-white tracking-tight">演员档案库</h1>
+              <span class="text-xs text-zinc-500 font-mono">({{ performers.length }} / {{ totalPerformers.toLocaleString() }} 位)</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <!-- Performer filter button (issue #7) -->
+              <button
+                @click="isFilterOpen = true"
+                :class="[
+                  'px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition',
+                  activePerformerFilterCount > 0
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-400'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                ]"
+                title="筛选演员属性"
+              >
+                <Sparkles class="w-3.5 h-3.5" />
+                <span>属性筛选</span>
+                <span
+                  v-if="activePerformerFilterCount > 0"
+                  class="px-1.5 rounded-full bg-amber-500 text-black text-[10px] font-bold"
+                >
+                  {{ activePerformerFilterCount }}
+                </span>
+              </button>
+
+              <!-- Active facet chips -->
+              <div class="flex items-center gap-1.5 flex-wrap max-w-lg">
+                <span
+                  v-for="chip in activeFacetChips"
+                  :key="`${chip.key}:${chip.value}`"
+                  class="text-[11px] px-2 py-0.5 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 inline-flex items-center gap-1"
+                >
+                  <span class="text-zinc-500">{{ chip.label }}</span>
+                  {{ chip.value }}
+                  <button @click="togglePerformerFacet(chip.key as any, chip.value)" class="hover:text-white">×</button>
+                </span>
+                <span
+                  v-if="performerFilters.hasImage"
+                  class="text-[11px] px-2 py-0.5 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 inline-flex items-center gap-1"
+                >
+                  有照片
+                  <button @click="performerFilters.hasImage = false" class="hover:text-white">×</button>
+                </span>
+                <span
+                  v-if="performerFilters.minMovies != null"
+                  class="text-[11px] px-2 py-0.5 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 inline-flex items-center gap-1"
+                >
+                  ≥{{ performerFilters.minMovies }} 部作品
+                  <button @click="performerFilters.minMovies = null" class="hover:text-white">×</button>
+                </span>
+                <button
+                  v-if="activePerformerFilterCount > 0"
+                  @click="resetPerformerFilters"
+                  class="text-[11px] text-zinc-500 hover:text-amber-400 underline"
+                >
+                  清除全部
+                </button>
+              </div>
+
+              <!-- How the list pages in: auto-load on scroll, or explicit pages -->
+              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+                <button
+                  v-for="m in [
+                    { id: 'scroll', label: '滑动加载' },
+                    { id: 'paged', label: '翻页' }
+                  ]"
+                  :key="m.id"
+                  @click="setListMode(m.id as 'scroll' | 'paged')"
+                  :class="[
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    listMode === m.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                  ]"
+                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                >
+                  {{ m.label }}
+                </button>
+              </div>
+
+              <!-- Grid columns adjuster -->
+              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-zinc-500 text-[11px]">每行</span>
+                <button
+                  @click="decreaseCols"
+                  :disabled="activeCols <= 2"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="减少每行列数"
+                >
+                  &lt;
+                </button>
+                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <button
+                  @click="increaseCols"
+                  :disabled="activeCols >= activeColsMax"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="增加每行列数"
+                >
+                  &gt;
+                </button>
+                <span class="text-zinc-500 text-[11px]">列</span>
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-if="performers.length > 0"
+            class="grid gap-4 transition-all duration-200"
+            :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
+          >
+            <div
+              v-for="p in performers"
+              :key="p.id"
+              @click="openPerformerDetail(p.id)"
+              class="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 hover:border-amber-500/40 hover:bg-zinc-900 transition-all cursor-pointer flex flex-col items-center text-center group"
+            >
+              <!-- Portrait when scraped, letter avatar otherwise (issue #6) -->
+              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-zinc-700/60 group-hover:ring-amber-500/50 transition">
+                <img
+                  v-if="p.image_url"
+                  :src="getImageUrl(p.image_url)"
+                  :alt="p.name"
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                  class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                  @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+                />
+                <div
+                  v-else
+                  class="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-700 group-hover:from-amber-500 group-hover:to-yellow-400 flex items-center justify-center font-bold text-lg text-zinc-400 group-hover:text-black transition"
+                >
+                  {{ p.name.charAt(0).toUpperCase() }}
+                </div>
+              </div>
+              <h3 class="text-xs font-semibold text-zinc-200 mt-3 group-hover:text-amber-400 transition truncate w-full">
+                {{ p.name }}
+              </h3>
+              <div v-if="p.build || p.height" class="text-[10px] text-zinc-500 mt-1 truncate w-full">
+                {{ p.build || p.height }}
+              </div>
+              <div v-if="p.movies_count" class="text-[10px] text-zinc-600 mt-0.5">
+                {{ p.movies_count }} 部作品
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
+            <UserIcon class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-zinc-400">没有符合条件的演员</div>
+            <div class="text-xs text-zinc-600">
+              当前仅有 {{ performerFacets.enriched }} 位演员抓取过身体属性档案，可放宽筛选条件或先补全演员数据
+            </div>
+          </div>
+
+          <!-- Infinite-scroll footer: the list grows as the container bottom nears -->
+          <div v-if="listMode === 'scroll' && performers.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500">
+            <div v-if="isLoadingMore" class="flex items-center gap-2 text-amber-400 font-medium">
+              <Loader2 class="w-4 h-4 animate-spin" />
+              <span>滑动加载更多演员中...</span>
+            </div>
+            <div v-else-if="performers.length >= totalPerformers && totalPerformers > 0" class="flex items-center gap-2 text-zinc-500 text-xs">
+              <span class="w-12 h-px bg-zinc-800"></span>
+              <span>已加载全部 {{ totalPerformers.toLocaleString() }} 位演员</span>
+              <span class="w-12 h-px bg-zinc-800"></span>
+            </div>
+          </div>
+
+          <!-- Paged mode: explicit controls, incl. a customisable page size -->
+          <PaginationBar
+            v-if="listMode === 'paged' && performers.length > 0"
+            :page="performerPage"
+            :page-size="pageSize"
+            :total="totalPerformers"
+            :loading="isLoading"
+            :page-size-options="PAGE_SIZE_OPTIONS"
+            @update:page="goToPage"
+            @update:page-size="setPageSize"
+          />
+        </div>
+
+        <!-- 3. Favorites Tab -->
+        <div v-else-if="currentTab === 'favorites'" class="space-y-6">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <h1 class="text-xl font-bold text-white tracking-tight">我的收藏片单</h1>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-zinc-500 font-mono">({{ favorites.size }} 部)</span>
+              <!-- Grid columns adjuster -->
+              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-zinc-500 text-[11px]">每行</span>
+                <button
+                  @click="decreaseCols"
+                  :disabled="activeCols <= 2"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="减少每行列数"
+                >
+                  &lt;
+                </button>
+                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <button
+                  @click="increaseCols"
+                  :disabled="activeCols >= activeColsMax"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="增加每行列数"
+                >
+                  &gt;
+                </button>
+                <span class="text-zinc-500 text-[11px]">列</span>
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-if="favorites.size > 0"
+            class="grid transition-all duration-200"
+            :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
+            :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
+          >
+            <MovieCard
+              v-for="m in movies.filter(x => favorites.has(x.id))"
+              :key="m.id"
+              :movie="m"
+              :is-favorite="true"
+              :view="viewMode"
+              :lang="descLang"
+              @select="openMovieDetail"
+              @toggle-favorite="toggleFavorite"
+            />
+          </div>
+          <div v-else class="text-center py-24 space-y-3">
+            <Heart class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-zinc-400">暂无收藏影片</div>
+            <div class="text-xs text-zinc-600">在浏览影片时点击卡片右上角心形图标即可收藏</div>
+          </div>
+        </div>
+
+        <!-- 4. Settings & Cache Tab -->
+        <div v-else-if="currentTab === 'settings'" class="max-w-3xl space-y-6">
+          <h1 class="text-xl font-bold text-white tracking-tight">存储、缓存与系统设置</h1>
+
+          <!-- Section 1: SQLite Engine & Stats -->
+          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+            <div class="flex items-center gap-3">
+              <HardDrive class="w-5 h-5 text-amber-400" />
+              <div>
+                <div class="text-sm font-bold text-white">本地离线数据中心</div>
+                <div class="text-xs text-zinc-400">SQLite3 WAL 极速引擎 + FTS5 全文搜索</div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-2">
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">影片总收录</span>
+                <div class="text-base font-bold text-white mt-0.5">{{ stats ? stats.movies.toLocaleString() : 0 }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">演员总收录</span>
+                <div class="text-base font-bold text-white mt-0.5">{{ stats ? stats.performers.toLocaleString() : 0 }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">分集/片段</span>
+                <div class="text-base font-bold text-amber-400 mt-0.5">{{ stats ? stats.episodes.toLocaleString() : 0 }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">演职关联</span>
+                <div class="text-base font-bold text-zinc-300 mt-0.5">{{ stats ? stats.movie_performers.toLocaleString() : 0 }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Offline Image Disk Cache System -->
+          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <ImageIcon class="w-5 h-5 text-amber-400" />
+                <div>
+                  <div class="text-sm font-bold text-white">离线图片磁盘缓存系统</div>
+                  <div class="text-xs text-zinc-400">自动下载海报与分集图至本地磁盘，彻底告别外网依赖</div>
+                </div>
+              </div>
+              <button
+                @click="loadCacheStats"
+                class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition"
+                title="刷新缓存统计"
+              >
+                <RefreshCw class="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <!-- Stats metrics -->
+            <div class="grid grid-cols-2 gap-3 text-xs pt-1">
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">已缓存图片数量</span>
+                <div class="text-base font-bold text-emerald-400 mt-0.5">{{ cacheStats.count.toLocaleString() }} 张</div>
+              </div>
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">占用磁盘空间</span>
+                <div class="text-base font-bold text-amber-300 mt-0.5">{{ cacheStats.size_mb }} MB</div>
+              </div>
+            </div>
+
+            <!-- Cache directory location -->
+            <div v-if="cacheStats.path" class="text-[11px] text-zinc-500 font-mono bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 truncate">
+              本地存储目录: {{ cacheStats.path }}
+            </div>
+
+            <div v-if="cacheStatusMsg" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+              {{ cacheStatusMsg }}
+            </div>
+
+            <!-- Action buttons -->
+            <div class="flex items-center gap-3 pt-2">
+              <button
+                @click="handleBatchDownloadCache"
+                :disabled="isCacheLoading"
+                class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition disabled:opacity-50"
+              >
+                <Download class="w-3.5 h-3.5" />
+                <span>一键预下载离线图片库</span>
+              </button>
+
+              <button
+                @click="handleClearCache"
+                :disabled="isCacheLoading"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-rose-500/20 text-zinc-300 hover:text-rose-300 border border-zinc-700 hover:border-rose-500/30 text-xs font-medium flex items-center gap-2 transition disabled:opacity-50"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+                <span>清空图片缓存</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 3: Synopsis Machine Translation (EN -> ZH, issue #4) -->
+          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <Languages class="w-5 h-5 text-amber-400" />
+                <div>
+                  <div class="text-sm font-bold text-white">剧情简介中文翻译</div>
+                  <div class="text-xs text-zinc-400">
+                    调用大模型 API 把英文简介批量译成中文并写回本地库，之后完全离线可用
+                  </div>
+                </div>
+              </div>
+              <button
+                @click="loadTranslationStats"
+                class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition"
+                title="刷新翻译进度"
+              >
+                <RefreshCw class="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <!-- Progress metrics -->
+            <div v-if="translationStats" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">可翻译简介</span>
+                <div class="text-base font-bold text-white mt-0.5">{{ translationStats.translation_total.toLocaleString() }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">已翻译</span>
+                <div class="text-base font-bold text-emerald-400 mt-0.5">{{ translationStats.translation_done.toLocaleString() }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">待翻译</span>
+                <div class="text-base font-bold text-amber-300 mt-0.5">{{ translationStats.translation_pending.toLocaleString() }}</div>
+              </div>
+              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
+                <span class="text-zinc-500">翻译失败</span>
+                <div class="text-base font-bold text-rose-400 mt-0.5">{{ translationStats.translation_failed.toLocaleString() }}</div>
+              </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div
+              v-if="translationStats && translationStats.translation_total > 0"
+              class="h-2 rounded-full bg-zinc-800 overflow-hidden"
+            >
+              <div
+                class="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500"
+                :style="{ width: `${(translationStats.translation_done / translationStats.translation_total) * 100}%` }"
+              ></div>
+            </div>
+
+            <!-- Backend status -->
+            <div
+              v-if="IS_TAURI"
+              class="p-3 rounded-xl bg-zinc-800/60 border border-zinc-700 text-xs text-zinc-300 space-y-1.5"
+            >
+              <div class="font-semibold text-white">桌面版请用命令行翻译</div>
+              <div class="text-zinc-400 leading-relaxed">
+                桌面版直接读写本地 SQLite，不经过本地服务进程，因此这里只显示进度、不能直接发起翻译。
+                在项目目录下运行（API Key 只保存在本机，不会写入数据库）：
+              </div>
+              <code class="block bg-black/60 rounded-lg p-2 font-mono text-[11px] text-zinc-300 overflow-x-auto">
+                python3 translate.py --provider anthropic --api-key sk-ant-... --limit 20 --dry-run
+              </code>
+              <div class="text-zinc-400">
+                试跑无误后去掉 <code class="font-mono">--limit</code> 与 <code class="font-mono">--dry-run</code> 即可全量翻译；
+                进度会实时反映到上方统计。也可用 <code class="font-mono">openai</code> / <code class="font-mono">gemini</code>，
+                或写入 <code class="font-mono">translate_config.json</code> / 环境变量
+                <code class="font-mono">GEVI_LLM_API_KEY</code>。
+              </div>
+            </div>
+
+            <div
+              v-else-if="translationStats && !translationStats.configured"
+              class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 space-y-1.5"
+            >
+              <div class="font-semibold">尚未配置翻译服务</div>
+              <div class="text-amber-200/80 leading-relaxed">
+                请先在终端运行一次（API Key 只保存在本机，不会写入数据库）：
+              </div>
+              <code class="block bg-black/60 rounded-lg p-2 font-mono text-[11px] text-zinc-300 overflow-x-auto">
+                python3 translate.py --provider anthropic --api-key sk-ant-... --limit 20 --dry-run
+              </code>
+              <div class="text-amber-200/80">
+                也可改用 <code class="font-mono">openai</code> 或 <code class="font-mono">gemini</code>，
+                或写入 <code class="font-mono">translate_config.json</code> / 环境变量
+                <code class="font-mono">GEVI_LLM_API_KEY</code>。
+              </div>
+            </div>
+
+            <div
+              v-else-if="translationStats"
+              class="text-[11px] text-zinc-500 font-mono bg-zinc-950 p-2.5 rounded-xl border border-zinc-800"
+            >
+              翻译服务: {{ translationStats.provider }} / {{ translationStats.model }}
+            </div>
+
+            <div v-if="translateMsg" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+              {{ translateMsg }}
+            </div>
+
+            <!-- Actions -->
+            <div v-if="!IS_TAURI" class="flex items-center gap-3 pt-2 flex-wrap">
+              <button
+                @click="handleRunTranslation(50)"
+                :disabled="isTranslating || !translationStats?.configured"
+                class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Loader2 v-if="isTranslating" class="w-3.5 h-3.5 animate-spin" />
+                <Languages v-else class="w-3.5 h-3.5" />
+                <span>{{ isTranslating ? '翻译进行中...' : '翻译 50 条（试跑）' }}</span>
+              </button>
+
+              <button
+                @click="handleRunTranslation(null)"
+                :disabled="isTranslating || !translationStats?.configured"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Sparkles class="w-3.5 h-3.5 text-amber-400" />
+                <span>翻译全部待翻译简介</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 4: Data Import & Export (Custom Backup & Migration) -->
+          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+            <div class="flex items-center gap-3">
+              <Download class="w-5 h-5 text-amber-400" />
+              <div>
+                <div class="text-sm font-bold text-white">个人扩展数据备份与恢复</div>
+                <div class="text-xs text-zinc-400">导出或导入所有自定义标签、私密星级评分、观看状态与私密笔记</div>
+              </div>
+            </div>
+
+            <div v-if="importStatusMsg" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+              {{ importStatusMsg }}
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+              <button
+                @click="handleExportUserData"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition"
+              >
+                <Download class="w-3.5 h-3.5 text-amber-400" />
+                <span>导出备份数据 (JSON)</span>
+              </button>
+
+              <button
+                @click="triggerImportFileInput"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition"
+              >
+                <Upload class="w-3.5 h-3.5 text-amber-400" />
+                <span>导入恢复数据 (JSON)</span>
+              </button>
+              <input ref="fileInputRef" type="file" accept=".json" class="hidden" @change="handleImportFile" />
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Modals & Drawers -->
+    <MovieDetailModal
+      :movie="selectedMovie"
+      :is-favorite="selectedMovie ? favorites.has(selectedMovie.id) : false"
+      :lang="descLang"
+      :z-index="layerOf('movie')"
+      :is-top="modalStack[modalStack.length - 1] === 'movie'"
+      @close="closeMovieDetail"
+      @select-performer="openPerformerDetail"
+      @filter-studio="filterByStudio"
+      @toggle-favorite="toggleFavorite"
+      @user-data-changed="onUserDataChanged"
+    />
+
+    <PerformerDetailModal
+      :performer="selectedPerformer"
+      :lang="descLang"
+      :z-index="layerOf('performer')"
+      :is-top="modalStack[modalStack.length - 1] === 'performer'"
+      @close="closePerformerDetail"
+      @select-movie="openMovieDetail"
+      @select-movie-id="openMovieDetailById"
+    />
+
+    <FilterDrawer
+      :open="isFilterOpen"
+      :tab="currentTab"
+      :filters="filters"
+      :studios="studios"
+      :categories="categories"
+      :performer-filters="performerFilters"
+      :performer-facets="performerFacets"
+      @close="isFilterOpen = false"
+      @update:filters="(f) => Object.assign(filters, f)"
+      @update:performer-filters="(f) => Object.assign(performerFilters, f)"
+      @toggle-performer-facet="togglePerformerFacet"
+      @reset="Object.assign(filters, { query: '', studio: '', category: '', sortBy: 'year_desc' })"
+      @reset-performers="resetPerformerFilters"
+    />
+
+    <SyncModal
+      :open="isSyncOpen"
+      :stats="stats"
+      @close="isSyncOpen = false"
+      @sync-complete="loadStats(); fetchMovies();"
+    />
+  </div>
+</template>

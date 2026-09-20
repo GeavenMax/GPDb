@@ -1,0 +1,26 @@
+# --- Secrets: never commit ---
+translate_config.json
+
+# --- Scraped data & caches (large, regenerable, backed up separately) ---
+gevi.db
+gevi.db-shm
+gevi.db-wal
+gevi.db.backup-*
+image_cache/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+
+# --- Node / frontend build ---
+node_modules/
+desktop_client/dist/
+desktop_client/node_modules/
+
+# --- Tauri build artifacts ---
+desktop_client/src-tauri/target/
+
+# --- macOS / editors ---
+.DS_Store
+.vscode/
+.idea/
