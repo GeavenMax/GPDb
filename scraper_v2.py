@@ -24,6 +24,7 @@ Modes (pick exactly one):
   failed        Retry items recorded as transient failure (500 / 0).
   recheck-404   Re-verify items previously recorded as 404.
   performers    Scrape performer profiles for known IDs that have none.
+  episodes      Re-read films that have no episode rows, for their scene list only.
   refresh       Re-scrape everything older than --min-age-days.
   audit         Offline data-quality report. No network access.
 
@@ -33,6 +34,7 @@ Usage:
   python3 scraper_v2.py --mode gaps --concurrency 6
   python3 scraper_v2.py --mode new --start 1 --end 90000
   python3 scraper_v2.py --mode performers --limit 500
+  python3 scraper_v2.py --mode episodes --limit 200 --dry-run
   python3 scraper_v2.py --mode failures
 
 Zero third-party dependencies: standard library only, per project convention.
@@ -469,13 +471,20 @@ class ScraperV2:
         self.progress: Progress | None = None
         self.consecutive_throttles = 0
         self.throttle_lock = threading.Lock()
-        self.write_counts = {"written": 0, "gone": 0, "failed": 0, "rejected": 0}
+        self.write_counts = {"written": 0, "gone": 0, "failed": 0, "rejected": 0,
+                             "episodes": 0}
         # Which fields to watch for absence, per item type. Drives both the gap
         # selection and the "source has no value" bookkeeping, so the two can never
         # disagree about what is being looked for.
-        movie_fields = [g.strip() for g in
-                        (args.gaps or ",".join(DatabaseManager.DEFAULT_MOVIE_GAPS)).split(",")
-                        if g.strip()]
+        if args.mode == "episodes":
+            # This mode looks at one field and writes one table. Watching the movie
+            # fields here would let a re-fetch that happens to miss, say, a director
+            # record a void for it - a verdict this mode never actually checked.
+            movie_fields = ["episodes"]
+        else:
+            movie_fields = [g.strip() for g in
+                            (args.gaps or ",".join(DatabaseManager.DEFAULT_MOVIE_GAPS)).split(",")
+                            if g.strip()]
         self.checked_fields = {"movie": movie_fields, "performer": ["attributes", "image"]}
 
     # --- networking -------------------------------------------------------
@@ -645,6 +654,21 @@ class ScraperV2:
                 for r in rows
             ]
 
+        elif mode == "episodes":
+            # Films with no episode rows at all. Most of these really do have no
+            # scene list on their page - `--void-after` fetches decide which, twice by
+            # default, and the ones that come back empty both times are recorded as
+            # void so they leave the work list instead of growing it.
+            rows = self.db.get_incomplete_movies(
+                ["episodes"], void_min_attempts=self.args.void_after
+            )
+            targets = [
+                {"type": "movie", "id": r["id"], "url": f"{BASE_URL}/video/{r['id']}",
+                 "why": "无分集记录", "title": r["title"]}
+                for r in rows
+            ]
+
+
         elif mode == "refresh":
             cutoff = (datetime.now() - timedelta(days=self.args.min_age_days)).strftime("%Y-%m-%d %H:%M:%S")
             rows = self.db.conn.execute(
@@ -775,7 +799,13 @@ class ScraperV2:
                 self.progress.tick(failed=1)
             return
 
-        self.results.put({"kind": "ok", "item": item, "data": parsed})
+        msg = {"kind": "ok", "item": item, "data": parsed}
+        if self.args.mode == "episodes":
+            # The scene list is the only new information this mode is after. A page
+            # that lists none is still a successful read - _sync_voids is what
+            # remembers that the site has none - so it stays an "ok" either way.
+            msg["episodes_found"] = len(parsed.get("episodes") or [])
+        self.results.put(msg)
         if self.progress:
             self.progress.tick(ok=1)
 
@@ -800,7 +830,13 @@ class ScraperV2:
                         self.write_counts[key] += 1
                     continue
                 if kind == "ok":
-                    if item["type"] == "movie":
+                    if self.args.mode == "episodes":
+                        # Writes the episode rows only: this mode re-reads pages of
+                        # films whose own columns are already complete, so save_movie
+                        # would rewrite fields nobody asked it to touch.
+                        self.db.save_episodes(item["id"], msg["data"].get("episodes") or [])
+                        self.write_counts["episodes"] += msg.get("episodes_found", 0)
+                    elif item["type"] == "movie":
                         self.db.save_movie(msg["data"], status=200)
                     else:
                         self.db.save_performer(msg["data"], status=200)
@@ -844,6 +880,12 @@ class ScraperV2:
         verb = "校验通过(未写库)" if self.args.dry_run else "写入/更新"
         print(f"✨ 完成 | {verb} {c['written']:,} | 标记不存在 {c['gone']:,} | "
               f"失败 {c['failed']:,} | 校验未通过 {c['rejected']:,}")
+        if self.args.mode == "episodes":
+            # The number that decides whether this mode found anything the film mode
+            # had missed. A near-zero hit rate on a large run means the page really
+            # has no scene list, not that the parser needs another look.
+            print(f"   分集: 抓到 {c['episodes']:,} 集 "
+                  f"| 本次读取的页面中无分集的会记 void，跑满 --void-after 次后不再重试")
         print(f"   网络: {self.limiter.snapshot()} | 任务{'已被中断 (STOP)' if STOP.is_set() else '正常结束'}")
         if c["rejected"]:
             print("   ⚠️  有页面结构不符合预期（校验未通过）。这些条目未写入，原有数据保持不变。")
@@ -976,7 +1018,7 @@ def main() -> None:
     )
     parser.add_argument("--mode", default="gaps",
                         choices=["gaps", "new", "failed", "failures", "recheck-404",
-                                 "performers", "refresh", "audit"],
+                                 "performers", "episodes", "refresh", "audit"],
                         help="抓取模式 (默认 gaps: 只补齐缺失字段)")
     parser.add_argument("--db", default="gevi.db", help="SQLite 数据库路径")
     parser.add_argument("--gaps", help="--mode gaps 时检查哪些字段, 逗号分隔 "

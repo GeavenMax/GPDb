@@ -150,6 +150,12 @@ class DatabaseManager:
         "cast": "NOT EXISTS (SELECT 1 FROM movie_performers mp WHERE mp.movie_id = movies.id)",
         "studio": "(studio_name IS NULL OR trim(studio_name) = '')",
         "director": "(director_name IS NULL OR trim(director_name) = '')",
+        # Films whose page has no scene list. Nothing else in this dict would ever
+        # send them back to the site: every other field can be perfectly filled while
+        # `episodes` is empty, which is how ~25k films came to have no episode rows
+        # at all. --mode episodes reads this check, and the void it records on a
+        # second empty fetch is what keeps that work list from growing back.
+        "episodes": "NOT EXISTS (SELECT 1 FROM episodes e WHERE e.movie_id = movies.id)",
     }
 
     # The fields --mode gaps looks for when --gaps is not given. Kept here next to the
@@ -483,22 +489,7 @@ class DatabaseManager:
                     )
 
             # 3. Episodes
-            for ep in m.get("episodes", []):
-                self.conn.execute("""
-                    INSERT OR REPLACE INTO episodes (id, movie_id, title, thumbnail_url, description, action_notes)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    ep["id"], m["id"], ep.get("title"), ep.get("thumbnail_url"),
-                    ep.get("description"), ep.get("action_notes")
-                ))
-                # Episode performers
-                if ep.get("performers"):
-                    self.conn.execute("DELETE FROM episode_performers WHERE episode_id = ?", (ep["id"],))
-                    for epid, epname in ep["performers"]:
-                        self.conn.execute(
-                            "INSERT OR IGNORE INTO episode_performers (episode_id, performer_id, performer_name) VALUES (?, ?, ?)",
-                            (ep["id"], epid, epname)
-                        )
+            self._write_episodes(m["id"], m.get("episodes") or [])
 
             # 4. FTS5 Index update
             perf_names = " ".join(p[1] for p in m.get("performers", []))
@@ -513,6 +504,62 @@ class DatabaseManager:
                 "INSERT OR REPLACE INTO scrape_progress (item_type, item_id, status) VALUES (?, ?, ?)",
                 ("movie", m["id"], status)
             )
+
+    def save_episodes(self, movie_id: int, episodes: list[dict] | None) -> int:
+        """Write only the episode rows of one film, leaving the movie row untouched.
+
+        This is what `--mode episodes` calls. That mode exists because episode rows
+        are only ever written as a side effect of scraping a film's own page, so a
+        film scraped before a given episode was on the site - or before the parser
+        could read it - keeps an empty scene list forever unless something goes back
+        for it deliberately.
+        """
+        with self._write_lock, self.conn:
+            return self._write_episodes(movie_id, episodes or [])
+
+    def _write_episodes(self, movie_id: int, episodes: list[dict]) -> int:
+        """The shared body; the caller holds the write lock and an open transaction.
+
+        Split out because save_movie writes episodes inside its own transaction -
+        opening a second one there would commit the movie before its FTS row landed.
+
+        An upsert rather than INSERT OR REPLACE: REPLACE deletes the row first, which
+        would drop description_zh - the Chinese synopsis - on every re-scrape. The
+        translation is carried over while the site's English text is unchanged, and
+        dropped when it really did change, since it then translates something else.
+        """
+        for ep in episodes:
+            self.conn.execute("""
+                INSERT INTO episodes (id, movie_id, title, thumbnail_url, description, action_notes)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    movie_id = excluded.movie_id,
+                    title = COALESCE(NULLIF(excluded.title, ''), episodes.title),
+                    thumbnail_url = COALESCE(NULLIF(excluded.thumbnail_url, ''), episodes.thumbnail_url),
+                    action_notes = COALESCE(NULLIF(excluded.action_notes, ''), episodes.action_notes),
+                    description = COALESCE(NULLIF(excluded.description, ''), episodes.description),
+                    description_zh = CASE
+                        -- Nothing new was read: keep both the old text and its translation.
+                        WHEN COALESCE(excluded.description, '') = '' THEN episodes.description_zh
+                        WHEN excluded.description = episodes.description THEN episodes.description_zh
+                        ELSE NULL
+                    END
+            """, (
+                ep["id"], movie_id, ep.get("title"), ep.get("thumbnail_url"),
+                ep.get("description"), ep.get("action_notes")
+            ))
+            # An empty performer list means the parse found none, not that the scene
+            # has none - so, as with a film's cast, the old links are left alone.
+            new_performers = ep.get("performers") or []
+            if new_performers:
+                self.conn.execute("DELETE FROM episode_performers WHERE episode_id = ?", (ep["id"],))
+                for epid, epname in new_performers:
+                    self.conn.execute("INSERT OR IGNORE INTO performers (id, name) VALUES (?, ?)", (epid, epname))
+                    self.conn.execute(
+                        "INSERT OR REPLACE INTO episode_performers (episode_id, performer_id, performer_name) VALUES (?, ?, ?)",
+                        (ep["id"], epid, epname)
+                    )
+        return len(episodes)
 
     def save_performer(self, p: dict, status: int = 200):
         """Save a single performer record and update FTS5."""
