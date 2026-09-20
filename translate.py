@@ -12,13 +12,27 @@ Supported LLM backends (bring your own API key):
   - gemini     Google Gemini generateContent
 
 Configuration (first match wins):
-  1. CLI flags      --provider --api-key --model --base-url
+  1. CLI flags      --provider --api-key --model --base-url --profile
   2. Environment    GEVI_LLM_PROVIDER / GEVI_LLM_API_KEY / GEVI_LLM_MODEL / GEVI_LLM_BASE_URL
   3. Config file    translate_config.json next to this script
 
+The config file holds several named sources, so you can keep a cheap model for bulk
+work and a better one for spot fixes and switch between them:
+
+  {"active": "deepseek",
+   "profiles": {"deepseek": {"type": "openai", "label": "DeepSeek",
+                             "api_key": "sk-...", "model": "deepseek-flash",
+                             "base_url": "https://api.deepseek.com"},
+                "claude":   {"type": "anthropic", "label": "Anthropic Claude",
+                             "api_key": "sk-ant-...", "model": "claude-opus-5"}}}
+
+Manage them from the app's Settings tab, or with:
+  python3 translate.py --list-profiles
+  python3 translate.py --profile claude --limit 20 --dry-run
+
 Usage:
   python3 translate.py --provider openai --api-key sk-... --limit 20 --dry-run
-  python3 translate.py --provider anthropic --api-key sk-ant-... --batch-size 20
+  python3 translate.py --profile deepseek --batch-size 20
   python3 translate.py --stats
 
 Note on dependencies: this module deliberately uses only the Python standard
@@ -37,6 +51,7 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -281,6 +296,42 @@ def extract_translations(raw: str, expected: int) -> list[str]:
 # Configuration
 # --------------------------------------------------------------------------
 
+# Sources the settings UI offers to prefill. `type` selects the wire protocol, so
+# every OpenAI-compatible vendor (which is nearly all of them) reuses one adapter.
+PROVIDER_PRESETS: list[dict] = [
+    {"id": "deepseek", "label": "DeepSeek 深度求索", "type": "openai",
+     "base_url": "https://api.deepseek.com", "model": "deepseek-flash",
+     "hint": "便宜、快。国内可直连。"},
+    {"id": "openai", "label": "OpenAI", "type": "openai",
+     "base_url": "https://api.openai.com/v1", "model": "gpt-4o-mini",
+     "hint": "需要能访问 OpenAI 的网络环境。"},
+    {"id": "anthropic", "label": "Anthropic Claude", "type": "anthropic",
+     "base_url": "https://api.anthropic.com", "model": "claude-opus-5",
+     "hint": "译文质量最好，价格最高。"},
+    {"id": "gemini", "label": "Google Gemini", "type": "gemini",
+     "base_url": "https://generativelanguage.googleapis.com", "model": "gemini-2.5-flash",
+     "hint": "有免费额度，需要能访问 Google。"},
+    {"id": "moonshot", "label": "Moonshot 月之暗面 (Kimi)", "type": "openai",
+     "base_url": "https://api.moonshot.cn/v1", "model": "moonshot-v1-8k",
+     "hint": "中文语感好。"},
+    {"id": "zhipu", "label": "智谱 AI (GLM)", "type": "openai",
+     "base_url": "https://open.bigmodel.cn/api/paas/v4", "model": "glm-4-flash",
+     "hint": "glm-4-flash 有免费额度。"},
+    {"id": "dashscope", "label": "阿里通义千问", "type": "openai",
+     "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1", "model": "qwen-plus",
+     "hint": "阿里云百炼平台。"},
+    {"id": "siliconflow", "label": "硅基流动 SiliconFlow", "type": "openai",
+     "base_url": "https://api.siliconflow.cn/v1", "model": "Qwen/Qwen2.5-7B-Instruct",
+     "hint": "聚合多家开源模型。"},
+    {"id": "ollama", "label": "本地 Ollama", "type": "openai",
+     "base_url": "http://localhost:11434/v1", "model": "qwen2.5:7b",
+     "hint": "完全离线、不花钱，需要本机已装 Ollama 并 pull 过模型。",
+     "needs_key": False},
+    {"id": "custom", "label": "自定义 (OpenAI 兼容接口)", "type": "openai",
+     "base_url": "", "model": "", "hint": "任何兼容 /chat/completions 的服务。"},
+]
+
+
 def load_config() -> dict:
     if CONFIG_FILE.exists():
         try:
@@ -290,14 +341,187 @@ def load_config() -> dict:
     return {}
 
 
-def resolve_settings(args) -> dict:
-    cfg = load_config()
+def save_config(cfg: dict) -> None:
+    """Write the config file with owner-only permissions (it holds API keys)."""
+    tmp = CONFIG_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.chmod(tmp, 0o600)
+    tmp.replace(CONFIG_FILE)
+
+
+def name_for_base_url(base_url: str, fallback: str) -> str:
+    """Pick a preset id whose host matches, so a source is named after the service
+    it points at ("deepseek") rather than the protocol it speaks ("openai")."""
+    host = urllib.parse.urlparse(base_url or "").netloc
+    if host:
+        for preset in PROVIDER_PRESETS:
+            if preset["base_url"] and urllib.parse.urlparse(preset["base_url"]).netloc == host:
+                return preset["id"]
+    return fallback
+
+
+def migrate_config(cfg: dict) -> dict:
+    """Normalise any older config shape into the current one (idempotent).
+
+    Current shape:
+        {"active": "<profile name>", "profiles": {"<name>": {type, label, api_key,
+                                                             model, base_url}}}
+
+    Older versions stored the settings flat, and briefly kept a `providers` map
+    keyed by protocol name. Both are folded into `profiles`, and the superseded
+    keys are dropped so the file never holds two copies of an API key.
+    """
+    if "profiles" in cfg:
+        return cfg
+
+    profiles: dict[str, dict] = {}
+    flat_key = cfg.get("api_key") or ""
+    legacy = cfg.get("providers") or {}
+    for name, entry in legacy.items():
+        if not isinstance(entry, dict):
+            continue
+        base_url = entry.get("base_url") or ""
+        ptype = entry.get("type") or name
+        key = name_for_base_url(base_url, name)
+        profiles[key] = {
+            "type": ptype,
+            "label": entry.get("label") or next(
+                (p["label"] for p in PROVIDER_PRESETS if p["id"] == key), name),
+            "api_key": entry.get("api_key") or "",
+            "model": entry.get("model") or "",
+            "base_url": base_url,
+        }
+
+    if flat_key and not any(p.get("api_key") for p in profiles.values()):
+        provider = (cfg.get("provider") or "openai").strip().lower()
+        base_url = cfg.get("base_url") or ""
+        key = name_for_base_url(base_url, provider)
+        profiles[key] = {
+            "type": provider,
+            "label": next((p["label"] for p in PROVIDER_PRESETS if p["id"] == key), key),
+            "api_key": flat_key,
+            "model": cfg.get("model") or "",
+            "base_url": base_url,
+        }
+
+    if profiles:
+        cfg["profiles"] = profiles
+        active = cfg.get("active")
+        # A legacy "provider" naming the protocol still identifies the source when
+        # only one was saved, which is exactly the single-source upgrade case.
+        if active not in profiles:
+            legacy_name = (cfg.get("provider") or "").strip().lower()
+            if len(profiles) == 1 and legacy_name in profiles:
+                active = legacy_name
+        cfg["active"] = active if active in profiles else next(iter(profiles))
+
+    for obsolete in ("provider", "api_key", "model", "base_url", "providers"):
+        cfg.pop(obsolete, None)
+    return cfg
+
+
+def list_profiles() -> list[dict]:
+    """Every saved source, with the API key reduced to a yes/no flag.
+
+    The key itself never leaves this module: the settings UI only ever learns
+    whether one is stored, never what it is.
+    """
+    cfg = migrate_config(load_config())
+    active = cfg.get("active") or ""
+    out = []
+    for name, p in (cfg.get("profiles") or {}).items():
+        key = p.get("api_key") or ""
+        out.append({
+            "name": name,
+            "label": p.get("label") or name,
+            "type": p.get("type") or "openai",
+            "model": p.get("model") or "",
+            "base_url": p.get("base_url") or "",
+            "has_key": bool(key),
+            "key_hint": f"{key[:6]}…{key[-4:]}" if len(key) > 12 else ("已保存" if key else ""),
+            "active": name == active,
+        })
+    out.sort(key=lambda p: (not p["active"], p["label"]))
+    return out
+
+
+def save_profile(name: str, data: dict) -> None:
+    """Create or update one source. An absent api_key keeps the stored one.
+
+    That omission is deliberate: the UI is never given the key back, so a form
+    saved without retyping it must not erase it.
+    """
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("配置名称不能为空")
+    cfg = migrate_config(load_config())
+    profiles = cfg.setdefault("profiles", {})
+    entry = profiles.get(name, {})
+    for field in ("type", "label", "model", "base_url"):
+        if field in data and data[field] is not None:
+            entry[field] = str(data[field]).strip()
+    if data.get("api_key"):
+        entry["api_key"] = str(data["api_key"]).strip()
+    entry.setdefault("type", "openai")
+    entry.setdefault("label", name)
+    profiles[name] = entry
+    if not cfg.get("active"):
+        cfg["active"] = name
+    save_config(cfg)
+
+
+def set_active_profile(name: str) -> None:
+    cfg = migrate_config(load_config())
+    if name not in (cfg.get("profiles") or {}):
+        raise ValueError(f"没有名为 '{name}' 的翻译服务配置")
+    cfg["active"] = name
+    save_config(cfg)
+
+
+def delete_profile(name: str) -> None:
+    cfg = migrate_config(load_config())
+    profiles = cfg.get("profiles") or {}
+    if name not in profiles:
+        raise ValueError(f"没有名为 '{name}' 的翻译服务配置")
+    del profiles[name]
+    if cfg.get("active") == name:
+        cfg["active"] = next(iter(profiles), "")
+    save_config(cfg)
+
+
+def resolve_settings(args, profile: str | None = None) -> dict:
+    """Resolve settings for one source.
+
+    Precedence: CLI flag > environment variable > the named profile > the active
+    profile. Environment variables still win over the file so that a one-off
+    `GEVI_LLM_API_KEY=... python3 translate.py` keeps working.
+    """
+    cfg = migrate_config(load_config())
+    profiles = cfg.get("profiles") or {}
+    name = profile or getattr(args, "profile", None) or cfg.get("active") or ""
+    entry = profiles.get(name, {})
+
+    def pick(attr: str, env: str, key: str, default: str = "") -> str:
+        return (getattr(args, attr, None) or os.environ.get(env)
+                or entry.get(key) or cfg.get(key) or default)
+
     return {
-        "provider": args.provider or os.environ.get("GEVI_LLM_PROVIDER") or cfg.get("provider") or "",
-        "api_key": args.api_key or os.environ.get("GEVI_LLM_API_KEY") or cfg.get("api_key") or "",
-        "model": args.model or os.environ.get("GEVI_LLM_MODEL") or cfg.get("model") or "",
-        "base_url": args.base_url or os.environ.get("GEVI_LLM_BASE_URL") or cfg.get("base_url") or "",
+        "profile": name,
+        "provider": pick("provider", "GEVI_LLM_PROVIDER", "type"),
+        "api_key": pick("api_key", "GEVI_LLM_API_KEY", "api_key"),
+        "model": pick("model", "GEVI_LLM_MODEL", "model"),
+        "base_url": pick("base_url", "GEVI_LLM_BASE_URL", "base_url"),
     }
+
+
+def is_local_endpoint(base_url: str) -> bool:
+    """True for a server on this machine, which authenticates by being local.
+
+    Ollama and friends expose an OpenAI-compatible endpoint that ignores the
+    Authorization header, so demanding a key for them would be wrong.
+    """
+    host = (urllib.parse.urlparse(base_url or "").hostname or "").lower()
+    return host in ("localhost", "127.0.0.1", "::1", "0.0.0.0")
 
 
 def build_provider(settings: dict) -> Provider:
@@ -310,7 +534,7 @@ def build_provider(settings: dict) -> Provider:
         )
     if name not in PROVIDERS:
         raise SystemExit(f"❌ 未知的服务商 '{name}'，可选: {', '.join(PROVIDERS)}")
-    if not settings["api_key"]:
+    if not settings["api_key"] and not is_local_endpoint(settings["base_url"]):
         raise SystemExit(
             "❌ 缺少 API Key。请用 --api-key 传入，或设置环境变量 GEVI_LLM_API_KEY，\n"
             "   或在 translate_config.json 中写入 {\"api_key\": \"...\"}。"
@@ -414,6 +638,8 @@ def run_translation(
 def main():
     parser = argparse.ArgumentParser(description="GEVI 影片简介批量翻译 (EN -> ZH)")
     parser.add_argument("--provider", choices=list(PROVIDERS), help="翻译服务商")
+    parser.add_argument("--profile", help="使用 translate_config.json 中哪一套服务配置 "
+                                          "(默认用 active)")
     parser.add_argument("--api-key", help="API Key")
     parser.add_argument("--model", help="模型名（留空则用服务商默认模型）")
     parser.add_argument("--base-url", help="自定义 API 端点")
@@ -423,7 +649,23 @@ def main():
     parser.add_argument("--workers", type=int, default=4, help="并发批次数 (默认 4)")
     parser.add_argument("--dry-run", action="store_true", help="试运行：只翻译不写库")
     parser.add_argument("--stats", action="store_true", help="只打印翻译进度统计后退出")
+    parser.add_argument("--list-profiles", action="store_true",
+                        help="列出已保存的翻译服务配置后退出 (不显示 API Key)")
     args = parser.parse_args()
+
+    if args.list_profiles:
+        profiles = list_profiles()
+        if not profiles:
+            print("尚未配置任何翻译服务。可在 App 的「设置」里添加，或直接编辑 translate_config.json。")
+            return
+        print("\n🔌 【已保存的翻译服务】")
+        for p in profiles:
+            mark = "✅ 使用中" if p["active"] else "  "
+            key = p["key_hint"] or "未填 Key"
+            print(f" {mark} {p['name']:12s} {p['label']:24s} {p['type']:9s} "
+                  f"{p['model'] or '(默认模型)':22s} {key}")
+        print()
+        return
 
     db = DatabaseManager(str(Path(args.db).resolve()))
 

@@ -11,6 +11,7 @@ import os
 import re
 import sqlite3
 import threading
+import time
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingMixIn
@@ -65,6 +66,7 @@ class _NoArgs:
     api_key = None
     model = None
     base_url = None
+    profile = None
 
 
 # State of the background batch-translation job started from the UI.
@@ -80,6 +82,11 @@ def get_db_connection() -> sqlite3.Connection:
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
+    # socketserver defaults this to 5. A grid of cover images makes the browser open
+    # well over that many connections at once, the accept backlog overflows, and the
+    # excess connections are reset (ERR_CONNECTION_RESET) even though the handler
+    # itself is fine.
+    request_queue_size = 128
 
 class GEVIRequestHandler(BaseHTTPRequestHandler):
     def send_cors_headers(self):
@@ -190,6 +197,10 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/translate/stats":
                 return self.handle_translate_stats()
 
+            # 6c. /api/translate/providers
+            if path == "/api/translate/providers":
+                return self.handle_translate_providers()
+
             # 7. /api/studios/:name/works
             studio_works_match = re.match(r"^/api/studios/([^/]+)/works$", path)
             if studio_works_match:
@@ -240,6 +251,18 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
 
             if path == "/api/translate/run":
                 return self.handle_translate_run()
+
+            if path == "/api/translate/providers/save":
+                return self.handle_translate_provider_save()
+
+            if path == "/api/translate/providers/activate":
+                return self.handle_translate_provider_activate()
+
+            if path == "/api/translate/providers/delete":
+                return self.handle_translate_provider_delete()
+
+            if path == "/api/translate/providers/test":
+                return self.handle_translate_provider_test()
 
             translate_one = re.match(r"^/api/movies/(\d+)/translate$", path)
             if translate_one:
@@ -310,15 +333,21 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
 
         settings = translate.resolve_settings(_NoArgs())
         provider = (settings["provider"] or "").strip().lower()
-        configured = bool(provider in translate.PROVIDERS and settings["api_key"])
+        # A loopback endpoint (Ollama, llama.cpp) needs no key to count as usable.
+        has_credentials = bool(settings["api_key"]) or translate.is_local_endpoint(settings["base_url"])
+        configured = bool(provider in translate.PROVIDERS and has_credentials)
         model = settings["model"] or (
             translate.PROVIDERS[provider].DEFAULT_MODEL if provider in translate.PROVIDERS else ""
         )
+        label = next((p["label"] for p in translate.list_profiles()
+                      if p["name"] == settings.get("profile")), "")
         return {
             "configured": configured,
             "provider": provider,
+            "profile": settings.get("profile", ""),
+            "profile_label": label,
             "model": model,
-            "reason": "" if configured else "未配置 API Key（设置 GEVI_LLM_API_KEY 或 translate_config.json）",
+            "reason": "" if configured else "未配置 API Key（在「设置 → 翻译服务来源」里添加或选择一套配置）",
         }
 
     def handle_movies(self, params: dict):
@@ -719,6 +748,97 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
 
     # --- Machine translation (issue #4: LLM API, key supplied by the user) ---
 
+    def handle_translate_providers(self):
+        """List the saved translation sources plus the presets the UI can prefill.
+
+        Only `has_key` / `key_hint` cross the wire - the API key itself is never
+        sent to the client, by design (see the project memory notes).
+        """
+        import translate
+        self.send_json({
+            "profiles": translate.list_profiles(),
+            "presets": translate.PROVIDER_PRESETS,
+            "config_file": translate.CONFIG_FILE.name,
+        })
+
+    def handle_translate_provider_save(self):
+        import translate
+        body = self.read_json_body()
+        name = (body.get("name") or "").strip()
+        if not name:
+            return self.send_json({"error": "缺少配置名称"}, status=400)
+        ptype = (body.get("type") or "openai").strip()
+        if ptype not in translate.PROVIDERS:
+            return self.send_json(
+                {"error": f"不支持的接口类型 '{ptype}'，可选: {', '.join(translate.PROVIDERS)}"},
+                status=400,
+            )
+        try:
+            translate.save_profile(name, {
+                "type": ptype,
+                "label": body.get("label") or name,
+                "model": body.get("model") or "",
+                "base_url": body.get("base_url") or "",
+                # Absent key = "keep the stored one"; the UI is never given it back.
+                "api_key": body.get("api_key") or "",
+            })
+            if body.get("active"):
+                translate.set_active_profile(name)
+        except (ValueError, OSError) as e:
+            return self.send_json({"error": str(e)}, status=400)
+        self.send_json({"success": True, "profiles": translate.list_profiles()})
+
+    def handle_translate_provider_activate(self):
+        import translate
+        body = self.read_json_body()
+        try:
+            translate.set_active_profile((body.get("name") or "").strip())
+        except ValueError as e:
+            return self.send_json({"error": str(e)}, status=404)
+        self.send_json({"success": True, "profiles": translate.list_profiles()})
+
+    def handle_translate_provider_delete(self):
+        import translate
+        body = self.read_json_body()
+        try:
+            translate.delete_profile((body.get("name") or "").strip())
+        except ValueError as e:
+            return self.send_json({"error": str(e)}, status=404)
+        self.send_json({"success": True, "profiles": translate.list_profiles()})
+
+    def handle_translate_provider_test(self):
+        """Translate one short string through a source to prove the key works."""
+        import translate
+        body = self.read_json_body()
+        name = (body.get("name") or "").strip() or None
+        settings: dict = {"profile": name or ""}
+        try:
+            settings = translate.resolve_settings(_NoArgs(), profile=name)
+            provider = translate.build_provider(settings)
+        except SystemExit as e:
+            return self.send_json({"error": str(e), "profile": settings.get("profile", "")},
+                                  status=400)
+
+        sample = body.get("text") or "The biggest toys around and they all play with each others'."
+        t0 = time.time()
+        try:
+            out = provider.translate([sample])
+        except translate.TranslationError as e:
+            return self.send_json({"error": str(e), "profile": settings["profile"]}, status=502)
+        except Exception as e:
+            return self.send_json({"error": f"{type(e).__name__}: {e}"}, status=502)
+
+        zh = (out[0] if out else "").strip()
+        self.send_json({
+            "success": bool(zh),
+            "profile": settings["profile"],
+            "model": provider.model,
+            "elapsed": round(time.time() - t0, 2),
+            "source": sample,
+            "result": zh,
+            "error": "" if zh else "服务返回了空译文",
+        })
+
     def handle_translate_stats(self):
         with get_db_connection() as conn:
             payload = self._translation_stats(conn)
@@ -778,6 +898,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
         limit = int(body.get("limit") or 0) or None
         batch_size = max(1, min(50, int(body.get("batchSize") or 20)))
         workers = max(1, min(16, int(body.get("workers") or 4)))
+        profile = (body.get("profile") or "").strip() or None
 
         def job():
             import translate
@@ -785,7 +906,9 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             TRANSLATION_JOB["summary"] = {"total": limit or 0, "done": 0, "status": "running"}
             try:
                 db = DatabaseManager(str(DB_PATH))
-                provider = translate.build_provider(translate.resolve_settings(_NoArgs()))
+                provider = translate.build_provider(
+                    translate.resolve_settings(_NoArgs(), profile=profile)
+                )
                 translate.run_translation(
                     db=db,
                     provider=provider,

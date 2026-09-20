@@ -6,6 +6,9 @@ import type {
   PerformerFilterState,
   PerformerFacets,
   TranslationStats,
+  TranslationProfile,
+  TranslationProviders,
+  TranslationProviderInput,
 } from './types';
 
 // Detect if running inside Tauri runtime
@@ -17,6 +20,22 @@ const isTauri = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in windo
  * controls in this mode instead of offering an action that cannot succeed.
  */
 export const IS_TAURI = isTauri;
+
+async function postProviderAction(
+  action: 'save' | 'activate' | 'delete',
+  payload: Record<string, unknown>
+): Promise<{ success: boolean; profiles?: TranslationProfile[]; error?: string }> {
+  try {
+    const res = await fetch(`/api/translate/providers/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e?.message || '请求失败' };
+  }
+}
 
 async function tauriInvoke<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   if (isTauri) {
@@ -427,17 +446,69 @@ export const api = {
     };
   },
 
-  async runTranslation(limit: number | null = null, batchSize = 20, workers = 4): Promise<{ success: boolean; message?: string; error?: string }> {
+  async runTranslation(
+    limit: number | null = null,
+    batchSize = 20,
+    workers = 4,
+    profile: string | null = null
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
       const res = await fetch('/api/translate/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit, batchSize, workers }),
+        body: JSON.stringify({ limit, batchSize, workers, profile }),
       });
       return await res.json();
     } catch (e: any) {
       return { success: false, error: e?.message || '请求失败' };
     }
+  },
+
+  // Translation sources the user can switch between. The API key is never part of
+  // these payloads — the backend only reports whether one is stored.
+  async getTranslationProviders(): Promise<TranslationProviders> {
+    const empty: TranslationProviders = { profiles: [], presets: [], config_file: '' };
+    try {
+      const res = await fetch('/api/translate/providers');
+      if (res.ok) return await res.json();
+    } catch {}
+    return empty;
+  },
+
+  async saveTranslationProvider(payload: TranslationProviderInput): Promise<{ success: boolean; profiles?: TranslationProfile[]; error?: string }> {
+    return postProviderAction('save', { ...payload });
+  },
+
+  async activateTranslationProvider(name: string): Promise<{ success: boolean; profiles?: TranslationProfile[]; error?: string }> {
+    return postProviderAction('activate', { name });
+  },
+
+  async deleteTranslationProvider(name: string): Promise<{ success: boolean; profiles?: TranslationProfile[]; error?: string }> {
+    return postProviderAction('delete', { name });
+  },
+
+  /** Round-trip one short string so the user can verify a key before a big run. */
+  async testTranslationProvider(name: string | null): Promise<{
+    success: boolean; profile?: string; model?: string; elapsed?: number;
+    source?: string; result?: string; error?: string;
+  }> {
+    try {
+      const res = await fetch('/api/translate/providers/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e?.message || '请求失败' };
+    }
+  },
+
+  async postProviderAction(
+    action: 'save' | 'activate' | 'delete',
+    payload: Record<string, unknown>
+  ): Promise<{ success: boolean; profiles?: TranslationProfile[]; error?: string }> {
+    return postProviderAction(action, payload);
   },
 
   /** Translate one synopsis on demand. Returns the Chinese text, or null on failure. */

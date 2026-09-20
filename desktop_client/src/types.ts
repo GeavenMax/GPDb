@@ -122,10 +122,56 @@ export interface TranslationStats {
   translation_pending: number;
   configured: boolean;
   provider: string;
+  /** Name of the source in use (`translate_config.json` profile). */
+  profile?: string;
+  profile_label?: string;
   model: string;
   reason: string;
   running: boolean;
   job?: Record<string, unknown>;
+}
+
+/**
+ * One saved translation source. `api_key` is deliberately absent: the backend
+ * never sends the key to the client, only whether one is stored.
+ */
+export interface TranslationProfile {
+  name: string;
+  label: string;
+  type: string;
+  model: string;
+  base_url: string;
+  has_key: boolean;
+  key_hint: string;
+  active: boolean;
+}
+
+/** A vendor template the settings form can prefill (DeepSeek, Claude, ...). */
+export interface TranslationPreset {
+  id: string;
+  label: string;
+  type: string;
+  base_url: string;
+  model: string;
+  hint?: string;
+  needs_key?: boolean;
+}
+
+export interface TranslationProviders {
+  profiles: TranslationProfile[];
+  presets: TranslationPreset[];
+  config_file: string;
+}
+
+/** Form payload for creating/updating a source. Omit `api_key` to keep the stored one. */
+export interface TranslationProviderInput {
+  name: string;
+  type: string;
+  label?: string;
+  model?: string;
+  base_url?: string;
+  api_key?: string;
+  active?: boolean;
 }
 
 export interface Episode {

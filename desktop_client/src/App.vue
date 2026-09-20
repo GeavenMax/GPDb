@@ -18,6 +18,8 @@ import type {
   PerformerFilterState,
   PerformerFacets,
   TranslationStats,
+  TranslationProfile,
+  TranslationPreset,
 } from './types';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
@@ -144,6 +146,23 @@ const translationStats = ref<TranslationStats | null>(null);
 const isTranslating = ref(false);
 const translateMsg = ref('');
 
+// Translation sources (multiple saved API providers, switchable by hand).
+const providerList = ref<TranslationProfile[]>([]);
+const providerPresets = ref<TranslationPreset[]>([]);
+const providerForm = reactive({
+  open: false,
+  editing: '',
+  name: '',
+  label: '',
+  type: 'openai',
+  model: '',
+  base_url: '',
+  api_key: '',
+});
+const providerBusy = ref(false);
+const providerMsg = ref('');
+const providerTest = ref<{ ok: boolean; text: string } | null>(null);
+
 // List loading state
 //
 // 'scroll' pulls the next page automatically near the bottom; 'paged' shows an
@@ -216,6 +235,7 @@ async function loadStats() {
   categories.value = await api.getCategories();
   loadCacheStats();
   loadTranslationStats();
+  loadProviders();
 }
 
 async function loadTranslationStats() {
@@ -241,6 +261,104 @@ async function handleRunTranslation(limit: number | null) {
   } else {
     translateMsg.value = res.error || '启动失败';
     isTranslating.value = false;
+  }
+}
+
+// --- Translation sources ---
+
+async function loadProviders() {
+  const data = await api.getTranslationProviders();
+  providerList.value = data.profiles;
+  providerPresets.value = data.presets;
+}
+
+/** Prefill the form from a vendor template. */
+function applyPreset(preset: TranslationPreset) {
+  providerForm.name = preset.id;
+  providerForm.label = preset.label;
+  providerForm.type = preset.type;
+  providerForm.model = preset.model;
+  providerForm.base_url = preset.base_url;
+  providerForm.api_key = '';
+}
+
+function openProviderForm(profile?: TranslationProfile) {
+  providerTest.value = null;
+  providerMsg.value = '';
+  providerForm.open = true;
+  if (profile) {
+    providerForm.editing = profile.name;
+    providerForm.name = profile.name;
+    providerForm.label = profile.label;
+    providerForm.type = profile.type;
+    providerForm.model = profile.model;
+    providerForm.base_url = profile.base_url;
+  } else {
+    providerForm.editing = '';
+    providerForm.name = '';
+    providerForm.label = '';
+    providerForm.type = 'openai';
+    providerForm.model = '';
+    providerForm.base_url = '';
+  }
+  // Never prefilled: the stored key is not sent to the client at all.
+  providerForm.api_key = '';
+}
+
+async function saveProvider() {
+  if (!providerForm.name.trim()) {
+    providerMsg.value = '请填写配置名称';
+    return;
+  }
+  providerBusy.value = true;
+  providerMsg.value = '';
+  const res = await api.saveTranslationProvider({
+    name: providerForm.name.trim(),
+    label: providerForm.label.trim() || providerForm.name.trim(),
+    type: providerForm.type,
+    model: providerForm.model.trim(),
+    base_url: providerForm.base_url.trim(),
+    api_key: providerForm.api_key.trim(),
+    active: !providerForm.editing && providerList.value.length === 0,
+  });
+  providerBusy.value = false;
+  if (res.success) {
+    if (res.profiles) providerList.value = res.profiles;
+    providerForm.open = false;
+    providerMsg.value = '已保存';
+    await loadTranslationStats();
+  } else {
+    providerMsg.value = res.error || '保存失败';
+  }
+}
+
+async function activateProvider(name: string) {
+  const res = await api.activateTranslationProvider(name);
+  if (res.success && res.profiles) providerList.value = res.profiles;
+  else providerMsg.value = res.error || '切换失败';
+  await loadTranslationStats();
+}
+
+async function removeProvider(name: string) {
+  const res = await api.deleteTranslationProvider(name);
+  if (res.success && res.profiles) providerList.value = res.profiles;
+  else providerMsg.value = res.error || '删除失败';
+  await loadTranslationStats();
+}
+
+async function testProvider(name: string | null) {
+  providerBusy.value = true;
+  providerTest.value = null;
+  providerMsg.value = '';
+  const res = await api.testTranslationProvider(name);
+  providerBusy.value = false;
+  if (res.success) {
+    providerTest.value = {
+      ok: true,
+      text: `${res.profile} · ${res.model} · ${res.elapsed}s\n原文: ${res.source}\n译文: ${res.result}`,
+    };
+  } else {
+    providerTest.value = { ok: false, text: res.error || '测试失败' };
   }
 }
 
@@ -1097,7 +1215,159 @@ onMounted(async () => {
               ></div>
             </div>
 
-            <!-- Backend status -->
+            <!-- Translation sources: several saved API providers, one active -->
+            <div v-if="!IS_TAURI" class="pt-1 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="text-xs font-semibold text-zinc-300">翻译服务来源</div>
+                <button
+                  @click="openProviderForm()"
+                  class="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] border border-zinc-700 flex items-center gap-1.5 transition"
+                >
+                  <Sparkles class="w-3 h-3 text-amber-400" />
+                  <span>添加来源</span>
+                </button>
+              </div>
+
+              <div v-if="providerList.length === 0" class="text-xs text-amber-300/90 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                尚未配置任何来源。点「添加来源」选择服务商（DeepSeek / Claude / Gemini / 本地 Ollama 等）并填入 API Key。
+              </div>
+
+              <div v-else class="space-y-2">
+                <div
+                  v-for="p in providerList"
+                  :key="p.name"
+                  class="flex items-center justify-between gap-3 p-3 rounded-xl border transition"
+                  :class="p.active
+                    ? 'bg-amber-500/10 border-amber-500/30'
+                    : 'bg-zinc-950/60 border-zinc-800'"
+                >
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-xs font-semibold text-white truncate">{{ p.label }}</span>
+                      <span v-if="p.active" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-black font-bold">使用中</span>
+                      <span v-if="!p.has_key" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">缺 API Key</span>
+                    </div>
+                    <div class="text-[11px] text-zinc-500 font-mono truncate mt-0.5">
+                      {{ p.type }} · {{ p.model || '默认模型' }} · {{ p.base_url || '默认端点' }}
+                    </div>
+                    <div v-if="p.key_hint" class="text-[10px] text-zinc-600 font-mono">Key: {{ p.key_hint }}</div>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <button
+                      v-if="!p.active"
+                      @click="activateProvider(p.name)"
+                      class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-amber-500/20 text-zinc-300 hover:text-amber-300 text-[11px] border border-zinc-700 transition"
+                    >设为当前</button>
+                    <button
+                      @click="testProvider(p.name)"
+                      :disabled="providerBusy"
+                      class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] border border-zinc-700 transition disabled:opacity-40"
+                    >测试</button>
+                    <button
+                      @click="openProviderForm(p)"
+                      class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] border border-zinc-700 transition"
+                    >编辑</button>
+                    <button
+                      @click="removeProvider(p.name)"
+                      class="p-1.5 rounded-lg bg-zinc-800 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-zinc-700 transition"
+                      title="删除该来源"
+                    >
+                      <Trash2 class="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Add / edit form -->
+              <div v-if="providerForm.open" class="p-4 rounded-xl bg-zinc-950/80 border border-zinc-700 space-y-3">
+                <div class="text-xs font-semibold text-white">
+                  {{ providerForm.editing ? `编辑来源：${providerForm.editing}` : '添加翻译来源' }}
+                </div>
+
+                <div v-if="!providerForm.editing" class="flex flex-wrap gap-1.5">
+                  <button
+                    v-for="preset in providerPresets"
+                    :key="preset.id"
+                    @click="applyPreset(preset)"
+                    :title="preset.hint"
+                    class="px-2.5 py-1 rounded-lg text-[11px] border transition"
+                    :class="providerForm.name === preset.id
+                      ? 'bg-amber-500 text-black border-amber-500 font-bold'
+                      : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'"
+                  >{{ preset.label }}</button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label class="space-y-1">
+                    <span class="text-[11px] text-zinc-400">配置名称（唯一标识）</span>
+                    <input v-model="providerForm.name" :disabled="!!providerForm.editing"
+                      placeholder="deepseek"
+                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white font-mono disabled:opacity-60 focus:border-amber-500/50 focus:outline-none" />
+                  </label>
+                  <label class="space-y-1">
+                    <span class="text-[11px] text-zinc-400">显示名称</span>
+                    <input v-model="providerForm.label" placeholder="DeepSeek 深度求索"
+                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white focus:border-amber-500/50 focus:outline-none" />
+                  </label>
+                  <label class="space-y-1">
+                    <span class="text-[11px] text-zinc-400">接口类型</span>
+                    <select v-model="providerForm.type"
+                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white focus:border-amber-500/50 focus:outline-none">
+                      <option value="openai">openai（OpenAI 兼容接口）</option>
+                      <option value="anthropic">anthropic（Claude 官方接口）</option>
+                      <option value="gemini">gemini（Google Gemini）</option>
+                    </select>
+                  </label>
+                  <label class="space-y-1">
+                    <span class="text-[11px] text-zinc-400">模型名</span>
+                    <input v-model="providerForm.model" placeholder="deepseek-flash"
+                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white font-mono focus:border-amber-500/50 focus:outline-none" />
+                  </label>
+                  <label class="space-y-1 sm:col-span-2">
+                    <span class="text-[11px] text-zinc-400">API 端点 (Base URL)</span>
+                    <input v-model="providerForm.base_url" placeholder="https://api.deepseek.com"
+                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white font-mono focus:border-amber-500/50 focus:outline-none" />
+                  </label>
+                  <label class="space-y-1 sm:col-span-2">
+                    <span class="text-[11px] text-zinc-400">
+                      API Key
+                      <span v-if="providerForm.editing" class="text-zinc-500">（留空则保持原 Key 不变）</span>
+                    </span>
+                    <input v-model="providerForm.api_key" type="password" autocomplete="off"
+                      :placeholder="providerForm.editing ? '••••••••（不修改）' : 'sk-...'"
+                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white font-mono focus:border-amber-500/50 focus:outline-none" />
+                  </label>
+                </div>
+
+                <div class="text-[11px] text-zinc-500 leading-relaxed">
+                  API Key 只写入本机 <code class="font-mono">translate_config.json</code>（权限 600），
+                  不会写入数据库，也<b class="text-zinc-400">不会回传给前端</b>。
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button
+                    @click="saveProvider"
+                    :disabled="providerBusy"
+                    class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition disabled:opacity-40"
+                  >保存</button>
+                  <button
+                    @click="providerForm.open = false"
+                    class="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs border border-zinc-700 transition"
+                  >取消</button>
+                </div>
+              </div>
+
+              <div
+                v-if="providerTest"
+                class="p-3 rounded-xl text-[11px] font-mono whitespace-pre-wrap leading-relaxed"
+                :class="providerTest.ok
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
+                  : 'bg-rose-500/10 border border-rose-500/20 text-rose-300'"
+              >{{ providerTest.text }}</div>
+
+              <div v-if="providerMsg" class="text-[11px] text-amber-300">{{ providerMsg }}</div>
+            </div>
+
             <div
               v-if="IS_TAURI"
               class="p-3 rounded-xl bg-zinc-800/60 border border-zinc-700 text-xs text-zinc-300 space-y-1.5"
@@ -1105,34 +1375,16 @@ onMounted(async () => {
               <div class="font-semibold text-white">桌面版请用命令行翻译</div>
               <div class="text-zinc-400 leading-relaxed">
                 桌面版直接读写本地 SQLite，不经过本地服务进程，因此这里只显示进度、不能直接发起翻译。
-                在项目目录下运行（API Key 只保存在本机，不会写入数据库）：
+                命令行会读取同一份 <code class="font-mono">translate_config.json</code>：
               </div>
               <code class="block bg-black/60 rounded-lg p-2 font-mono text-[11px] text-zinc-300 overflow-x-auto">
-                python3 translate.py --provider anthropic --api-key sk-ant-... --limit 20 --dry-run
+                python3 translate.py --list-profiles
+              </code>
+              <code class="block bg-black/60 rounded-lg p-2 font-mono text-[11px] text-zinc-300 overflow-x-auto">
+                python3 translate.py --profile deepseek --limit 20 --dry-run
               </code>
               <div class="text-zinc-400">
-                试跑无误后去掉 <code class="font-mono">--limit</code> 与 <code class="font-mono">--dry-run</code> 即可全量翻译；
-                进度会实时反映到上方统计。也可用 <code class="font-mono">openai</code> / <code class="font-mono">gemini</code>，
-                或写入 <code class="font-mono">translate_config.json</code> / 环境变量
-                <code class="font-mono">GEVI_LLM_API_KEY</code>。
-              </div>
-            </div>
-
-            <div
-              v-else-if="translationStats && !translationStats.configured"
-              class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 space-y-1.5"
-            >
-              <div class="font-semibold">尚未配置翻译服务</div>
-              <div class="text-amber-200/80 leading-relaxed">
-                请先在终端运行一次（API Key 只保存在本机，不会写入数据库）：
-              </div>
-              <code class="block bg-black/60 rounded-lg p-2 font-mono text-[11px] text-zinc-300 overflow-x-auto">
-                python3 translate.py --provider anthropic --api-key sk-ant-... --limit 20 --dry-run
-              </code>
-              <div class="text-amber-200/80">
-                也可改用 <code class="font-mono">openai</code> 或 <code class="font-mono">gemini</code>，
-                或写入 <code class="font-mono">translate_config.json</code> / 环境变量
-                <code class="font-mono">GEVI_LLM_API_KEY</code>。
+                试跑无误后去掉 <code class="font-mono">--limit</code> 与 <code class="font-mono">--dry-run</code> 即可全量翻译。
               </div>
             </div>
 
@@ -1140,7 +1392,8 @@ onMounted(async () => {
               v-else-if="translationStats"
               class="text-[11px] text-zinc-500 font-mono bg-zinc-950 p-2.5 rounded-xl border border-zinc-800"
             >
-              翻译服务: {{ translationStats.provider }} / {{ translationStats.model }}
+              当前使用: {{ translationStats.profile_label || translationStats.profile || translationStats.provider }}
+              / {{ translationStats.model || '默认模型' }}
             </div>
 
             <div v-if="translateMsg" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
@@ -1152,20 +1405,25 @@ onMounted(async () => {
               <button
                 @click="handleRunTranslation(50)"
                 :disabled="isTranslating || !translationStats?.configured"
-                class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Loader2 v-if="isTranslating" class="w-3.5 h-3.5 animate-spin" />
-                <Languages v-else class="w-3.5 h-3.5" />
-                <span>{{ isTranslating ? '翻译进行中...' : '翻译 50 条（试跑）' }}</span>
+                <Languages class="w-3.5 h-3.5" />
+                <span>试跑 50 条</span>
               </button>
 
               <button
                 @click="handleRunTranslation(null)"
-                :disabled="isTranslating || !translationStats?.configured"
-                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="isTranslating || !translationStats?.configured || translationStats?.translation_pending === 0"
+                class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Sparkles class="w-3.5 h-3.5 text-amber-400" />
-                <span>翻译全部待翻译简介</span>
+                <Loader2 v-if="isTranslating" class="w-3.5 h-3.5 animate-spin" />
+                <Sparkles v-else class="w-3.5 h-3.5" />
+                <span v-if="isTranslating">翻译进行中…</span>
+                <span v-else-if="translationStats?.translation_pending === 0">没有待翻译的简介</span>
+                <span v-else>
+                  一键翻译全部待翻译简介
+                  ({{ translationStats?.translation_pending.toLocaleString() }} 条)
+                </span>
               </button>
             </div>
           </div>
