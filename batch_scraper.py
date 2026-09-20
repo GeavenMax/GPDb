@@ -253,12 +253,39 @@ class BatchScraper:
             director_name = html.unescape(re.sub(r'<[^>]+>', '', dir_m.group(2)).strip())
 
         # Covers (front, back, and any variant covers)
-        cover_icon_m = re.search(r"src=[\'\"](images/Covers/Icons/[^\'\"]+)[\'\"]", html_text)
-        cover_icon = f"{BASE_URL}/{cover_icon_m.group(1)}" if cover_icon_m else ""
+        #
+        # Every cover the film has lives inside <div id="coverContainer">, one entry
+        # per variant, each carrying both a thumbnail (`src`, under Covers/Icons) and
+        # the full-size file (`image`, under Covers). Suffix convention: no suffix is
+        # the front cover, "b" is the back cover, and c/d/... are further variants
+        # (stills, alternate art). So cover_full is the front and all_covers[1] the
+        # back when the film has one.
+        #
+        # The container element is the important part: a film with no cover art at all
+        # renders no coverContainer (the page footer's imageMask modal is always there
+        # and is unrelated). That gives us a way to tell "the site has no cover for
+        # this film" from "our regex missed the cover area" - without it both look
+        # like zero covers, and a later cover-download pass cannot know which films
+        # still need checking. covers_known records that we actually saw the gallery.
+        gallery_m = re.search(
+            r'id=["\']coverContainer["\'](.*?)(?=<div[^>]*id=["\'](?!coverContainer)|</section>|<!--\s*full covers)',
+            html_text, re.DOTALL,
+        )
+        covers_known = gallery_m is not None
+        gallery = gallery_m.group(1) if gallery_m else ""
 
-        raw_covers = re.findall(r"image=[\'\"](images/Covers/[^\'\"]+)[\'\"]", html_text)
+        raw_covers = re.findall(r"image=[\'\"](images/Covers/[^\'\"]+)[\'\"]", gallery)
         all_covers = [f"{BASE_URL}/{c}" for c in raw_covers]
         cover_full = all_covers[0] if all_covers else ""
+
+        icon_m = re.search(r"src=[\'\"](images/Covers/Icons/[^\'\"]+)[\'\"]", gallery)
+        cover_icon = f"{BASE_URL}/{icon_m.group(1)}" if icon_m else ""
+
+        # The back cover, kept as its own column: a later bulk cover download should
+        # be able to ask "which films have a back cover?" without parsing JSON, and
+        # must be able to tell a confirmed-absent back cover ('') from an unchecked
+        # one (None). all_covers keeps every variant in order regardless.
+        cover_back = next((u for u in all_covers[1:] if re.search(r"b\.(?:jpg|jpeg|png|webp)$", u, re.I)), "")
 
         # Performers
         performers = []
@@ -315,7 +342,9 @@ class BatchScraper:
             "description": description,
             "cover_icon": cover_icon,
             "cover_full": cover_full,
+            "cover_back": cover_back,
             "covers": all_covers,
+            "covers_known": covers_known,
             "director_id": director_id,
             "director_name": director_name,
             "performers": performers,

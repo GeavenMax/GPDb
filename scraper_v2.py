@@ -474,7 +474,8 @@ class ScraperV2:
         # selection and the "source has no value" bookkeeping, so the two can never
         # disagree about what is being looked for.
         movie_fields = [g.strip() for g in
-                        (args.gaps or "description,year,duration,cover,cast").split(",") if g.strip()]
+                        (args.gaps or ",".join(DatabaseManager.DEFAULT_MOVIE_GAPS)).split(",")
+                        if g.strip()]
         self.checked_fields = {"movie": movie_fields, "performer": ["attributes", "image"]}
 
     # --- networking -------------------------------------------------------
@@ -895,6 +896,10 @@ def run_audit(db: DatabaseManager) -> None:
         "缺年份": "release_year IS NULL",
         "缺时长": "duration_mins IS NULL",
         "缺封面": "(cover_full IS NULL OR cover_full = '') AND (cover_icon IS NULL OR cover_icon = '')",
+        # Not a defect on its own - these films were scraped before cover variants were
+        # recorded at all. Listed so the cover bookkeeping can be seen closing over time.
+        "封面变体未记录": """(COALESCE(covers_json, '') = ''
+                            AND (COALESCE(cover_full, '') <> '' OR COALESCE(cover_icon, '') <> ''))""",
         "缺演员表": "NOT EXISTS (SELECT 1 FROM movie_performers mp WHERE mp.movie_id = movies.id)",
         "缺厂牌": "studio_name IS NULL OR trim(studio_name) = ''",
         "标题疑似错误页": "title LIKE '404%' OR lower(title) LIKE '%not found%'",
@@ -904,6 +909,17 @@ def run_audit(db: DatabaseManager) -> None:
         n = count(f"SELECT COUNT(*) FROM movies WHERE {cond}")
         flag = "⚠️ " if n else "✅ "
         print(f"   {flag}{label}: {n:,}")
+
+    # Cover art inventory. cover_back is only written once the cover gallery has been
+    # read, so NULL is exactly "not confirmed yet" (see schema.sql) and this line is
+    # the number a later bulk cover download would have to fetch.
+    has_front = count("SELECT COUNT(*) FROM movies WHERE COALESCE(cover_full,'') <> ''")
+    back_yes = count("SELECT COUNT(*) FROM movies WHERE COALESCE(cover_back,'') <> ''")
+    back_no = count("SELECT COUNT(*) FROM movies WHERE cover_back = ''")
+    back_unknown = count("""SELECT COUNT(*) FROM movies WHERE COALESCE(cover_full,'') <> ''
+                            AND cover_back IS NULL""")
+    print(f"   ℹ️ 封面: 有正面 {has_front:,} | 其中封底 已确认有 {back_yes:,} / "
+          f"已确认无 {back_no:,} / 待确认 {back_unknown:,}")
 
     missing_any = len(db.get_incomplete_movies())
     print(f"   → 至少缺一项关键字段: {missing_any:,} 条 (这些是 --mode gaps 的目标)")
@@ -964,7 +980,8 @@ def main() -> None:
                         help="抓取模式 (默认 gaps: 只补齐缺失字段)")
     parser.add_argument("--db", default="gevi.db", help="SQLite 数据库路径")
     parser.add_argument("--gaps", help="--mode gaps 时检查哪些字段, 逗号分隔 "
-                                      "(description,year,duration,cover,cast,studio,director)")
+                                      "(description,year,duration,cover,cover_variants,cast,studio,director)。"
+                                      "cover_variants = 有封面但没记录封面变体(即封底未确认)")
     parser.add_argument("--start", type=int, default=1, help="--mode new 的起始 ID")
     parser.add_argument("--end", type=int, default=0, help="--mode new 的结束 ID")
     parser.add_argument("--only", help="只处理这些 ID (逗号分隔)，用于小范围试跑")

@@ -33,6 +33,7 @@ class DatabaseManager:
         "movies": [
             ("description_zh", "TEXT"),
             ("translation_attempts", "INTEGER DEFAULT 0"),
+            ("cover_back", "TEXT"),
         ],
         "performers": [
             ("image_url", "TEXT"),
@@ -135,10 +136,25 @@ class DatabaseManager:
         "year": "release_year IS NULL",
         "duration": "duration_mins IS NULL",
         "cover": "((cover_full IS NULL OR cover_full = '') AND (cover_icon IS NULL OR cover_icon = ''))",
+        # A film can have a front cover on file and still have an unrecorded back
+        # cover: covers_json was added after ~2,900 rows were already scraped, and
+        # "cover" above is satisfied by cover_full alone, so nothing would ever go
+        # back for them. This check selects exactly those films. It closes itself
+        # either way - a re-fetch writes the variant list, or records a void when the
+        # page turns out to have no gallery after all.
+        "cover_variants": """(COALESCE(covers_json, '') = ''
+                             AND (COALESCE(cover_full, '') <> '' OR COALESCE(cover_icon, '') <> ''))""",
         "cast": "NOT EXISTS (SELECT 1 FROM movie_performers mp WHERE mp.movie_id = movies.id)",
         "studio": "(studio_name IS NULL OR trim(studio_name) = '')",
         "director": "(director_name IS NULL OR trim(director_name) = '')",
     }
+
+    # The fields --mode gaps looks for when --gaps is not given. Kept here next to the
+    # predicates so the audit report and the scraper's actual work list cannot drift
+    # apart (they did: the audit said "0 films need work" while the scraper had 2,793).
+    DEFAULT_MOVIE_GAPS: list[str] = [
+        "description", "year", "duration", "cover", "cover_variants", "cast",
+    ]
 
     PERFORMER_GAP_CHECKS: dict[str, str] = {
         "attributes": """(COALESCE(hair,'') = '' AND COALESCE(eyes,'') = '' AND COALESCE(height,'') = ''
@@ -158,7 +174,7 @@ class DatabaseManager:
         fetches is left out: the source has no value for it, so asking again is a
         wasted request. Pass 0 to ignore voids and see every gap.
         """
-        keys = gaps or ["description", "year", "duration", "cover", "cast"]
+        keys = gaps or self.DEFAULT_MOVIE_GAPS
         unknown = [k for k in keys if k not in self.MOVIE_GAP_CHECKS]
         if unknown:
             raise ValueError(f"未知的字段检查项: {unknown}")
@@ -358,15 +374,27 @@ class DatabaseManager:
         """
         with self._write_lock, self.conn:
             # 1. Movie record
+            # covers_json = every cover variant in site order, written whenever the film
+            # has any. A film with no cover art renders no gallery at all, so its list
+            # stays NULL - see cover_back for how "none" is told apart from "unknown".
             covers_val = json.dumps(m["covers"]) if m.get("covers") else None
+
+            # cover_back is deliberately NOT NULLIF'd against '': an empty string here
+            # means "gallery was read, film has a front cover but no back cover" and
+            # must survive the UPSERT. It is only written at all when the gallery was
+            # actually found, so NULL keeps its one meaning - never checked - and a
+            # later bulk cover download can select work with:
+            #     cover_full <> '' AND cover_back IS NULL
+            # without re-fetching films that were already checked.
+            cover_back_val = (m.get("cover_back") or "") if m.get("covers_known") else None
             # UPSERT rather than INSERT OR REPLACE: REPLACE deletes the old row, which
             # would silently discard description_zh / translation_attempts on re-scrape.
             self.conn.execute("""
                 INSERT INTO movies (
                     id, title, studio_id, studio_name, release_year, duration_mins,
                     category, rating, movie_type, description, cover_icon, cover_full,
-                    covers_json, director_id, director_name
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    covers_json, cover_back, director_id, director_name
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     title = COALESCE(NULLIF(excluded.title, ''), movies.title),
                     studio_id = COALESCE(excluded.studio_id, movies.studio_id),
@@ -380,6 +408,7 @@ class DatabaseManager:
                     cover_icon = COALESCE(NULLIF(excluded.cover_icon, ''), movies.cover_icon),
                     cover_full = COALESCE(NULLIF(excluded.cover_full, ''), movies.cover_full),
                     covers_json = COALESCE(NULLIF(excluded.covers_json, ''), movies.covers_json),
+                    cover_back = COALESCE(excluded.cover_back, movies.cover_back),
                     director_id = COALESCE(excluded.director_id, movies.director_id),
                     director_name = COALESCE(NULLIF(excluded.director_name, ''), movies.director_name),
                     scraped_at = CURRENT_TIMESTAMP
@@ -388,7 +417,7 @@ class DatabaseManager:
                 m.get("release_year"), m.get("duration_mins"), m.get("category"),
                 m.get("rating"), m.get("movie_type"), m.get("description"),
                 m.get("cover_icon"), m.get("cover_full"),
-                covers_val, m.get("director_id"), m.get("director_name")
+                covers_val, cover_back_val, m.get("director_id"), m.get("director_name")
             ))
 
             # 2. Performers link. An empty cast list means "we failed to read the

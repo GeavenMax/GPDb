@@ -19,6 +19,14 @@ CREATE TABLE IF NOT EXISTS movies (
     description TEXT,
     cover_icon TEXT,
     cover_full TEXT,
+    -- 封底图 (the "b" variant). '' = 已确认无封底, NULL = 未确认。
+    -- 只在读到封面区 (coverContainer) 时才写入，所以 NULL 只有一个含义：还没确认过。
+    -- 以后全量下载封面时直接选: cover_full <> '' AND cover_back IS NULL
+    -- 即可拿到"还没确认封底"的影片，不必重抓已确认的。
+    cover_back TEXT,
+    -- 全部封面变体，按站点顺序: [0] 正面, [1] 封底(后缀 b), 之后 c/d/... 为更多变体。
+    -- 只有该片确实有封面时才有值；一处封面都没有的影片页面不会渲染封面区，
+    -- 此时保持 NULL，并由 scrape_voids 的 'cover' 记录"源头无封面"。
     covers_json TEXT,
     director_id INTEGER,
     director_name TEXT,
