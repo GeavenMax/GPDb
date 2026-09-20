@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS episodes (
     title TEXT,
     thumbnail_url TEXT,
     description TEXT,
+    description_zh TEXT,            -- 机器翻译后的中文片段简介 (NULL = 尚未翻译)
     action_notes TEXT,
     FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
 );
@@ -171,6 +172,35 @@ CREATE TABLE IF NOT EXISTS user_movie_data (
     rating REAL,                    -- 私密评星 0.5 ~ 5.0
     status TEXT,                    -- 'wishlist', 'watched', 'favorite'
     notes TEXT,                     -- 私密笔记与短评
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 9. 收藏 (Favorites) —— 跨条目类型
+--
+-- entity_key 用 TEXT 而不是 INTEGER：影片/演员/片段确实有数字 ID，但片商和导演
+-- 在本库里没有独立的表（只有 movies.studio_name / director_name 两列冗余字段）。
+-- 影片库的片商筛选本来就是按名字做的（filters.studio = 名字），所以收藏键直接用
+-- 名字，收藏 → 筛选这条链路中间不需要任何 ID 转换。
+-- 约定: movie/performer/episode 存数字 ID 的字符串形式；studio/director 存名字本身。
+CREATE TABLE IF NOT EXISTS user_favorites (
+    entity_type TEXT NOT NULL,      -- 'movie' | 'performer' | 'studio' | 'director' | 'episode'
+    entity_key TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (entity_type, entity_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_fav_type ON user_favorites(entity_type, created_at DESC);
+
+-- 10. 演员属性术语表 (Attribute glossary)
+--
+-- 演员档案里的属性值全部是英文，且词汇量极小 —— 8 个可筛选维度加上纹身部位，
+-- 原子词一共只有约 73 个。与其每次展示都调翻译 API，不如统计出去重后的词条
+-- 一次性翻译好存这里，之后十万个演员都从这里查表复用，不再产生任何 API 费用。
+-- 因此这张表是"英文原文 → 中文"的被动查询表，不参与任何筛选逻辑：
+-- 筛选仍然匹配英文值，这里只负责显示。
+CREATE TABLE IF NOT EXISTS attr_glossary (
+    en TEXT PRIMARY KEY,
+    zh TEXT NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

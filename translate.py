@@ -95,11 +95,15 @@ class TranslationError(RuntimeError):
 class Provider:
     """Base class: one JSON-mode chat completion returning a list of strings."""
 
-    def __init__(self, api_key: str, model: str, base_url: str = "", timeout: float = 180.0):
+    def __init__(self, api_key: str, model: str, base_url: str = "",
+                 timeout: float = 180.0, system_prompt: str | None = None):
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        # Which prompt to use depends on what is being translated (synopses vs the
+        # attribute glossary); everything else about the call is identical.
+        self.system_prompt = system_prompt or SYSTEM_PROMPT
 
     def _post(self, url: str, payload: dict, headers: dict) -> dict:
         data = json.dumps(payload).encode("utf-8")
@@ -150,7 +154,7 @@ class AnthropicProvider(Provider):
         payload = {
             "model": self.model,
             "max_tokens": 16000,
-            "system": SYSTEM_PROMPT,
+            "system": self.system_prompt,
             "messages": [{"role": "user", "content": f"请翻译以下 {len(texts)} 条简介：\n\n{numbered}"}],
             "output_config": {
                 "effort": "low",  # mechanical translation task: no deep reasoning needed
@@ -184,7 +188,7 @@ class OpenAICompatProvider(Provider):
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": f"请翻译以下 {len(texts)} 条简介：\n\n{numbered}"},
             ],
             "response_format": {"type": "json_object"},
@@ -215,7 +219,7 @@ class GeminiProvider(Provider):
         numbered = "\n".join(f"{i}. {t}" for i, t in enumerate(texts, 1))
         base = self.base_url or self.DEFAULT_BASE_URL
         payload = {
-            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+            "systemInstruction": {"parts": [{"text": self.system_prompt}]},
             "contents": [{"role": "user", "parts": [{"text": f"请翻译以下 {len(texts)} 条简介：\n\n{numbered}"}]}],
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0.3},
         }
@@ -524,7 +528,7 @@ def is_local_endpoint(base_url: str) -> bool:
     return host in ("localhost", "127.0.0.1", "::1", "0.0.0.0")
 
 
-def build_provider(settings: dict) -> Provider:
+def build_provider(settings: dict, system_prompt: str | None = None) -> Provider:
     name = (settings["provider"] or "").strip().lower()
     if not name:
         raise SystemExit(
@@ -544,12 +548,216 @@ def build_provider(settings: dict) -> Provider:
         api_key=settings["api_key"],
         model=settings["model"] or cls.DEFAULT_MODEL,
         base_url=settings["base_url"] or cls.DEFAULT_BASE_URL,
+        system_prompt=system_prompt,
     )
+
+
+# --------------------------------------------------------------------------
+# Performer attribute glossary
+# --------------------------------------------------------------------------
+#
+# The performer profile attributes are drawn from a tiny closed vocabulary: the
+# seven translatable facet columns hold ~44 distinct values, and the tattoo
+# locations add ~30 more. Translating that whole set once costs a single API
+# call and then serves every performer forever, including the six-figure set the
+# full-site scrape is still filling in.
+#
+# Two fields are deliberately excluded:
+#   - dick_size / height / weight hold "8in / 20cm" style measurement strings —
+#     numbers and units are language-neutral, and a glossary entry per size would
+#     be noise.
+#   - `notes` is not rendered by the client at all.
+
+GLOSSARY_SYSTEM_PROMPT = """你是一名成人影片资料库的术语译者。你会收到一批演员档案里的英文属性词，需要逐个翻译成简体中文。
+
+这些词来自固定的小词表：体型（Swimmer、Trim）、肤色（Olive、Caramel）、眼睛颜色、发型、体毛、胡须、包皮，以及纹身部位（Deltoid、Groin、Chest）。
+
+翻译要求：
+1. 简洁、直接，用中文资料库里常见的说法，不要解释、不要加括号补充。
+   例：Swimmer→游泳运动员，Trim→匀称，Body Builder→健美，Goatee→山羊胡，Jaw Line→下颌线，Cut→已割，Uncut→未割。
+2. 颜色词（Brown、Blond、Dark Brown）译成对应颜色即可。
+3. 身体部位词（Deltoid、Biceps、Forearm、Chest、Groin、Glans、Sternum、Thigh）用解剖学常用中文说法，例如 Deltoid→三角肌，Biceps→肱二头肌，Forearm→前臂，Glans→龟头。
+4. 位置短语（left chest、right bicep、base of spine）译成"左胸""右肱二头肌""脊柱底部"这类说法。
+5. 大小写与单复数保持原意；不确定时按字面直译，不要臆造。
+
+只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
+
+输出格式（必须严格遵守）：
+{"translations": [{"i": 1, "zh": "第一条译文"}, {"i": 2, "zh": "第二条译文"}]}
+其中 i 是输入的序号，必须与输入一一对应，不得遗漏或调换顺序。"""
+
+# Columns whose values are measurement strings or otherwise untranslatable.
+GLOSSARY_SKIP_COLUMNS = frozenset({"dick_size"})
+
+# Tattoo values are junkier than the facet columns. A single stored value looks like
+#   "Deltoid left Deltoid: \"USMC\", Chest left chest: Chinese dragon"
+# i.e. comma-separated entries of "<location> <location>: <free text>", where the
+# free text can itself contain further "location: text" pairs, and the leading
+# comma item may carry no description at all. Only the locations are worth
+# translating — the descriptions are open text ("centaur with bow & arrow") that no
+# bounded glossary could cover, so they stay in English.
+_TATTOO_MAX_LOCATION_WORDS = 3
+
+
+def _tattoo_location_terms(raw: str | None) -> set[str]:
+    """Pull just the location words out of one `performers.tattoos` value.
+
+    The leading comma-separated run is the location list; everything from the first
+    colon onwards is free text, and a description that itself contains a comma will
+    split into further entries ("…, gothic lttering"). Those fragments are dropped
+    by only accepting a colon-less entry when it is a single word — real locations
+    are one token, the fragments are not.
+
+    A couple of stray terms still get through ('expanded', 'Tattoos' out of
+    "Wrist Tattoos: …"). They cost one extra word in a single API call and can never
+    render, because no attribute value ever equals them.
+    """
+    from server import split_facet_value  # the one <br /> splitter, shared
+
+    found: set[str] = set()
+    for chunk in split_facet_value(raw):
+        for entry in chunk.split(","):
+            entry = entry.strip()
+            if not entry or entry == "?" or entry.lower() == "none":
+                continue
+            head, sep, _ = entry.partition(":")
+            words = head.split()
+            if not words:
+                continue
+            if not sep:
+                if len(words) == 1:
+                    found.add(words[0])
+                continue
+            found.add(words[0])
+            rest = " ".join(words[1:])
+            if rest and len(words) - 1 <= _TATTOO_MAX_LOCATION_WORDS:
+                found.add(rest)
+    return found
+
+
+def collect_glossary_terms(db: DatabaseManager) -> list[str]:
+    """Every distinct attribute value worth a glossary entry.
+
+    Terms are returned exactly as stored (already Title Case on the site) because
+    the client looks them up with the same string the API handed it — any
+    normalisation here would silently miss on the lookup side.
+    """
+    from server import PERFORMER_FACETS, split_facet_value
+
+    terms: set[str] = set()
+    for column in PERFORMER_FACETS:
+        if column in GLOSSARY_SKIP_COLUMNS:
+            continue
+        rows = db.conn.execute(
+            f"SELECT {column} FROM performers WHERE {column} IS NOT NULL"
+        ).fetchall()
+        for (raw,) in rows:
+            for value in split_facet_value(raw):
+                if value and value != "?":
+                    terms.add(value)
+
+    rows = db.conn.execute(
+        "SELECT tattoos FROM performers WHERE tattoos IS NOT NULL"
+    ).fetchall()
+    for (raw,) in rows:
+        terms.update(_tattoo_location_terms(raw))
+
+    return sorted(terms)
+
+
+def translate_glossary(db: DatabaseManager, dry_run: bool = False,
+                       provider: Provider | None = None) -> dict:
+    """Translate the whole attribute vocabulary in one call and store it.
+
+    Already-translated terms are skipped, so re-running costs nothing when nothing
+    new has appeared.
+    """
+    terms = collect_glossary_terms(db)
+    existing = db.load_glossary()
+    pending = [t for t in terms if t not in existing]
+
+    print("=" * 70)
+    print("📖 GEVI 演员属性术语表翻译")
+    print(f"   词表共 {len(terms)} 条 | 已译 {len(existing)} 条 | 本次待译 {len(pending)} 条")
+    if dry_run:
+        print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
+    print("=" * 70)
+
+    if not pending:
+        print("🎉 术语表已是最新，无需调用 API。")
+        return {"success": True, "total": len(terms), "translated": 0,
+                "failed": 0, "pending": 0, "terms": existing}
+
+    if provider is None:
+        provider = build_provider(resolve_settings(argparse.Namespace()),
+                                  system_prompt=GLOSSARY_SYSTEM_PROMPT)
+    print(f"   服务商: {provider.__class__.__name__} | 模型: {provider.model}")
+
+    # A single call: ~74 short terms comfortably fit one request. extract_translations
+    # keeps the result positionally aligned with `pending`, so a dropped term simply
+    # comes back empty and gets reported rather than shifting every later entry.
+    try:
+        results = provider.translate(pending)
+    except TranslationError as e:
+        print(f"\n  ⚠️  术语表翻译失败: {e}", file=sys.stderr)
+        raise
+
+    mapping: dict[str, str] = {}
+    failed = 0
+    for term, zh in zip(pending, results):
+        if zh:
+            mapping[term] = zh
+        else:
+            failed += 1
+
+    if dry_run:
+        for term, zh in mapping.items():
+            print(f"   {term:24s} → {zh}")
+    elif mapping:
+        db.save_glossary(mapping)
+
+    print(f"\n{'（试运行，未写库）' if dry_run else '✨ 已写入术语表'}: "
+          f"成功 {len(mapping)} 条 | 失败 {failed} 条")
+    if failed and not dry_run:
+        print("   失败条目未入库，再次运行本命令会自动重试。")
+
+    return {"success": True, "total": len(terms), "translated": len(mapping),
+            "failed": failed, "pending": len(pending),
+            "terms": db.load_glossary()}
 
 
 # --------------------------------------------------------------------------
 # Batch driver
 # --------------------------------------------------------------------------
+
+def collect_translation_tasks(db: DatabaseManager, limit: int | None) -> list[dict]:
+    """Every untranslated synopsis, as one flat list of {kind, id, title, text}.
+
+    Movies first, then episodes. Keeping both kinds in a single list means the
+    batching, retry and write-back logic below stays identical for the two — only
+    the `kind` matters when storing the result.
+    """
+    tasks: list[dict] = []
+    for row in db.get_untranslated_movies(limit=None):
+        tasks.append({"kind": "movie", "id": row["id"],
+                      "title": row["title"], "text": row["description"]})
+    for row in db.get_untranslated_episodes(limit=None):
+        tasks.append({"kind": "episode", "id": row["id"],
+                      "title": row["title"], "text": row["description"]})
+    # The cap is applied after merging, so a run without --limit reaches the episode
+    # tail while a limited one stays on movies (normally what the button is aimed at).
+    if limit:
+        tasks = tasks[:limit]
+    return tasks
+
+
+def store_translation(db: DatabaseManager, task: dict, zh: str | None) -> None:
+    """Write one result back to the right table. None marks a failed attempt."""
+    if task["kind"] == "movie":
+        db.set_movie_translation(task["id"], zh)
+    else:
+        db.set_episode_translation(task["id"], zh)
+
 
 def run_translation(
     db: DatabaseManager,
@@ -559,16 +767,18 @@ def run_translation(
     workers: int,
     dry_run: bool,
 ) -> None:
-    rows = db.get_untranslated_movies(limit=limit)
+    rows = collect_translation_tasks(db, limit)
     total = len(rows)
     if total == 0:
-        print("🎉 没有需要翻译的影片（全部已翻译或没有简介）。")
+        print("🎉 没有需要翻译的简介（全部已翻译或没有简介）。")
         return
 
+    n_movies = sum(1 for r in rows if r["kind"] == "movie")
     batches = [rows[i:i + batch_size] for i in range(0, total, batch_size)]
     print("=" * 70)
     print(f"🌐 GEVI 剧情简介批量翻译 | 服务商: {provider.__class__.__name__} | 模型: {provider.model}")
-    print(f"   待翻译: {total:,} 条 | 批次大小: {batch_size} | 批次数: {len(batches)} | 并发: {workers}")
+    print(f"   待翻译: {total:,} 条 (影片 {n_movies:,} + 片段 {total - n_movies:,}) | "
+          f"批次大小: {batch_size} | 批次数: {len(batches)} | 并发: {workers}")
     if dry_run:
         print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
     print("=" * 70)
@@ -580,7 +790,7 @@ def run_translation(
     progress_lock = threading.Lock()
 
     def handle(batch: list[dict]) -> tuple[int, int]:
-        texts = [r["description"] for r in batch]
+        texts = [r["text"] for r in batch]
         try:
             results = provider.translate(texts)
         except TranslationError as e:
@@ -603,14 +813,15 @@ def run_translation(
             if not zh:
                 batch_failed += 1
                 if not dry_run:
-                    db.set_movie_translation(row["id"], None)
+                    store_translation(db, row, None)
                 continue
             batch_saved += 1
             if dry_run:
                 if batch_saved <= 2:
-                    print(f"\n  #{row['id']} {row['title']}\n    EN: {row['description'][:110]}\n    ZH: {zh[:110]}")
+                    print(f"\n  [{row['kind']}] #{row['id']} {row['title']}\n"
+                          f"    EN: {row['text'][:110]}\n    ZH: {zh[:110]}")
             else:
-                db.set_movie_translation(row["id"], zh)
+                store_translation(db, row, zh)
         return batch_saved, batch_failed
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -649,6 +860,8 @@ def main():
     parser.add_argument("--workers", type=int, default=4, help="并发批次数 (默认 4)")
     parser.add_argument("--dry-run", action="store_true", help="试运行：只翻译不写库")
     parser.add_argument("--stats", action="store_true", help="只打印翻译进度统计后退出")
+    parser.add_argument("--glossary", action="store_true",
+                        help="只翻译演员属性术语表（一次调用，约 74 个词，之后永久复用）")
     parser.add_argument("--list-profiles", action="store_true",
                         help="列出已保存的翻译服务配置后退出 (不显示 API Key)")
     args = parser.parse_args()
@@ -677,6 +890,17 @@ def main():
         print(f"  - 待翻译:         {s['pending']:,}")
         print(f"  - 翻译失败:       {s['failed']:,}")
         print(f"  - 完成度:         {(s['translated'] / s['translatable'] * 100) if s['translatable'] else 0:.1f}%\n")
+        return
+
+    if args.glossary:
+        # Built with the glossary prompt rather than the synopsis one, and from the
+        # CLI flags so --profile / --api-key behave the same as for a normal run.
+        translate_glossary(
+            db,
+            dry_run=args.dry_run,
+            provider=build_provider(resolve_settings(args),
+                                    system_prompt=GLOSSARY_SYSTEM_PROMPT),
+        )
         return
 
     provider = build_provider(resolve_settings(args))

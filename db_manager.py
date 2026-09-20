@@ -38,6 +38,9 @@ class DatabaseManager:
         "performers": [
             ("image_url", "TEXT"),
         ],
+        "episodes": [
+            ("description_zh", "TEXT"),
+        ],
     }
 
     def init_db(self):
@@ -345,6 +348,52 @@ class DatabaseManager:
                     (movie_id,)
                 )
 
+    def get_untranslated_episodes(self, limit: int | None = None, movie_id: int | None = None) -> list[dict]:
+        """Episodes that still need a Chinese description."""
+        sql = """
+            SELECT id, movie_id, title, description FROM episodes
+            WHERE description IS NOT NULL AND trim(description) != ''
+              AND description_zh IS NULL
+        """
+        args: list[Any] = []
+        if movie_id is not None:
+            sql += " AND movie_id = ?"
+            args.append(movie_id)
+        sql += " ORDER BY id ASC"
+        if limit and limit > 0:
+            sql += " LIMIT ?"
+            args.append(limit)
+        rows = self.conn.execute(sql, args).fetchall()
+        return [{"id": r[0], "movie_id": r[1], "title": r[2], "description": r[3]} for r in rows]
+
+    def set_episode_translation(self, episode_id: int, description_zh: str | None):
+        """Store a translated episode synopsis. None is a no-op (see set_movie_translation)."""
+        if not description_zh:
+            return
+        with self._write_lock, self.conn:
+            self.conn.execute(
+                "UPDATE episodes SET description_zh = ? WHERE id = ?",
+                (description_zh, episode_id)
+            )
+
+    # --- Attribute glossary (see schema.sql §10) ---
+    def load_glossary(self) -> dict[str, str]:
+        """The whole glossary as {english: chinese}. Small (~73 rows), cache freely."""
+        rows = self.conn.execute("SELECT en, zh FROM attr_glossary").fetchall()
+        return {r[0]: r[1] for r in rows}
+
+    def save_glossary(self, entries: dict[str, str]) -> int:
+        """Upsert glossary entries. Returns how many rows were written."""
+        if not entries:
+            return 0
+        with self._write_lock, self.conn:
+            self.conn.executemany(
+                "INSERT INTO attr_glossary (en, zh, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) "
+                "ON CONFLICT(en) DO UPDATE SET zh = excluded.zh, updated_at = CURRENT_TIMESTAMP",
+                [(en, zh) for en, zh in entries.items() if en and zh],
+            )
+        return len(entries)
+
     def get_translation_stats(self) -> dict[str, int]:
         cur = self.conn.cursor()
         total = cur.execute(
@@ -565,6 +614,115 @@ class DatabaseManager:
                 for tid in tag_ids:
                     self.conn.execute("INSERT OR IGNORE INTO movie_user_tags (movie_id, tag_id) VALUES (?, ?)", (movie_id, tid))
 
+    # --- Favorites (see schema.sql §9) ---
+    #
+    # One table covers all five item types. Studios and directors have no table of
+    # their own, so their entity_key is the name itself; everything else keys on the
+    # numeric id as a string. See the schema comment for why.
+    FAVORITE_TYPES: tuple[str, ...] = ("movie", "performer", "studio", "director", "episode")
+
+    def add_favorite(self, entity_type: str, entity_key: str):
+        if entity_type not in self.FAVORITE_TYPES or not entity_key:
+            return
+        with self._write_lock, self.conn:
+            self.conn.execute(
+                "INSERT OR IGNORE INTO user_favorites (entity_type, entity_key) VALUES (?, ?)",
+                (entity_type, str(entity_key)),
+            )
+
+    def remove_favorite(self, entity_type: str, entity_key: str):
+        with self._write_lock, self.conn:
+            self.conn.execute(
+                "DELETE FROM user_favorites WHERE entity_type = ? AND entity_key = ?",
+                (entity_type, str(entity_key)),
+            )
+
+    def is_favorite(self, entity_type: str, entity_key: str) -> bool:
+        row = self.conn.execute(
+            "SELECT 1 FROM user_favorites WHERE entity_type = ? AND entity_key = ?",
+            (entity_type, str(entity_key)),
+        ).fetchone()
+        return row is not None
+
+    def toggle_favorite(self, entity_type: str, entity_key: str) -> bool:
+        """Flip one favorite. Returns True if it is favorited afterwards."""
+        if entity_type not in self.FAVORITE_TYPES or not entity_key:
+            return False
+        if self.is_favorite(entity_type, entity_key):
+            self.remove_favorite(entity_type, entity_key)
+            return False
+        self.add_favorite(entity_type, entity_key)
+        return True
+
+    def get_favorite_keys(self) -> dict[str, list[str]]:
+        """Lightweight {type: [key, ...]} — enough for the UI to light up hearts."""
+        out: dict[str, list[str]] = {t: [] for t in self.FAVORITE_TYPES}
+        for etype, ekey in self.conn.execute(
+            "SELECT entity_type, entity_key FROM user_favorites ORDER BY created_at DESC"
+        ).fetchall():
+            out.setdefault(etype, []).append(ekey)
+        return out
+
+    def get_favorites(self) -> dict[str, list[dict]]:
+        """Favorited items grouped by type, each enriched with what the card needs.
+
+        The favorites page has to come from here rather than filtering an in-memory
+        list: once the full-site scrape lands there will be six figures of performers,
+        so the client never holds them all.
+        """
+        cur = self.conn.cursor()
+        out: dict[str, list[dict]] = {t: [] for t in self.FAVORITE_TYPES}
+
+        cur.execute("""
+            SELECT f.entity_key, f.created_at, m.title, m.release_year, m.studio_name,
+                   m.cover_full, m.description_zh IS NOT NULL
+            FROM user_favorites f JOIN movies m ON m.id = CAST(f.entity_key AS INTEGER)
+            WHERE f.entity_type = 'movie' ORDER BY f.created_at DESC
+        """)
+        out["movie"] = [
+            {"key": r[0], "created_at": r[1], "title": r[2], "release_year": r[3],
+             "studio_name": r[4], "cover_full": r[5], "has_zh": bool(r[6])}
+            for r in cur.fetchall()
+        ]
+
+        cur.execute("""
+            SELECT f.entity_key, f.created_at, p.name, p.image_url
+            FROM user_favorites f JOIN performers p ON p.id = CAST(f.entity_key AS INTEGER)
+            WHERE f.entity_type = 'performer' ORDER BY f.created_at DESC
+        """)
+        out["performer"] = [
+            {"key": r[0], "created_at": r[1], "name": r[2], "image_url": r[3]}
+            for r in cur.fetchall()
+        ]
+
+        cur.execute("""
+            SELECT f.entity_key, f.created_at, e.title, e.thumbnail_url, e.movie_id,
+                   m.title, m.studio_name, e.description_zh IS NOT NULL
+            FROM user_favorites f JOIN episodes e ON e.id = CAST(f.entity_key AS INTEGER)
+            LEFT JOIN movies m ON m.id = e.movie_id
+            WHERE f.entity_type = 'episode' ORDER BY f.created_at DESC
+        """)
+        out["episode"] = [
+            {"key": r[0], "created_at": r[1], "title": r[2], "thumbnail_url": r[3],
+             "movie_id": r[4], "movie_title": r[5], "studio_name": r[6], "has_zh": bool(r[7])}
+            for r in cur.fetchall()
+        ]
+
+        # Studios / directors live only as columns on movies, so the card just needs
+        # the name plus how many works we hold for it.
+        for etype, column in (("studio", "studio_name"), ("director", "director_name")):
+            cur.execute(f"""
+                SELECT f.entity_key, f.created_at,
+                       (SELECT COUNT(*) FROM movies WHERE {column} = f.entity_key)
+                FROM user_favorites f WHERE f.entity_type = ? ORDER BY f.created_at DESC
+            """, (etype,))
+            out[etype] = [
+                {"key": r[0], "created_at": r[1], "name": r[0], "works_count": r[2]}
+                for r in cur.fetchall()
+            ]
+
+        return out
+
     def export_user_data(self) -> dict:
         """Export all user annotations (tags, ratings, status, notes) to a portable JSON-ready dict."""
         cur = self.conn.cursor()
@@ -586,17 +744,31 @@ class DatabaseManager:
                 "tag_ids": assigned_tags
             })
 
+        cur.execute("SELECT entity_type, entity_key, created_at FROM user_favorites")
+        favorites = [
+            {"entity_type": r[0], "entity_key": r[1], "created_at": r[2]}
+            for r in cur.fetchall()
+        ]
+
         return {
-            "version": 1,
+            "version": 2,
             "export_time": datetime.datetime.now().isoformat(),
             "tags": tags,
-            "movie_user_data": movie_data
+            "movie_user_data": movie_data,
+            "favorites": favorites,
         }
 
     def import_user_data(self, data: dict) -> dict:
-        """Merge/restore user data from JSON backup."""
+        """Merge/restore user data from JSON backup.
+
+        Additive only: nothing is deleted, so a v1 backup (which has no
+        "favorites" key) imports as zero favorites and leaves the existing ones
+        alone. Merging is the right semantic here because the export is a partial
+        backup — the caller may be restoring it into a library that has moved on.
+        """
         tags_imported = 0
         movies_updated = 0
+        favorites_imported = 0
         tag_id_map = {}  # old_id -> new_id
         with self._write_lock, self.conn:
             # 1. Tags
@@ -623,7 +795,23 @@ class DatabaseManager:
                     self.conn.execute("INSERT OR IGNORE INTO movie_user_tags (movie_id, tag_id) VALUES (?, ?)", (mid, ntid))
                 movies_updated += 1
 
-        return {"tags_imported": tags_imported, "movies_updated": movies_updated}
+            # 3. Favorites (v2+; absent in v1 backups). Validated here rather than
+            # via add_favorite() because that would re-take the write lock.
+            for fav in data.get("favorites", []):
+                etype, ekey = fav.get("entity_type"), fav.get("entity_key")
+                if etype not in self.FAVORITE_TYPES or not ekey:
+                    continue
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO user_favorites (entity_type, entity_key) VALUES (?, ?)",
+                    (etype, str(ekey)),
+                )
+                favorites_imported += 1
+
+        return {
+            "tags_imported": tags_imported,
+            "movies_updated": movies_updated,
+            "favorites_imported": favorites_imported,
+        }
 
     # --- Episode Works Queries (Separated from Movies) ---
     def get_performer_episodes(self, performer_id: int) -> list[dict]:

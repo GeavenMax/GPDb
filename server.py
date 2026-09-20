@@ -164,6 +164,18 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/user/export":
                 return self.handle_user_export()
 
+            # 2b2. /api/user/favorites/keys  (before the plain route below)
+            if path == "/api/user/favorites/keys":
+                return self.handle_get_favorite_keys()
+
+            # 2b3. /api/user/favorites
+            if path == "/api/user/favorites":
+                return self.handle_get_favorites()
+
+            # 2b4. /api/glossary —— 演员属性术语表全表（约 73 条）
+            if path == "/api/glossary":
+                return self.handle_get_glossary()
+
             # 2c. /api/movies/:id/user_data
             user_data_match = re.match(r"^/api/movies/(\d+)/user_data$", path)
             if user_data_match:
@@ -248,6 +260,12 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
 
             if path == "/api/user/import":
                 return self.handle_user_import()
+
+            if path == "/api/user/favorites":
+                return self.handle_toggle_favorite()
+
+            if path == "/api/translate/glossary/run":
+                return self.handle_translate_glossary_run()
 
             if path == "/api/translate/run":
                 return self.handle_translate_run()
@@ -353,6 +371,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
     def handle_movies(self, params: dict):
         q = params.get("query", [""])[0].strip()
         studio = params.get("studio", [""])[0].strip()
+        director = params.get("director", [""])[0].strip()
         category = params.get("category", [""])[0].strip()
         year_min = params.get("yearMin", [""])[0].strip()
         year_max = params.get("yearMax", [""])[0].strip()
@@ -398,6 +417,10 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             if studio:
                 conditions.append("m.studio_name = ?")
                 args.append(studio)
+
+            if director:
+                conditions.append("m.director_name = ?")
+                args.append(director)
 
             if category:
                 conditions.append("m.category = ?")
@@ -528,7 +551,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
 
             # Episodes / Scenes
             ep_rows = conn.execute(
-                "SELECT id, movie_id, title, thumbnail_url, description, action_notes FROM episodes WHERE movie_id = ? ORDER BY id ASC",
+                "SELECT id, movie_id, title, thumbnail_url, description, description_zh, action_notes FROM episodes WHERE movie_id = ? ORDER BY id ASC",
                 (movie_id,)
             ).fetchall()
             movie["episodes"] = [dict(ep) for ep in ep_rows]
@@ -848,7 +871,12 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
         self.send_json(payload)
 
     def handle_translate_movie(self, movie_id: int):
-        """Translate a single synopsis on demand (used by the detail modal)."""
+        """Translate one synopsis on demand, together with this movie's episode synopses.
+
+        The episodes ride along in the same request on purpose: they are short and
+        only ever shown inside this movie's modal, so batching them means opening a
+        movie costs exactly one API call no matter how many episodes it has.
+        """
         import translate
 
         conf = self._translation_configuration()
@@ -857,30 +885,47 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
 
         with get_db_connection() as conn:
             row = conn.execute(
-                "SELECT id, title, description, description_zh FROM movies WHERE id = ?", (movie_id,)
+                "SELECT id, title, description FROM movies WHERE id = ?", (movie_id,)
             ).fetchone()
         if not row:
             return self.send_json({"error": "Movie not found"}, status=404)
 
-        text = (row["description"] or "").strip()
-        if not text:
-            return self.send_json({"error": "该影片没有简介可供翻译"}, status=400)
+        movie_text = (row["description"] or "").strip()
 
-        try:
-            provider = translate.build_provider(translate.resolve_settings(_NoArgs()))
-            result = provider.translate([text])
-        except (translate.TranslationError, SystemExit) as e:
-            return self.send_json({"error": str(e)}, status=502)
-
-        zh = (result[0] if result else "").strip()
         db = DatabaseManager(str(DB_PATH))
-        if zh:
-            db.set_movie_translation(movie_id, zh)
-        else:
-            db.set_movie_translation(movie_id, None)
-        db.close()
+        try:
+            episodes = db.get_untranslated_episodes(movie_id=movie_id)
+            texts = ([movie_text] if movie_text else []) + [e["description"].strip() for e in episodes]
+            if not texts:
+                return self.send_json({"error": "该影片没有简介可供翻译"}, status=400)
 
-        self.send_json({"id": movie_id, "description_zh": zh})
+            try:
+                provider = translate.build_provider(translate.resolve_settings(_NoArgs()))
+                results = provider.translate(texts)
+            except (translate.TranslationError, SystemExit) as e:
+                return self.send_json({"error": str(e)}, status=502)
+
+            # results is positionally aligned with texts: [movie, *episodes].
+            offset = 1 if movie_text else 0
+            movie_zh = ""
+            if movie_text:
+                movie_zh = (results[0] or "").strip()
+                db.set_movie_translation(movie_id, movie_zh or None)
+
+            translated_episodes = []
+            for i, ep in enumerate(episodes):
+                zh = (results[offset + i] or "").strip()
+                if zh:
+                    db.set_episode_translation(ep["id"], zh)
+                translated_episodes.append({"id": ep["id"], "description_zh": zh})
+        finally:
+            db.close()
+
+        self.send_json({
+            "id": movie_id,
+            "description_zh": movie_zh,
+            "episodes": translated_episodes,
+        })
 
     def handle_translate_run(self):
         """Kick off a batch translation in the background."""
@@ -981,6 +1026,91 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
         res = db.import_user_data(body)
         db.close()
         self.send_json(res)
+
+    # --- Favorites (five entity types; see schema.sql §9) ---
+
+    def handle_get_favorites(self):
+        """Data source for the favorites page.
+
+        Has to come from the server rather than filtering an in-memory movie list:
+        once the full-site scrape lands there will be six figures of performers,
+        so the client never holds them all.
+        """
+        db = DatabaseManager(str(DB_PATH))
+        try:
+            grouped = db.get_favorites()
+        finally:
+            db.close()
+        # Keys match entity_type exactly ("movie", not "movies") so the client can
+        # feed them straight back into /api/user/favorites without a name mapping.
+        grouped["counts"] = {t: len(items) for t, items in grouped.items()}
+        self.send_json(grouped)
+
+    def handle_get_favorite_keys(self):
+        """Lightweight {type: [key…]} — only used to colour heart buttons client-side."""
+        db = DatabaseManager(str(DB_PATH))
+        try:
+            self.send_json(db.get_favorite_keys())
+        finally:
+            db.close()
+
+    def handle_toggle_favorite(self):
+        body = self.read_json_body()
+        entity_type = (body.get("entity_type") or "").strip()
+        entity_key = str(body.get("entity_key") or "").strip()
+        action = (body.get("action") or "toggle").strip()
+
+        if entity_type not in DatabaseManager.FAVORITE_TYPES:
+            return self.send_json(
+                {"error": f"不支持的 entity_type '{entity_type}'，可选: {', '.join(DatabaseManager.FAVORITE_TYPES)}"},
+                status=400,
+            )
+        if not entity_key:
+            return self.send_json({"error": "entity_key 不能为空"}, status=400)
+        if action not in ("add", "remove", "toggle"):
+            return self.send_json({"error": "action 只能是 add / remove / toggle"}, status=400)
+
+        db = DatabaseManager(str(DB_PATH))
+        try:
+            if action == "toggle":
+                is_favorite = db.toggle_favorite(entity_type, entity_key)
+            elif action == "add":
+                db.add_favorite(entity_type, entity_key)
+                is_favorite = True
+            else:
+                db.remove_favorite(entity_type, entity_key)
+                is_favorite = False
+        finally:
+            db.close()
+
+        self.send_json({
+            "success": True,
+            "entity_type": entity_type,
+            "entity_key": entity_key,
+            "is_favorite": is_favorite,
+        })
+
+    # --- Performer attribute glossary (see schema.sql §10) ---
+
+    def handle_get_glossary(self):
+        """The whole glossary (~73 rows). The client fetches it once and looks up locally."""
+        db = DatabaseManager(str(DB_PATH))
+        try:
+            terms = db.load_glossary()
+        finally:
+            db.close()
+        self.send_json({"terms": terms, "count": len(terms)})
+
+    def handle_translate_glossary_run(self):
+        """Translate the whole attribute vocabulary in one API call. Supports dry_run."""
+        body = self.read_json_body()
+        import translate
+        db = DatabaseManager(str(DB_PATH))
+        try:
+            result = translate.translate_glossary(db, dry_run=bool(body.get("dry_run")))
+        finally:
+            db.close()
+        self.send_json(result)
 
     def handle_studios(self):
         with get_db_connection() as conn:
