@@ -20,11 +20,25 @@ import type {
   TranslationStats,
   TranslationProfile,
   TranslationPreset,
+  FavoriteType,
+  FavoriteItem,
+  FavoritesResponse,
 } from './types';
+import { FAVORITE_TYPES } from './types';
+import { loadGlossary, glossaryCount } from './utils/glossary';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
-  Languages, User as UserIcon, Sparkles,
+  Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers,
 } from '@lucide/vue';
+
+/** Labels for the five favorites sections and the type pickers. */
+const FAVORITE_LABELS: Record<FavoriteType, string> = {
+  movie: '影片',
+  performer: '演员',
+  studio: '片商',
+  director: '导演',
+  episode: '片段',
+};
 
 // State
 const currentTab = ref<'movies' | 'performers' | 'favorites' | 'settings'>('movies');
@@ -41,7 +55,24 @@ const totalMovies = ref(0);
 const performers = ref<Performer[]>([]);
 const totalPerformers = ref(0);
 
-const favorites = ref<Set<number>>(new Set());
+/**
+ * Favorited keys, grouped by type. Kept as plain string sets so a heart can be
+ * coloured with a single `.has()` regardless of which of the five kinds it is
+ * (movie/performer/episode key on the numeric id as a string; studio/director on
+ * the name itself, which is what the library filter takes).
+ *
+ * SQLite is the only source of truth — this is a cache of it, hydrated on load and
+ * updated optimistically on click. There is no localStorage copy.
+ */
+const favorites = ref<Record<FavoriteType, Set<string>>>(emptyKeys());
+
+/** Favorited items enriched for display, fetched only while the favorites tab is open. */
+const favoriteItems = ref<FavoritesResponse | null>(null);
+const favoritesLoading = ref(false);
+
+function emptyKeys(): Record<FavoriteType, Set<string>> {
+  return { movie: new Set(), performer: new Set(), studio: new Set(), director: new Set(), episode: new Set() };
+}
 
 const selectedMovie = ref<Movie | null>(null);
 const selectedPerformer = ref<Performer | null>(null);
@@ -70,6 +101,7 @@ function layerOf(kind: 'movie' | 'performer') {
 const filters = reactive<FilterState>({
   query: '',
   studio: '',
+  director: '',
   yearMin: null,
   yearMax: null,
   category: '',
@@ -259,6 +291,36 @@ async function loadTranslationStats() {
   translationStats.value = await api.getTranslationStats();
 }
 
+// --- Performer attribute glossary -------------------------------------------
+//
+// Attribute values (skin tone, hair colour, tattoo locations, ...) come from a small
+// closed vocabulary, so they are translated once into `attr_glossary` and looked up
+// locally afterwards. That is why this is a one-off button rather than something the
+// per-performer view triggers: 76 terms against tens of thousands of performers.
+const glossaryBusy = ref(false);
+const glossaryMsg = ref('');
+const glossaryError = ref('');
+
+async function handleRunGlossary(dryRun: boolean) {
+  glossaryBusy.value = true;
+  glossaryMsg.value = '';
+  glossaryError.value = '';
+  const res = await api.runGlossaryTranslation(dryRun);
+  if (res.success) {
+    if (dryRun) {
+      glossaryMsg.value = `待翻译术语 ${res.pending} 条（试跑，未写入）`;
+    } else {
+      glossaryMsg.value = `术语表已更新：本次新增 ${res.translated} 条，累计 ${res.total} 条` +
+        (res.failed ? `，失败 ${res.failed} 条` : '');
+      // Refresh the local lookup table so the new labels appear without a reload.
+      await loadGlossary(true);
+    }
+  } else {
+    glossaryError.value = res.error || '术语表翻译失败';
+  }
+  glossaryBusy.value = false;
+}
+
 async function handleRunTranslation(limit: number | null) {
   isTranslating.value = true;
   translateMsg.value = '';
@@ -442,8 +504,13 @@ async function handleImportFile(e: Event) {
     try {
       const json = JSON.parse(evt.target?.result as string);
       const res = await api.importUserData(json);
-      importStatusMsg.value = `导入成功: 恢复了 ${res.tags_imported} 个标签与 ${res.movies_updated} 部影片的用户标记！`;
+      importStatusMsg.value =
+        `导入成功: 恢复了 ${res.tags_imported} 个标签、${res.movies_updated} 部影片的用户标记` +
+        (res.favorites_imported ? `，以及 ${res.favorites_imported} 条收藏` : '') + '！';
       setTimeout(() => { importStatusMsg.value = ''; }, 5000);
+      // Favorites come from the server snapshot now, so both caches need rebuilding.
+      loadFavoriteKeys();
+      if (currentTab.value === 'favorites') loadFavorites();
       fetchMovies();
     } catch (err: any) {
       alert('导入失败，请检查 JSON 格式是否正确: ' + err.message);
@@ -597,7 +664,13 @@ const searchQuery = computed({
 
 // Movie filters only re-query the movie grid.
 watch(
-  [() => filters.query, () => filters.studio, () => filters.category, () => filters.sortBy],
+  [
+    () => filters.query,
+    () => filters.studio,
+    () => filters.director,
+    () => filters.category,
+    () => filters.sortBy,
+  ],
   () => {
     if (currentTab.value === 'movies') reloadCurrentTab();
   }
@@ -618,20 +691,144 @@ watch(currentTab, (newTab) => {
   } else if (newTab === 'performers') {
     if (performers.value.length === 0) reloadCurrentTab();
     loadPerformerFacets();
+  } else if (newTab === 'favorites') {
+    // Always refetched: the page is a server-side snapshot of five tables and the
+    // scrape running in the background keeps adding rows it can point at.
+    loadFavorites();
   } else if (newTab === 'settings') {
     loadCacheStats();
     loadTranslationStats();
   }
 });
 
+/** Whether one item is favorited. `key` is an id for most types, a name for studio/director. */
+function isFavorite(type: FavoriteType, key: string | number | null | undefined): boolean {
+  if (key == null) return false;
+  return favorites.value[type].has(String(key));
+}
+
+/** MovieCard emits the whole movie; the generic toggle takes a key. */
 function toggleFavorite(m: Movie) {
-  if (favorites.value.has(m.id)) {
-    favorites.value.delete(m.id);
-  } else {
-    favorites.value.add(m.id);
+  void toggleFavoriteEntity('movie', String(m.id));
+}
+
+/** Same for the performer modal, which emits the performer. */
+function togglePerformerFavorite(p: Performer) {
+  void toggleFavoriteEntity('performer', String(p.id));
+}
+
+async function toggleFavoriteEntity(type: FavoriteType, key: string) {
+  const set = favorites.value[type];
+  const wasFavorite = set.has(key);
+
+  // Optimistic flip so the heart responds immediately; the round trip is a DB write.
+  if (wasFavorite) set.delete(key);
+  else set.add(key);
+
+  try {
+    const nowFavorite = await api.toggleFavorite(type, key);
+    // The response is authoritative — adopt it rather than assuming the flip landed.
+    if (nowFavorite) set.add(key);
+    else set.delete(key);
+  } catch {
+    // Roll back so the UI never claims a favorite the database does not have.
+    if (wasFavorite) set.add(key);
+    else set.delete(key);
+    return;
   }
-  // Persist to localStorage
-  localStorage.setItem('gevi_favs', JSON.stringify(Array.from(favorites.value)));
+
+  // The favorites page renders a server-side snapshot, so refresh it if it is on screen.
+  if (currentTab.value === 'favorites') loadFavorites();
+}
+
+async function loadFavorites() {
+  favoritesLoading.value = true;
+  try {
+    const groups = await api.getFavorites();
+    favoriteItems.value = groups;
+    // Re-derive the heart cache from the authoritative list.
+    const keys = emptyKeys();
+    for (const t of FAVORITE_TYPES) {
+      for (const item of groups[t]) keys[t].add(item.key);
+    }
+    favorites.value = keys;
+  } catch {
+    // Leave the current hearts alone; they are still the best information we have.
+  } finally {
+    favoritesLoading.value = false;
+  }
+}
+
+/** Load just the favorited keys, for colouring hearts across the whole app. */
+async function loadFavoriteKeys() {
+  try {
+    const keys = await api.getFavoriteKeys();
+    const next = emptyKeys();
+    for (const t of FAVORITE_TYPES) {
+      for (const k of keys[t] || []) next[t].add(k);
+    }
+    favorites.value = next;
+  } catch {
+    // Server unreachable: hearts stay unlit rather than the page failing to load.
+  }
+}
+
+/** Section rows, kept separate so the template needs no non-null assertions. */
+const favMovies = computed(() => favoriteItems.value?.movie || []);
+const favPerformers = computed(() => favoriteItems.value?.performer || []);
+const favEpisodes = computed(() => favoriteItems.value?.episode || []);
+const favStudios = computed(() => favoriteItems.value?.studio || []);
+const favDirectors = computed(() => favoriteItems.value?.director || []);
+
+/** Total across all five sections, for the page header. */
+const favoriteTotal = computed(() => {
+  const counts = favoriteItems.value?.counts;
+  if (!counts) return 0;
+  return FAVORITE_TYPES.reduce((sum, t) => sum + (counts[t] || 0), 0);
+});
+
+/**
+ * Adapt a server favorites row into the minimal shape MovieCard renders.
+ *
+ * The favorites endpoint returns display rows (key/title/cover) rather than full
+ * movie records, which is deliberate — it must work once the library is larger than
+ * what the client can hold. Only the fields MovieCard actually reads are filled in;
+ * anything absent simply does not render.
+ */
+function asMovie(f: FavoriteItem): Movie {
+  return {
+    id: Number(f.key),
+    title: f.title || `#${f.key}`,
+    cover_full: f.cover_full ?? null,
+    release_year: f.release_year ?? null,
+    studio_name: f.studio_name ?? null,
+  };
+}
+
+/** Reveal the fallback tile behind an <img> that failed to load. */
+function hideBrokenImage(e: Event) {
+  const img = e.target as HTMLImageElement;
+  if (img) img.style.display = 'none';
+}
+
+/** Jump to the library filtered by one studio (also used by favorited studios). */
+function filterByStudio(studioName: string) {
+  filters.studio = studioName;
+  filters.director = '';
+  if (selectedMovie.value) closeMovieDetail();
+  if (selectedPerformer.value) closePerformerDetail();
+  currentTab.value = 'movies';
+  fetchMovies(true);
+}
+
+/** Same, for a director. Needs the `director` filter added to FilterState. */
+function filterByDirector(directorName: string) {
+  filters.director = directorName;
+  filters.studio = '';
+  if (selectedMovie.value) closeMovieDetail();
+  if (selectedPerformer.value) closePerformerDetail();
+  currentTab.value = 'movies';
+  fetchMovies(true);
 }
 
 async function openMovieDetail(m: Movie) {
@@ -662,20 +859,13 @@ function closePerformerDetail() {
   popModal('performer');
 }
 
-function filterByStudio(studioName: string) {
-  filters.studio = studioName;
-  if (selectedMovie.value) closeMovieDetail();
-  currentTab.value = 'movies';
-  fetchMovies(true);
-}
-
 onMounted(async () => {
-  const savedFavs = localStorage.getItem('gevi_favs');
-  if (savedFavs) {
-    try {
-      favorites.value = new Set(JSON.parse(savedFavs));
-    } catch {}
-  }
+  // Hearts come from the database, not localStorage — so they survive a browser
+  // change and travel with an export. Both loads are fire-and-forget: a failure
+  // leaves the UI usable, just without hearts or Chinese attribute labels.
+  loadFavoriteKeys();
+  loadGlossary();
+
   loadStats();
   await fetchMovies(true);
   loadPerformerFacets();
@@ -813,7 +1003,7 @@ onMounted(async () => {
               v-for="m in movies"
               :key="m.id"
               :movie="m"
-              :is-favorite="favorites.has(m.id)"
+              :is-favorite="isFavorite('movie', m.id)"
               :view="viewMode"
               :lang="descLang"
               @select="openMovieDetail"
@@ -1038,14 +1228,17 @@ onMounted(async () => {
           />
         </div>
 
-        <!-- 3. Favorites Tab -->
-        <div v-else-if="currentTab === 'favorites'" class="space-y-6">
+        <!-- 3. Favorites Tab — five server-driven sections -->
+        <div v-else-if="currentTab === 'favorites'" class="space-y-8">
           <div class="flex items-center justify-between flex-wrap gap-3">
-            <h1 class="text-xl font-bold text-white tracking-tight">我的收藏片单</h1>
+            <h1 class="text-xl font-bold text-white tracking-tight">我的收藏</h1>
             <div class="flex items-center gap-3">
-              <span class="text-xs text-zinc-500 font-mono">({{ favorites.size }} 部)</span>
-              <!-- Grid columns adjuster -->
-              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
+              <span class="text-xs text-zinc-500 font-mono">({{ favoriteTotal }} 项)</span>
+              <!-- Grid columns adjuster: only meaningful once there are movie cards -->
+              <div
+                v-if="favMovies.length > 0"
+                class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs"
+              >
                 <span class="text-zinc-500 text-[11px]">每行</span>
                 <button
                   @click="decreaseCols"
@@ -1069,27 +1262,195 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div
-            v-if="favorites.size > 0"
-            class="grid transition-all duration-200"
-            :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
-            :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
-          >
-            <MovieCard
-              v-for="m in movies.filter(x => favorites.has(x.id))"
-              :key="m.id"
-              :movie="m"
-              :is-favorite="true"
-              :view="viewMode"
-              :lang="descLang"
-              @select="openMovieDetail"
-              @toggle-favorite="toggleFavorite"
-            />
+          <div v-if="favoritesLoading && favoriteTotal === 0" class="text-center py-24">
+            <Loader2 class="w-8 h-8 text-amber-500 animate-spin mx-auto" />
           </div>
+
+          <template v-else-if="favoriteTotal > 0">
+            <!-- 1. Movies -->
+            <section v-if="favMovies.length > 0" class="space-y-3">
+              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
+                <Film class="w-4 h-4 text-amber-400" />
+                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.movie }}</h2>
+                <span class="text-xs text-zinc-500 font-mono">{{ favMovies.length }}</span>
+              </div>
+              <div
+                class="grid transition-all duration-200"
+                :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
+                :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
+              >
+                <MovieCard
+                  v-for="f in favMovies"
+                  :key="f.key"
+                  :movie="asMovie(f)"
+                  :translated="Boolean(f.has_zh)"
+                  :is-favorite="true"
+                  :view="viewMode"
+                  :lang="descLang"
+                  @select="openMovieDetail(asMovie(f))"
+                  @toggle-favorite="toggleFavoriteEntity('movie', f.key)"
+                />
+              </div>
+            </section>
+
+            <!-- 2. Performers -->
+            <section v-if="favPerformers.length > 0" class="space-y-3">
+              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
+                <UserIcon class="w-4 h-4 text-amber-400" />
+                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.performer }}</h2>
+                <span class="text-xs text-zinc-500 font-mono">{{ favPerformers.length }}</span>
+              </div>
+              <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                <div
+                  v-for="f in favPerformers"
+                  :key="f.key"
+                  @click="openPerformerDetail(Number(f.key))"
+                  class="group relative rounded-2xl overflow-hidden bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/50 transition-all duration-200 cursor-pointer select-none"
+                >
+                  <div class="relative w-full aspect-[3/4] bg-gradient-to-tr from-amber-600 to-yellow-400">
+                    <span class="absolute inset-0 flex items-center justify-center text-2xl font-black text-black/70">
+                      {{ (f.name || '?').charAt(0).toUpperCase() }}
+                    </span>
+                    <img
+                      v-if="f.image_url"
+                      :src="getImageUrl(f.image_url)"
+                      :alt="f.name"
+                      loading="lazy"
+                      referrerpolicy="no-referrer"
+                      class="absolute inset-0 w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                      @error="hideBrokenImage"
+                    />
+                    <button
+                      @click.stop="toggleFavoriteEntity('performer', f.key)"
+                      class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 hover:bg-black/80 backdrop-blur-md flex items-center justify-center text-rose-400 transition"
+                      title="取消收藏该演员"
+                    >
+                      <Heart class="w-3 h-3" fill="currentColor" />
+                    </button>
+                  </div>
+                  <div class="p-2">
+                    <div class="text-[11px] font-semibold text-zinc-200 truncate" :title="f.name">{{ f.name }}</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 3. Episodes -->
+            <section v-if="favEpisodes.length > 0" class="space-y-3">
+              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
+                <Layers class="w-4 h-4 text-amber-400" />
+                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.episode }}</h2>
+                <span class="text-xs text-zinc-500 font-mono">{{ favEpisodes.length }}</span>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div
+                  v-for="f in favEpisodes"
+                  :key="f.key"
+                  @click="f.movie_id && openMovieDetailById(f.movie_id)"
+                  class="group flex gap-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/50 transition-all duration-200 overflow-hidden cursor-pointer select-none p-2.5"
+                >
+                  <div class="relative w-24 shrink-0 aspect-video rounded-xl overflow-hidden bg-zinc-950">
+                    <img
+                      v-if="f.thumbnail_url"
+                      :src="getImageUrl(f.thumbnail_url)"
+                      :alt="f.title || ''"
+                      loading="lazy"
+                      referrerpolicy="no-referrer"
+                      class="w-full h-full object-cover"
+                    />
+                    <div v-else class="w-full h-full flex items-center justify-center text-zinc-700">
+                      <Layers class="w-5 h-5 stroke-1" />
+                    </div>
+                  </div>
+                  <div class="flex-1 min-w-0 flex flex-col justify-between gap-1">
+                    <div class="min-w-0">
+                      <div class="flex items-start justify-between gap-2">
+                        <span class="text-xs font-bold text-amber-300 truncate" :title="f.title || ''">{{ f.title }}</span>
+                        <button
+                          @click.stop="toggleFavoriteEntity('episode', f.key)"
+                          class="shrink-0 text-rose-400 transition"
+                          title="取消收藏该片段"
+                        >
+                          <Heart class="w-3.5 h-3.5" fill="currentColor" />
+                        </button>
+                      </div>
+                      <div v-if="f.movie_title" class="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-1 truncate">
+                        <Film class="w-2.5 h-2.5 text-zinc-500 shrink-0" />
+                        <span class="truncate" :title="f.movie_title">出处: {{ f.movie_title }}</span>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] text-zinc-500">
+                      <span v-if="f.studio_name" class="truncate max-w-[120px]" :title="f.studio_name">{{ f.studio_name }}</span>
+                      <span v-if="f.has_zh" class="text-emerald-400 flex items-center gap-0.5 shrink-0">
+                        <Languages class="w-2.5 h-2.5" />中
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 4. Studios — clicking jumps to the library filtered by that studio -->
+            <section v-if="favStudios.length > 0" class="space-y-3">
+              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
+                <Building2 class="w-4 h-4 text-amber-400" />
+                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.studio }}</h2>
+                <span class="text-xs text-zinc-500 font-mono">{{ favStudios.length }}</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <div
+                  v-for="f in favStudios"
+                  :key="f.key"
+                  class="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-amber-500/50 transition"
+                >
+                  <button @click="filterByStudio(f.key)" class="text-xs font-medium text-zinc-300 hover:text-amber-300 transition" :title="`查看 ${f.key} 的全部影片`">
+                    {{ f.key }}
+                  </button>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 font-mono">{{ f.works_count || 0 }}</span>
+                  <button
+                    @click.stop="toggleFavoriteEntity('studio', f.key)"
+                    class="text-rose-400 hover:text-rose-300 transition"
+                    title="取消收藏该片商"
+                  >
+                    <Heart class="w-3 h-3" fill="currentColor" />
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <!-- 5. Directors -->
+            <section v-if="favDirectors.length > 0" class="space-y-3">
+              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
+                <Clapperboard class="w-4 h-4 text-amber-400" />
+                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.director }}</h2>
+                <span class="text-xs text-zinc-500 font-mono">{{ favDirectors.length }}</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <div
+                  v-for="f in favDirectors"
+                  :key="f.key"
+                  class="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-amber-500/50 transition"
+                >
+                  <button @click="filterByDirector(f.key)" class="text-xs font-medium text-zinc-300 hover:text-amber-300 transition" :title="`查看 ${f.key} 导演的全部影片`">
+                    {{ f.key }}
+                  </button>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 font-mono">{{ f.works_count || 0 }}</span>
+                  <button
+                    @click.stop="toggleFavoriteEntity('director', f.key)"
+                    class="text-rose-400 hover:text-rose-300 transition"
+                    title="取消收藏该导演"
+                  >
+                    <Heart class="w-3 h-3" fill="currentColor" />
+                  </button>
+                </div>
+              </div>
+            </section>
+          </template>
+
           <div v-else class="text-center py-24 space-y-3">
             <Heart class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-zinc-400">暂无收藏影片</div>
-            <div class="text-xs text-zinc-600">在浏览影片时点击卡片右上角心形图标即可收藏</div>
+            <div class="text-sm font-semibold text-zinc-400">暂无收藏</div>
+            <div class="text-xs text-zinc-600">影片、演员、片商、导演和分集片段都可以收藏，点击心形图标即可加入</div>
           </div>
         </div>
 
@@ -1504,13 +1865,73 @@ onMounted(async () => {
             </div>
           </div>
 
+          <!--
+            Section 3b: Performer attribute glossary.
+
+            Separate from the synopsis job above: this is a one-off translation of a
+            closed vocabulary rather than a per-film queue, and its result is stored
+            in a lookup table the client reads on startup.
+          -->
+          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+            <div class="flex items-center gap-3">
+              <Sparkles class="w-5 h-5 text-amber-400" />
+              <div>
+                <div class="text-sm font-bold text-white">演员属性术语表</div>
+                <div class="text-xs text-zinc-400">
+                  身高、肤色、发色、纹身部位等属性取值来自一个很小的固定词表。整表翻译一次后客户端本地查表，
+                  浏览演员不再产生任何 API 调用。
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 text-xs">
+              <span class="text-zinc-500">已收录术语</span>
+              <span class="font-mono font-bold text-emerald-400">{{ glossaryCount() }}</span>
+              <span class="text-zinc-600">条（浏览器本地已加载）</span>
+            </div>
+
+            <div v-if="glossaryMsg" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+              {{ glossaryMsg }}
+            </div>
+            <div v-if="glossaryError" class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+              {{ glossaryError }}
+            </div>
+
+            <div v-if="!IS_TAURI" class="flex items-center gap-3 pt-1 flex-wrap">
+              <button
+                @click="handleRunGlossary(true)"
+                :disabled="glossaryBusy || !translationStats?.configured"
+                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Loader2 v-if="glossaryBusy" class="w-3.5 h-3.5 animate-spin" />
+                <Languages v-else class="w-3.5 h-3.5" />
+                <span>试跑（不写入）</span>
+              </button>
+
+              <button
+                @click="handleRunGlossary(false)"
+                :disabled="glossaryBusy || !translationStats?.configured"
+                class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Loader2 v-if="glossaryBusy" class="w-3.5 h-3.5 animate-spin" />
+                <Sparkles v-else class="w-3.5 h-3.5" />
+                <span>{{ glossaryBusy ? '翻译中…' : '翻译术语表' }}</span>
+              </button>
+            </div>
+
+            <div v-else class="text-xs text-zinc-400 leading-relaxed p-3 rounded-xl bg-zinc-800/60 border border-zinc-700">
+              桌面版直接读写本地数据库，请用命令行运行：
+              <code class="font-mono text-zinc-300">python3 translate.py --glossary</code>
+            </div>
+          </div>
+
           <!-- Section 4: Data Import & Export (Custom Backup & Migration) -->
           <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
             <div class="flex items-center gap-3">
               <Download class="w-5 h-5 text-amber-400" />
               <div>
                 <div class="text-sm font-bold text-white">个人扩展数据备份与恢复</div>
-                <div class="text-xs text-zinc-400">导出或导入所有自定义标签、私密星级评分、观看状态与私密笔记</div>
+                <div class="text-xs text-zinc-400">导出或导入所有自定义标签、私密星级评分、观看状态、私密笔记与全部收藏</div>
               </div>
             </div>
 
@@ -1544,7 +1965,8 @@ onMounted(async () => {
     <!-- Modals & Drawers -->
     <MovieDetailModal
       :movie="selectedMovie"
-      :is-favorite="selectedMovie ? favorites.has(selectedMovie.id) : false"
+      :is-favorite="selectedMovie ? isFavorite('movie', selectedMovie.id) : false"
+      :favorite-keys="favorites"
       :lang="descLang"
       :z-index="layerOf('movie')"
       :is-top="modalStack[modalStack.length - 1] === 'movie'"
@@ -1552,19 +1974,26 @@ onMounted(async () => {
       @close="closeMovieDetail"
       @select-performer="openPerformerDetail"
       @filter-studio="filterByStudio"
+      @filter-director="filterByDirector"
       @toggle-favorite="toggleFavorite"
+      @toggle-entity-favorite="toggleFavoriteEntity"
       @user-data-changed="onUserDataChanged"
       @translated="onMovieTranslated"
     />
 
     <PerformerDetailModal
       :performer="selectedPerformer"
+      :is-favorite="selectedPerformer ? isFavorite('performer', selectedPerformer.id) : false"
+      :favorite-keys="favorites"
       :lang="descLang"
       :z-index="layerOf('performer')"
       :is-top="modalStack[modalStack.length - 1] === 'performer'"
       @close="closePerformerDetail"
       @select-movie="openMovieDetail"
       @select-movie-id="openMovieDetailById"
+      @toggle-favorite="togglePerformerFavorite"
+      @toggle-entity-favorite="toggleFavoriteEntity"
+      @filter-studio="filterByStudio"
     />
 
     <FilterDrawer

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown } from '@lucide/vue';
-import type { Movie, UserTag } from '../types';
+import type { Movie, UserTag, FavoriteType } from '../types';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { api, IS_TAURI } from '../api';
@@ -29,16 +29,27 @@ const props = defineProps<{
    * single/batch switch in Settings; the parent owns that choice.
    */
   autoTranslate?: boolean;
+  /** Favorited keys by type — drives the studio / director / episode hearts. */
+  favoriteKeys?: Partial<Record<FavoriteType, Set<string>>>;
 }>();
 
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'select-performer', performerId: number): void;
   (e: 'filter-studio', studioName: string): void;
+  (e: 'filter-director', directorName: string): void;
   (e: 'toggle-favorite', movie: Movie): void;
+  /** Studio / director / episode hearts; the film itself has its own event above. */
+  (e: 'toggle-entity-favorite', type: FavoriteType, key: string): void;
   (e: 'user-data-changed', movieId: number): void;
   (e: 'translated', movieId: number, descriptionZh: string): void;
 }>();
+
+/** Whether a studio/director/episode is favorited. Names are the key for studio and director. */
+function isFav(type: FavoriteType, key: string | null | undefined): boolean {
+  if (!key) return false;
+  return Boolean(props.favoriteKeys?.[type]?.has(key));
+}
 
 /**
  * Films this session has already tried to auto-translate.
@@ -71,13 +82,23 @@ watch(() => props.movie, (m) => {
   translateError.value = '';
   showPrivate.value = false;
 
-  // Single-translation mode: fill in this one film's synopsis as it is opened.
-  // Skipped when there is nothing to translate, when a translation already
-  // exists, and on the desktop build, which has no server to run the request.
+  // Single-translation mode: fill in this one film's synopsis as it is opened,
+  // together with any episode synopses that came back with it.
+  //
+  // The episode check is separate from the synopsis check because the two can
+  // diverge: a film translated before episodes were translated at all has a Chinese
+  // synopsis and English episodes, and it would otherwise never be offered again.
+  // The server skips the synopsis in that case and only sends the episodes.
+  // Skipped on the desktop build, which has no server to run the request.
   const id = m?.id;
+  const needsSynopsis =
+    (m?.description || '').trim() && !(m?.description_zh || '').trim();
+  const needsEpisodes = (m?.episodes || []).some(
+    ep => (ep.description || '').trim() && !(ep.description_zh || '').trim(),
+  );
   if (
     props.autoTranslate && !IS_TAURI && id && !autoAttempted.has(id) &&
-    (m?.description || '').trim() && !(m?.description_zh || '').trim()
+    (needsSynopsis || needsEpisodes)
   ) {
     autoAttempted.add(id);
     nextTick(() => translateNow());
@@ -85,6 +106,20 @@ watch(() => props.movie, (m) => {
 }, { immediate: true });
 
 const hasZh = computed(() => Boolean(zhDescription.value?.trim()));
+
+/**
+ * Episodes that still have an English-only synopsis.
+ *
+ * Tracked separately from `hasZh` because the two ages differ: a film translated
+ * before episode synopses were translated at all keeps an English episode list, and
+ * the synopsis button is hidden once `hasZh` is set. Surfacing the count is what
+ * gives the user a way to finish the job from the film they are looking at.
+ */
+const pendingEpisodeCount = computed(() =>
+  (props.movie?.episodes || []).filter(
+    ep => (ep.description || '').trim() && !(ep.description_zh || '').trim(),
+  ).length,
+);
 
 /** Chinese when available and wanted; the original otherwise. */
 const displayedDescription = computed(() => {
@@ -125,6 +160,25 @@ watch(() => props.isTop, (top) => {
   if (top) nextTick(() => measureDescription());
 });
 
+/**
+ * Copy episode synopses that came back alongside the film's translation onto the
+ * episode rows this modal already holds.
+ *
+ * Episodes are translated in the same request as their parent film because an
+ * episode's synopsis is only ever read from inside that film — there is no separate
+ * "translate this episode" action to keep in sync. The movie object belongs to the
+ * parent, so writing through to it here is what makes the new text render.
+ */
+function applyEpisodeTranslations(rows: Array<{ id: number; description_zh: string | null }>) {
+  const episodes = props.movie?.episodes;
+  if (!episodes || episodes.length === 0) return;
+  const byId = new Map(rows.map(r => [r.id, r.description_zh]));
+  for (const ep of episodes) {
+    const zh = byId.get(ep.id);
+    if (zh) ep.description_zh = zh;
+  }
+}
+
 async function translateNow() {
   if (!props.movie) return;
   isTranslating.value = true;
@@ -132,9 +186,15 @@ async function translateNow() {
   const id = props.movie.id;
   const result = await api.translateMovie(id);
   if (result) {
-    zhDescription.value = result;
-    showOriginal.value = false;
-    emit('translated', id, result);
+    // Empty when the server skipped an already-translated synopsis and only sent
+    // episodes — keep what is on screen rather than blanking it.
+    const zh = (result.description_zh || '').trim();
+    if (zh) {
+      zhDescription.value = zh;
+      showOriginal.value = false;
+      emit('translated', id, zh);
+    }
+    applyEpisodeTranslations(result.episodes);
     emit('user-data-changed', id);
   } else {
     translateError.value = '翻译失败。请到「设置 → 翻译服务来源」确认 API Key 可用（可点「测试」验证）。';
@@ -229,11 +289,18 @@ async function handleCreateTag() {
   }
 }
 
+/**
+ * The poster to show, already routed through the local image cache.
+ *
+ * Both the poster and the blurred backdrop read this, so the caching (and the
+ * quality upgrade it performs) is applied in one place rather than at each use.
+ */
 const currentCover = computed(() => {
-  if (props.movie?.covers && props.movie.covers.length > 0) {
-    return props.movie.covers[activeCoverIndex.value] || props.movie.cover_full;
-  }
-  return props.movie?.cover_full || '';
+  const covers = props.movie?.covers;
+  const raw = covers && covers.length > 0
+    ? covers[activeCoverIndex.value] || props.movie?.cover_full
+    : props.movie?.cover_full;
+  return raw ? getImageUrl(raw) : '';
 });
 
 function onKeydown(e: KeyboardEvent) {
@@ -286,11 +353,11 @@ onUnmounted(() => {
         a long description used to be unreachable, not just awkward to scroll.
       -->
       <div class="relative w-full shrink-0 overflow-hidden bg-zinc-950 p-6 md:p-8 border-b border-zinc-800">
-        <!-- Blurred background image -->
+        <!-- Blurred background image: follows the selected cover, cached like the poster -->
         <div
-          v-if="movie.cover_full"
+          v-if="currentCover"
           class="absolute inset-0 bg-cover bg-center blur-2xl opacity-25 scale-110 pointer-events-none"
-          :style="{ backgroundImage: `url(${movie.cover_full})` }"
+          :style="{ backgroundImage: `url(${currentCover})` }"
         ></div>
 
         <!-- Foreground Content -->
@@ -380,9 +447,9 @@ onUnmounted(() => {
               {{ movie.title }}
             </h1>
 
-            <!-- Studio & Director Pills -->
+            <!-- Studio & Director Pills (each filterable and favoritable) -->
             <div class="flex items-center gap-3 flex-wrap">
-              <div v-if="movie.studio_name" class="flex items-center gap-2">
+              <div v-if="movie.studio_name" class="flex items-center gap-1.5">
                 <Building2 class="w-4 h-4 text-zinc-400" />
                 <button
                   @click="emit('filter-studio', movie.studio_name)"
@@ -390,12 +457,33 @@ onUnmounted(() => {
                 >
                   {{ movie.studio_name }}
                 </button>
+                <button
+                  @click="emit('toggle-entity-favorite', 'studio', movie.studio_name)"
+                  :title="isFav('studio', movie.studio_name) ? '取消收藏该片商' : '收藏该片商'"
+                  class="transition"
+                  :class="isFav('studio', movie.studio_name) ? 'text-rose-400' : 'text-zinc-600 hover:text-rose-400'"
+                >
+                  <Heart class="w-3.5 h-3.5" :fill="isFav('studio', movie.studio_name) ? 'currentColor' : 'none'" />
+                </button>
               </div>
 
-              <div v-if="movie.director_name" class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md text-xs text-zinc-300">
+              <div v-if="movie.director_name" class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md text-xs text-zinc-300">
                 <Clapperboard class="w-3.5 h-3.5 text-amber-400" />
                 <span class="text-zinc-500">导演:</span>
-                <span class="font-medium text-zinc-200">{{ movie.director_name }}</span>
+                <button
+                  @click="emit('filter-director', movie.director_name)"
+                  class="font-medium text-zinc-200 hover:text-amber-300 hover:underline transition"
+                >
+                  {{ movie.director_name }}
+                </button>
+                <button
+                  @click="emit('toggle-entity-favorite', 'director', movie.director_name)"
+                  :title="isFav('director', movie.director_name) ? '取消收藏该导演' : '收藏该导演'"
+                  class="transition"
+                  :class="isFav('director', movie.director_name) ? 'text-rose-400' : 'text-zinc-600 hover:text-rose-400'"
+                >
+                  <Heart class="w-3.5 h-3.5" :fill="isFav('director', movie.director_name) ? 'currentColor' : 'none'" />
+                </button>
               </div>
             </div>
 
@@ -413,6 +501,18 @@ onUnmounted(() => {
                 </div>
 
                 <div class="flex items-center gap-2">
+                  <!-- The synopsis is translated but some episodes are not -->
+                  <button
+                    v-if="pendingEpisodeCount > 0 && !IS_TAURI"
+                    @click="translateNow"
+                    :disabled="isTranslating"
+                    class="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition flex items-center gap-1 disabled:opacity-50"
+                    title="该影片的片段简介尚未翻译，会与简介一起送翻译"
+                  >
+                    <Loader2 v-if="isTranslating" class="w-3 h-3 animate-spin" />
+                    <Languages v-else class="w-3 h-3" />
+                    {{ isTranslating ? '翻译中...' : `翻译片段 (${pendingEpisodeCount})` }}
+                  </button>
                   <button
                     v-if="hasZh"
                     @click="showOriginal = !showOriginal"
@@ -679,9 +779,20 @@ onUnmounted(() => {
             <!-- Scene Info -->
             <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
               <div>
-                <div class="text-xs font-bold text-amber-300">{{ ep.title }}</div>
-                <div v-if="ep.description" class="text-xs text-zinc-400 mt-1 line-clamp-3 leading-relaxed">
-                  {{ ep.description }}
+                <div class="flex items-start justify-between gap-2">
+                  <div class="text-xs font-bold text-amber-300">{{ ep.title }}</div>
+                  <button
+                    @click="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+                    :title="isFav('episode', String(ep.id)) ? '取消收藏该片段' : '收藏该片段'"
+                    class="shrink-0 transition"
+                    :class="isFav('episode', String(ep.id)) ? 'text-rose-400' : 'text-zinc-600 hover:text-rose-400'"
+                  >
+                    <Heart class="w-3.5 h-3.5" :fill="isFav('episode', String(ep.id)) ? 'currentColor' : 'none'" />
+                  </button>
+                </div>
+                <!-- Chinese once the parent film has been translated, original otherwise -->
+                <div v-if="ep.description_zh || ep.description" class="text-xs text-zinc-400 mt-1 line-clamp-3 leading-relaxed">
+                  {{ ep.description_zh || ep.description }}
                 </div>
               </div>
               <div v-if="ep.action_notes" class="text-[10px] text-zinc-500 bg-zinc-900 px-2 py-1 rounded font-mono">

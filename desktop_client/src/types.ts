@@ -180,6 +180,8 @@ export interface Episode {
   title: string;
   thumbnail_url?: string | null;
   description?: string | null;
+  /** Machine translation of `description`; null until translated. */
+  description_zh?: string | null;
   action_notes?: string | null;
   movie_title?: string | null;
   studio_name?: string | null;
@@ -189,10 +191,42 @@ export interface Episode {
 export interface FilterState {
   query: string;
   studio: string;
+  /** No director table exists, so this filters on movies.director_name directly. */
+  director: string;
   yearMin: number | null;
   yearMax: number | null;
   category: string;
   sortBy: 'year_desc' | 'year_asc' | 'title_asc' | 'id_desc';
+}
+
+/** The five kinds of thing that can be favorited. Values match `entity_type`. */
+export type FavoriteType = 'movie' | 'performer' | 'studio' | 'director' | 'episode';
+
+export const FAVORITE_TYPES: FavoriteType[] = ['movie', 'performer', 'studio', 'director', 'episode'];
+
+/**
+ * One favorited item, shaped for the card that renders it. Which fields are present
+ * depends on the type: movie/episode carry a title, performer a name, studio/director
+ * just the name plus how many works the library holds for it.
+ */
+export interface FavoriteItem {
+  key: string;
+  created_at?: string;
+  title?: string | null;
+  name?: string;
+  release_year?: number | null;
+  studio_name?: string | null;
+  cover_full?: string | null;
+  has_zh?: boolean;
+  image_url?: string | null;
+  thumbnail_url?: string | null;
+  movie_id?: number | null;
+  movie_title?: string | null;
+  works_count?: number;
+}
+
+export interface FavoritesResponse extends Record<FavoriteType, FavoriteItem[]> {
+  counts: Record<FavoriteType, number>;
 }
 
 export interface DatabaseStats {

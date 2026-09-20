@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -54,6 +54,29 @@ const PERFORMER_COLUMNS: &str = "p.id, p.name, p.hair, p.eyes, p.body_hair, p.fa
      p.height, p.weight, p.build, p.skin, p.dick_size, p.foreskin, \
      p.tattoos, p.notes, p.image_url";
 
+/// An episode plus its parent film's context, in map_episode_row order.
+///
+/// The LEFT JOIN is what lets the performer page list episodes from many films at
+/// once; the caller appends its own WHERE and ORDER BY.
+const EPISODE_SQL: &str = "SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, \
+     e.description_zh, e.action_notes, m.title, m.studio_name, m.release_year \
+     FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id";
+
+fn map_episode_row(r: &rusqlite::Row) -> rusqlite::Result<Episode> {
+    Ok(Episode {
+        id: r.get(0)?,
+        movie_id: r.get(1)?,
+        title: r.get(2)?,
+        thumbnail_url: r.get(3)?,
+        description: r.get(4)?,
+        description_zh: r.get(5)?,
+        action_notes: r.get(6)?,
+        movie_title: r.get(7)?,
+        studio_name: r.get(8)?,
+        release_year: r.get(9)?,
+    })
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DatabaseStats {
     pub movies: i64,
@@ -88,7 +111,15 @@ pub struct Episode {
     pub title: Option<String>,
     pub thumbnail_url: Option<String>,
     pub description: Option<String>,
+    /// Chinese synopsis, written when the parent film is translated (the episode is
+    /// never translated on its own). Null until then.
+    pub description_zh: Option<String>,
     pub action_notes: Option<String>,
+    /// Parent film context, so an episode can be shown outside its film (the
+    /// performer detail page lists a performer's episodes across many films).
+    pub movie_title: Option<String>,
+    pub studio_name: Option<String>,
+    pub release_year: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -140,6 +171,9 @@ pub struct Performer {
     pub attributes: Option<HashMap<String, Vec<String>>>,
     pub movies_count: Option<i64>,
     pub movies: Option<Vec<Movie>>,
+    /// Scene/episode appearances, which the performer page lists in their own tab.
+    pub episodes: Option<Vec<Episode>>,
+    pub episodes_count: Option<i64>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -226,10 +260,213 @@ fn find_db_path() -> PathBuf {
     PathBuf::from("../gevi.db")
 }
 
+/// The five kinds of thing a favorite can point at. Mirrors FAVORITE_TYPES in db_manager.py.
+const FAVORITE_TYPES: [&str; 5] = ["movie", "performer", "studio", "director", "episode"];
+
+/// One favorited item, shaped for the card that renders it.
+///
+/// Which fields are populated depends on the type, exactly as in
+/// db_manager.get_favorites: movie/episode carry display fields, studio/director
+/// just a name and how many works the library holds. Fields stay snake_case because
+/// the TypeScript `FavoriteItem` reads them by these names.
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct FavoriteItem {
+    pub key: String,
+    pub created_at: Option<String>,
+    pub title: Option<String>,
+    pub name: Option<String>,
+    pub release_year: Option<i64>,
+    pub studio_name: Option<String>,
+    pub cover_full: Option<String>,
+    pub has_zh: Option<bool>,
+    pub image_url: Option<String>,
+    pub thumbnail_url: Option<String>,
+    pub movie_id: Option<i64>,
+    pub movie_title: Option<String>,
+    pub works_count: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct FavoritesResponse {
+    pub movie: Vec<FavoriteItem>,
+    pub performer: Vec<FavoriteItem>,
+    pub studio: Vec<FavoriteItem>,
+    pub director: Vec<FavoriteItem>,
+    pub episode: Vec<FavoriteItem>,
+    pub counts: HashMap<String, i64>,
+}
+
+#[tauri::command]
+fn get_favorites() -> Result<FavoritesResponse, String> {
+    let conn = open_db()?;
+    let mut out = FavoritesResponse::default();
+
+    // Movies: the display fields a poster card needs, plus whether a translation exists.
+    let mut stmt = conn
+        .prepare(
+            "SELECT f.entity_key, f.created_at, m.title, m.release_year, m.studio_name, \
+                    m.cover_full, m.description_zh IS NOT NULL \
+             FROM user_favorites f JOIN movies m ON m.id = CAST(f.entity_key AS INTEGER) \
+             WHERE f.entity_type = 'movie' ORDER BY f.created_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(FavoriteItem {
+                key: r.get(0)?,
+                created_at: r.get(1)?,
+                title: r.get(2)?,
+                release_year: r.get(3)?,
+                studio_name: r.get(4)?,
+                cover_full: r.get(5)?,
+                has_zh: Some(r.get::<usize, i64>(6)? != 0),
+                ..Default::default()
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    out.movie = rows.filter_map(Result::ok).collect();
+
+    // Performers.
+    let mut stmt = conn
+        .prepare(
+            "SELECT f.entity_key, f.created_at, p.name, p.image_url \
+             FROM user_favorites f JOIN performers p ON p.id = CAST(f.entity_key AS INTEGER) \
+             WHERE f.entity_type = 'performer' ORDER BY f.created_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(FavoriteItem {
+                key: r.get(0)?,
+                created_at: r.get(1)?,
+                name: r.get(2)?,
+                image_url: r.get(3)?,
+                ..Default::default()
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    out.performer = rows.filter_map(Result::ok).collect();
+
+    // Episodes, with the parent film's title so the card can say where it came from.
+    let mut stmt = conn
+        .prepare(
+            "SELECT f.entity_key, f.created_at, e.title, e.thumbnail_url, e.movie_id, \
+                    m.title, m.studio_name, e.description_zh IS NOT NULL \
+             FROM user_favorites f JOIN episodes e ON e.id = CAST(f.entity_key AS INTEGER) \
+             LEFT JOIN movies m ON m.id = e.movie_id \
+             WHERE f.entity_type = 'episode' ORDER BY f.created_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(FavoriteItem {
+                key: r.get(0)?,
+                created_at: r.get(1)?,
+                title: r.get(2)?,
+                thumbnail_url: r.get(3)?,
+                movie_id: r.get(4)?,
+                movie_title: r.get(5)?,
+                studio_name: r.get(6)?,
+                has_zh: Some(r.get::<usize, i64>(7)? != 0),
+                ..Default::default()
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    out.episode = rows.filter_map(Result::ok).collect();
+
+    // Studios and directors exist only as columns on movies, so the card shows the
+    // name plus how many works the library holds for it.
+    for (etype, column) in [("studio", "studio_name"), ("director", "director_name")] {
+        let mut stmt = conn
+            .prepare(&format!(
+                "SELECT f.entity_key, f.created_at, \
+                        (SELECT COUNT(*) FROM movies WHERE {} = f.entity_key) \
+                 FROM user_favorites f WHERE f.entity_type = ?1 ORDER BY f.created_at DESC",
+                column
+            ))
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(params![etype], |r| {
+                let key: String = r.get(0)?;
+                Ok(FavoriteItem {
+                    name: Some(key.clone()),
+                    key,
+                    created_at: r.get(1)?,
+                    works_count: r.get(2)?,
+                    ..Default::default()
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        let items: Vec<FavoriteItem> = rows.filter_map(Result::ok).collect();
+        out.counts.insert(etype.to_string(), items.len() as i64);
+        match etype {
+            "studio" => out.studio = items,
+            _ => out.director = items,
+        }
+    }
+
+    out.counts.insert("movie".into(), out.movie.len() as i64);
+    out.counts.insert("performer".into(), out.performer.len() as i64);
+    out.counts.insert("episode".into(), out.episode.len() as i64);
+
+    Ok(out)
+}
+
+/// Flip one favorite, returning whether it is favorited afterwards.
+#[tauri::command]
+fn toggle_favorite(entity_type: String, entity_key: String) -> Result<bool, String> {
+    if !FAVORITE_TYPES.contains(&entity_type.as_str()) {
+        return Err(format!("未知的收藏类型 '{}'", entity_type));
+    }
+    let key = entity_key.trim();
+    if key.is_empty() {
+        return Err("收藏对象不能为空".to_string());
+    }
+
+    let conn = open_db()?;
+    // Toggling is read-then-write, so it runs in one transaction: two rapid clicks
+    // must not both read "absent" and both insert.
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+    let existing: Option<i64> = tx
+        .query_row(
+            "SELECT 1 FROM user_favorites WHERE entity_type = ?1 AND entity_key = ?2",
+            params![entity_type, key],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+
+    let now_favorite = match existing {
+        Some(_) => {
+            tx.execute(
+                "DELETE FROM user_favorites WHERE entity_type = ?1 AND entity_key = ?2",
+                params![entity_type, key],
+            )
+            .map_err(|e| e.to_string())?;
+            false
+        }
+        None => {
+            tx.execute(
+                "INSERT OR IGNORE INTO user_favorites (entity_type, entity_key) VALUES (?1, ?2)",
+                params![entity_type, key],
+            )
+            .map_err(|e| e.to_string())?;
+            true
+        }
+    };
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(now_favorite)
+}
+
 fn open_db() -> Result<Connection, String> {
     let path = find_db_path();
     let conn = Connection::open(&path).map_err(|e| format!("Failed to open DB at {:?}: {}", path, e))?;
-    let _ = conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;");
+    // The 5s busy timeout matters for writes: the scraper and the local server hold
+    // this same file, so without it a favorite toggled mid-scrape would fail
+    // immediately with SQLITE_BUSY instead of waiting for the writer to finish.
+    let _ = conn.execute_batch(
+        "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;",
+    );
     Ok(conn)
 }
 
@@ -469,18 +706,10 @@ fn get_movie_detail(id: i64) -> Result<Option<Movie>, String> {
 
             // Episodes
             let mut ep_stmt = conn.prepare(
-                "SELECT id, movie_id, title, thumbnail_url, description, action_notes FROM episodes WHERE movie_id = ?1 ORDER BY id ASC"
+                &format!("{} WHERE e.movie_id = ?1 ORDER BY e.id ASC", EPISODE_SQL)
             ).map_err(|e| e.to_string())?;
-            let ep_iter = ep_stmt.query_map(params![m.id], |er| {
-                Ok(Episode {
-                    id: er.get(0)?,
-                    movie_id: er.get(1)?,
-                    title: er.get(2)?,
-                    thumbnail_url: er.get(3)?,
-                    description: er.get(4)?,
-                    action_notes: er.get(5)?,
-                })
-            }).map_err(|e| e.to_string())?;
+            let ep_iter = ep_stmt.query_map(params![m.id], map_episode_row)
+                .map_err(|e| e.to_string())?;
             m.episodes = Some(ep_iter.filter_map(Result::ok).collect());
 
             Ok(Some(m))
@@ -679,6 +908,8 @@ fn map_performer_row(r: &rusqlite::Row) -> rusqlite::Result<Performer> {
         attributes: Some(attributes),
         movies_count: r.get(15)?,
         movies: None,
+        episodes: None,
+        episodes_count: None,
     })
 }
 
@@ -729,6 +960,19 @@ fn get_performer_detail(id: i64) -> Result<Option<Performer>, String> {
             let movies: Vec<Movie> = m_rows.filter_map(Result::ok).collect();
             p.movies_count = Some(movies.len() as i64);
             p.movies = Some(movies);
+
+            // Scene/episode appearances, matched through episode_performers.
+            let mut e_stmt = conn.prepare(&format!(
+                "{} JOIN episode_performers ep ON e.id = ep.episode_id \
+                 WHERE ep.performer_id = ?1 ORDER BY m.release_year DESC, e.id DESC",
+                EPISODE_SQL
+            )).map_err(|e| e.to_string())?;
+            let e_iter = e_stmt.query_map(params![id], map_episode_row)
+                .map_err(|e| e.to_string())?;
+            let episodes: Vec<Episode> = e_iter.filter_map(Result::ok).collect();
+            p.episodes_count = Some(episodes.len() as i64);
+            p.episodes = Some(episodes);
+
             Ok(Some(p))
         }
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
@@ -815,6 +1059,8 @@ pub fn run() {
             get_performer_detail,
             get_studios,
             get_categories,
+            get_favorites,
+            toggle_favorite,
             run_sync,
         ])
         .run(tauri::generate_context!())

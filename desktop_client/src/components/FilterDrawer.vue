@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { X, RotateCcw, Camera, Film } from '@lucide/vue';
+import { X, RotateCcw, Camera, Film, Clapperboard } from '@lucide/vue';
 import type { FilterState, PerformerFilterState, PerformerFacets, PerformerSortBy } from '../types';
 import { FACET_KEYS, FACET_LABELS } from '../api';
+import { tr } from '../utils/glossary';
 
 const props = defineProps<{
   open: boolean;
@@ -72,6 +73,21 @@ function selectStudio(st: string) {
   apply();
 }
 
+/**
+ * Directors are filtered by name but are not offered as a chip list here.
+ *
+ * There is no director list to render — unlike studios, the server has no cheap
+ * `SELECT DISTINCT director_name` endpoint the drawer could load, and the list runs
+ * into the thousands. A director filter is instead set from the places that name a
+ * director (a film's detail page, or the favorites page), so what the drawer owes
+ * the user is visibility: an active director must be shown and clearable, or the
+ * grid would silently narrow with nothing on screen to explain why.
+ */
+function clearDirector() {
+  local.value.director = '';
+  apply();
+}
+
 function selectCategory(cat: string) {
   local.value.category = local.value.category === cat ? '' : cat;
   apply();
@@ -86,6 +102,7 @@ function resetAll() {
   local.value = {
     query: '',
     studio: '',
+    director: '',
     yearMin: null,
     yearMax: null,
     category: '',
@@ -224,7 +241,12 @@ function resetAll() {
                     : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
                 ]"
               >
-                <span>{{ f.value }}</span>
+                <!--
+                  Label in Chinese via the glossary, but the filter still sends `f.value`.
+                  Attribute values are stored in English; translating the value itself
+                  would break the server-side comparison.
+                -->
+                <span :title="f.value">{{ tr(f.value) }}</span>
                 <span
                   :class="isFacetActive(key, f.value) ? 'text-black/60' : 'text-zinc-600'"
                   class="text-[10px] font-mono"
@@ -284,6 +306,20 @@ function resetAll() {
             >
               {{ st }}
             </button>
+          </div>
+        </div>
+
+        <!-- Active Director Filter — set from a film's page or the favorites page -->
+        <div v-if="local.director" class="space-y-2">
+          <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">导演 (Director)</label>
+          <div class="flex items-center gap-2">
+            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 text-black border border-amber-500">
+              <Clapperboard class="w-3 h-3" />
+              {{ local.director }}
+              <button @click="clearDirector" class="hover:opacity-70 transition" title="清除导演筛选">
+                <X class="w-3 h-3" />
+              </button>
+            </span>
           </div>
         </div>
 

@@ -598,6 +598,21 @@ GLOSSARY_SKIP_COLUMNS = frozenset({"dick_size"})
 # bounded glossary could cover, so they stay in English.
 _TATTOO_MAX_LOCATION_WORDS = 3
 
+# Free-text words that survive the fragment filter below and must not become entries.
+#
+# The filter accepts a colon-less single-word fragment because real locations are
+# listed that way ("Deltoid, Biceps, Forearm"). The cost is that a description which
+# itself contains a comma hands its continuation to the same rule: in
+# "Deltoid right Deltoid: shark, expanded", the trailing "expanded" looks exactly like
+# a location. It is not one, and an entry for it is not harmless — the client renders
+# tattoo values by translating each location and passing the rest through, so a bogus
+# entry shows up inside the English description as "shark，膨胀".
+#
+# A blocklist rather than a smarter split: the comma is genuinely ambiguous here, the
+# vocabulary is tiny and stable, and this was found by reading the whole collected
+# table. Re-check after a full re-scrape with a fresh set of tattoos values.
+_TATTOO_FREE_TEXT_STOPWORDS = frozenset({"expanded"})
+
 
 def _tattoo_location_terms(raw: str | None) -> set[str]:
     """Pull just the location words out of one `performers.tattoos` value.
@@ -606,11 +621,8 @@ def _tattoo_location_terms(raw: str | None) -> set[str]:
     colon onwards is free text, and a description that itself contains a comma will
     split into further entries ("…, gothic lttering"). Those fragments are dropped
     by only accepting a colon-less entry when it is a single word — real locations
-    are one token, the fragments are not.
-
-    A couple of stray terms still get through ('expanded', 'Tattoos' out of
-    "Wrist Tattoos: …"). They cost one extra word in a single API call and can never
-    render, because no attribute value ever equals them.
+    are one token, the fragments are not. See _TATTOO_FREE_TEXT_STOPWORDS for the
+    stragglers that rule cannot catch.
     """
     from server import split_facet_value  # the one <br /> splitter, shared
 
@@ -625,14 +637,14 @@ def _tattoo_location_terms(raw: str | None) -> set[str]:
             if not words:
                 continue
             if not sep:
-                if len(words) == 1:
+                if len(words) == 1 and words[0] not in _TATTOO_FREE_TEXT_STOPWORDS:
                     found.add(words[0])
                 continue
             found.add(words[0])
             rest = " ".join(words[1:])
             if rest and len(words) - 1 <= _TATTOO_MAX_LOCATION_WORDS:
                 found.add(rest)
-    return found
+    return found - _TATTOO_FREE_TEXT_STOPWORDS
 
 
 def collect_glossary_terms(db: DatabaseManager) -> list[str]:

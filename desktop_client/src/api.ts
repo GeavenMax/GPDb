@@ -9,7 +9,11 @@ import type {
   TranslationProfile,
   TranslationProviders,
   TranslationProviderInput,
+  FavoriteType,
+  FavoriteItem,
+  FavoritesResponse,
 } from './types';
+import { FAVORITE_TYPES } from './types';
 
 // Detect if running inside Tauri runtime
 const isTauri = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
@@ -43,6 +47,43 @@ async function tauriInvoke<T>(cmd: string, args: Record<string, unknown> = {}): 
     return invoke<T>(cmd, args);
   }
   throw new Error('Not in Tauri environment');
+}
+
+function emptyFavoriteGroups(): Record<FavoriteType, FavoriteItem[]> {
+  return { movie: [], performer: [], studio: [], director: [], episode: [] };
+}
+
+function emptyFavoriteKeys(): Record<FavoriteType, string[]> {
+  return { movie: [], performer: [], studio: [], director: [], episode: [] };
+}
+
+/** Add the per-type counts the server computes, for the groups Rust hands back. */
+function withCounts(groups: Partial<Record<FavoriteType, FavoriteItem[]>>): FavoritesResponse {
+  const merged = { ...emptyFavoriteGroups(), ...groups };
+  const counts = {} as Record<FavoriteType, number>;
+  for (const t of FAVORITE_TYPES) counts[t] = merged[t].length;
+  return { ...merged, counts };
+}
+
+/** Reduce grouped favorites to just their keys, for heart-button colouring. */
+function keysFromGroups(groups: FavoritesResponse): Record<FavoriteType, string[]> {
+  const keys = emptyFavoriteKeys();
+  for (const t of FAVORITE_TYPES) keys[t] = groups[t].map((item) => item.key);
+  return keys;
+}
+
+/**
+ * Fetch the grouped favorites. Throws rather than falling back to an empty list:
+ * the caller uses the result to refresh its heart cache, so a silent empty result
+ * would blank out every heart in the UI when the server is merely unreachable.
+ */
+async function fetchFavorites(): Promise<FavoritesResponse> {
+  if (isTauri) {
+    return withCounts(await tauriInvoke<Partial<Record<FavoriteType, FavoriteItem[]>>>('get_favorites'));
+  }
+  const res = await fetch('/api/user/favorites');
+  if (!res.ok) throw new Error(`收藏列表加载失败 (HTTP ${res.status})`);
+  return await res.json();
 }
 
 /** Facet keys that map 1:1 onto repeatable query parameters. */
@@ -143,6 +184,7 @@ export const api = {
       const params = new URLSearchParams({
         query: filters.query || '',
         studio: filters.studio || '',
+        director: filters.director || '',
         category: filters.category || '',
         sortBy: filters.sortBy || 'year_desc',
         page: String(page),
@@ -511,14 +553,106 @@ export const api = {
     return postProviderAction(action, payload);
   },
 
-  /** Translate one synopsis on demand. Returns the Chinese text, or null on failure. */
-  async translateMovie(movieId: number): Promise<string | null> {
+  /**
+   * Translate a film's synopsis on demand.
+   *
+   * The server folds this film's untranslated episode synopses into the same
+   * request, so one call returns everything the detail modal needs. Returns null
+   * on failure (the caller shows the settings hint).
+   */
+  async translateMovie(movieId: number): Promise<{
+    description_zh: string | null;
+    episodes: Array<{ id: number; description_zh: string }>;
+  } | null> {
     try {
       const res = await fetch(`/api/movies/${movieId}/translate`, { method: 'POST' });
       const body = await res.json();
-      return body?.description_zh || null;
+      if (!res.ok || body?.error) return null;
+      return {
+        description_zh: body?.description_zh || null,
+        episodes: Array.isArray(body?.episodes) ? body.episodes : [],
+      };
     } catch {}
     return null;
+  },
+
+  // --- Favorites (five entity types; see schema.sql §9) ---
+  //
+  // SQLite is the single source of truth: the browser talks to the local server,
+  // the desktop build reads and writes the same file through Rust. There is no
+  // localStorage copy and no double write, so the two paths cannot drift.
+
+  /** Favorited keys grouped by type — enough to colour every heart in the UI. */
+  async getFavoriteKeys(): Promise<Record<FavoriteType, string[]>> {
+    if (isTauri) {
+      // Rust exposes only the enriched query, so reduce it here rather than add a
+      // second command for what is a few dozen rows at most.
+      return keysFromGroups(await fetchFavorites());
+    }
+    try {
+      const res = await fetch('/api/user/favorites/keys');
+      if (res.ok) return await res.json();
+    } catch {}
+    return emptyFavoriteKeys();
+  },
+
+  /** Favorited items enriched for display, grouped by type. Drives the favorites page. */
+  async getFavorites(): Promise<FavoritesResponse> {
+    return fetchFavorites();
+  },
+
+  /** Flip one favorite. Returns whether it is favorited afterwards. */
+  async toggleFavorite(type: FavoriteType, key: string): Promise<boolean> {
+    if (isTauri) {
+      return tauriInvoke<boolean>('toggle_favorite', { entityType: type, entityKey: key });
+    }
+    const res = await fetch('/api/user/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity_type: type, entity_key: key, action: 'toggle' }),
+    });
+    const body = await res.json();
+    if (!res.ok || body?.error) throw new Error(body?.error || '收藏操作失败');
+    return Boolean(body.is_favorite);
+  },
+
+  /**
+   * The performer attribute glossary (en → zh), fetched once at startup.
+   *
+   * Always over HTTP, even in the desktop build: the performer detail there comes
+   * from Rust reading SQLite directly, so the translation is applied client-side
+   * and both builds share this one source.
+   */
+  async getGlossary(): Promise<Record<string, string>> {
+    try {
+      const res = await fetch('/api/glossary');
+      if (res.ok) {
+        const body = await res.json();
+        return body?.terms || {};
+      }
+    } catch {}
+    return {};
+  },
+
+  /** Translate the whole attribute vocabulary in one API call. */
+  async runGlossaryTranslation(dryRun: boolean = false): Promise<{
+    success: boolean;
+    total?: number;
+    translated?: number;
+    failed?: number;
+    pending?: number;
+    error?: string;
+  }> {
+    try {
+      const res = await fetch('/api/translate/glossary/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dry_run: dryRun }),
+      });
+      return await res.json();
+    } catch (e: any) {
+      return { success: false, error: e?.message || '请求失败' };
+    }
   },
 
   // Studio Works (Separated Movies & Episodes)

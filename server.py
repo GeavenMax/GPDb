@@ -885,12 +885,18 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
 
         with get_db_connection() as conn:
             row = conn.execute(
-                "SELECT id, title, description FROM movies WHERE id = ?", (movie_id,)
+                "SELECT id, title, description, description_zh FROM movies WHERE id = ?",
+                (movie_id,),
             ).fetchone()
         if not row:
             return self.send_json({"error": "Movie not found"}, status=404)
 
-        movie_text = (row["description"] or "").strip()
+        # A film whose synopsis is already translated contributes nothing here. That
+        # case is the whole point of this being callable twice: this endpoint is also
+        # how episodes get translated for a film that was translated before the
+        # episodes were, so re-sending the synopsis would both waste a slot and
+        # silently rewrite text the user has already read.
+        movie_text = "" if (row["description_zh"] or "").strip() else (row["description"] or "").strip()
 
         db = DatabaseManager(str(DB_PATH))
         try:

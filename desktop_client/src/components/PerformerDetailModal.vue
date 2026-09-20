@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { X, Film, Layers, Calendar } from '@lucide/vue';
-import type { Performer, Movie } from '../types';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { X, Film, Layers, Calendar, Heart } from '@lucide/vue';
+import type { Performer, Movie, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
+import { tr, trTattoo } from '../utils/glossary';
 
 const props = defineProps<{
   performer: Performer | null;
@@ -14,16 +15,29 @@ const props = defineProps<{
   zIndex?: number;
   /** Topmost view owns Escape — see MovieDetailModal. */
   isTop?: boolean;
+  /** Whether this performer is favorited. */
+  isFavorite?: boolean;
+  /** Favorited keys by type — used for the studio and episode hearts in this modal. */
+  favoriteKeys?: Partial<Record<FavoriteType, Set<string>>>;
 }>();
 
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'select-movie', movie: Movie): void;
   (e: 'select-movie-id', movieId: number): void;
+  (e: 'toggle-favorite', performer: Performer): void;
+  /** Studio / director / episode hearts; the performer has its own event above. */
+  (e: 'toggle-entity-favorite', type: FavoriteType, key: string): void;
+  (e: 'filter-studio', studioName: string): void;
 }>();
 
 const activeTab = ref<'movies' | 'episodes'>('movies');
 const portraitError = ref(false);
+
+function isFav(type: FavoriteType, key: string | null | undefined): boolean {
+  if (!key) return false;
+  return Boolean(props.favoriteKeys?.[type]?.has(key));
+}
 
 /** Attribute values, preferring the server's exploded list over raw markup. */
 function attrValues(key: string, fallback: string | null | undefined): string[] {
@@ -33,6 +47,11 @@ function attrValues(key: string, fallback: string | null | undefined): string[] 
   return fallback.split(/<br\s*\/?>/i).map(s => s.trim()).filter(Boolean);
 }
 
+/**
+ * The measurement fields (height / weight / dick size) hold "5ft 10in / 178cm"
+ * strings — numbers and units are language-neutral, so they have no glossary entry
+ * and `tr` passes them through untouched.
+ */
 const SPECS = computed(() => {
   const p = props.performer;
   if (!p) return [];
@@ -51,6 +70,53 @@ const SPECS = computed(() => {
 });
 
 const tattoos = computed(() => attrValues('tattoos', props.performer?.tattoos));
+
+/**
+ * Studio filter for the works below.
+ *
+ * A performer's filmography can span a dozen studios, so the list is narrowed by a
+ * chip row rather than paged. The same filter drives both tabs — episodes carry a
+ * studio_name too — but it is cleared whenever the selected studio is not present
+ * in the tab being shown, otherwise switching tabs (or performers) would land on a
+ * silently empty list.
+ */
+const studioFilter = ref('');
+
+const studioOptions = computed(() => {
+  const counts = new Map<string, number>();
+  const add = (name?: string | null) => {
+    if (name) counts.set(name, (counts.get(name) || 0) + 1);
+  };
+  if (activeTab.value === 'movies') {
+    (props.performer?.movies || []).forEach(m => add(m.studio_name));
+  } else {
+    (props.performer?.episodes || []).forEach(e => add(e.studio_name));
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+});
+
+watch(studioOptions, (opts) => {
+  if (studioFilter.value && !opts.some(o => o.name === studioFilter.value)) {
+    studioFilter.value = '';
+  }
+});
+
+watch(() => props.performer?.id, () => {
+  portraitError.value = false;
+  studioFilter.value = '';
+});
+
+const visibleMovies = computed(() => {
+  const list = props.performer?.movies || [];
+  return studioFilter.value ? list.filter(m => m.studio_name === studioFilter.value) : list;
+});
+
+const visibleEpisodes = computed(() => {
+  const list = props.performer?.episodes || [];
+  return studioFilter.value ? list.filter(e => e.studio_name === studioFilter.value) : list;
+});
 
 function onKeydown(e: KeyboardEvent) {
   if (e.key !== 'Escape' || props.isTop === false) return;
@@ -99,7 +165,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             {{ performer.name.charAt(0).toUpperCase() }}
           </div>
         </div>
-        <div class="min-w-0">
+        <div class="min-w-0 flex-1">
           <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider">演员档案</div>
           <h1 class="text-2xl md:text-3xl font-extrabold text-white truncate">{{ performer.name }}</h1>
           <div class="text-xs text-zinc-400 mt-1 flex items-center gap-3 flex-wrap">
@@ -108,6 +174,20 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <span v-if="!performer.image_url" class="text-zinc-600">暂无照片</span>
           </div>
         </div>
+
+        <!-- Fav button leaves room for the absolutely-positioned close button -->
+        <button
+          @click="emit('toggle-favorite', performer)"
+          :class="[
+            'mr-10 shrink-0 self-start px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
+            isFavorite
+              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+              : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-400 hover:text-rose-400'
+          ]"
+        >
+          <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
+          <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+        </button>
       </div>
 
       <!-- Specs Grid -->
@@ -126,20 +206,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               <span
                 v-for="v in spec.values"
                 :key="v"
+                :title="v"
                 :class="[
                   'text-sm font-semibold',
                   spec.accent ? 'text-amber-400' : 'text-zinc-200'
                 ]"
               >
-                {{ v }}
+                {{ tr(v) }}
               </span>
             </div>
           </div>
 
           <div v-if="tattoos.length > 0" class="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800/80 col-span-2">
-            <div class="text-[11px] text-zinc-500">纹身标识</div>
+            <div class="text-[11px] text-zinc-500">纹身标识 <span class="text-zinc-600">(部位译中文，描述保留原文)</span></div>
             <div class="text-sm font-semibold text-zinc-200 mt-0.5">
-              {{ tattoos.join('、') }}
+              {{ tattoos.map(trTattoo).join('、') }}
             </div>
           </div>
         </div>
@@ -182,27 +263,51 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </div>
         </div>
 
+        <!--
+          Studio filter. Hidden for a single-studio performer: a filter row with one
+          choice is just noise. Clicking the active chip clears it.
+        -->
+        <div v-if="studioOptions.length > 1" class="flex items-center gap-2 flex-wrap">
+          <span class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider shrink-0">片商</span>
+          <button
+            v-for="opt in studioOptions"
+            :key="opt.name"
+            @click="studioFilter = studioFilter === opt.name ? '' : opt.name"
+            :class="[
+              'px-2.5 py-1 rounded-lg text-xs font-medium border transition',
+              studioFilter === opt.name
+                ? 'bg-amber-500 text-black border-amber-500 shadow'
+                : 'bg-zinc-800/70 hover:bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-amber-300'
+            ]"
+          >
+            {{ opt.name }}
+            <span :class="studioFilter === opt.name ? 'text-black/60' : 'text-zinc-500'">{{ opt.count }}</span>
+          </button>
+        </div>
+
         <!-- 1. Feature Movies Tab -->
         <div v-if="activeTab === 'movies'">
-          <div v-if="performer.movies && performer.movies.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div v-if="visibleMovies.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             <MovieCard
-              v-for="m in performer.movies"
+              v-for="m in visibleMovies"
               :key="m.id"
               :movie="m"
               :lang="lang"
+              :is-favorite="isFav('movie', String(m.id))"
               @select="emit('select-movie', m)"
+              @toggle-favorite="emit('toggle-entity-favorite', 'movie', String(m.id))"
             />
           </div>
           <div v-else class="text-center py-12 text-zinc-500 text-xs">
-            暂无收录该演员的长片电影
+            {{ studioFilter ? `该演员没有 ${studioFilter} 的长片电影` : '暂无收录该演员的长片电影' }}
           </div>
         </div>
 
         <!-- 2. Episodes & Scenes Tab -->
         <div v-else-if="activeTab === 'episodes'">
-          <div v-if="performer.episodes && performer.episodes.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div v-if="visibleEpisodes.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div
-              v-for="ep in performer.episodes"
+              v-for="ep in visibleEpisodes"
               :key="ep.id"
               class="flex flex-col bg-zinc-950/80 rounded-2xl border border-zinc-800/80 overflow-hidden hover:border-amber-500/40 transition group"
             >
@@ -222,19 +327,34 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <div>
                   <div class="flex items-center justify-between gap-2">
                     <span class="text-xs font-bold text-amber-300">{{ ep.title }}</span>
-                    <span v-if="ep.release_year" class="text-[10px] text-zinc-500 font-mono flex items-center gap-1">
-                      <Calendar class="w-2.5 h-2.5" /> {{ ep.release_year }}
-                    </span>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span v-if="ep.release_year" class="text-[10px] text-zinc-500 font-mono flex items-center gap-1">
+                        <Calendar class="w-2.5 h-2.5" /> {{ ep.release_year }}
+                      </span>
+                      <button
+                        @click="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+                        :title="isFav('episode', String(ep.id)) ? '取消收藏该片段' : '收藏该片段'"
+                        class="transition"
+                        :class="isFav('episode', String(ep.id)) ? 'text-rose-400' : 'text-zinc-600 hover:text-rose-400'"
+                      >
+                        <Heart class="w-3.5 h-3.5" :fill="isFav('episode', String(ep.id)) ? 'currentColor' : 'none'" />
+                      </button>
+                    </div>
                   </div>
 
                   <div v-if="ep.movie_title" class="text-xs font-medium text-zinc-300 mt-1 flex items-center gap-1">
                     <Film class="w-3 h-3 text-zinc-500" />
                     <span>出处: {{ ep.movie_title }}</span>
-                    <span v-if="ep.studio_name" class="text-zinc-500 text-[10px] ml-1">({{ ep.studio_name }})</span>
+                    <button
+                      v-if="ep.studio_name"
+                      @click="emit('filter-studio', ep.studio_name)"
+                      class="text-zinc-500 hover:text-amber-400 text-[10px] ml-1 transition"
+                    >({{ ep.studio_name }})</button>
                   </div>
 
-                  <div v-if="ep.description" class="text-xs text-zinc-400 mt-1.5 line-clamp-3 leading-relaxed">
-                    {{ ep.description }}
+                  <!-- Chinese once the parent film has been translated, original otherwise -->
+                  <div v-if="ep.description_zh || ep.description" class="text-xs text-zinc-400 mt-1.5 line-clamp-3 leading-relaxed">
+                    {{ ep.description_zh || ep.description }}
                   </div>
                 </div>
 
@@ -245,7 +365,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
           </div>
           <div v-else class="text-center py-12 text-zinc-500 text-xs">
-            暂无收录该演员的独立分集片段
+            {{ studioFilter ? `该演员没有 ${studioFilter} 的分集片段` : '暂无收录该演员的独立分集片段' }}
           </div>
         </div>
       </div>

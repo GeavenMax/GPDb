@@ -11,6 +11,12 @@ const props = withDefaults(defineProps<{
   view?: 'grid' | 'list';
   /** Which synopsis to prefer when both are available. */
   lang?: 'zh' | 'en';
+  /**
+   * Set when the caller knows a translation exists but does not hold the text —
+   * the favorites page gets display rows from the server, not full movie records,
+   * so it cannot derive the badge from `description_zh` the way other callers do.
+   */
+  translated?: boolean;
 }>(), {
   view: 'grid',
   lang: 'zh',
@@ -34,7 +40,9 @@ const shownDescription = computed(() => {
   return props.movie.description?.trim() || '';
 });
 
-const hasTranslation = computed(() => Boolean(props.movie.description_zh?.trim()));
+const hasTranslation = computed(
+  () => props.translated ?? Boolean(props.movie.description_zh?.trim()),
+);
 </script>
 
 <template>
