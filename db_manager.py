@@ -34,6 +34,11 @@ class DatabaseManager:
             ("description_zh", "TEXT"),
             ("translation_attempts", "INTEGER DEFAULT 0"),
             ("cover_back", "TEXT"),
+            # 片名翻译。title_attempts 必须与 translation_attempts 分开计数 ——
+            # 后者是 get_untranslated_movies 判断简介还值不值得再译的依据，
+            # 合用会让片名的失败次数把这部片踢出简介队列。
+            ("title_zh", "TEXT"),
+            ("title_attempts", "INTEGER DEFAULT 0"),
         ],
         "performers": [
             ("image_url", "TEXT"),
@@ -382,6 +387,112 @@ class DatabaseManager:
                 (description_zh, episode_id)
             )
 
+    # --- Title translation (see schema.sql movies.title_zh) ---
+    def get_untranslated_titles(self, limit: int | None = None, max_attempts: int = 3) -> list[dict]:
+        """Distinct film titles still needing a Chinese name, with one description as context.
+
+        Two things here are deliberate and easy to get wrong by "reusing" the synopsis
+        path instead:
+
+        * No `description IS NOT NULL` filter. `get_untranslated_movies` requires a
+          synopsis because it is translating synopses; 13,301 of the 63,238 films have
+          none, so copying that predicate here would silently leave a fifth of the
+          library's titles untranslated forever.
+        * One row per *title*, not per film. 63,238 films share 59,873 distinct titles,
+          so grouping saves 5% of the API calls and - more importantly - guarantees a
+          repeated title like "Boys Will Be Boys" (17 films) reads identically in all 17
+          places instead of being translated 17 slightly different ways.
+
+        The description rides along purely as context for puns: a title like "Creamy
+        Ranch" can only be judged against what the film actually is. It comes from the
+        duplicate with the longest synopsis, which is the one most likely to explain the
+        premise.
+        """
+        sql = """
+            SELECT title, description FROM (
+                SELECT title, description,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY title
+                           ORDER BY length(COALESCE(description, '')) DESC, id ASC
+                       ) AS rn
+                FROM movies
+                WHERE title IS NOT NULL AND trim(title) != ''
+                  AND (title_zh IS NULL OR trim(title_zh) = '')
+                  AND COALESCE(title_attempts, 0) < ?
+            ) WHERE rn = 1
+            ORDER BY title ASC
+        """
+        args: list[Any] = [max_attempts]
+        if limit and limit > 0:
+            sql += " LIMIT ?"
+            args.append(limit)
+        rows = self.conn.execute(sql, args).fetchall()
+        return [{"title": r[0], "description": r[1]} for r in rows]
+
+    def set_movie_title_translation(self, title: str, title_zh: str | None) -> int:
+        """Store (or record a failed attempt for) one title's Chinese name.
+
+        Keyed by the English title rather than by film id, because the translation is
+        done once per distinct title and then fanned out to every film carrying it.
+        Returns how many films were updated.
+
+        `title_attempts` is a separate counter from `translation_attempts` on purpose:
+        the latter is what `get_untranslated_movies` uses to decide a film's *synopsis*
+        is not worth retrying, so sharing it would let three failed title attempts drop
+        a film out of the synopsis queue for good.
+        """
+        with self._write_lock, self.conn:
+            if title_zh:
+                cur = self.conn.execute(
+                    "UPDATE movies SET title_zh = ?, title_attempts = 0 WHERE title = ?",
+                    (title_zh, title)
+                )
+            else:
+                cur = self.conn.execute(
+                    "UPDATE movies SET title_attempts = COALESCE(title_attempts, 0) + 1 "
+                    "WHERE title = ?",
+                    (title,)
+                )
+            return cur.rowcount
+
+    def get_title_translation_stats(self) -> dict[str, int]:
+        """Progress over distinct titles, matching what --titles actually works through."""
+        cur = self.conn.cursor()
+        total = cur.execute(
+            "SELECT COUNT(DISTINCT title) FROM movies WHERE title IS NOT NULL AND trim(title) != ''"
+        ).fetchone()[0]
+        done = cur.execute(
+            "SELECT COUNT(DISTINCT title) FROM movies "
+            "WHERE title IS NOT NULL AND trim(title) != '' "
+            "AND title_zh IS NOT NULL AND trim(title_zh) != ''"
+        ).fetchone()[0]
+        failed = cur.execute(
+            "SELECT COUNT(DISTINCT title) FROM movies "
+            "WHERE title IS NOT NULL AND trim(title) != '' "
+            "AND (title_zh IS NULL OR trim(title_zh) = '') "
+            "AND COALESCE(title_attempts, 0) >= 3"
+        ).fetchone()[0]
+        return {"translatable": total, "translated": done,
+                "pending": total - done - failed, "failed": failed}
+
+    # --- Category glossary (see schema.sql §12) ---
+    def load_category_glossary(self) -> dict[str, str]:
+        """The whole category glossary as {english term: chinese}. ~53 rows, cache freely."""
+        rows = self.conn.execute("SELECT term, zh FROM category_glossary").fetchall()
+        return {r[0]: r[1] for r in rows}
+
+    def save_category_glossary(self, entries: dict[str, str]) -> int:
+        """Upsert category terms. Returns how many rows were written."""
+        if not entries:
+            return 0
+        with self._write_lock, self.conn:
+            self.conn.executemany(
+                "INSERT INTO category_glossary (term, zh, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) "
+                "ON CONFLICT(term) DO UPDATE SET zh = excluded.zh, updated_at = CURRENT_TIMESTAMP",
+                [(term, zh) for term, zh in entries.items() if term and zh],
+            )
+        return len(entries)
+
     # --- Attribute glossary (see schema.sql §10) ---
     def load_glossary(self) -> dict[str, str]:
         """The whole glossary as {english: chinese}. Small (~73 rows), cache freely."""
@@ -443,7 +554,13 @@ class DatabaseManager:
             # without re-fetching films that were already checked.
             cover_back_val = (m.get("cover_back") or "") if m.get("covers_known") else None
             # UPSERT rather than INSERT OR REPLACE: REPLACE deletes the old row, which
-            # would silently discard description_zh / translation_attempts on re-scrape.
+            # would silently discard description_zh / translation_attempts / title_zh
+            # on re-scrape.
+            #
+            # title_zh survives only while the English title does. Scrapers re-run and
+            # the site renames things, and a translation of a title that no longer
+            # exists is worse than no translation: it looks finished, so nothing ever
+            # revisits it. Same rule the episode synopsis already uses below.
             self.conn.execute("""
                 INSERT INTO movies (
                     id, title, studio_id, studio_name, release_year, duration_mins,
@@ -452,6 +569,16 @@ class DatabaseManager:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     title = COALESCE(NULLIF(excluded.title, ''), movies.title),
+                    title_zh = CASE
+                        WHEN COALESCE(excluded.title, '') = '' THEN movies.title_zh
+                        WHEN excluded.title = movies.title        THEN movies.title_zh
+                        ELSE NULL
+                    END,
+                    title_attempts = CASE
+                        WHEN COALESCE(excluded.title, '') = '' OR excluded.title = movies.title
+                            THEN movies.title_attempts
+                        ELSE 0
+                    END,
                     studio_id = COALESCE(excluded.studio_id, movies.studio_id),
                     studio_name = COALESCE(NULLIF(excluded.studio_name, ''), movies.studio_name),
                     release_year = COALESCE(excluded.release_year, movies.release_year),

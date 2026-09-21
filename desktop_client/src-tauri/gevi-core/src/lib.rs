@@ -5,6 +5,7 @@
 //! 不可能顺带碰到命令注册表或前端契约。
 
 pub mod error;
+pub mod migrate;
 pub mod models;
 pub mod queries;
 pub mod sql;

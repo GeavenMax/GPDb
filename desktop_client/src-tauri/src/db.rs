@@ -5,7 +5,19 @@
 //! empty database when the path is wrong.
 
 use rusqlite::Connection;
+use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
+
+/// Paths already migrated by this process.
+///
+/// Keyed by path rather than a bare `OnceLock<()>` because phase 3 lets the user point
+/// the app at a different database at runtime; a process-wide flag would then leave the
+/// second database unmigrated and every query against it failing.
+fn migrated_paths() -> &'static Mutex<HashSet<PathBuf>> {
+    static MIGRATED: OnceLock<Mutex<HashSet<PathBuf>>> = OnceLock::new();
+    MIGRATED.get_or_init(|| Mutex::new(HashSet::new()))
+}
 
 pub fn find_db_path() -> PathBuf {
     let candidates = [
@@ -38,5 +50,23 @@ pub fn open_db() -> Result<Connection, String> {
     let _ = conn.execute_batch(
         "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;",
     );
+
+    // The queries in `gevi_core` name columns this file may predate; SQLite fails at
+    // prepare time for a missing column, so the whole library would come up empty. See
+    // `gevi_core::migrate` for why the desktop has to do this itself.
+    //
+    // Done once per process per database, not per command: `open_db` is called on every
+    // command, and this takes a write lock. The path is recorded only on success, so a
+    // transient failure (the scraper holding the write lock) is retried by the next
+    // command rather than latching the app into a broken state.
+    let key = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+    let needs_migration = !migrated_paths().lock().unwrap().contains(&key);
+    if needs_migration {
+        gevi_core::migrate::ensure_schema(&conn).map_err(|e| {
+            format!("Failed to upgrade the schema of {:?}: {}", path, e)
+        })?;
+        migrated_paths().lock().unwrap().insert(key);
+    }
+
     Ok(conn)
 }

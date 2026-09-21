@@ -31,7 +31,13 @@ CREATE TABLE IF NOT EXISTS movies (
     director_id INTEGER,
     director_name TEXT,
     description_zh TEXT,            -- 机器翻译后的中文剧情简介 (NULL = 尚未翻译)
-    translation_attempts INTEGER DEFAULT 0,  -- 翻译失败重试计数，避免死循环
+    translation_attempts INTEGER DEFAULT 0,  -- 简介翻译失败重试计数，避免死循环
+    -- 机器翻译后的中文片名 (NULL = 尚未翻译)。译文优先体现原标题的双关/谐音。
+    title_zh TEXT,
+    -- 片名翻译失败重试计数。必须与 translation_attempts 分开：那个计数器是
+    -- get_untranslated_movies 判断"这部片的简介还值不值得再译"的依据，两种翻译
+    -- 合用同一个计数器的话，片名译失败 3 次就会把这部片永久踢出简介队列。
+    title_attempts INTEGER DEFAULT 0,
     scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -244,3 +250,26 @@ CREATE TABLE IF NOT EXISTS movie_directors (
 
 CREATE INDEX IF NOT EXISTS idx_movie_directors_director ON movie_directors(director_id);
 CREATE INDEX IF NOT EXISTS idx_directors_name ON directors(name);
+
+
+-- 12. 影片分类术语表 (Category glossary)
+--
+-- 与第 10 节的 attr_glossary 是同一个思路（一次性翻译、之后查表复用、不参与筛选），
+-- 但刻意分成两张表而不是合并：
+--
+--   * 词源、prompt、收集器、生命周期都不同 —— 属性词来自 performers 的 8 个维度，
+--     分类词来自 movies.category，两者的翻译口径完全不一样；
+--   * 合并后前端的 tr() 会变得有歧义。Muscle、Twink、Bareback 这类词今天恰好
+--     只出现在一边（实测 53 个分类词与 80 个属性词零交集），但那是运气不是设计。
+--
+-- 存的是**原子词**，不是 movies.category 的原始值。该列有 55 行是用 <br /> 连接的
+-- 多值串（如 'Wrestling<br />J/O'），去重后共 74 个原始值，拆开只有 53 个词；
+-- 按原始值建表的话，每出现一个新组合都要多一条记录。拆分用 server.split_facet_value，
+-- 显示时再逐词查表拼回去。
+--
+-- 与 attr_glossary 一样，筛选逻辑仍然匹配英文值，这张表只负责显示。
+CREATE TABLE IF NOT EXISTS category_glossary (
+    term       TEXT PRIMARY KEY,   -- 原子词，已按 <br /> 拆开，如 'J/O'
+    zh         TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
