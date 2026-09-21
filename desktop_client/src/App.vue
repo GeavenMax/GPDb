@@ -10,6 +10,7 @@ import EpisodeCard from './components/EpisodeCard.vue';
 import EpisodeDetailModal from './components/EpisodeDetailModal.vue';
 import ImageLightbox from './components/ImageLightbox.vue';
 import FilterDrawer from './components/FilterDrawer.vue';
+import FilterChip from './components/FilterChip.vue';
 import SyncModal from './components/SyncModal.vue';
 import PaginationBar from './components/PaginationBar.vue';
 import {
@@ -99,6 +100,43 @@ const episodeFilters = reactive<EpisodeFilterState>(createEpisodeFilters());
 const activeEpisodeFilterCount = computed(() =>
   countActiveEpisodeFilters(episodeFilters, episodeSortBy.value)
 );
+
+/**
+ * The episode filters currently on, as chips — the same idea as `activeFacetChips`
+ * below, built the same way rather than as three near-identical template blocks.
+ *
+ * Sort is deliberately absent: it is a segmented control sitting a few pixels away,
+ * so a chip for it would be a second, worse way to change the same thing. The count
+ * above does include it, which is why the navbar dot can light up with no chip shown.
+ */
+const episodeChips = computed(() => {
+  const chips: { key: string; label: string; value: string; clear: () => void }[] = [];
+  if (episodeFilters.studio) {
+    chips.push({
+      key: 'studio',
+      label: '片商:',
+      value: episodeFilters.studio,
+      clear: () => (episodeFilters.studio = ''),
+    });
+  }
+  if (episodeFilters.hasZh) {
+    chips.push({
+      key: 'hasZh',
+      label: '',
+      value: '有中文简介',
+      clear: () => (episodeFilters.hasZh = false),
+    });
+  }
+  if (episodeFilters.hasPerformers) {
+    chips.push({
+      key: 'hasPerformers',
+      label: '',
+      value: '有演员',
+      clear: () => (episodeFilters.hasPerformers = false),
+    });
+  }
+  return chips;
+});
 
 /**
  * Favorited keys, grouped by type. Kept as plain string sets so a heart can be
@@ -1259,15 +1297,38 @@ onUnmounted(() => {
 
             <div class="flex items-center gap-3">
               <!-- Active filter chips -->
-              <div class="flex items-center gap-2">
-                <span v-if="filters.studio" class="text-xs px-2.5 py-1 rounded-lg bg-accent-fill/10 text-accent border border-accent-fill/30 flex items-center gap-1">
-                  厂牌: {{ filters.studio }}
-                  <button @click="filters.studio = ''" class="hover:text-fg">×</button>
-                </span>
-                <span v-if="filters.category" class="text-xs px-2.5 py-1 rounded-lg bg-accent-fill/10 text-accent border border-accent-fill/30 flex items-center gap-1">
-                  分类: {{ trCategory(filters.category) }}
-                  <button @click="filters.category = ''" class="hover:text-fg">×</button>
-                </span>
+              <div class="flex items-center gap-2 flex-wrap">
+                <FilterChip
+                  v-if="filters.studio"
+                  label="厂牌:"
+                  :value="filters.studio"
+                  @remove="filters.studio = ''"
+                />
+                <FilterChip
+                  v-if="filters.director"
+                  label="导演:"
+                  :value="filters.director"
+                  @remove="filters.director = ''"
+                />
+                <FilterChip
+                  v-if="filters.category"
+                  label="分类:"
+                  :value="trCategory(filters.category)"
+                  @remove="filters.category = ''"
+                />
+                <!--
+                  Same function the drawer's 重置 uses, so the two agree. It also
+                  clears the navbar search and resets the sort — "清除全部" clearing
+                  everything is the honest reading of the label; the guard above only
+                  decides when the button is worth showing.
+                -->
+                <button
+                  v-if="filters.studio || filters.director || filters.category"
+                  @click="resetMovieFilters"
+                  class="text-[11px] text-fg-4 hover:text-accent underline"
+                >
+                  清除全部
+                </button>
               </div>
 
               <!-- Synopsis language toggle (issue #4) -->
@@ -1415,29 +1476,26 @@ onUnmounted(() => {
 
               <!-- Active facet chips -->
               <div class="flex items-center gap-1.5 flex-wrap max-w-lg">
-                <span
+                <FilterChip
                   v-for="chip in activeFacetChips"
                   :key="`${chip.key}:${chip.value}`"
-                  class="text-[11px] px-2 py-0.5 rounded-lg bg-surface-2 text-fg-2 border border-line-strong inline-flex items-center gap-1"
-                >
-                  <span class="text-fg-4">{{ chip.label }}</span>
-                  {{ chip.value }}
-                  <button @click="togglePerformerFacet(chip.key as any, chip.value)" class="hover:text-fg">×</button>
-                </span>
-                <span
+                  variant="neutral"
+                  :label="chip.label"
+                  :value="chip.value"
+                  @remove="togglePerformerFacet(chip.key as any, chip.value)"
+                />
+                <FilterChip
                   v-if="performerFilters.hasImage"
-                  class="text-[11px] px-2 py-0.5 rounded-lg bg-surface-2 text-fg-2 border border-line-strong inline-flex items-center gap-1"
-                >
-                  有照片
-                  <button @click="performerFilters.hasImage = false" class="hover:text-fg">×</button>
-                </span>
-                <span
+                  variant="neutral"
+                  value="有照片"
+                  @remove="performerFilters.hasImage = false"
+                />
+                <FilterChip
                   v-if="performerFilters.minMovies != null"
-                  class="text-[11px] px-2 py-0.5 rounded-lg bg-surface-2 text-fg-2 border border-line-strong inline-flex items-center gap-1"
-                >
-                  ≥{{ performerFilters.minMovies }} 部作品
-                  <button @click="performerFilters.minMovies = null" class="hover:text-fg">×</button>
-                </span>
+                  variant="neutral"
+                  :value="`≥${performerFilters.minMovies} 部作品`"
+                  @remove="performerFilters.minMovies = null"
+                />
                 <button
                   v-if="activePerformerFilterCount > 0"
                   @click="resetPerformerFilters"
@@ -1762,6 +1820,24 @@ onUnmounted(() => {
                 <span class="text-fg-4 text-[11px]">列</span>
               </div>
             </div>
+          </div>
+
+          <!-- Active filter chips -->
+          <div v-if="episodeChips.length > 0" class="flex items-center gap-2 flex-wrap">
+            <FilterChip
+              v-for="chip in episodeChips"
+              :key="chip.key"
+              variant="neutral"
+              :label="chip.label"
+              :value="chip.value"
+              @remove="chip.clear()"
+            />
+            <button
+              @click="resetEpisodeFilters"
+              class="text-[11px] text-fg-4 hover:text-accent underline"
+            >
+              清除全部
+            </button>
           </div>
 
           <div
@@ -2680,6 +2756,13 @@ onUnmounted(() => {
       @toggle-favorite="toggleEpisodeFavorite"
     />
 
+    <!--
+      @reset is the full movie reset, matching what the drawer's own 重置 button does.
+      It used to assign only {query, studio, category, sortBy}, which silently left an
+      active 导演 filter in place: the drawer cleared its chip, the grid stayed filtered,
+      and nothing on screen said why. The chip row above now makes that visible either
+      way, but the two resets should still mean the same thing.
+    -->
     <FilterDrawer
       :open="isFilterOpen"
       :tab="currentTab"
@@ -2696,7 +2779,7 @@ onUnmounted(() => {
       @toggle-performer-facet="togglePerformerFacet"
       @update:episode-filters="(f) => Object.assign(episodeFilters, f)"
       @update:episode-sort="(s) => episodeSortBy = s"
-      @reset="Object.assign(filters, { query: '', studio: '', category: '', sortBy: 'year_desc' })"
+      @reset="resetMovieFilters"
       @reset-performers="resetPerformerFilters"
       @reset-episodes="resetEpisodeFilters"
     />
