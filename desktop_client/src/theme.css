@@ -103,6 +103,30 @@
   --wallpaper: none;                                   /* the ground the glass blurs */
 }
 
+/*
+ * Shape — the second axis the three families differ on, kept out of the block above
+ * because `.on-scrim` shares that selector list and the code blocks and badges painted
+ * on a scrim should round like their theme, not like 经典·暗.
+ *
+ * 经典 is Tailwind's own scale, verbatim, which is what makes routing the utilities
+ * through these tokens a no-op there: `rounded-xl` compiles to `border-radius:
+ * var(--r-xl)` via the `@theme inline` at the bottom of this file, so all 250-odd call
+ * sites follow their theme without one of them being edited.
+ *
+ * Not one of these is 9999px, tempting as that is for 流体玻璃's capsules: the same
+ * utilities wrap wide, tall things — the settings panel's `pre` blocks, the 缓存统计
+ * tiles, the whole-provider cards — and a capsule radius turns a 300x200 box into an
+ * ellipse. The capsule reading of Liquid Glass comes from the badges, hearts and
+ * avatars that are already `rounded-full`.
+ */
+:root {
+  --r-md: 0.375rem;   /* rounded-md — micro badges */
+  --r-lg: 0.5rem;     /* rounded-lg — icon buttons, page numbers */
+  --r-xl: 0.75rem;    /* rounded-xl — chips, inputs, buttons, list rows */
+  --r-2xl: 1rem;      /* rounded-2xl — cards, sections, panels */
+  --r-3xl: 1.5rem;    /* rounded-3xl — modal shells */
+}
+
 /* 经典·浅 — the same layout with the ramp inverted. The amber has to move: amber-400 on
    white is 2.1:1 and unreadable, so accent text becomes amber-700 (5.0:1) while the
    fill stays the brand amber-500 under black text (9.8:1). Surfaces are white on a
@@ -184,6 +208,11 @@
     radial-gradient(52% 44% at 6% 0%, oklch(58% 0.16 62 / 0.42), transparent 70%),
     radial-gradient(46% 40% at 97% 90%, oklch(46% 0.17 300 / 0.34), transparent 72%),
     radial-gradient(38% 32% at 72% 6%, oklch(58% 0.12 210 / 0.2), transparent 70%);
+  --r-md: 0.5rem;
+  --r-lg: 0.75rem;
+  --r-xl: 1rem;
+  --r-2xl: 1.25rem;
+  --r-3xl: 1.75rem;   /* a sheet, not a panel */
 }
 
 /* 流体玻璃·浅 — the same material on a bright ground. The amber moves to its light-theme
@@ -229,6 +258,11 @@
     radial-gradient(52% 44% at 6% 0%, oklch(84% 0.13 68 / 0.5), transparent 70%),
     radial-gradient(46% 40% at 97% 90%, oklch(80% 0.11 300 / 0.38), transparent 72%),
     radial-gradient(38% 32% at 72% 6%, oklch(84% 0.09 210 / 0.28), transparent 70%);
+  --r-md: 0.5rem;
+  --r-lg: 0.75rem;
+  --r-xl: 1rem;
+  --r-2xl: 1.25rem;
+  --r-3xl: 1.75rem;   /* a sheet, not a panel */
 }
 
 /* Material You·暗 — tonal, not neutral. Every grey carries a little of the seed's
@@ -275,6 +309,11 @@
   --chrome-saturate: 100%;
   --chrome-sheen: none;
   --wallpaper: none;
+  --r-md: 0.5rem;
+  --r-lg: 0.75rem;
+  --r-xl: 1rem;
+  --r-2xl: 1.5rem;    /* M3 gives its container levels the bigger radius, not its controls */
+  --r-3xl: 1.75rem;   /* the M3 dialog radius */
 }
 
 /* Material You·浅 — a warm off-white page (never #fff, that is the tonal palette's
@@ -318,6 +357,11 @@
   --chrome-saturate: 100%;
   --chrome-sheen: none;
   --wallpaper: none;
+  --r-md: 0.5rem;
+  --r-lg: 0.75rem;
+  --r-xl: 1rem;
+  --r-2xl: 1.5rem;    /* M3 gives its container levels the bigger radius, not its controls */
+  --r-3xl: 1.75rem;   /* the M3 dialog radius */
 }
 
 @theme inline {
@@ -347,4 +391,11 @@
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
   --color-danger-fill: var(--danger-fill);
+
+  /* Radius, so the shape axis switches the same way the colours do. */
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: var(--r-2xl);
+  --radius-3xl: var(--r-3xl);
 }
