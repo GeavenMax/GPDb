@@ -1,8 +1,9 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "gevi-desktop",
+  "productName": "GEVI+",
+  "mainBinaryName": "gevi-plus",
   "version": "0.1.0",
-  "identifier": "com.gevi.offline",
+  "identifier": "com.gevi.plus",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -13,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "GEVI Offline Database",
+        "title": "GEVI+",
         "width": 1280,
         "height": 840,
         "minWidth": 960,
