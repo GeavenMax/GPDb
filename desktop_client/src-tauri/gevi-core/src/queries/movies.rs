@@ -4,8 +4,8 @@ use rusqlite::{params, Connection};
 
 use crate::models::{DirectorRef, FilterArgs, Movie, MoviesResponse, PerformerRef};
 use crate::sql::{
-    map_episode_row, map_movie_row, CAST_SQL, DIRECTOR_MATCH_SQL, DIRECTOR_SEARCH_SQL,
-    EPISODE_SQL, MOVIE_COLUMNS,
+    collapse_categories, facet_match_sql, map_episode_row, map_movie_row, CAST_SQL,
+    DIRECTOR_MATCH_SQL, DIRECTOR_SEARCH_SQL, EPISODE_SQL, MOVIE_COLUMNS,
 };
 use crate::Result;
 
@@ -24,9 +24,13 @@ pub fn get_movies(conn: &Connection,
     if let Some(ref q) = f.query {
         let q_trimmed = q.trim();
         if !q_trimmed.is_empty() {
+            // `m.title_zh` is appended last so no existing parameter index moves.
+            // It cannot go through movies_fts: that index is unicode61, which does
+            // not segment CJK, so a whole Chinese title is a single token. Same
+            // price as the `description_zh LIKE` this query has always run.
             let clean_q: String = q_trimmed.chars().filter(|c| c.is_alphanumeric() || c.is_whitespace()).collect();
             conditions.push(format!(
-                "(m.title LIKE ? OR m.studio_name LIKE ? OR m.director_name LIKE ? OR m.description_zh LIKE ? OR m.id = ? OR {})",
+                "(m.title LIKE ? OR m.studio_name LIKE ? OR m.director_name LIKE ? OR m.description_zh LIKE ? OR m.id = ? OR {} OR m.title_zh LIKE ?)",
                 DIRECTOR_SEARCH_SQL
             ));
             let like_q = format!("%{}%", clean_q);
@@ -36,6 +40,7 @@ pub fn get_movies(conn: &Connection,
             params_vec.push(Box::new(like_q.clone()));
             params_vec.push(Box::new(like_q.clone()));
             params_vec.push(Box::new(id_val));
+            params_vec.push(Box::new(like_q.clone()));
             params_vec.push(Box::new(like_q));
         }
     }
@@ -51,7 +56,11 @@ pub fn get_movies(conn: &Connection,
     if let Some(ref cat) = f.category {
         let cat_trimmed = cat.trim();
         if !cat_trimmed.is_empty() {
-            conditions.push("m.category = ?".to_string());
+            // Token match, not `m.category = ?`: the chips are atomic terms now, so
+            // an exact match would leave "Wrestling" unable to reach the 15 films
+            // stored as "Wrestling<br />J/O". Deliberately changes existing results
+            // (Wrestling: 879 -> 896).
+            conditions.push(facet_match_sql("category", "m"));
             params_vec.push(Box::new(cat_trimmed.to_string()));
         }
     }
@@ -92,6 +101,7 @@ pub fn get_movies(conn: &Connection,
 
     // Total count
     let count_query = format!("SELECT count(*) FROM movies m {}", where_clause);
+
     let params_slice: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
     let total: i64 = conn.query_row(&count_query, &params_slice[..], |r| r.get(0)).map_err(|e| e.to_string())?;
 
@@ -192,12 +202,17 @@ pub fn get_movie_detail(conn: &Connection,
     }
 }
 pub fn get_categories(conn: &Connection) -> Result<Vec<String>> {
+    // Grouped by the raw value, collapsed in code. The counts are what the collapse
+    // weights by: "Wrestling<br />J/O" is one film for both Wrestling and J/O, so
+    // the ordering cannot be recovered from a bare DISTINCT list.
     let mut stmt = conn.prepare(
-        "SELECT category FROM movies \
+        "SELECT category, count(*) FROM movies \
          WHERE category IS NOT NULL AND trim(category) != '' \
-         GROUP BY category ORDER BY count(*) DESC"
+         GROUP BY category"
     ).map_err(|e| e.to_string())?;
 
-    let rows = stmt.query_map([], |r| r.get(0)).map_err(|e| e.to_string())?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .map_err(|e| e.to_string())?;
+    let raw: Vec<(String, i64)> = rows.filter_map(|r| r.ok()).collect();
+    Ok(collapse_categories(&raw))
 }

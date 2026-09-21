@@ -3,7 +3,7 @@
 //! A column added to PERFORMER_COLUMNS and its reader in map_performer_row live
 //! in this one file on purpose — splitting them is how the two drift apart.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use crate::models::{Episode, Movie, Performer};
 
@@ -20,6 +20,25 @@ pub const PERFORMER_FACETS: [(&str, &str, usize); 8] = [
     ("foreskin", "foreskin", 11),
 ];
 
+/// The separator set, enumerated once. `explode_attr` and `facet_sql` must accept
+/// exactly the same language: a value this splits into "Brown" but the SQL cannot
+/// replace stays one token in the column, and the facet filter then silently
+/// returns nothing.
+///
+/// Enumerated in every case rather than matched case-insensitively, because
+/// SQLite's REPLACE has no notion of case: this file used to split only lower
+/// case, `server.py`'s `_BR_RE` was `<br\s*/?>` + IGNORECASE, and the SQL matched
+/// only lower case — three different sets. The bound is one optional space, since
+/// `\s*` cannot be expressed as a finite REPLACE chain.
+///
+/// Mirrors `_BR_SPELLINGS` in `server.py`; `separator_sets_agree_on_every_probe`
+/// in tests/parity.rs feeds probe strings through both and fails on drift.
+pub const BR_SPELLINGS: [&str; 12] = [
+    "<br />", "<bR />", "<Br />", "<BR />",
+    "<br/>", "<bR/>", "<Br/>", "<BR/>",
+    "<br>", "<bR>", "<Br>", "<BR>",
+];
+
 /// The site stores multi-value attributes with an inline `<br />` separator
 /// (e.g. hair = "Brown<br />Blond"); split those into individual values.
 pub fn explode_attr(raw: Option<String>) -> Vec<String> {
@@ -27,22 +46,76 @@ pub fn explode_attr(raw: Option<String>) -> Vec<String> {
         Some(v) => v,
         None => return Vec::new(),
     };
-    raw.split("<br />")
-        .flat_map(|p| p.split("<br/>"))
-        .flat_map(|p| p.split("<br>"))
+    // The same progressive split the three hard-coded spellings used to do, over
+    // the whole set. A value can carry several separators of different spellings
+    // at once, so each split feeds the next.
+    let mut parts = vec![raw.as_str()];
+    for spelling in BR_SPELLINGS {
+        parts = parts.into_iter().flat_map(|p| p.split(spelling)).collect();
+    }
+    parts
+        .into_iter()
         .map(|p| p.trim())
         .filter(|p| !p.is_empty())
         .map(|p| p.to_string())
         .collect()
 }
 
-/// SQL expression rewriting an attribute into `|a|b|` form so a LIKE can match
-/// one token without a false hit on a longer label containing it.
-pub fn facet_sql(column: &str) -> String {
+/// SQL expression rewriting a multi-value column into `|a|b|` form so one token
+/// can be matched without a false hit on a longer label containing it.
+///
+/// `alias` is not decoration: this was written for `performers p`, and a caller
+/// querying `movies m` would otherwise get `no such column: p.category`.
+pub fn facet_sql(column: &str, alias: &str) -> String {
+    let mut expr = format!("COALESCE({}.{}, '')", alias, column);
+    for spelling in BR_SPELLINGS {
+        expr = format!("REPLACE({}, '{}', '|')", expr, spelling);
+    }
+    format!("'|' || {} || '|'", expr)
+}
+
+/// Predicate matching one token inside a multi-value column, for `?` binding.
+///
+/// `instr` rather than `LIKE`: SQLite's LIKE is case-insensitive for ASCII, which
+/// would quietly widen an exact-match filter into one that also hits
+/// `|wrestling|`. There is no case-variant duplicate in the library today, so this
+/// is free insurance rather than a bug fix.
+pub fn facet_match_sql(column: &str, alias: &str) -> String {
     format!(
-        "'|' || REPLACE(REPLACE(REPLACE(COALESCE(p.{}, ''), '<br />', '|'), '<br/>', '|'), '<br>', '|') || '|'",
-        column
+        "instr({}, '|' || ? || '|') > 0",
+        facet_sql(column, alias)
     )
+}
+
+/// The library's categories as atomic terms, most films first.
+///
+/// `movies.category` stores the site's raw string, so 55 rows carry a multi-value
+/// value ("Wrestling<br />J/O") and two carry a trailing separator with nothing
+/// after it. Grouping by the raw string yields 74 entries, 21 of which render as a
+/// chip with a literal `<br />` inside it; splitting first collapses them to 53.
+///
+/// A `BTreeSet` per value because a value could repeat a token and would otherwise
+/// be counted twice into its own weight.
+///
+/// The `term` tiebreak is load-bearing: about 30 terms tie at count 1, and sorting
+/// on count alone is not a total order, so the browser build and the desktop build
+/// could render the same library in two different chip orders. Mirrors
+/// `collapse_categories` in `server.py`.
+pub fn collapse_categories(rows: &[(String, i64)]) -> Vec<String> {
+    let mut counts: BTreeMap<String, i64> = BTreeMap::new();
+    for (raw, n) in rows {
+        let mut seen = std::collections::BTreeSet::new();
+        for term in explode_attr(Some(raw.clone())) {
+            if seen.insert(term.clone()) {
+                *counts.entry(term).or_insert(0) += n;
+            }
+        }
+    }
+    let mut terms: Vec<(String, i64)> = counts.into_iter().collect();
+    // `sort_by` is stable, and `terms` came out of a BTreeMap in key order, so the
+    // alphabetical order the tiebreak promises is what the equal-count runs keep.
+    terms.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    terms.into_iter().map(|(t, _)| t).collect()
 }
 
 /// Cast list for a movie: the profile name/portrait when the performer has been

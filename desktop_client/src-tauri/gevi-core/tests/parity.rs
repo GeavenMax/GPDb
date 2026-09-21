@@ -100,6 +100,24 @@ fn explode_attr_splits_every_br_spelling() {
     assert_eq!(explode_attr(Some("  单个  ".into())), ["单个"]);
     assert!(explode_attr(None).is_empty());
     assert!(explode_attr(Some("   ".into())).is_empty());
+
+    // 大小写。这条以前只认小写，而 server.py 那边是 `<br\s*/?>` + IGNORECASE，
+    // 于是同一个库里两边拆得不一样；现在三个拼写 × 四种大小写都算数。
+    for spelling in ["<br />", "<bR />", "<Br />", "<BR />", "<br/>", "<BR/>", "<br>", "<BR>"] {
+        assert_eq!(
+            explode_attr(Some(format!("Brown{}Blond", spelling))),
+            ["Brown", "Blond"],
+            "{} 应当被当作分隔符",
+            spelling
+        );
+    }
+
+    // 一个空格是上限：`\s*` 能认两个空格，但 SQL 的 REPLACE 链表达不了，
+    // 两边就会分叉。宁可两边一致地不认。
+    assert_eq!(
+        explode_attr(Some("Brown<br  />Blond".into())),
+        ["Brown<br  />Blond"]
+    );
 }
 
 // ---------------------------------------------------------------- 统计
@@ -248,6 +266,7 @@ fn search_also_matches_through_the_director_roster() {
         .query_row(
             "SELECT count(*) FROM movies m WHERE (m.title LIKE ?1 OR m.studio_name LIKE ?1 \
              OR m.director_name LIKE ?1 OR m.description_zh LIKE ?1 OR m.id = ?2 \
+             OR m.title_zh LIKE ?1 \
              OR EXISTS (SELECT 1 FROM movie_directors md JOIN directors d ON d.id = md.director_id \
              WHERE md.movie_id = m.id AND d.name LIKE ?1))",
             params![format!("%{}%", q), -1i64],
@@ -256,6 +275,56 @@ fn search_also_matches_through_the_director_roster() {
         .unwrap();
     assert_eq!(res.total, expected);
     assert!(res.total > 0);
+}
+
+/// 中文片名能被搜到。
+///
+/// 真库上没法验证这条：测试是只读打开的，而 `title_zh` 现在整列都是 NULL（第一
+/// 批片名要等阶段 7 才落库）。所以这里自建一个内存库，把中文片名塞进去，验的是
+/// **查询构造**而不是真库内容。
+///
+/// 走不了 movies_fts：那个索引是 unicode61，不切分 CJK，整串中文是一个 token。
+#[test]
+fn search_reaches_chinese_titles_through_like() {
+    let conn = Connection::open_in_memory().unwrap();
+    conn.execute_batch(
+        "CREATE TABLE movies (id INTEGER PRIMARY KEY, title TEXT, studio_id TEXT,
+             studio_name TEXT, release_year INTEGER, duration_mins INTEGER,
+             category TEXT, rating REAL, movie_type TEXT, description TEXT,
+             description_zh TEXT, cover_icon TEXT, cover_full TEXT, covers_json TEXT,
+             director_id INTEGER, director_name TEXT, title_zh TEXT);
+         CREATE TABLE directors (id INTEGER PRIMARY KEY, name TEXT);
+         CREATE TABLE movie_directors (movie_id INTEGER, director_id INTEGER, position INTEGER);
+         CREATE TABLE performers (id INTEGER PRIMARY KEY, name TEXT, image_url TEXT);
+         CREATE TABLE movie_performers (movie_id INTEGER, performer_id INTEGER, performer_name TEXT);
+         CREATE TABLE episodes (id INTEGER PRIMARY KEY, movie_id INTEGER, title TEXT,
+             episode_number INTEGER, duration_mins INTEGER, cover_icon TEXT, cover_full TEXT);
+         INSERT INTO movies (id, title, title_zh, description_zh, category) VALUES
+             (1, 'Police Story',  '警察故事', NULL, 'Wrestling'),
+             (2, 'Creamy Ranch',  NULL,      NULL, 'Wrestling'),
+             (3, 'Nutt Crackers', '胡桃夹精', NULL, 'Solos');",
+    )
+    .unwrap();
+
+    let found = |q: &str| {
+        let f = FilterArgs { query: Some(q.into()), ..Default::default() };
+        queries::movies::get_movies(&conn, Some(f), Some(1), Some(50)).unwrap().total
+    };
+
+    assert_eq!(found("警察"), 1, "中文片名搜不到 —— title_zh 没进搜索谓词");
+    assert_eq!(found("胡桃夹精"), 1);
+    assert_eq!(found("Police"), 1, "英文标题这条路不该受影响");
+    assert_eq!(found("不存在的词"), 0);
+
+    // 谓词是「整串对每一列各做一次 LIKE」，不是分词：没有哪一列同时含有
+    // "Police" 和 "警察"，所以混着写搜不到。这是既有行为，不是这次引入的 ——
+    // 记下来是为了别把它当成回归。
+    assert_eq!(found("Police 警察"), 0);
+
+    // 浏览器版（server.py）多一条 FTS 分支，而 movies_fts 是 unicode61、不切分
+    // CJK：纯中文查询 MATCH 不到行就落到 LIKE 分支，但**混着写的查询可能命中
+    // FTS 分支**，那条路上没加 title_zh 就永远搜不到中文。那条分支 Rust 这边
+    // 没有，测不到，只能在 server.py 的两处一起改（已改）。
 }
 
 #[test]
@@ -834,17 +903,55 @@ fn studio_and_category_lists_match_sql() {
     );
     assert_eq!(studios.len(), 200, "库里的片商数超过上限，应当被截到 200");
 
+    // 分类不再是「GROUP BY 原始值」的直接映射：原始值有 74 个，其中 21 个是
+    // 含字面量 `<br />` 的组合串，界面上会渲染成一个带标签的 chip。所以这里
+    // 不再比对那条 SQL，改为断言折叠后必须成立的性质 —— 用 Python 侧的
+    // collapse_categories 做逐项对拍的是 category_parity.rs。
     let cats = queries::movies::get_categories(&tx).unwrap();
-    assert_eq!(
-        cats,
-        strings(
-            &tx,
-            "SELECT category FROM movies \
-             WHERE category IS NOT NULL AND trim(category) != '' \
-             GROUP BY category ORDER BY count(*) DESC"
-        )
-    );
     assert!(!cats.is_empty());
+    assert!(
+        cats.iter().all(|c| !c.contains('<')),
+        "chip 里漏出了原始分隔符：{:?}",
+        cats.iter().filter(|c| c.contains('<')).collect::<Vec<_>>()
+    );
+    assert!(cats.iter().all(|c| !c.trim().is_empty()), "有空 chip");
+
+    // 每个 chip 的影片数，必须等于按原始值拆词后加出来的权重。这条把**两条不同
+    // 的代码路径**钉在一起：折叠走 explode_attr，计数走 facet_match_sql，任何
+    // 一边漏词、重复计词、或只认部分分隔符写法，这里都会对不上。
+    let mut expect: HashMap<String, i64> = HashMap::new();
+    for (raw, n) in raw_category_counts(&tx) {
+        for term in gevi_core::sql::explode_attr(Some(raw)).into_iter().collect::<std::collections::BTreeSet<_>>() {
+            *expect.entry(term).or_insert(0) += n;
+        }
+    }
+
+    assert_eq!(cats.len(), expect.len(), "chip 数与拆词后的原子词数不符");
+    for c in &cats {
+        let f = FilterArgs { category: Some(c.clone()), ..Default::default() };
+        let res = queries::movies::get_movies(&tx, Some(f), Some(1), Some(1)).unwrap();
+        // 点得出影片：「只出现在组合值里」的词在词元匹配之前会渲染成一个点了没
+        // 反应的 chip。（今天库里没有这种词，所以这条是防回归而不是抓现行。）
+        assert!(res.total > 0, "chip「{}」点下去一部影片都没有", c);
+        assert_eq!(
+            res.total,
+            *expect.get(c).unwrap_or(&-1),
+            "chip「{}」的影片数与拆词权重不符",
+            c
+        );
+    }
+}
+
+/// 分类原始值及其影片数，按 count 降序 —— 折叠的输入。
+fn raw_category_counts(conn: &Connection) -> Vec<(String, i64)> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT category, count(*) FROM movies \
+             WHERE category IS NOT NULL AND trim(category) != '' GROUP BY category",
+        )
+        .unwrap();
+    let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
+    rows.filter_map(|r| r.ok()).collect()
 }
 
 #[test]

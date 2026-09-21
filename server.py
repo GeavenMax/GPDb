@@ -36,7 +36,25 @@ PERFORMER_FACETS: dict[str, str] = {
     "foreskin": "foreskin",
 }
 
-_BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+# The separator set, written out once. Whatever `split_facet_value` can split, the
+# SQL in `facet_sql` has to be able to replace, or a value this explodes into
+# "Brown" is still one token in the column and the facet filter silently returns
+# nothing. The three spellings the site emits are enumerated in every case rather
+# than left to a case-insensitive match, because SQLite's REPLACE has no notion of
+# one: `_BR_RE` used to be `<br\s*/?>` + IGNORECASE, the Rust splitter matched only
+# lower case, and the SQL matched only lower case — three sets, not one.
+#
+# Grouped longest-first, which is not load-bearing for these three — none is a
+# substring of another, so a REPLACE or split on "<br>" cannot eat part of
+# "<br />" — but it is what a nested spelling would need, and it costs nothing.
+#
+# The bound is one optional space. `\s*` would accept "<br  />", which no finite
+# REPLACE chain can express, so the two sides would disagree again. The library
+# holds only "<br />"; `separator_sets_agree_on_every_probe` in tests/parity.rs
+# feeds probe strings through all of them and fails if they drift apart.
+_BR_CASES = ("br", "bR", "Br", "BR")
+_BR_SPELLINGS = tuple(f"<{c}{tail}" for tail in (" />", "/>", ">") for c in _BR_CASES)
+_BR_RE = re.compile("|".join(re.escape(s) for s in _BR_SPELLINGS))
 
 # A director's name does not necessarily appear verbatim in movies.director_name:
 # rows scraped before the parser fix glue several names into one separator-free
@@ -61,16 +79,56 @@ def split_facet_value(raw: str | None) -> list[str]:
     return [p.strip() for p in _BR_RE.split(raw) if p.strip()]
 
 
-def facet_sql(column: str) -> str:
-    """SQL expression rewriting a performer attribute into '|a|b|' form.
+def facet_sql(column: str, alias: str = "p") -> str:
+    """SQL expression rewriting a multi-value column into '|a|b|' form.
 
-    Lets `LIKE '%|Brown|%'` match the token "Brown" inside "Brown<br />Blond"
-    without a false hit on a hypothetical token "Dark Brown".
+    Lets `instr(expr, '|Brown|') > 0` match the token "Brown" inside
+    "Brown<br />Blond" without a false hit on a hypothetical token "Dark Brown".
+
+    `alias` is not decoration: this was written for `performers p`, and a caller
+    querying `movies m` would otherwise get `no such column: p.category`. Every
+    caller today reads the same column name from a differently-aliased table.
     """
-    return (
-        "'|' || REPLACE(REPLACE(REPLACE(COALESCE(p.{col}, ''),"
-        " '<br />', '|'), '<br/>', '|'), '<br>', '|') || '|'"
-    ).format(col=column)
+    expr = "COALESCE({a}.{c}, '')".format(a=alias, c=column)
+    for spelling in _BR_SPELLINGS:
+        expr = "REPLACE({e}, '{s}', '|')".format(e=expr, s=spelling)
+    return "'|' || {e} || '|'".format(e=expr)
+
+
+def facet_match_sql(column: str, alias: str = "p") -> str:
+    """Predicate matching one token inside a multi-value column, for `?` binding.
+
+    `instr` rather than `LIKE`: SQLite's LIKE is case-insensitive for ASCII, which
+    would quietly widen an exact-match filter into one that also hits
+    "|wrestling|". There is no case-variant duplicate in the library today, so
+    this is free insurance rather than a bug fix.
+    """
+    return "instr({expr}, '|' || ? || '|') > 0".format(
+        expr=facet_sql(column, alias))
+
+
+def collapse_categories(rows) -> list[str]:
+    """The library's categories as atomic terms, most films first.
+
+    `movies.category` stores the site's raw string, so 55 rows carry a multi-value
+    value ("Wrestling<br />J/O") and two carry a trailing separator with nothing
+    after it ("General Hardcore<br />"). Grouping by the raw string yields 74
+    entries, 21 of which render as a chip with a literal `<br />` inside it. Split
+    first, then group: 74 raw values collapse to 53 real terms.
+
+    `set()` around the tokens because a value could repeat one ("Oral Sex<br />Oral
+    Sex") and would otherwise be counted twice into its own weight.
+
+    The `term` tiebreak is load-bearing, not cosmetic: about 30 terms tie at
+    count 1, and sorting on count alone is not a total order, so the browser build
+    and the desktop build could render the same library in two different chip
+    orders. Ties break alphabetically so both agree.
+    """
+    counts: dict[str, int] = {}
+    for raw, n in rows:
+        for term in set(split_facet_value(raw)):
+            counts[term] = counts.get(term, 0) + n
+    return sorted(counts, key=lambda t: (-counts[t], t))
 
 
 class _NoArgs:
@@ -428,20 +486,27 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                 except sqlite3.OperationalError:
                     fts_test = None  # malformed FTS query syntax
 
+                # `m.title_zh` is appended last in both branches so no existing
+                # parameter index moves. It has to be here in *both*: a mixed query
+                # like "Police 警察" matches the English half in FTS and therefore
+                # takes the FTS branch, where a missing predicate could never find
+                # the Chinese title. movies_fts is unicode61, which does not
+                # segment CJK, so the Chinese side cannot go through MATCH.
                 if fts_test:
                     conditions.append(
                         "(m.id IN (SELECT id FROM movies_fts WHERE movies_fts MATCH ?)"
                         " OR m.description_zh LIKE ? OR m.id = ?"
-                        f" OR {DIRECTOR_SEARCH_SQL})"
+                        f" OR {DIRECTOR_SEARCH_SQL} OR m.title_zh LIKE ?)"
                     )
-                    args.extend([f"{clean_q}*", like_q, numeric_id, like_q])
+                    args.extend([f"{clean_q}*", like_q, numeric_id, like_q, like_q])
                 else:
                     conditions.append(
                         "(m.title LIKE ? OR m.studio_name LIKE ? OR m.director_name LIKE ?"
                         " OR m.description_zh LIKE ? OR m.id = ?"
-                        f" OR {DIRECTOR_SEARCH_SQL})"
+                        f" OR {DIRECTOR_SEARCH_SQL} OR m.title_zh LIKE ?)"
                     )
-                    args.extend([like_q, like_q, like_q, like_q, numeric_id, like_q])
+                    args.extend([like_q, like_q, like_q, like_q, numeric_id, like_q,
+                                 like_q])
 
             if studio:
                 conditions.append("m.studio_name = ?")
@@ -454,7 +519,11 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                 args.extend([director, director])
 
             if category:
-                conditions.append("m.category = ?")
+                # Token match, not `m.category = ?`: the chips are now atomic terms,
+                # so an exact match would leave "Wrestling" unable to reach the 15
+                # films stored as "Wrestling<br />J/O". This deliberately changes
+                # existing results (Wrestling: 879 -> 896).
+                conditions.append(facet_match_sql("category", "m"))
                 args.append(category)
 
             if year_min and year_min.isdigit():
@@ -1280,9 +1349,8 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                 FROM movies
                 WHERE category IS NOT NULL AND trim(category) != ''
                 GROUP BY category
-                ORDER BY count DESC
             """).fetchall()
-            categories = [r["category"] for r in rows]
+            categories = collapse_categories((r["category"], r["count"]) for r in rows)
             self.send_json(categories)
 
     def handle_sync(self):

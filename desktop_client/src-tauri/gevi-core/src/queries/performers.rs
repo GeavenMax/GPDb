@@ -57,7 +57,7 @@ pub fn get_performers(conn: &Connection,
         if values.is_empty() {
             continue;
         }
-        let expr = facet_sql(column);
+        let expr = facet_sql(column, "p");
         let mut ors: Vec<String> = Vec::with_capacity(values.len());
         for value in &values {
             params_vec.push(Box::new(format!("%|{}|%", value)));
