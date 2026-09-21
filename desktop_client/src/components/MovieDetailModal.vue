@@ -364,12 +364,15 @@ onUnmounted(() => {
         <div class="relative z-10 flex flex-col md:flex-row gap-6 items-start">
           <!-- Poster Container with Multi-Cover Switching -->
           <div class="flex flex-col items-center gap-2 shrink-0">
+            <!-- data-zoom-click: the poster has no click action of its own, so one
+                 click opens the viewer (see utils/lightbox.ts). -->
             <div class="w-44 md:w-56 aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border border-zinc-700/60 bg-zinc-950 relative group">
               <img
                 v-if="currentCover"
                 :src="currentCover"
                 :alt="movie.title"
                 referrerpolicy="no-referrer"
+                data-zoom-click
                 class="w-full h-full object-cover transition-all duration-300"
               />
               <div v-else class="w-full h-full flex flex-col items-center justify-center text-zinc-600 p-4 text-center">
@@ -771,9 +774,10 @@ onUnmounted(() => {
             :key="ep.id"
             class="flex flex-col bg-zinc-950/80 rounded-2xl border border-zinc-800/80 overflow-hidden hover:border-zinc-700 transition"
           >
-            <!-- Scene thumbnail -->
+            <!-- Scene thumbnail. The card carries no click action, so the still
+                 zooms on one click like the poster above. -->
             <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-zinc-900 overflow-hidden">
-              <img :src="getImageUrl(ep.thumbnail_url)" :alt="ep.title" loading="lazy" referrerpolicy="no-referrer" class="w-full h-full object-cover" />
+              <img :src="getImageUrl(ep.thumbnail_url)" :alt="ep.title" loading="lazy" referrerpolicy="no-referrer" data-zoom-click class="w-full h-full object-cover" />
             </div>
 
             <!-- Scene Info -->

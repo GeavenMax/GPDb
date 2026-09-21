@@ -6,6 +6,9 @@ gevi.db
 gevi.db-shm
 gevi.db-wal
 gevi.db.backup-*
+# Manual pre-scrape copies (`cp gevi.db backups/gevi-<date>.db`). Deliberately not
+# named gevi.db.backup-* so the scraper's own prune (keep=5) cannot delete them.
+backups/
 image_cache/
 
 # --- 刮削脚本的运行日志 ---

@@ -158,13 +158,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
       <!-- Profile Header -->
       <div class="p-6 md:p-8 bg-zinc-950 border-b border-zinc-800 flex items-center gap-6">
-        <!-- Portrait (issue #6), falls back to the letter tile when unscraped -->
+        <!-- Portrait (issue #6), falls back to the letter tile when unscraped.
+             data-zoom-click: the portrait has no click action of its own, so a single
+             click opens the viewer (see utils/lightbox.ts). -->
         <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-amber-500/10 ring-1 ring-zinc-700/60">
           <img
             v-if="performer.image_url && !portraitError"
             :src="getImageUrl(performer.image_url)"
             :alt="performer.name"
             referrerpolicy="no-referrer"
+            data-zoom-click
             class="w-full h-full object-cover object-top"
             @error="portraitError = true"
           />
@@ -321,13 +324,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               :key="ep.id"
               class="flex flex-col bg-zinc-950/80 rounded-2xl border border-zinc-800/80 overflow-hidden hover:border-amber-500/40 transition group"
             >
-              <!-- Episode thumbnail -->
+              <!-- Episode thumbnail. The card itself carries no click action (only the
+                   出处 and 片商 labels below do), so the still zooms on one click. -->
               <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-zinc-900 overflow-hidden">
                 <img
                   :src="getImageUrl(ep.thumbnail_url)"
                   :alt="ep.title"
                   loading="lazy"
                   referrerpolicy="no-referrer"
+                  data-zoom-click
                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
@@ -352,13 +357,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     </div>
                   </div>
 
-                  <div v-if="ep.movie_title" class="text-xs font-medium text-zinc-300 mt-1 flex items-center gap-1">
-                    <Film class="w-3 h-3 text-zinc-500" />
+                  <div v-if="ep.movie_title" class="text-xs font-medium text-zinc-300 mt-1 flex items-center gap-1 min-w-0">
+                    <Film class="w-3 h-3 text-zinc-500 shrink-0" />
                     <span>出处: {{ ep.movie_title }}</span>
                     <button
                       v-if="ep.studio_name"
                       @click="emit('filter-studio', ep.studio_name)"
-                      class="text-zinc-500 hover:text-amber-400 text-[10px] ml-1 transition"
+                      class="text-zinc-500 hover:text-amber-400 text-[10px] ml-1 shrink-0 transition"
                     >({{ ep.studio_name }})</button>
                   </div>
 

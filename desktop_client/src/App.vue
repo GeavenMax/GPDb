@@ -12,7 +12,7 @@ import SyncModal from './components/SyncModal.vue';
 import PaginationBar from './components/PaginationBar.vue';
 import { api, createPerformerFilters, countActivePerformerFilters, FACET_KEYS, FACET_LABELS, IS_TAURI } from './api';
 import { getImageUrl } from './utils/image';
-import { openLightbox, viewableImageFrom, lightboxImage } from './utils/lightbox';
+import { openLightbox, viewableImageFrom, zoomsOnClick, lightboxImage } from './utils/lightbox';
 import type {
   Movie,
   Performer,
@@ -967,18 +967,35 @@ function closeStudioDetail() {
 }
 
 /**
- * Double-clicking any image opens it in the full-screen viewer.
+ * One click on an image that has no click action of its own opens the viewer.
+ *
+ * Those are the images that ARE the panel's content — a film's poster, a performer's
+ * portrait, a scene still — and they opt in with ZOOM_CLICK_ATTR, because a click is
+ * otherwise free and asking for two of them is just friction. Registered in the
+ * capture phase so it runs before any handler on a card the image sits in; a card
+ * that is click-to-open therefore never contains a marked image (see the two cases
+ * below, which keep the double-click gesture instead).
+ */
+function onGlobalClick(e: MouseEvent) {
+  if (lightboxImage.value) return;
+  const img = viewableImageFrom(e.target);
+  if (!img || !zoomsOnClick(img)) return;
+  openLightbox(img.currentSrc || img.src, img.alt);
+}
+
+/**
+ * Double-clicking an image inside a click-to-open card opens it in the viewer.
  *
  * One listener on window rather than a binding per image: covers appear in a dozen
- * places and all of them should behave the same. On a cover that is itself
- * click-to-open the two gestures both happen — the detail page opens underneath and
- * the viewer covers it — which is the agreed behaviour; Escape unwinds one layer at
- * a time. Images inside the viewer are ignored so it cannot open on itself.
+ * places and all of them should behave the same. On such a cover the two gestures
+ * both happen — the detail page opens underneath and the viewer covers it — so a
+ * single click stays free for navigation, which is why these images do not carry
+ * ZOOM_CLICK_ATTR. Images inside the viewer are ignored so it cannot open on itself.
  */
 function onGlobalDblClick(e: MouseEvent) {
   if (lightboxImage.value) return;
   const img = viewableImageFrom(e.target);
-  if (!img) return;
+  if (!img || zoomsOnClick(img)) return;
   openLightbox(img.currentSrc || img.src, img.alt);
 }
 
@@ -989,6 +1006,7 @@ onMounted(async () => {
   loadFavoriteKeys();
   loadGlossary();
 
+  window.addEventListener('click', onGlobalClick, true);
   window.addEventListener('dblclick', onGlobalDblClick);
 
   loadStats();
@@ -997,7 +1015,10 @@ onMounted(async () => {
   nextTick(() => fillViewport());
 });
 
-onUnmounted(() => window.removeEventListener('dblclick', onGlobalDblClick));
+onUnmounted(() => {
+  window.removeEventListener('click', onGlobalClick, true);
+  window.removeEventListener('dblclick', onGlobalDblClick);
+});
 </script>
 
 <template>

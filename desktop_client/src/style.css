@@ -12,9 +12,11 @@ body {
   overflow-x: hidden;
 }
 
-/* Every image opens the full-screen viewer on double-click (see utils/lightbox.ts);
-   the cursor is the only hint that the gesture exists. Tailwind utilities on the
-   element itself still win, which is how the viewer's own image opts out. */
+/* Every image opens the full-screen viewer — on one click when it has no click
+   action of its own, on two when it sits in a click-to-open card (see
+   utils/lightbox.ts); the cursor is the only hint that the gesture exists. Tailwind
+   utilities on the element itself still win, which is how the viewer's own image
+   opts out. */
 img {
   cursor: zoom-in;
 }
