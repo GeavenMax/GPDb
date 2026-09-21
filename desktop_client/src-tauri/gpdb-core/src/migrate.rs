@@ -9,9 +9,8 @@
 //!
 //! The schema has always been owned by Python (`schema.sql` + `db_manager.MIGRATIONS`
 //! + `apply_migrations`). Asking the user to run Python once does not close this hole:
-//! `find_db_path()` resolves relative to the working directory, so the database Python
-//! migrated is not necessarily the one the app opened. And the desktop is meant to
-//! work on a machine with no Python at all.
+//! the desktop is meant to work on a machine with no Python at all, and the library it
+//! opens is not necessarily one Python has ever seen — `GEVI_DB` can point it anywhere.
 //!
 //! # The rule for this module
 //!

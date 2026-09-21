@@ -17,10 +17,12 @@ use std::path::{Path, PathBuf};
 
 /// `translate_config.json`，与当前数据库同一个目录。
 fn config_path() -> PathBuf {
-    let db = crate::db::find_db_path();
-    // `find_db_path` 在找不到候选时返回 `../gevi.db` 这类相对路径，其 parent 可能是
-    // 空串 —— `Path::new("").join(..)` 就是当前目录，与 `translate.py` 的行为一致。
-    let dir = db.parent().unwrap_or_else(|| Path::new(""));
+    // 找不到数据库时退回当前目录（空 PathBuf 的 parent 就是它自己，join 出来是相对
+    // 路径，与 `translate.py` 在仓库根目录下的行为一致）。这里**不能**因为找不到库
+    // 就报错返回：设置页得能打开、能填 Key，否则用户连补救的机会都没有。
+    let dir = crate::db::find_db_path()
+        .and_then(|db| db.parent().map(Path::to_path_buf))
+        .unwrap_or_default();
     dir.join(tc::CONFIG_FILE_NAME)
 }
 

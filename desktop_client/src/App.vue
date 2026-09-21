@@ -375,6 +375,22 @@ const cacheStatusMsg = ref('');
 const importStatusMsg = ref('');
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
+/**
+ * The last list-load failure, or '' — rendered as a banner above the main stage.
+ *
+ * Each list fetcher used to end in a bare `finally`, so a rejected command left the
+ * list at whatever it was and the window showed an empty library with nothing said
+ * about why. That is how a bundled .app opening the wrong database read as "my data is
+ * gone": nothing on either side of the boundary reported anything. Stays until a load
+ * succeeds — a database that cannot be opened does not fix itself, so a message that
+ * faded after a few seconds would be the same silence again.
+ */
+const loadError = ref('');
+
+function reportLoadError(err: unknown) {
+  loadError.value = err instanceof Error ? err.message : String(err);
+}
+
 // Load data
 async function loadStats() {
   stats.value = await api.getStats();
@@ -674,6 +690,9 @@ async function fetchMovies(replace = true, targetPage = 1) {
       movies.value.push(...nextItems);
     }
     totalMovies.value = res.total;
+    loadError.value = '';
+  } catch (err) {
+    reportLoadError(err);
   } finally {
     isLoading.value = false;
     isLoadingMore.value = false;
@@ -701,6 +720,9 @@ async function fetchPerformers(replace = true, targetPage = 1) {
       performers.value.push(...nextItems);
     }
     totalPerformers.value = res.total;
+    loadError.value = '';
+  } catch (err) {
+    reportLoadError(err);
   } finally {
     isLoading.value = false;
     isLoadingMore.value = false;
@@ -730,6 +752,9 @@ async function fetchStudios(replace = true, targetPage = 1) {
       studioRows.value.push(...res.items.filter(s => !existing.has(s.name)));
     }
     totalStudioRows.value = res.total;
+    loadError.value = '';
+  } catch (err) {
+    reportLoadError(err);
   } finally {
     isLoading.value = false;
     isLoadingMore.value = false;
@@ -760,6 +785,9 @@ async function fetchEpisodes(replace = true, targetPage = 1) {
       episodeRows.value.push(...res.items.filter(e => !existing.has(e.id)));
     }
     totalEpisodeRows.value = res.total;
+    loadError.value = '';
+  } catch (err) {
+    reportLoadError(err);
   } finally {
     isLoading.value = false;
     isLoadingMore.value = false;
@@ -1272,6 +1300,18 @@ onUnmounted(() => {
       @toggle-sync="isSyncOpen = true"
       @change-view="(mode) => viewMode = mode"
     />
+
+    <!--
+      Sits above the stage rather than inside a tab, because a database that cannot be
+      opened breaks every tab and the movies one is not necessarily the one on screen.
+      Not dismissible: the condition it reports does not go away on its own.
+    -->
+    <div
+      v-if="loadError"
+      class="shrink-0 px-6 py-3 bg-danger-fill/10 border-b border-danger-fill/20 text-xs text-danger-soft whitespace-pre-line"
+    >
+      {{ loadError }}
+    </div>
 
     <!-- Main App Body -->
     <div class="flex-1 flex overflow-hidden">
