@@ -186,6 +186,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               v-for="ep in episodes"
               :key="ep.id"
               :episode="ep"
+              :lang="lang"
               clickable
               :is-favorite="isFav('episode', String(ep.id))"
               @select-movie-id="emit('select-movie-id', $event)"

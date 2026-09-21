@@ -16,15 +16,47 @@
 import { ref } from 'vue';
 import { api } from '../api';
 
+/**
+ * The `<br />` spellings the site uses as a multi-value separator, enumerated in every
+ * case exactly as `BR_SPELLINGS` (`gevi-core/src/sql.rs`) and `_BR_SPELLINGS`
+ * (`server.py`) do.
+ *
+ * Three places have to agree on this set — the two SQL expressions that turn a column
+ * into `|a|b|`, the splitters, and this. They did not always: the Rust splitter matched
+ * lower case only, Python's regex was case-insensitive, and both SQL expressions
+ * matched lower case only, so a value one side split the other could not match. A probe
+ * test (`separator_sets_agree_on_every_probe`) fails if any of the three drifts again.
+ *
+ * Built from the list rather than written as `/<br\s*\/?>/i` so that the set stays
+ * enumerable — `\s*` could match two spaces, which no REPLACE chain can express. None
+ * of these characters is a regex metacharacter, so joining them is safe as-is.
+ */
+const BR_SPELLINGS = [
+  '<br />', '<bR />', '<Br />', '<BR />',
+  '<br/>', '<bR/>', '<Br/>', '<BR/>',
+  '<br>', '<bR>', '<Br>', '<BR>',
+];
+const BR_RE = new RegExp(BR_SPELLINGS.join('|'), 'g');
+
 const terms = ref<Record<string, string>>({});
+/**
+ * Film categories, kept apart from `terms` rather than merged into one map.
+ *
+ * `Muscle`, `Twink` and `Bareback` are all plausible as either an attribute or a
+ * category; today's 53 categories and ~76 attributes happen to be disjoint, but that
+ * is a coincidence of the data, not a property of it — and a `tr()` that had to guess
+ * would start mixing them the moment the site added one term to both.
+ */
+const categories = ref<Record<string, string>>({});
 let loadPromise: Promise<void> | null = null;
 
-/** Fetch the glossary once. Later calls reuse the same promise. */
+/** Fetch the glossaries once. Later calls reuse the same promise. */
 export function loadGlossary(force = false): Promise<void> {
   if (force) loadPromise = null;
   if (!loadPromise) {
-    loadPromise = api.getGlossary().then((t) => {
-      terms.value = t;
+    loadPromise = api.getGlossary().then((g) => {
+      terms.value = g.terms;
+      categories.value = g.categories;
     });
   }
   return loadPromise;
@@ -39,6 +71,35 @@ export function tr(value: string | null | undefined): string {
 /** Whether any glossary has been loaded — used to hide the "translate glossary" hint. */
 export function glossaryCount(): number {
   return Object.keys(terms.value).length;
+}
+
+/** How many categories have a Chinese label; 0 until `translate.py --categories` has run. */
+export function categoryCount(): number {
+  return Object.keys(categories.value).length;
+}
+
+/**
+ * A film's category, translated term by term.
+ *
+ * `movies.category` is the site's raw multi-value string, so "Wrestling<br />J/O" is
+ * one category column but two labels — each is looked up on its own and the results
+ * are rejoined with `、` (the Chinese enumeration comma; the source's `<br />` is a
+ * separator, not content). Matching the separator set is not guesswork: it is the same
+ * enumeration the SQL and the Rust splitter use, and `separator_sets_agree_on_every_probe`
+ * fails if the three ever drift.
+ *
+ * The whole glossary is empty until the category translation has been run, and each
+ * term falls back to itself, so an untranslated library renders exactly what it renders
+ * today rather than a row of blanks.
+ */
+export function trCategory(raw: string | null | undefined): string {
+  if (!raw) return '';
+  return raw
+    .split(BR_RE)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((t) => categories.value[t] || t)
+    .join('、');
 }
 
 /**

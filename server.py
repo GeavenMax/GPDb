@@ -1251,13 +1251,20 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
     # --- Performer attribute glossary (see schema.sql §10) ---
 
     def handle_get_glossary(self):
-        """The whole glossary (~73 rows). The client fetches it once and looks up locally."""
+        """Both glossaries (~76 attribute terms, ~53 categories). Fetched once, looked up locally.
+
+        Two separate maps rather than one: `Muscle` / `Twink` are plausible as either
+        an attribute or a category, and the frontend's `tr()` must not have to guess.
+        The desktop build reads the same two tables through its own `get_glossaries`.
+        """
         db = DatabaseManager(str(DB_PATH))
         try:
             terms = db.load_glossary()
+            categories = db.load_category_glossary()
         finally:
             db.close()
-        self.send_json({"terms": terms, "count": len(terms)})
+        self.send_json({"terms": terms, "categories": categories,
+                        "count": len(terms), "category_count": len(categories)})
 
     def handle_translate_glossary_run(self):
         """Translate the whole attribute vocabulary in one API call. Supports dry_run."""

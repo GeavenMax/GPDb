@@ -42,7 +42,8 @@ import type {
   EpisodeFilterState,
 } from './types';
 import { FAVORITE_TYPES } from './types';
-import { loadGlossary, glossaryCount, trMeasure } from './utils/glossary';
+import { loadGlossary, glossaryCount, trMeasure, trCategory } from './utils/glossary';
+import { titlePrimary, titleSecondary, sceneFilm } from './utils/bilingual';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
@@ -983,6 +984,24 @@ function asMovie(f: FavoriteItem): Movie {
   };
 }
 
+/**
+ * A favourited scene's parent film, in the language the rest of the app is showing.
+ *
+ * The favourites payload carries no episode ordinal, so this card cannot say "第 3 集"
+ * the way the library grid does; the parent film is what identifies the scene, and its
+ * Chinese name is the only Chinese this row can offer (`f.title` is the site's
+ * placeholder, "Episode #<row id>").
+ */
+function favFilmTitle(f: FavoriteItem): string {
+  return titlePrimary(sceneFilm(f), descLang.value);
+}
+
+/** The same name with the original appended, for the tooltip. */
+function favFilmFull(f: FavoriteItem): string {
+  const alt = titleSecondary(sceneFilm(f), descLang.value);
+  return alt ? `${favFilmTitle(f)}（${alt}）` : favFilmTitle(f);
+}
+
 /** Reveal the fallback tile behind an <img> that failed to load. */
 function hideBrokenImage(e: Event) {
   const img = e.target as HTMLImageElement;
@@ -1245,7 +1264,7 @@ onUnmounted(() => {
                   <button @click="filters.studio = ''" class="hover:text-fg">×</button>
                 </span>
                 <span v-if="filters.category" class="text-xs px-2.5 py-1 rounded-lg bg-accent-fill/10 text-accent border border-accent-fill/30 flex items-center gap-1">
-                  分类: {{ filters.category }}
+                  分类: {{ trCategory(filters.category) }}
                   <button @click="filters.category = ''" class="hover:text-fg">×</button>
                 </span>
               </div>
@@ -1952,7 +1971,7 @@ onUnmounted(() => {
                       </div>
                       <div v-if="f.movie_title" class="text-[11px] text-fg-3 mt-0.5 flex items-center gap-1 truncate">
                         <Film class="w-2.5 h-2.5 text-fg-4 shrink-0" />
-                        <span class="truncate" :title="f.movie_title">出处: {{ f.movie_title }}</span>
+                        <span class="truncate" :title="favFilmFull(f)">出处: {{ favFilmTitle(f) }}</span>
                       </div>
                     </div>
                     <div class="flex items-center gap-2 text-[10px] text-fg-4">

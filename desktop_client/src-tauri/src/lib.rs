@@ -26,6 +26,7 @@ pub fn run() {
             commands::detail::get_studio_works,
             commands::library::get_episode_library,
             commands::library::get_categories,
+            commands::library::get_glossaries,
             commands::user::get_favorites,
             commands::user::toggle_favorite,
             commands::translate::get_translation_providers,

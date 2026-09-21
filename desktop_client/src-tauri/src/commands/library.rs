@@ -2,7 +2,7 @@
 //! categories, and the library-wide counts.
 
 use gevi_core::models::{
-    DatabaseStats, EpisodeLibrary, FilterArgs, MoviesResponse, PerformerFacets,
+    DatabaseStats, EpisodeLibrary, FilterArgs, Glossaries, MoviesResponse, PerformerFacets,
     PerformerFilterArgs, PerformersResponse, StudioLibrary,
 };
 use gevi_core::queries;
@@ -87,4 +87,12 @@ pub fn get_episode_library(
 pub fn get_categories() -> Result<Vec<String>, String> {
     let conn = open_db()?;
     queries::movies::get_categories(&conn).map_err(|e| e.to_string())
+}
+
+/// Both translation glossaries. The desktop build has no other way to reach them —
+/// its performer attributes come from Rust, not from the HTTP API.
+#[tauri::command]
+pub fn get_glossaries() -> Result<Glossaries, String> {
+    let conn = open_db()?;
+    queries::glossary::get_glossaries(&conn).map_err(|e| e.to_string())
 }

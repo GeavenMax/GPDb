@@ -10,7 +10,7 @@ import type {
   EpisodeSortBy,
 } from '../types';
 import { FACET_KEYS, FACET_LABELS, EPISODE_SORTS } from '../api';
-import { tr } from '../utils/glossary';
+import { tr, trCategory } from '../utils/glossary';
 
 const props = defineProps<{
   open: boolean;
@@ -438,7 +438,9 @@ function resetAll() {
                   : 'bg-surface border-line text-fg-3 hover:text-fg-2'
               ]"
             >
-              {{ cat }}
+              <!-- The label is translated, the value is not: `cat` is the atomic English
+                   term the query matches on, and it stays the identity of the chip. -->
+              {{ trCategory(cat) }}
             </button>
           </div>
         </div>

@@ -5,6 +5,8 @@ import type { Movie, UserTag, FavoriteType } from '../types';
 import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
+import { titlePrimary, titleSecondary } from '../utils/bilingual';
+import { trCategory } from '../utils/glossary';
 import { api, IS_TAURI } from '../api';
 
 const props = defineProps<{
@@ -73,13 +75,29 @@ const showPrivate = ref(false);
 
 // Synopses carry both the original English and (once translated) the Chinese text.
 const zhDescription = ref<string | null>(null);
-const showOriginal = ref(false);
+/**
+ * The local "show original" toggle, as an override of the global language switch.
+ *
+ * `null` means "not touched — follow `props.lang`", which is what makes the app-wide
+ * 中文/原文 switch reach inside this modal. The prop was declared from the start and
+ * never read, so switching the whole library to Chinese left every open film showing
+ * English; a plain `ref(false)` would have fixed that once but then silently ignored
+ * the switch for any modal the user had already toggled.
+ */
+const showOriginalOverride = ref<boolean | null>(null);
 const isTranslating = ref(false);
 const translateError = ref('');
 
+/** Whether the original synopsis is on screen right now — global switch, unless overridden. */
+const showOriginal = computed(() => showOriginalOverride.value ?? props.lang === 'en');
+
+function toggleOriginal() {
+  showOriginalOverride.value = !showOriginal.value;
+}
+
 watch(() => props.movie, (m) => {
   zhDescription.value = m?.description_zh || null;
-  showOriginal.value = false;
+  showOriginalOverride.value = null;
   translateError.value = '';
   showPrivate.value = false;
 
@@ -146,6 +164,17 @@ const displayedDescription = computed(() => {
   return props.movie?.description || '';
 });
 
+/** The film's name: Chinese on top, the original beneath in smaller type. */
+const titleMain = computed(() =>
+  props.movie ? titlePrimary(props.movie, props.lang) : ''
+);
+/** The original title, or '' when there is nothing to put under the Chinese one. */
+const titleAlt = computed(() =>
+  props.movie ? titleSecondary(props.movie, props.lang) : ''
+);
+/** Category, term by term — the column holds "Wrestling<br />J/O" as one value. */
+const categoryLabel = computed(() => trCategory(props.movie?.category));
+
 // Hint for long synopses: they scroll inside their own box, which is not obvious
 // without a scrollbar, so the hint stays visible until the user reaches the end.
 const descriptionBoxRef = ref<HTMLElement | null>(null);
@@ -210,7 +239,8 @@ async function translateNow() {
     const zh = (result.description_zh || '').trim();
     if (zh) {
       zhDescription.value = zh;
-      showOriginal.value = false;
+      // A fresh translation means the Chinese text is what the user asked to see.
+      showOriginalOverride.value = false;
       emit('translated', id, zh);
     }
     applyEpisodeTranslations(result.episodes);
@@ -429,7 +459,7 @@ onUnmounted(() => {
                 {{ movie.duration_mins }} 分钟
               </span>
               <span v-if="movie.category" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong">
-                {{ movie.category }}
+                {{ categoryLabel }}
               </span>
               <!-- Private annotations live behind this button (aside, not film data) -->
               <button
@@ -466,8 +496,9 @@ onUnmounted(() => {
             </div>
 
             <h1 class="text-2xl md:text-3xl font-extrabold text-fg tracking-tight">
-              {{ movie.title }}
+              {{ titleMain }}
             </h1>
+            <p v-if="titleAlt" class="text-sm text-fg-4 mt-0.5">{{ titleAlt }}</p>
 
             <!-- Studio & Director Pills (each filterable and favoritable) -->
             <div class="flex items-center gap-3 flex-wrap">
@@ -548,7 +579,7 @@ onUnmounted(() => {
                   </button>
                   <button
                     v-if="hasZh"
-                    @click="showOriginal = !showOriginal"
+                    @click="toggleOriginal"
                     class="text-[10px] px-2 py-0.5 rounded-md bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg-2 border border-line-strong transition"
                   >
                     {{ showOriginal ? '显示中文' : '显示原文' }}
@@ -811,6 +842,7 @@ onUnmounted(() => {
             :ordinal-count="movie.episodes.length"
             :show-source="false"
             :show-year="false"
+            :lang="lang"
             zoom-on-click
             :is-favorite="isFav('episode', String(ep.id))"
             @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"

@@ -57,6 +57,7 @@ fn find_db() -> PathBuf {
 const DRIVER: &str = r#"
 import json, sqlite3, sys
 import server
+import db_manager
 
 req = json.loads(sys.stdin.read())
 out = {}
@@ -66,6 +67,16 @@ if req["op"] == "split":
 
 elif req["op"] == "collapse":
     out["terms"] = server.collapse_categories([(r[0], r[1]) for r in req["rows"]])
+
+elif req["op"] == "glossary":
+    # 走 server.py 真正用的那两个读取函数，而不是在这里重写一份 SELECT ——
+    # 重写的那份会在实现改了之后继续通过。
+    db = db_manager.DatabaseManager(str(server.DB_PATH))
+    try:
+        out["terms"] = db.load_glossary()
+        out["categories"] = db.load_category_glossary()
+    finally:
+        db.close()
 
 elif req["op"] == "facet_sql":
     # 把 Python 生成的表达式丢进 SQLite 里真跑一遍。只比对 SQL 文本的话，
@@ -315,4 +326,75 @@ fn the_category_filter_matches_tokens_and_stays_case_sensitive() {
         "小写被 LIKE 式的语义命中了，筛选比预期宽"
     );
     assert_eq!(token("Wrestlin"), 0, "部分匹配被命中了");
+}
+
+/// 词表读取：同一个库，Rust 与 server.py 必须给出同一份 {en: zh}。
+///
+/// 桌面版此前**根本没有**读取路径 —— `api.getGlossary()` 没有 isTauri 分支，
+/// 落到 `fetch` 上、背后没有 HTTP 服务，于是静默返回 `{}`，演员属性在桌面版
+/// 恒显示英文。这条测试钉住新补的那条路，以及「两张表分别读进哪个字段」。
+#[test]
+fn glossaries_agree_with_python_and_read_their_own_table() {
+    // 1. 先在没有真库数据的情况下把「哪张表进哪个字段」钉死：真库的
+    //    category_glossary 现在是空的（分类译文要等阶段 7），只比对真库的话
+    //    这一半是空比 —— 把两个表读串、或者干脆都读 attr_glossary，测试照样绿。
+    let scratch = Connection::open_in_memory().unwrap();
+    scratch
+        .execute_batch(
+            "CREATE TABLE attr_glossary (en TEXT PRIMARY KEY, zh TEXT NOT NULL);
+             CREATE TABLE category_glossary (term TEXT PRIMARY KEY, zh TEXT NOT NULL);
+             INSERT INTO attr_glossary (en, zh) VALUES ('Swimmer', '游泳体型');
+             INSERT INTO category_glossary (term, zh) VALUES ('J/O', '独自撸');",
+        )
+        .unwrap();
+    let fixture = gevi_core::queries::glossary::get_glossaries(&scratch).unwrap();
+    assert_eq!(
+        fixture.terms.get("Swimmer").map(String::as_str),
+        Some("游泳体型"),
+        "attr_glossary 没读进 terms"
+    );
+    assert_eq!(
+        fixture.terms.get("J/O"),
+        None,
+        "category_glossary 的词漏进了 terms —— 两张表读串了"
+    );
+    assert_eq!(
+        fixture.categories.get("J/O").map(String::as_str),
+        Some("独自撸"),
+        "category_glossary 没读进 categories"
+    );
+    assert_eq!(fixture.categories.get("Swimmer"), None, "两张表读串了");
+
+    // 2. 真库上对拍：属性词表这一半是实的（库里已有译文），分类那一半要等阶段 7。
+    let Some((root, py)) = harness() else { return };
+    let conn = Connection::open_with_flags(find_db(), OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+    let rust = gevi_core::queries::glossary::get_glossaries(&conn).unwrap();
+
+    let request = serde_json::json!({ "op": "glossary" }).to_string();
+    let out = run_driver(&root, &py, &request);
+    let as_map = |v: &serde_json::Value| -> std::collections::BTreeMap<String, String> {
+        v.as_object()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.as_str().unwrap().to_string()))
+            .collect()
+    };
+    let py_terms = as_map(&out["terms"]);
+    let py_categories = as_map(&out["categories"]);
+
+    assert!(
+        py_terms.len() > 30,
+        "真库的属性词表只有 {} 条，这条对拍会退化成没测（跑一次设置里的「翻译术语表」？）",
+        py_terms.len()
+    );
+    let rust_terms: std::collections::BTreeMap<String, String> =
+        rust.terms.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    assert_eq!(rust_terms, py_terms, "属性词表 Rust 与 server.py 不一致");
+
+    let rust_categories: std::collections::BTreeMap<String, String> =
+        rust.categories.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    assert_eq!(
+        rust_categories, py_categories,
+        "分类词表 Rust 与 server.py 不一致（现在是空对空，等阶段 7 跑完才成为实证）"
+    );
 }

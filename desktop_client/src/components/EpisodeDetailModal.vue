@@ -5,6 +5,7 @@ import type { EpisodeSummary } from '../types';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { episodeHeading, episodeLabel } from '../utils/episode';
+import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
 
 const props = defineProps<{
   episode: EpisodeSummary | null;
@@ -41,16 +42,25 @@ watch(() => props.episode?.id, () => {
   stillError.value = false;
 });
 
-/** "《影片名》· 第 3 集 / 共 5 集" — the film is what identifies the scene. */
-const heading = computed(() =>
-  props.episode ? episodeHeading(props.episode, props.episode.movie_title) : ''
+/** The parent film's name in the chosen language; the scene's own title is a placeholder. */
+const filmPrimary = computed(() =>
+  props.episode ? titlePrimary(sceneFilm(props.episode), props.lang) : ''
+);
+/** The parent film's original name, or '' when it is already what `filmPrimary` shows. */
+const filmAlt = computed(() =>
+  props.episode ? titleSecondary(sceneFilm(props.episode), props.lang) : ''
 );
 
-const shownDescription = computed(() => {
-  const zh = props.episode?.description_zh?.trim();
-  if (props.lang === 'zh' && zh) return zh;
-  return props.episode?.description?.trim() || '';
-});
+/** "《影片名》· 第 3 集 / 共 5 集" — the film is what identifies the scene. */
+const heading = computed(() =>
+  props.episode
+    ? episodeHeading(props.episode, filmPrimary.value || null)
+    : ''
+);
+
+const shownDescription = computed(() =>
+  pickZh(props.episode?.description_zh, props.episode?.description, props.lang)
+);
 
 const index = computed(() => {
   if (!props.episode || !props.list) return -1;
@@ -137,6 +147,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </span>
         </div>
         <h1 class="text-xl md:text-2xl font-extrabold text-fg mt-1 break-words">{{ heading }}</h1>
+        <p v-if="filmAlt" class="text-xs text-fg-4 mt-0.5 break-words">{{ filmAlt }}</p>
         <div class="text-xs text-fg-2 mt-1.5 flex items-center gap-3 flex-wrap">
           <span v-if="episode.release_year" class="flex items-center gap-1">
             <Calendar class="w-3 h-3" /> {{ episode.release_year }}
@@ -157,7 +168,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               type="button"
               :disabled="!episode.movie_id"
               @click="episode.movie_id && emit('select-movie-id', episode.movie_id)"
-              :title="episode.movie_id ? `跳转到《${episode.movie_title}》` : '该片段没有关联影片'"
+              :title="episode.movie_id ? `跳转到《${filmPrimary}》` : '该片段没有关联影片'"
               :class="[
                 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition max-w-full',
                 episode.movie_id
@@ -166,7 +177,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               ]"
             >
               <Film class="w-3.5 h-3.5 shrink-0 text-fg-4" />
-              <span class="truncate">出处: {{ episode.movie_title }}</span>
+              <span class="truncate">出处: {{ filmPrimary }}</span>
             </button>
             <button
               v-if="episode.studio_name"

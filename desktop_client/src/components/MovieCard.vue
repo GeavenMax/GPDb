@@ -3,6 +3,8 @@ import { ref, computed } from 'vue';
 import { Film, Clock, Heart, Star, Clapperboard, Languages } from '@lucide/vue';
 import type { Movie } from '../types';
 import { getImageUrl } from '../utils/image';
+import { pickZh, titlePrimary, titleSecondary } from '../utils/bilingual';
+import { trCategory } from '../utils/glossary';
 
 const props = withDefaults(defineProps<{
   movie: Movie;
@@ -34,15 +36,27 @@ function handleImgError() {
 }
 
 /** Chinese when we have it and the user asked for it, otherwise the original. */
-const shownDescription = computed(() => {
-  const zh = props.movie.description_zh?.trim();
-  if (props.lang === 'zh' && zh) return zh;
-  return props.movie.description?.trim() || '';
-});
+const shownDescription = computed(
+  () => pickZh(props.movie.description_zh, props.movie.description, props.lang),
+);
 
 const hasTranslation = computed(
   () => props.translated ?? Boolean(props.movie.description_zh?.trim()),
 );
+
+/**
+ * The film's name: Chinese on top, the original beneath in smaller type.
+ *
+ * Both are shown rather than one replacing the other — the English title is often the
+ * joke, and a translation of a pun is a different joke. `titleAlt` is `''` when there
+ * is nothing to put underneath (no translation yet, or the translation came back
+ * identical to the original), and the line is hidden on an empty string.
+ */
+const titleMain = computed(() => titlePrimary(props.movie, props.lang));
+const titleAlt = computed(() => titleSecondary(props.movie, props.lang));
+
+/** Category, term by term — the column holds "Wrestling<br />J/O" as one value. */
+const categoryLabel = computed(() => trCategory(props.movie.category));
 
 /**
  * One line naming the film's director(s), for the card.
@@ -136,10 +150,11 @@ const directorTitle = computed(() => {
           </span>
         </div>
 
-        <!-- Title -->
+        <!-- Title: Chinese leads, original under it -->
         <h3 class="text-sm font-semibold text-fg group-hover:text-accent-soft transition-colors line-clamp-1 leading-snug">
-          {{ movie.title }}
+          {{ titleMain }}
         </h3>
+        <p v-if="titleAlt" class="text-[10px] text-fg-4 line-clamp-1 leading-snug">{{ titleAlt }}</p>
 
         <!-- Synopsis preview: the whole reason list mode exists -->
         <p
@@ -230,7 +245,8 @@ const directorTitle = computed(() => {
         class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-surface to-sunken text-fg-5"
       >
         <Film class="w-10 h-10 mb-2 stroke-1 text-fg-5" />
-        <span class="text-xs font-medium line-clamp-2">{{ movie.title }}</span>
+        <span class="text-xs font-medium line-clamp-2">{{ titleMain }}</span>
+        <span v-if="titleAlt" class="text-[10px] text-fg-5 line-clamp-1 mt-0.5">{{ titleAlt }}</span>
       </div>
 
       <!-- Chinese synopsis indicator (Top Left) -->
@@ -287,12 +303,13 @@ const directorTitle = computed(() => {
 
         <!-- Row 2: Title -->
         <h3 class="text-sm font-semibold text-fg group-hover:text-accent-soft transition-colors line-clamp-1 leading-snug">
-          {{ movie.title }}
+          {{ titleMain }}
         </h3>
+        <p v-if="titleAlt" class="text-[10px] text-fg-4 line-clamp-1 leading-snug">{{ titleAlt }}</p>
 
         <!-- Row 3: Category or Director -->
         <div class="flex items-center gap-2 text-[11px] text-fg-3 mt-1">
-          <span v-if="movie.category" class="truncate">{{ movie.category }}</span>
+          <span v-if="movie.category" class="truncate">{{ categoryLabel }}</span>
           <span v-if="directorLine" class="flex items-center gap-1 text-fg-4 text-[10px] truncate" :title="directorTitle">
             <Clapperboard class="w-2.5 h-2.5 text-fg-3" />
             {{ directorLine }}

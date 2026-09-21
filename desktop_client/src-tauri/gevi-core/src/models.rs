@@ -291,3 +291,15 @@ pub struct FavoritesResponse {
     pub episode: Vec<FavoriteItem>,
     pub counts: HashMap<String, i64>,
 }
+
+/// Both translation glossaries, as the client loads them at startup.
+///
+/// Read once and kept for the session, so they are plain maps rather than a queryable
+/// endpoint. `terms` is the performer attribute vocabulary (en → zh) and `categories`
+/// the atomic film categories (term → zh) — two separate maps on purpose, so the
+/// frontend's `tr()` cannot confuse an attribute with a category of the same spelling.
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct Glossaries {
+    pub terms: HashMap<String, String>,
+    pub categories: HashMap<String, String>,
+}

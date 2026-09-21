@@ -387,6 +387,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               v-for="ep in visibleEpisodes"
               :key="ep.id"
               :episode="ep"
+              :lang="lang"
               zoom-on-click
               show-studio
               :is-favorite="isFav('episode', String(ep.id))"

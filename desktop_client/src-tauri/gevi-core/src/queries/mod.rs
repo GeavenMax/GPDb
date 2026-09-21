@@ -4,6 +4,7 @@
 
 pub mod episodes;
 pub mod favorites;
+pub mod glossary;
 pub mod movies;
 pub mod performers;
 pub mod stats;

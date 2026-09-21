@@ -17,6 +17,7 @@ import { Film, Heart, Calendar, Clapperboard } from '@lucide/vue';
 import type { Episode } from '../types';
 import { getImageUrl } from '../utils/image';
 import { episodeOrdinalLabel } from '../utils/episode';
+import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
 
 const props = withDefaults(defineProps<{
   episode: Episode;
@@ -42,6 +43,14 @@ const props = withDefaults(defineProps<{
   ordinalCount?: number | null;
   /** The year chip is redundant in a film's own scene list. */
   showYear?: boolean;
+  /**
+   * Which language the synopsis and the source film's name are shown in.
+   *
+   * This row was the one place that had lost the `lang` half of the rule: it took
+   * `description_zh` whenever it existed, so a row kept showing Chinese after the
+   * user switched to the original even though the card beside it switched correctly.
+   */
+  lang?: 'zh' | 'en';
 }>(), {
   isFavorite: false,
   showSource: true,
@@ -49,6 +58,7 @@ const props = withDefaults(defineProps<{
   zoomOnClick: false,
   showStudio: false,
   showYear: true,
+  lang: 'zh',
 });
 
 const emit = defineEmits<{
@@ -66,9 +76,18 @@ const title = computed(() =>
   || '未命名片段'
 );
 
-/** Chinese once the parent film has been translated, original otherwise. */
+/** Chinese when we have it and the user asked for it, otherwise the original. */
 const synopsis = computed(() =>
-  props.episode.description_zh?.trim() || props.episode.description?.trim() || ''
+  pickZh(props.episode.description_zh, props.episode.description, props.lang)
+);
+
+/** The parent film's name in the chosen language, and the original beneath it. */
+const filmPrimary = computed(() => titlePrimary(sceneFilm(props.episode), props.lang));
+const filmAlt = computed(() => titleSecondary(sceneFilm(props.episode), props.lang));
+
+/** The whole bilingual name, for tooltips where the row itself only has one line. */
+const filmFull = computed(() =>
+  filmAlt.value ? `${filmPrimary.value}（${filmAlt.value}）` : filmPrimary.value
 );
 
 function onRowClick() {
@@ -136,18 +155,18 @@ function onRowClick() {
         <Film class="w-3 h-3 text-fg-4 shrink-0" />
         <!-- A clickable row already opens the film, so the label is only a jump
              where the row itself does nothing. -->
-        <span v-if="clickable" class="truncate">出处: {{ episode.movie_title }}</span>
+        <span v-if="clickable" class="truncate" :title="filmFull">出处: {{ filmPrimary }}</span>
         <button
           v-else
           type="button"
           :disabled="!episode.movie_id"
           @click.stop="episode.movie_id && emit('select-movie-id', episode.movie_id)"
-          :title="episode.movie_id ? `跳转到《${episode.movie_title}》` : '该片段没有关联影片'"
+          :title="episode.movie_id ? `跳转到《${filmFull}》` : '该片段没有关联影片'"
           :class="[
             'truncate transition',
             episode.movie_id ? 'hover:text-accent-soft hover:underline' : 'cursor-default'
           ]"
-        >出处: {{ episode.movie_title }}</button>
+        >出处: {{ filmPrimary }}</button>
         <button
           v-if="showStudio && episode.studio_name"
           @click.stop="emit('filter-studio', episode.studio_name!)"

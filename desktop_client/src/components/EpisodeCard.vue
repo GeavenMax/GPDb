@@ -4,6 +4,7 @@ import { Film, Heart, Clapperboard, Languages } from '@lucide/vue';
 import type { EpisodeSummary } from '../types';
 import { getImageUrl } from '../utils/image';
 import { episodeOrdinalLabel } from '../utils/episode';
+import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
 
 const props = withDefaults(defineProps<{
   episode: EpisodeSummary;
@@ -27,11 +28,20 @@ const imgError = ref(false);
 /** Where the scene sits in its film — the only thing the badge can usefully say. */
 const positionLabel = computed(() => episodeOrdinalLabel(props.episode));
 
-const shownDescription = computed(() => {
-  const zh = props.episode.description_zh?.trim();
-  if (props.lang === 'zh' && zh) return zh;
-  return props.episode.description?.trim() || '';
-});
+/**
+ * The parent film's name in the chosen language.
+ *
+ * The scene's own `title` is "Episode #<row id>" — a site-generated placeholder that
+ * says nothing and is never translated — so the parent film is the only Chinese a
+ * scene card can show. `filmAlt` is the original film name, or '' when it is already
+ * what the chip shows.
+ */
+const filmPrimary = computed(() => titlePrimary(sceneFilm(props.episode), props.lang));
+const filmAlt = computed(() => titleSecondary(sceneFilm(props.episode), props.lang));
+
+const shownDescription = computed(
+  () => pickZh(props.episode.description_zh, props.episode.description, props.lang),
+);
 </script>
 
 <template>
@@ -45,7 +55,7 @@ const shownDescription = computed(() => {
       <img
         v-if="episode.thumbnail_url && !imgError"
         :src="getImageUrl(episode.thumbnail_url)"
-        :alt="episode.movie_title || episode.title"
+        :alt="filmPrimary || episode.title"
         loading="lazy"
         referrerpolicy="no-referrer"
         @error="imgError = true"
@@ -100,14 +110,15 @@ const shownDescription = computed(() => {
             type="button"
             :disabled="!episode.movie_id"
             @click.stop="episode.movie_id && emit('select-movie-id', episode.movie_id)"
-            :title="episode.movie_id ? `跳转到《${episode.movie_title}》` : '该片段没有关联影片'"
+            :title="episode.movie_id ? `跳转到《${filmPrimary}》` : '该片段没有关联影片'"
             :class="[
               'flex items-center gap-1 min-w-0 max-w-full px-1.5 py-0.5 rounded-md font-medium bg-surface-2 text-fg-2 border border-line-strong/50 transition',
               episode.movie_id ? 'hover:text-accent-soft hover:border-accent-fill/40' : 'cursor-default',
             ]"
           >
             <Film class="w-2.5 h-2.5 shrink-0 text-fg-4" />
-            <span class="truncate">{{ episode.movie_title }}</span>
+            <span class="truncate">{{ filmPrimary }}</span>
+            <span v-if="filmAlt" class="truncate text-fg-4 font-normal">{{ filmAlt }}</span>
           </button>
           <span
             v-if="episode.release_year"

@@ -778,21 +778,35 @@ export const api = {
   },
 
   /**
-   * The performer attribute glossary (en → zh), fetched once at startup.
+   * Both translation glossaries, fetched once at startup: performer attributes
+   * (en → zh) and film categories (term → zh).
    *
-   * Always over HTTP, even in the desktop build: the performer detail there comes
-   * from Rust reading SQLite directly, so the translation is applied client-side
-   * and both builds share this one source.
+   * Two maps rather than one because the two vocabularies are separate tables and
+   * `Muscle` / `Twink` are plausible as either.
+   *
+   * The desktop build reads the same two tables through its own Rust command. It used
+   * to have no branch here at all, so it fell through to `fetch` with no HTTP server
+   * behind it and quietly returned `{}` — which is why every performer attribute
+   * showed in English there.
    */
-  async getGlossary(): Promise<Record<string, string>> {
+  async getGlossary(): Promise<{ terms: Record<string, string>; categories: Record<string, string> }> {
+    if (isTauri) {
+      try {
+        return await tauriInvoke<{ terms: Record<string, string>; categories: Record<string, string> }>(
+          'get_glossaries',
+        );
+      } catch {
+        return { terms: {}, categories: {} };
+      }
+    }
     try {
       const res = await fetch('/api/glossary');
       if (res.ok) {
         const body = await res.json();
-        return body?.terms || {};
+        return { terms: body?.terms || {}, categories: body?.categories || {} };
       }
     } catch {}
-    return {};
+    return { terms: {}, categories: {} };
   },
 
   /** Translate the whole attribute vocabulary in one API call. */
