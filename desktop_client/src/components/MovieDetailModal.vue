@@ -328,18 +328,18 @@ onUnmounted(() => {
 <template>
   <div
     v-if="movie"
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-md animate-fade-in"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-scrim/80 backdrop-blur-md animate-fade-in"
     :style="{ zIndex: zIndex ?? 50 }"
     @click.self="emit('close')"
   >
     <!-- Modal Card -->
     <div
-      class="relative w-full max-w-4xl max-h-[90vh] bg-zinc-900 border border-zinc-700/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col darkScrollbars text-zinc-100"
+      class="relative w-full max-w-4xl max-h-[90vh] bg-surface border border-line-strong/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col text-fg"
     >
       <!-- Close Button -->
       <button
         @click="emit('close')"
-        class="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 border border-white/20 flex items-center justify-center text-zinc-300 hover:text-white transition"
+        class="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-scrim/60 hover:bg-scrim/90 border border-white/20 flex items-center justify-center text-fg-2 hover:text-fg transition"
       >
         <X class="w-4 h-4" />
       </button>
@@ -352,7 +352,7 @@ onUnmounted(() => {
         Its own overflow-hidden then clips the rest of the synopsis away entirely -
         a long description used to be unreachable, not just awkward to scroll.
       -->
-      <div class="relative w-full shrink-0 overflow-hidden bg-zinc-950 p-6 md:p-8 border-b border-zinc-800">
+      <div class="relative w-full shrink-0 overflow-hidden bg-sunken p-6 md:p-8 border-b border-line">
         <!-- Blurred background image: follows the selected cover, cached like the poster -->
         <div
           v-if="currentCover"
@@ -366,7 +366,7 @@ onUnmounted(() => {
           <div class="flex flex-col items-center gap-2 shrink-0">
             <!-- data-zoom-click: the poster has no click action of its own, so one
                  click opens the viewer (see utils/lightbox.ts). -->
-            <div class="w-44 md:w-56 aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border border-zinc-700/60 bg-zinc-950 relative group">
+            <div class="w-44 md:w-56 aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border border-line-strong/60 bg-sunken relative group">
               <img
                 v-if="currentCover"
                 :src="currentCover"
@@ -375,14 +375,14 @@ onUnmounted(() => {
                 data-zoom-click
                 class="w-full h-full object-cover transition-all duration-300"
               />
-              <div v-else class="w-full h-full flex flex-col items-center justify-center text-zinc-600 p-4 text-center">
+              <div v-else class="w-full h-full flex flex-col items-center justify-center text-fg-5 p-4 text-center">
                 <Film class="w-12 h-12 mb-2 stroke-1" />
                 <span class="text-xs">无封面</span>
               </div>
             </div>
 
             <!-- Front / Back Cover Switcher Pills -->
-            <div v-if="movie.covers && movie.covers.length > 1" class="flex gap-1.5 p-1 bg-zinc-900/90 border border-zinc-800 rounded-xl shadow">
+            <div v-if="movie.covers && movie.covers.length > 1" class="flex gap-1.5 p-1 bg-surface/90 border border-line rounded-xl shadow">
               <button
                 v-for="(_, idx) in movie.covers"
                 :key="idx"
@@ -390,8 +390,8 @@ onUnmounted(() => {
                 :class="[
                   'px-3 py-1 rounded-lg text-xs font-semibold transition',
                   activeCoverIndex === idx
-                    ? 'bg-amber-500 text-black shadow'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                    ? 'bg-accent-fill text-on-fill shadow'
+                    : 'text-fg-3 hover:text-fg-2 hover:bg-surface-2'
                 ]"
               >
                 {{ idx === 0 ? '正面封面' : idx === 1 ? '封底背面' : `封面 ${idx + 1}` }}
@@ -402,14 +402,14 @@ onUnmounted(() => {
           <!-- Metadata -->
           <div class="flex-1 space-y-4">
             <div class="flex items-center gap-2 flex-wrap">
-              <span v-if="movie.release_year" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+              <span v-if="movie.release_year" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-accent-fill/10 text-accent border border-accent-fill/30">
                 {{ movie.release_year }}
               </span>
-              <span v-if="movie.duration_mins" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center gap-1.5">
+              <span v-if="movie.duration_mins" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong flex items-center gap-1.5">
                 <Clock class="w-3.5 h-3.5" />
                 {{ movie.duration_mins }} 分钟
               </span>
-              <span v-if="movie.category" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-zinc-800 text-zinc-300 border border-zinc-700">
+              <span v-if="movie.category" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong">
                 {{ movie.category }}
               </span>
               <!-- Private annotations live behind this button (aside, not film data) -->
@@ -418,8 +418,8 @@ onUnmounted(() => {
                 :class="[
                   'ml-auto px-3 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
                   showPrivate
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-400 hover:text-amber-400'
+                    ? 'bg-accent-fill/20 text-accent-soft border-accent-fill/40'
+                    : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-accent'
                 ]"
                 :title="showPrivate ? '收起我的私密评星与标记' : '展开我的私密评星、标签与笔记（仅本地可见）'"
               >
@@ -427,7 +427,7 @@ onUnmounted(() => {
                 <span>我的标记</span>
                 <span
                   v-if="hasPrivateData"
-                  class="w-1.5 h-1.5 rounded-full bg-amber-400"
+                  class="w-1.5 h-1.5 rounded-full bg-accent"
                   title="已有私密记录"
                 ></span>
               </button>
@@ -437,8 +437,8 @@ onUnmounted(() => {
                 :class="[
                   'px-3 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
                   isFavorite
-                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                    : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-400 hover:text-rose-400'
+                    ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
+                    : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
                 ]"
               >
                 <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
@@ -446,17 +446,17 @@ onUnmounted(() => {
               </button>
             </div>
 
-            <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+            <h1 class="text-2xl md:text-3xl font-extrabold text-fg tracking-tight">
               {{ movie.title }}
             </h1>
 
             <!-- Studio & Director Pills (each filterable and favoritable) -->
             <div class="flex items-center gap-3 flex-wrap">
               <div v-if="movie.studio_name" class="flex items-center gap-1.5">
-                <Building2 class="w-4 h-4 text-zinc-400" />
+                <Building2 class="w-4 h-4 text-fg-3" />
                 <button
                   @click="emit('filter-studio', movie.studio_name)"
-                  class="text-xs font-semibold text-amber-400 hover:underline bg-zinc-800/80 px-2.5 py-1 rounded-md border border-zinc-700/60"
+                  class="text-xs font-semibold text-accent hover:underline bg-surface-2/80 px-2.5 py-1 rounded-md border border-line-strong/60"
                 >
                   {{ movie.studio_name }}
                 </button>
@@ -464,18 +464,18 @@ onUnmounted(() => {
                   @click="emit('toggle-entity-favorite', 'studio', movie.studio_name)"
                   :title="isFav('studio', movie.studio_name) ? '取消收藏该片商' : '收藏该片商'"
                   class="transition"
-                  :class="isFav('studio', movie.studio_name) ? 'text-rose-400' : 'text-zinc-600 hover:text-rose-400'"
+                  :class="isFav('studio', movie.studio_name) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
                 >
                   <Heart class="w-3.5 h-3.5" :fill="isFav('studio', movie.studio_name) ? 'currentColor' : 'none'" />
                 </button>
               </div>
 
-              <div v-if="movie.director_name" class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md text-xs text-zinc-300">
-                <Clapperboard class="w-3.5 h-3.5 text-amber-400" />
-                <span class="text-zinc-500">导演:</span>
+              <div v-if="movie.director_name" class="flex items-center gap-1.5 bg-surface border border-line px-2.5 py-1 rounded-md text-xs text-fg-2">
+                <Clapperboard class="w-3.5 h-3.5 text-accent" />
+                <span class="text-fg-4">导演:</span>
                 <button
                   @click="emit('filter-director', movie.director_name)"
-                  class="font-medium text-zinc-200 hover:text-amber-300 hover:underline transition"
+                  class="font-medium text-fg-2 hover:text-accent-soft hover:underline transition"
                 >
                   {{ movie.director_name }}
                 </button>
@@ -483,7 +483,7 @@ onUnmounted(() => {
                   @click="emit('toggle-entity-favorite', 'director', movie.director_name)"
                   :title="isFav('director', movie.director_name) ? '取消收藏该导演' : '收藏该导演'"
                   class="transition"
-                  :class="isFav('director', movie.director_name) ? 'text-rose-400' : 'text-zinc-600 hover:text-rose-400'"
+                  :class="isFav('director', movie.director_name) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
                 >
                   <Heart class="w-3.5 h-3.5" :fill="isFav('director', movie.director_name) ? 'currentColor' : 'none'" />
                 </button>
@@ -493,14 +493,14 @@ onUnmounted(() => {
             <!-- Description (Chinese when translated, original otherwise) -->
             <div
               v-if="movie.description || hasZh"
-              class="text-xs md:text-sm text-zinc-300 leading-relaxed bg-zinc-950/60 border border-zinc-800/60 p-4 rounded-xl"
+              class="text-xs md:text-sm text-fg-2 leading-relaxed bg-sunken/60 border border-line/60 p-4 rounded-xl"
             >
               <div class="flex items-center justify-between gap-2 mb-1.5">
-                <div class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                <div class="text-[11px] font-semibold text-fg-4 uppercase tracking-wider flex items-center gap-1.5">
                   <Languages class="w-3 h-3" />
                   剧情简介
-                  <span v-if="hasZh && !showOriginal" class="text-emerald-500/80 normal-case">中文</span>
-                  <span v-else-if="hasZh" class="text-zinc-600 normal-case">原文</span>
+                  <span v-if="hasZh && !showOriginal" class="text-success-fill/80 normal-case">中文</span>
+                  <span v-else-if="hasZh" class="text-fg-5 normal-case">原文</span>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -509,7 +509,7 @@ onUnmounted(() => {
                     v-if="pendingEpisodeCount > 0 && !IS_TAURI"
                     @click="translateNow"
                     :disabled="isTranslating"
-                    class="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition flex items-center gap-1 disabled:opacity-50"
+                    class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50"
                     title="该影片的片段简介尚未翻译，会与简介一起送翻译"
                   >
                     <Loader2 v-if="isTranslating" class="w-3 h-3 animate-spin" />
@@ -519,7 +519,7 @@ onUnmounted(() => {
                   <button
                     v-if="hasZh"
                     @click="showOriginal = !showOriginal"
-                    class="text-[10px] px-2 py-0.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-zinc-700 transition"
+                    class="text-[10px] px-2 py-0.5 rounded-md bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg-2 border border-line-strong transition"
                   >
                     {{ showOriginal ? '显示中文' : '显示原文' }}
                   </button>
@@ -527,7 +527,7 @@ onUnmounted(() => {
                     v-else-if="movie.description && !IS_TAURI"
                     @click="translateNow"
                     :disabled="isTranslating"
-                    class="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition flex items-center gap-1 disabled:opacity-50"
+                    class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50"
                   >
                     <Loader2 v-if="isTranslating" class="w-3 h-3 animate-spin" />
                     <Languages v-else class="w-3 h-3" />
@@ -536,7 +536,7 @@ onUnmounted(() => {
                   <!-- Desktop build has no server process to relay the request -->
                   <span
                     v-else-if="movie.description"
-                    class="text-[10px] text-zinc-600"
+                    class="text-[10px] text-fg-5"
                     title="桌面版请在项目目录运行 python3 translate.py 批量翻译"
                   >
                     未翻译
@@ -551,7 +551,7 @@ onUnmounted(() => {
               -->
               <div
                 ref="descriptionBoxRef"
-                class="max-h-72 overflow-y-auto darkScrollbars pr-2 -mr-2"
+                class="max-h-72 overflow-y-auto pr-2 -mr-2"
                 @scroll.passive="onDescriptionScroll"
               >
                 <p class="whitespace-pre-line">{{ displayedDescription }}</p>
@@ -560,13 +560,13 @@ onUnmounted(() => {
               <!-- Fades in while there is more text below, so the cut-off is visible -->
               <div
                 v-if="descriptionOverflows && !descriptionAtEnd"
-                class="mt-1 text-[10px] text-zinc-500 flex items-center gap-1"
+                class="mt-1 text-[10px] text-fg-4 flex items-center gap-1"
               >
                 <ChevronDown class="w-3 h-3" />
                 简介较长，可在框内滚动查看
               </div>
 
-              <div v-if="translateError" class="text-[11px] text-rose-400 mt-2">
+              <div v-if="translateError" class="text-[11px] text-danger mt-2">
                 {{ translateError }}
               </div>
             </div>
@@ -575,19 +575,19 @@ onUnmounted(() => {
       </div>
 
       <!-- User Private Annotations & Custom Tags Section (toggled from the header) -->
-      <div v-if="showPrivate" class="p-6 md:p-8 border-b border-zinc-800 bg-zinc-950/40 space-y-4">
+      <div v-if="showPrivate" class="p-6 md:p-8 border-b border-line bg-sunken/40 space-y-4">
         <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2 text-sm font-bold text-zinc-300">
-            <Sparkles class="w-4 h-4 text-amber-400" />
+          <div class="flex items-center gap-2 text-sm font-bold text-fg-2">
+            <Sparkles class="w-4 h-4 text-accent" />
             <span>我的私密评星与标记 (仅本地可见)</span>
           </div>
           <div class="flex items-center gap-3">
-            <span v-if="saveSuccess" class="text-xs text-emerald-400 font-medium animate-fade-in flex items-center gap-1">
+            <span v-if="saveSuccess" class="text-xs text-success font-medium animate-fade-in flex items-center gap-1">
               <CheckCircle2 class="w-3.5 h-3.5" /> 已自动保存
             </span>
             <button
               @click="showPrivate = false"
-              class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 flex items-center justify-center text-zinc-400 hover:text-white transition"
+              class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line-strong flex items-center justify-center text-fg-3 hover:text-fg transition"
               title="收起"
             >
               <X class="w-3.5 h-3.5" />
@@ -597,12 +597,12 @@ onUnmounted(() => {
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Left: Rating & Status -->
-          <div class="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+          <div class="p-4 rounded-2xl bg-surface/80 border border-line space-y-3">
             <!-- 5-Star interactive rater -->
             <div>
-              <div class="text-[11px] text-zinc-400 font-medium mb-1.5 flex items-center justify-between">
+              <div class="text-[11px] text-fg-3 font-medium mb-1.5 flex items-center justify-between">
                 <span>私密星级评分</span>
-                <span class="text-amber-400 font-bold font-mono">{{ userRating ? `${userRating.toFixed(1)} 星` : '未评' }}</span>
+                <span class="text-accent font-bold font-mono">{{ userRating ? `${userRating.toFixed(1)} 星` : '未评' }}</span>
               </div>
               <div class="flex items-center gap-1.5">
                 <button
@@ -614,13 +614,13 @@ onUnmounted(() => {
                 >
                   <Star
                     class="w-6 h-6 transition-colors"
-                    :class="userRating && userRating >= star ? 'text-amber-400 fill-amber-400' : 'text-zinc-600 hover:text-amber-300'"
+                    :class="userRating && userRating >= star ? 'text-accent fill-accent' : 'text-fg-5 hover:text-accent-soft'"
                   />
                 </button>
                 <button
                   v-if="userRating"
                   @click="setRating(userRating)"
-                  class="ml-2 text-[10px] text-zinc-500 hover:text-zinc-300 transition"
+                  class="ml-2 text-[10px] text-fg-4 hover:text-fg-2 transition"
                 >
                   清除
                 </button>
@@ -628,8 +628,8 @@ onUnmounted(() => {
             </div>
 
             <!-- Status selector -->
-            <div class="pt-2 border-t border-zinc-800">
-              <div class="text-[11px] text-zinc-400 font-medium mb-1.5">片单状态</div>
+            <div class="pt-2 border-t border-line">
+              <div class="text-[11px] text-fg-3 font-medium mb-1.5">片单状态</div>
               <div class="flex gap-2">
                 <button
                   v-for="st in [
@@ -642,8 +642,8 @@ onUnmounted(() => {
                   :class="[
                     'flex-1 py-1.5 px-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition',
                     userStatus === st.id
-                      ? 'bg-amber-500 text-black border-amber-400 font-bold shadow'
-                      : 'bg-zinc-800/80 text-zinc-400 border-zinc-700/60 hover:text-zinc-200 hover:bg-zinc-800'
+                      ? 'bg-accent-fill text-on-fill border-accent font-bold shadow'
+                      : 'bg-surface-2/80 text-fg-3 border-line-strong/60 hover:text-fg-2 hover:bg-surface-2'
                   ]"
                 >
                   <component :is="st.icon" class="w-3.5 h-3.5" :fill="userStatus === st.id ? 'currentColor' : 'none'" />
@@ -654,27 +654,27 @@ onUnmounted(() => {
           </div>
 
           <!-- Right: Custom Tags & Personal Note -->
-          <div class="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+          <div class="p-4 rounded-2xl bg-surface/80 border border-line space-y-3">
             <!-- Custom Tags -->
             <div>
-              <div class="text-[11px] text-zinc-400 font-medium mb-1.5 flex items-center justify-between">
+              <div class="text-[11px] text-fg-3 font-medium mb-1.5 flex items-center justify-between">
                 <span>自定义标签</span>
                 <button
                   @click="isCreatingTag = !isCreatingTag"
-                  class="text-[10px] text-amber-400 hover:text-amber-300 flex items-center gap-0.5"
+                  class="text-[10px] text-accent hover:text-accent-soft flex items-center gap-0.5"
                 >
                   <Plus class="w-3 h-3" /> 新建标签
                 </button>
               </div>
 
               <!-- Create new tag inline form -->
-              <div v-if="isCreatingTag" class="flex items-center gap-2 mb-2 p-2 rounded-lg bg-zinc-950 border border-zinc-800">
+              <div v-if="isCreatingTag" class="flex items-center gap-2 mb-2 p-2 rounded-lg bg-sunken border border-line">
                 <input
                   v-model="newTagName"
                   type="text"
                   placeholder="标签名称"
                   @keyup.enter="handleCreateTag"
-                  class="flex-1 bg-transparent text-xs text-zinc-200 outline-none placeholder-zinc-600"
+                  class="flex-1 bg-transparent text-xs text-fg-2 outline-none placeholder-fg-5"
                 />
                 <input
                   v-model="newTagColor"
@@ -683,7 +683,7 @@ onUnmounted(() => {
                 />
                 <button
                   @click="handleCreateTag"
-                  class="px-2 py-0.5 rounded bg-amber-500 text-black text-[11px] font-bold"
+                  class="px-2 py-0.5 rounded bg-accent-fill text-on-fill text-[11px] font-bold"
                 >
                   添加
                 </button>
@@ -710,21 +710,21 @@ onUnmounted(() => {
                   <span>{{ t.name }}</span>
                   <span v-if="selectedTagIds.includes(t.id)">✓</span>
                 </button>
-                <div v-if="availableTags.length === 0 && !isCreatingTag" class="text-xs text-zinc-600 italic">
+                <div v-if="availableTags.length === 0 && !isCreatingTag" class="text-xs text-fg-5 italic">
                   点击右上角「新建标签」添加个人分类
                 </div>
               </div>
             </div>
 
             <!-- Notes textarea -->
-            <div class="pt-2 border-t border-zinc-800">
-              <div class="text-[11px] text-zinc-400 font-medium mb-1">私密笔记 / 简评</div>
+            <div class="pt-2 border-t border-line">
+              <div class="text-[11px] text-fg-3 font-medium mb-1">私密笔记 / 简评</div>
               <textarea
                 v-model="userNotes"
                 @blur="persistUserData"
                 rows="2"
                 placeholder="记录观后感、精彩节点或备忘..."
-                class="w-full bg-zinc-950/80 border border-zinc-700/80 rounded-xl p-2.5 text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-amber-500 transition resize-none"
+                class="w-full bg-sunken/80 border border-line-strong/80 rounded-xl p-2.5 text-xs text-fg-2 placeholder-fg-5 outline-none focus:border-accent-fill transition resize-none"
               ></textarea>
             </div>
           </div>
@@ -732,9 +732,9 @@ onUnmounted(() => {
       </div>
 
       <!-- Cast Section -->
-      <div v-if="movie.performers && movie.performers.length > 0" class="p-6 md:p-8 border-b border-zinc-800 space-y-3">
-        <div class="flex items-center gap-2 text-sm font-bold text-zinc-300">
-          <Tag class="w-4 h-4 text-amber-400" />
+      <div v-if="movie.performers && movie.performers.length > 0" class="p-6 md:p-8 border-b border-line space-y-3">
+        <div class="flex items-center gap-2 text-sm font-bold text-fg-2">
+          <Tag class="w-4 h-4 text-accent" />
           <span>演职人员 ({{ movie.performers.length }})</span>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -742,9 +742,9 @@ onUnmounted(() => {
             v-for="p in movie.performers"
             :key="p.id"
             @click="emit('select-performer', p.id)"
-            class="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-amber-500/10 border border-zinc-700 hover:border-amber-500/40 text-xs font-medium text-zinc-200 hover:text-amber-400 transition"
+            class="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-2 hover:bg-accent-fill/10 border border-line-strong hover:border-accent-fill/40 text-xs font-medium text-fg-2 hover:text-accent transition"
           >
-            <div class="w-6 h-6 rounded-full overflow-hidden bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-300 group-hover:bg-amber-500 group-hover:text-black transition shrink-0">
+            <div class="w-6 h-6 rounded-full overflow-hidden bg-surface-3 flex items-center justify-center text-[10px] font-bold text-fg-2 group-hover:bg-accent-fill group-hover:text-on-fill transition shrink-0">
               <img
                 v-if="p.image_url"
                 :src="getImageUrl(p.image_url)"
@@ -763,8 +763,8 @@ onUnmounted(() => {
 
       <!-- Chapters / Scenes Section -->
       <div v-if="movie.episodes && movie.episodes.length > 0" class="p-6 md:p-8 space-y-4">
-        <div class="flex items-center gap-2 text-sm font-bold text-zinc-300">
-          <Layers class="w-4 h-4 text-amber-400" />
+        <div class="flex items-center gap-2 text-sm font-bold text-fg-2">
+          <Layers class="w-4 h-4 text-accent" />
           <span>收录章节 / 场景片段 ({{ movie.episodes.length }})</span>
         </div>
 
@@ -772,11 +772,11 @@ onUnmounted(() => {
           <div
             v-for="ep in movie.episodes"
             :key="ep.id"
-            class="flex flex-col bg-zinc-950/80 rounded-2xl border border-zinc-800/80 overflow-hidden hover:border-zinc-700 transition"
+            class="flex flex-col bg-sunken/80 rounded-2xl border border-line/80 overflow-hidden hover:border-line-strong transition"
           >
             <!-- Scene thumbnail. The card carries no click action, so the still
                  zooms on one click like the poster above. -->
-            <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-zinc-900 overflow-hidden">
+            <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-surface overflow-hidden">
               <img :src="getImageUrl(ep.thumbnail_url)" :alt="ep.title" loading="lazy" referrerpolicy="no-referrer" data-zoom-click class="w-full h-full object-cover" />
             </div>
 
@@ -784,22 +784,22 @@ onUnmounted(() => {
             <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
               <div>
                 <div class="flex items-start justify-between gap-2">
-                  <div class="text-xs font-bold text-amber-300">{{ ep.title }}</div>
+                  <div class="text-xs font-bold text-accent-soft">{{ ep.title }}</div>
                   <button
                     @click="emit('toggle-entity-favorite', 'episode', String(ep.id))"
                     :title="isFav('episode', String(ep.id)) ? '取消收藏该片段' : '收藏该片段'"
                     class="shrink-0 transition"
-                    :class="isFav('episode', String(ep.id)) ? 'text-rose-400' : 'text-zinc-600 hover:text-rose-400'"
+                    :class="isFav('episode', String(ep.id)) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
                   >
                     <Heart class="w-3.5 h-3.5" :fill="isFav('episode', String(ep.id)) ? 'currentColor' : 'none'" />
                   </button>
                 </div>
                 <!-- Chinese once the parent film has been translated, original otherwise -->
-                <div v-if="ep.description_zh || ep.description" class="text-xs text-zinc-400 mt-1 line-clamp-3 leading-relaxed">
+                <div v-if="ep.description_zh || ep.description" class="text-xs text-fg-3 mt-1 line-clamp-3 leading-relaxed">
                   {{ ep.description_zh || ep.description }}
                 </div>
               </div>
-              <div v-if="ep.action_notes" class="text-[10px] text-zinc-500 bg-zinc-900 px-2 py-1 rounded font-mono">
+              <div v-if="ep.action_notes" class="text-[10px] text-fg-4 bg-surface px-2 py-1 rounded font-mono">
                 动作标签: {{ ep.action_notes }}
               </div>
             </div>

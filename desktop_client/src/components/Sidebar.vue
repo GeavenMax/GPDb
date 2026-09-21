@@ -100,17 +100,17 @@ function tabClass(id: AppTab, active: boolean) {
   return [
     'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition border',
     active
-      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 font-semibold'
-      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/80 border-transparent',
+      ? 'bg-accent-fill/10 text-accent border-accent-fill/20 font-semibold'
+      : 'text-fg-3 hover:text-fg-2 hover:bg-surface/80 border-transparent',
     id === 'settings' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
   ];
 }
 </script>
 
 <template>
-  <aside class="w-56 border-r border-zinc-800 bg-zinc-950 p-4 flex flex-col justify-between select-none">
+  <aside class="w-56 border-r border-line bg-sunken p-4 flex flex-col justify-between select-none">
     <div class="space-y-4">
-      <div class="px-2 text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
+      <div class="px-2 text-[11px] font-semibold text-fg-4 uppercase tracking-wider">
         资源检索
       </div>
       <nav class="space-y-1">
@@ -141,13 +141,13 @@ function tabClass(id: AppTab, active: boolean) {
           <span
             v-if="dropTargetId === item.id"
             :class="[
-              'absolute left-1 right-1 h-0.5 rounded-full bg-amber-400',
+              'absolute left-1 right-1 h-0.5 rounded-full bg-accent',
               dropBelow ? '-bottom-0.5' : '-top-0.5',
             ]"
           ></span>
         </div>
       </nav>
-      <div class="px-2 text-[10px] text-zinc-600">拖动条目可调整顺序</div>
+      <div class="px-2 text-[10px] text-fg-5">拖动条目可调整顺序</div>
     </div>
 
     <!-- Pinned: settings, then the offline notice -->
@@ -159,9 +159,9 @@ function tabClass(id: AppTab, active: boolean) {
         <HardDrive class="w-4 h-4" />
         <span>缓存与设置</span>
       </button>
-      <div class="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-[11px] text-zinc-400 space-y-1">
-        <div class="font-medium text-zinc-300">本地离线模式</div>
-        <div class="text-[10px] text-zinc-500">SQLite FTS5 引擎驱动</div>
+      <div class="p-3 rounded-xl bg-surface/60 border border-line/80 text-[11px] text-fg-3 space-y-1">
+        <div class="font-medium text-fg-2">本地离线模式</div>
+        <div class="text-[10px] text-fg-4">SQLite FTS5 引擎驱动</div>
       </div>
     </div>
   </aside>

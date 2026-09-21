@@ -37,11 +37,11 @@ const shownDescription = computed(() => {
 <template>
   <div
     @click="emit('select', episode)"
-    class="group relative flex flex-col rounded-2xl bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300 overflow-hidden cursor-pointer select-none"
+    class="group relative flex flex-col rounded-2xl bg-surface/60 border border-line/80 hover:border-accent-fill/50 hover:shadow-xl hover:shadow-accent-fill/10 transition-all duration-300 overflow-hidden cursor-pointer select-none"
   >
     <!-- Still. No `data-zoom-click`: the whole card is click-to-open, so the image
          keeps the app-wide double-click zoom gesture (see utils/lightbox.ts). -->
-    <div class="relative w-full aspect-video bg-zinc-950 overflow-hidden">
+    <div class="relative w-full aspect-video bg-sunken overflow-hidden">
       <img
         v-if="episode.thumbnail_url && !imgError"
         :src="getImageUrl(episode.thumbnail_url)"
@@ -53,16 +53,16 @@ const shownDescription = computed(() => {
       />
       <div
         v-else
-        class="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-zinc-900 to-zinc-950 text-zinc-600"
+        class="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-surface to-sunken text-fg-5"
       >
-        <Clapperboard class="w-8 h-8 stroke-1 text-zinc-700" />
+        <Clapperboard class="w-8 h-8 stroke-1 text-fg-5" />
         <span class="text-[10px] font-medium">暂无剧照</span>
       </div>
 
       <!-- Position in the parent film (the site's own "Episode #<row id>" says nothing) -->
       <span
         v-if="positionLabel"
-        class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-black/70 text-amber-300 backdrop-blur-md z-10"
+        class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-scrim/70 text-accent-soft backdrop-blur-md z-10"
       >
         {{ positionLabel }}
       </span>
@@ -70,7 +70,7 @@ const shownDescription = computed(() => {
       <!-- Chinese synopsis indicator, matching the film card's badge -->
       <span
         v-if="episode.description_zh?.trim()"
-        class="absolute bottom-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-500/90 text-black backdrop-blur-md z-10 flex items-center gap-0.5"
+        class="absolute bottom-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-success-fill/90 text-on-fill backdrop-blur-md z-10 flex items-center gap-0.5"
         title="已有中文简介"
       >
         <Languages class="w-2.5 h-2.5" />
@@ -82,8 +82,8 @@ const shownDescription = computed(() => {
         :class="[
           'absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 z-10',
           isFavorite
-            ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 opacity-100'
-            : 'bg-black/40 text-zinc-400 hover:text-rose-400 hover:bg-black/80 opacity-0 group-hover:opacity-100'
+            ? 'bg-danger-fill text-on-danger shadow-lg shadow-danger-fill/40 opacity-100'
+            : 'bg-scrim/40 text-fg-3 hover:text-danger hover:bg-scrim/80 opacity-0 group-hover:opacity-100'
         ]"
         title="收藏"
       >
@@ -102,16 +102,16 @@ const shownDescription = computed(() => {
             @click.stop="episode.movie_id && emit('select-movie-id', episode.movie_id)"
             :title="episode.movie_id ? `跳转到《${episode.movie_title}》` : '该片段没有关联影片'"
             :class="[
-              'flex items-center gap-1 min-w-0 max-w-full px-1.5 py-0.5 rounded-md font-medium bg-zinc-800 text-zinc-300 border border-zinc-700/50 transition',
-              episode.movie_id ? 'hover:text-amber-300 hover:border-amber-500/40' : 'cursor-default',
+              'flex items-center gap-1 min-w-0 max-w-full px-1.5 py-0.5 rounded-md font-medium bg-surface-2 text-fg-2 border border-line-strong/50 transition',
+              episode.movie_id ? 'hover:text-accent-soft hover:border-accent-fill/40' : 'cursor-default',
             ]"
           >
-            <Film class="w-2.5 h-2.5 shrink-0 text-zinc-500" />
+            <Film class="w-2.5 h-2.5 shrink-0 text-fg-4" />
             <span class="truncate">{{ episode.movie_title }}</span>
           </button>
           <span
             v-if="episode.release_year"
-            class="px-1.5 py-0.5 rounded-md font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"
+            class="px-1.5 py-0.5 rounded-md font-semibold bg-accent-fill/10 text-accent border border-accent-fill/20"
           >
             {{ episode.release_year }}
           </span>
@@ -119,7 +119,7 @@ const shownDescription = computed(() => {
             v-if="episode.studio_name"
             type="button"
             @click.stop="emit('filter-studio', episode.studio_name)"
-            class="px-1.5 py-0.5 rounded-md bg-zinc-800/60 text-zinc-400 border border-zinc-700/40 hover:text-amber-400 hover:border-amber-500/40 transition truncate max-w-[110px]"
+            class="px-1.5 py-0.5 rounded-md bg-surface-2/60 text-fg-3 border border-line-strong/40 hover:text-accent hover:border-accent-fill/40 transition truncate max-w-[110px]"
             :title="`按片商 ${episode.studio_name} 筛选影片`"
           >
             {{ episode.studio_name }}
@@ -128,10 +128,10 @@ const shownDescription = computed(() => {
 
         <!-- The scene's caption. The site's own title is "Episode #<row id>", which
              says nothing, so it is left to the tooltip rather than shown as a heading. -->
-        <p v-if="shownDescription" class="text-[11px] text-zinc-400 leading-relaxed line-clamp-3" :title="episode.title">
+        <p v-if="shownDescription" class="text-[11px] text-fg-3 leading-relaxed line-clamp-3" :title="episode.title">
           {{ shownDescription }}
         </p>
-        <div v-else class="text-[11px] text-zinc-600 italic" :title="episode.title">暂无简介</div>
+        <div v-else class="text-[11px] text-fg-5 italic" :title="episode.title">暂无简介</div>
       </div>
 
       <div class="space-y-1.5">
@@ -141,21 +141,21 @@ const shownDescription = computed(() => {
             :key="p.id"
             type="button"
             @click.stop="emit('select-performer', p.id)"
-            class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/60 text-zinc-400 border border-zinc-700/30 truncate max-w-[90px] hover:text-amber-300 hover:border-amber-500/40 transition"
+            class="text-[10px] px-1.5 py-0.5 rounded bg-surface-2/60 text-fg-3 border border-line-strong/30 truncate max-w-[90px] hover:text-accent-soft hover:border-accent-fill/40 transition"
             :title="p.name"
           >
             {{ p.name }}
           </button>
           <span
             v-if="episode.performers.length > 3"
-            class="text-[10px] px-1 py-0.5 rounded bg-zinc-800/30 text-zinc-500"
+            class="text-[10px] px-1 py-0.5 rounded bg-surface-2/30 text-fg-4"
           >
             +{{ episode.performers.length - 3 }}
           </span>
         </div>
         <div
           v-if="episode.action_notes"
-          class="text-[10px] text-zinc-500 bg-zinc-900 px-2 py-1 rounded font-mono truncate"
+          class="text-[10px] text-fg-4 bg-surface px-2 py-1 rounded font-mono truncate"
           :title="`动作标签: ${episode.action_notes}`"
         >
           动作标签: {{ episode.action_notes }}

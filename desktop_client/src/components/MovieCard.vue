@@ -50,10 +50,10 @@ const hasTranslation = computed(
   <div
     v-if="view === 'list'"
     @click="emit('select', movie)"
-    class="group relative flex gap-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/50 hover:bg-zinc-900 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-200 overflow-hidden cursor-pointer select-none p-2.5"
+    class="group relative flex gap-3 rounded-2xl bg-surface/60 border border-line/80 hover:border-accent-fill/50 hover:bg-surface hover:shadow-lg hover:shadow-accent-fill/10 transition-all duration-200 overflow-hidden cursor-pointer select-none p-2.5"
   >
     <!-- Compact poster -->
-    <div class="relative w-16 sm:w-20 shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-zinc-950">
+    <div class="relative w-16 sm:w-20 shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-sunken">
       <img
         v-if="movie.cover_full && !imgError"
         :src="getImageUrl(movie.cover_full)"
@@ -63,7 +63,7 @@ const hasTranslation = computed(
         @error="handleImgError"
         class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
       />
-      <div v-else class="w-full h-full flex items-center justify-center text-zinc-700">
+      <div v-else class="w-full h-full flex items-center justify-center text-fg-5">
         <Film class="w-6 h-6 stroke-1" />
       </div>
     </div>
@@ -75,27 +75,27 @@ const hasTranslation = computed(
         <div class="flex flex-wrap items-center gap-1.5 text-[10px] mb-1">
           <span
             v-if="movie.release_year"
-            class="px-1.5 py-0.5 rounded font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"
+            class="px-1.5 py-0.5 rounded font-semibold bg-accent-fill/10 text-accent border border-accent-fill/20"
           >
             {{ movie.release_year }}
           </span>
           <span
             v-if="movie.studio_name"
-            class="px-1.5 py-0.5 rounded font-medium bg-zinc-800 text-zinc-300 border border-zinc-700/50 truncate max-w-[140px]"
+            class="px-1.5 py-0.5 rounded font-medium bg-surface-2 text-fg-2 border border-line-strong/50 truncate max-w-[140px]"
             :title="movie.studio_name"
           >
             {{ movie.studio_name }}
           </span>
           <span
             v-if="movie.duration_mins"
-            class="px-1.5 py-0.5 rounded text-zinc-400 bg-zinc-800/40 border border-white/5 flex items-center gap-1"
+            class="px-1.5 py-0.5 rounded text-fg-3 bg-surface-2/40 border border-fg/5 flex items-center gap-1"
           >
             <Clock class="w-2.5 h-2.5" />
             {{ movie.duration_mins }}m
           </span>
           <span
             v-if="hasTranslation"
-            class="px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-1"
+            class="px-1.5 py-0.5 rounded text-success bg-success-fill/10 border border-success-fill/20 flex items-center gap-1"
             title="已有中文简介"
           >
             <Languages class="w-2.5 h-2.5" />
@@ -104,18 +104,18 @@ const hasTranslation = computed(
         </div>
 
         <!-- Title -->
-        <h3 class="text-sm font-semibold text-zinc-100 group-hover:text-amber-300 transition-colors line-clamp-1 leading-snug">
+        <h3 class="text-sm font-semibold text-fg group-hover:text-accent-soft transition-colors line-clamp-1 leading-snug">
           {{ movie.title }}
         </h3>
 
         <!-- Synopsis preview: the whole reason list mode exists -->
         <p
           v-if="shownDescription"
-          class="text-[11px] text-zinc-400 leading-relaxed line-clamp-2 mt-1"
+          class="text-[11px] text-fg-3 leading-relaxed line-clamp-2 mt-1"
         >
           {{ shownDescription }}
         </p>
-        <div v-else class="text-[11px] text-zinc-600 italic mt-1">暂无简介</div>
+        <div v-else class="text-[11px] text-fg-5 italic mt-1">暂无简介</div>
       </div>
 
       <!-- Footer row: cast + personal annotations -->
@@ -124,17 +124,17 @@ const hasTranslation = computed(
           <span
             v-for="p in (movie.performers || []).slice(0, 3)"
             :key="p.id"
-            class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/60 text-zinc-400 border border-zinc-700/30 truncate max-w-[90px]"
+            class="text-[10px] px-1.5 py-0.5 rounded bg-surface-2/60 text-fg-3 border border-line-strong/30 truncate max-w-[90px]"
           >
             {{ p.name }}
           </span>
           <span
             v-if="(movie.performers?.length || 0) > 3"
-            class="text-[10px] px-1 py-0.5 rounded bg-zinc-800/30 text-zinc-500"
+            class="text-[10px] px-1 py-0.5 rounded bg-surface-2/30 text-fg-4"
           >
             +{{ (movie.performers?.length || 0) - 3 }}
           </span>
-          <span v-if="movie.director_name" class="flex items-center gap-1 text-[10px] text-zinc-500 truncate max-w-[120px]" :title="`导演: ${movie.director_name}`">
+          <span v-if="movie.director_name" class="flex items-center gap-1 text-[10px] text-fg-4 truncate max-w-[120px]" :title="`导演: ${movie.director_name}`">
             <Clapperboard class="w-2.5 h-2.5" />
             {{ movie.director_name }}
           </span>
@@ -143,7 +143,7 @@ const hasTranslation = computed(
         <div class="flex items-center gap-1.5 shrink-0">
           <span
             v-if="movie.userData?.rating"
-            class="flex items-center gap-0.5 text-[10px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20"
+            class="flex items-center gap-0.5 text-[10px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20"
           >
             <Star class="w-2.5 h-2.5 fill-current" />
             {{ movie.userData.rating.toFixed(1) }}
@@ -162,8 +162,8 @@ const hasTranslation = computed(
             :class="[
               'w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200',
               isFavorite
-                ? 'bg-rose-500 text-white shadow shadow-rose-500/40'
-                : 'bg-zinc-800/80 text-zinc-500 hover:text-rose-400 hover:bg-zinc-800'
+                ? 'bg-danger-fill text-on-danger shadow shadow-danger-fill/40'
+                : 'bg-surface-2/80 text-fg-4 hover:text-danger hover:bg-surface-2'
             ]"
             title="收藏"
           >
@@ -178,10 +178,10 @@ const hasTranslation = computed(
   <div
     v-else
     @click="emit('select', movie)"
-    class="group relative flex flex-col rounded-2xl bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/50 hover:shadow-xl hover:shadow-amber-500/10 transition-all duration-300 overflow-hidden cursor-pointer select-none"
+    class="group relative flex flex-col rounded-2xl bg-surface/60 border border-line/80 hover:border-accent-fill/50 hover:shadow-xl hover:shadow-accent-fill/10 transition-all duration-300 overflow-hidden cursor-pointer select-none"
   >
     <!-- Pristine Poster Container (Clean Artwork - 100% Unobstructed) -->
-    <div class="relative w-full aspect-[3/4] bg-zinc-950 overflow-hidden">
+    <div class="relative w-full aspect-[3/4] bg-sunken overflow-hidden">
       <img
         v-if="movie.cover_full && !imgError"
         :src="getImageUrl(movie.cover_full)"
@@ -194,16 +194,16 @@ const hasTranslation = computed(
       <!-- Fallback Placeholder -->
       <div
         v-else
-        class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-zinc-900 to-zinc-950 text-zinc-600"
+        class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-surface to-sunken text-fg-5"
       >
-        <Film class="w-10 h-10 mb-2 stroke-1 text-zinc-700" />
+        <Film class="w-10 h-10 mb-2 stroke-1 text-fg-5" />
         <span class="text-xs font-medium line-clamp-2">{{ movie.title }}</span>
       </div>
 
       <!-- Chinese synopsis indicator (Top Left) -->
       <span
         v-if="hasTranslation"
-        class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-500/90 text-black backdrop-blur-md z-10 flex items-center gap-0.5"
+        class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-success-fill/90 text-on-fill backdrop-blur-md z-10 flex items-center gap-0.5"
         title="已有中文简介"
       >
         <Languages class="w-2.5 h-2.5" />
@@ -216,8 +216,8 @@ const hasTranslation = computed(
         :class="[
           'absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 z-10',
           isFavorite
-            ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 opacity-100'
-            : 'bg-black/40 text-zinc-400 hover:text-rose-400 hover:bg-black/80 opacity-0 group-hover:opacity-100'
+            ? 'bg-danger-fill text-on-danger shadow-lg shadow-danger-fill/40 opacity-100'
+            : 'bg-scrim/40 text-fg-3 hover:text-danger hover:bg-scrim/80 opacity-0 group-hover:opacity-100'
         ]"
         title="收藏"
       >
@@ -232,20 +232,20 @@ const hasTranslation = computed(
         <div class="flex flex-wrap items-center gap-1.5 text-[10px] mb-1.5">
           <span
             v-if="movie.studio_name"
-            class="px-1.5 py-0.5 rounded-md font-medium bg-zinc-800 text-zinc-300 border border-zinc-700/50 truncate max-w-[120px]"
+            class="px-1.5 py-0.5 rounded-md font-medium bg-surface-2 text-fg-2 border border-line-strong/50 truncate max-w-[120px]"
             :title="movie.studio_name"
           >
             {{ movie.studio_name }}
           </span>
           <span
             v-if="movie.release_year"
-            class="px-1.5 py-0.5 rounded-md font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20"
+            class="px-1.5 py-0.5 rounded-md font-semibold bg-accent-fill/10 text-accent border border-accent-fill/20"
           >
             {{ movie.release_year }}
           </span>
           <span
             v-if="movie.duration_mins"
-            class="px-1.5 py-0.5 rounded-md text-zinc-400 bg-zinc-800/40 border border-white/5 flex items-center gap-1"
+            class="px-1.5 py-0.5 rounded-md text-fg-3 bg-surface-2/40 border border-fg/5 flex items-center gap-1"
           >
             <Clock class="w-2.5 h-2.5" />
             {{ movie.duration_mins }}m
@@ -253,34 +253,34 @@ const hasTranslation = computed(
         </div>
 
         <!-- Row 2: Title -->
-        <h3 class="text-sm font-semibold text-zinc-100 group-hover:text-amber-300 transition-colors line-clamp-1 leading-snug">
+        <h3 class="text-sm font-semibold text-fg group-hover:text-accent-soft transition-colors line-clamp-1 leading-snug">
           {{ movie.title }}
         </h3>
 
         <!-- Row 3: Category or Director -->
-        <div class="flex items-center gap-2 text-[11px] text-zinc-400 mt-1">
+        <div class="flex items-center gap-2 text-[11px] text-fg-3 mt-1">
           <span v-if="movie.category" class="truncate">{{ movie.category }}</span>
-          <span v-if="movie.director_name" class="flex items-center gap-1 text-zinc-500 text-[10px] truncate" :title="`导演: ${movie.director_name}`">
-            <Clapperboard class="w-2.5 h-2.5 text-zinc-400" />
+          <span v-if="movie.director_name" class="flex items-center gap-1 text-fg-4 text-[10px] truncate" :title="`导演: ${movie.director_name}`">
+            <Clapperboard class="w-2.5 h-2.5 text-fg-3" />
             {{ movie.director_name }}
           </span>
         </div>
       </div>
 
       <!-- Bottom Metadata: Cast preview + User Private Star Rating & Tags -->
-      <div class="space-y-1.5 pt-1 border-t border-zinc-800/40">
+      <div class="space-y-1.5 pt-1 border-t border-line/40">
         <!-- Cast preview chips -->
         <div v-if="movie.performers && movie.performers.length > 0" class="flex flex-wrap gap-1">
           <span
             v-for="p in movie.performers.slice(0, 2)"
             :key="p.id"
-            class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800/60 text-zinc-400 border border-zinc-700/30 truncate max-w-[90px]"
+            class="text-[10px] px-1.5 py-0.5 rounded bg-surface-2/60 text-fg-3 border border-line-strong/30 truncate max-w-[90px]"
           >
             {{ p.name }}
           </span>
           <span
             v-if="movie.performers.length > 2"
-            class="text-[10px] px-1 py-0.5 rounded bg-zinc-800/30 text-zinc-500"
+            class="text-[10px] px-1 py-0.5 rounded bg-surface-2/30 text-fg-4"
           >
             +{{ movie.performers.length - 2 }}
           </span>
@@ -290,7 +290,7 @@ const hasTranslation = computed(
         <div v-if="movie.userData && (movie.userData.rating || (movie.userData.tags && movie.userData.tags.length > 0))" class="flex items-center gap-1.5 pt-0.5 flex-wrap">
           <span
             v-if="movie.userData.rating"
-            class="flex items-center gap-0.5 text-[10px] font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20"
+            class="flex items-center gap-0.5 text-[10px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20"
           >
             <Star class="w-2.5 h-2.5 fill-current" />
             {{ movie.userData.rating.toFixed(1) }}

@@ -38,16 +38,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown, true));
 <template>
   <div
     v-if="lightboxImage"
-    class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-sm flex flex-col animate-fade-in"
+    class="fixed inset-0 z-[200] bg-scrim/95 backdrop-blur-sm flex flex-col animate-fade-in"
   >
     <!-- Header: the alt text doubles as the caption, so a grid cover opened here
          still says which film it belongs to. -->
     <div class="flex items-center justify-between gap-4 p-3 shrink-0">
-      <span class="text-xs text-zinc-400 truncate">{{ lightboxImage.alt }}</span>
+      <span class="text-xs text-fg-3 truncate">{{ lightboxImage.alt }}</span>
       <div class="flex items-center gap-2 shrink-0">
         <button
           @click="actualSize = !actualSize"
-          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700 text-[11px] text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface/80 border border-line-strong text-[11px] text-fg-2 hover:text-fg hover:bg-surface-2 transition"
         >
           <component :is="actualSize ? Scan : Maximize2" class="w-3.5 h-3.5" />
           <span>{{ actualSize ? '适应屏幕' : '原始尺寸' }}</span>
@@ -55,7 +55,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown, true));
         <button
           @click="closeLightbox"
           title="关闭 (Esc)"
-          class="p-1.5 rounded-lg bg-zinc-900/80 border border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
+          class="p-1.5 rounded-lg bg-surface/80 border border-line-strong text-fg-2 hover:text-fg hover:bg-surface-2 transition"
         >
           <X class="w-4 h-4" />
         </button>
@@ -65,7 +65,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown, true));
     <!-- The inner wrapper is at least the viewport size, which both centres a
          smaller image and gives a click target around it for "click outside to
          close"; at actual size it grows with the image and scrolls. -->
-    <div class="flex-1 overflow-auto darkScrollbars">
+    <div class="flex-1 overflow-auto">
       <div class="min-w-full min-h-full flex items-center justify-center p-4" @click.self="closeLightbox">
         <img
           :src="lightboxImage.src"

@@ -1150,7 +1150,7 @@ onUnmounted(() => {
     scrolling. Everything bound to `<main>` — the scroll-based loader in
     particular — then sits on an element that never scrolls.
   -->
-  <div class="h-screen overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col antialiased">
+  <div class="h-screen overflow-hidden bg-app text-fg flex flex-col antialiased">
     <!-- Navbar -->
     <Navbar
       v-model="searchQuery"
@@ -1181,40 +1181,40 @@ onUnmounted(() => {
       <!-- Main Stage -->
       <main
         ref="scrollContainerRef"
-        class="flex-1 overflow-y-auto p-6 md:p-8 darkScrollbars"
+        class="flex-1 overflow-y-auto p-6 md:p-8"
         @scroll.passive="handleScroll"
       >
         <!-- 1. Movies Tab -->
         <div v-if="currentTab === 'movies'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-white tracking-tight">探索全量影片</h1>
-              <span class="text-xs text-zinc-500 font-mono">({{ movies.length }} / {{ totalMovies.toLocaleString() }})</span>
+              <h1 class="text-xl font-bold text-fg tracking-tight">探索全量影片</h1>
+              <span class="text-xs text-fg-4 font-mono">({{ movies.length }} / {{ totalMovies.toLocaleString() }})</span>
             </div>
 
             <div class="flex items-center gap-3">
               <!-- Active filter chips -->
               <div class="flex items-center gap-2">
-                <span v-if="filters.studio" class="text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                <span v-if="filters.studio" class="text-xs px-2.5 py-1 rounded-lg bg-accent-fill/10 text-accent border border-accent-fill/30 flex items-center gap-1">
                   厂牌: {{ filters.studio }}
-                  <button @click="filters.studio = ''" class="hover:text-white">×</button>
+                  <button @click="filters.studio = ''" class="hover:text-fg">×</button>
                 </span>
-                <span v-if="filters.category" class="text-xs px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                <span v-if="filters.category" class="text-xs px-2.5 py-1 rounded-lg bg-accent-fill/10 text-accent border border-accent-fill/30 flex items-center gap-1">
                   分类: {{ filters.category }}
-                  <button @click="filters.category = ''" class="hover:text-white">×</button>
+                  <button @click="filters.category = ''" class="hover:text-fg">×</button>
                 </span>
               </div>
 
               <!-- Synopsis language toggle (issue #4) -->
-              <div class="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
-                <Languages class="w-3 h-3 text-zinc-500 ml-1.5" />
+              <div class="flex items-center gap-1 bg-surface border border-line rounded-xl p-0.5 text-xs">
+                <Languages class="w-3 h-3 text-fg-4 ml-1.5" />
                 <button
                   v-for="l in [{ id: 'zh', label: '中文' }, { id: 'en', label: '原文' }]"
                   :key="l.id"
                   @click="setDescLang(l.id as 'zh' | 'en')"
                   :class="[
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
-                    descLang === l.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                    descLang === l.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
                   :title="l.id === 'zh' ? '优先显示中文简介（未翻译的影片自动回落原文）' : '始终显示英文原文'"
                 >
@@ -1223,7 +1223,7 @@ onUnmounted(() => {
               </div>
 
               <!-- How the list pages in: auto-load on scroll, or explicit pages -->
-              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+              <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="m in [
                     { id: 'scroll', label: '滑动加载' },
@@ -1233,7 +1233,7 @@ onUnmounted(() => {
                   @click="setListMode(m.id as 'scroll' | 'paged')"
                   :class="[
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
-                    listMode === m.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                    listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
                   :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
                 >
@@ -1242,26 +1242,26 @@ onUnmounted(() => {
               </div>
 
               <!-- Grid / list columns adjuster (both modes) -->
-              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
-                <span class="text-zinc-500 text-[11px]">每行</span>
+              <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-fg-4 text-[11px]">每行</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="减少每行列数"
                 >
                   &lt;
                 </button>
-                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <span class="w-5 text-center font-mono font-bold text-accent">{{ activeCols }}</span>
                 <button
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="增加每行列数"
                 >
                   &gt;
                 </button>
-                <span class="text-zinc-500 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">列</span>
               </div>
             </div>
           </div>
@@ -1286,15 +1286,15 @@ onUnmounted(() => {
           </div>
 
           <!-- Infinite-scroll footer: the list grows as the container bottom nears -->
-          <div v-if="listMode === 'scroll' && movies.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500">
-            <div v-if="isLoadingMore" class="flex items-center gap-2 text-amber-400 font-medium">
+          <div v-if="listMode === 'scroll' && movies.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
+            <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
               <Loader2 class="w-4 h-4 animate-spin" />
               <span>滑动加载更多作品中...</span>
             </div>
-            <div v-else-if="movies.length >= totalMovies && totalMovies > 0" class="flex items-center gap-2 text-zinc-500 text-xs">
-              <span class="w-12 h-px bg-zinc-800"></span>
+            <div v-else-if="movies.length >= totalMovies && totalMovies > 0" class="flex items-center gap-2 text-fg-4 text-xs">
+              <span class="w-12 h-px bg-surface-2"></span>
               <span>已加载全部 {{ totalMovies.toLocaleString() }} 部作品</span>
-              <span class="w-12 h-px bg-zinc-800"></span>
+              <span class="w-12 h-px bg-surface-2"></span>
             </div>
           </div>
 
@@ -1312,9 +1312,9 @@ onUnmounted(() => {
 
           <!-- Empty State -->
           <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
-            <Film class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-zinc-400">未找到符合条件的影片</div>
-            <div class="text-xs text-zinc-600">尝试更换搜索关键词或重置筛选条件</div>
+            <Film class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-fg-3">未找到符合条件的影片</div>
+            <div class="text-xs text-fg-5">尝试更换搜索关键词或重置筛选条件</div>
           </div>
         </div>
 
@@ -1322,8 +1322,8 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'performers'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-white tracking-tight">演员档案库</h1>
-              <span class="text-xs text-zinc-500 font-mono">({{ performers.length }} / {{ totalPerformers.toLocaleString() }} 位)</span>
+              <h1 class="text-xl font-bold text-fg tracking-tight">演员档案库</h1>
+              <span class="text-xs text-fg-4 font-mono">({{ performers.length }} / {{ totalPerformers.toLocaleString() }} 位)</span>
             </div>
 
             <div class="flex items-center gap-3">
@@ -1333,8 +1333,8 @@ onUnmounted(() => {
                 :class="[
                   'px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition',
                   activePerformerFilterCount > 0
-                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-400'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill/10 border-accent-fill/40 text-accent'
+                    : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
                 title="筛选演员属性"
               >
@@ -1342,7 +1342,7 @@ onUnmounted(() => {
                 <span>属性筛选</span>
                 <span
                   v-if="activePerformerFilterCount > 0"
-                  class="px-1.5 rounded-full bg-amber-500 text-black text-[10px] font-bold"
+                  class="px-1.5 rounded-full bg-accent-fill text-on-fill text-[10px] font-bold"
                 >
                   {{ activePerformerFilterCount }}
                 </span>
@@ -1353,37 +1353,37 @@ onUnmounted(() => {
                 <span
                   v-for="chip in activeFacetChips"
                   :key="`${chip.key}:${chip.value}`"
-                  class="text-[11px] px-2 py-0.5 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 inline-flex items-center gap-1"
+                  class="text-[11px] px-2 py-0.5 rounded-lg bg-surface-2 text-fg-2 border border-line-strong inline-flex items-center gap-1"
                 >
-                  <span class="text-zinc-500">{{ chip.label }}</span>
+                  <span class="text-fg-4">{{ chip.label }}</span>
                   {{ chip.value }}
-                  <button @click="togglePerformerFacet(chip.key as any, chip.value)" class="hover:text-white">×</button>
+                  <button @click="togglePerformerFacet(chip.key as any, chip.value)" class="hover:text-fg">×</button>
                 </span>
                 <span
                   v-if="performerFilters.hasImage"
-                  class="text-[11px] px-2 py-0.5 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 inline-flex items-center gap-1"
+                  class="text-[11px] px-2 py-0.5 rounded-lg bg-surface-2 text-fg-2 border border-line-strong inline-flex items-center gap-1"
                 >
                   有照片
-                  <button @click="performerFilters.hasImage = false" class="hover:text-white">×</button>
+                  <button @click="performerFilters.hasImage = false" class="hover:text-fg">×</button>
                 </span>
                 <span
                   v-if="performerFilters.minMovies != null"
-                  class="text-[11px] px-2 py-0.5 rounded-lg bg-zinc-800 text-zinc-300 border border-zinc-700 inline-flex items-center gap-1"
+                  class="text-[11px] px-2 py-0.5 rounded-lg bg-surface-2 text-fg-2 border border-line-strong inline-flex items-center gap-1"
                 >
                   ≥{{ performerFilters.minMovies }} 部作品
-                  <button @click="performerFilters.minMovies = null" class="hover:text-white">×</button>
+                  <button @click="performerFilters.minMovies = null" class="hover:text-fg">×</button>
                 </span>
                 <button
                   v-if="activePerformerFilterCount > 0"
                   @click="resetPerformerFilters"
-                  class="text-[11px] text-zinc-500 hover:text-amber-400 underline"
+                  class="text-[11px] text-fg-4 hover:text-accent underline"
                 >
                   清除全部
                 </button>
               </div>
 
               <!-- How the list pages in: auto-load on scroll, or explicit pages -->
-              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+              <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="m in [
                     { id: 'scroll', label: '滑动加载' },
@@ -1393,7 +1393,7 @@ onUnmounted(() => {
                   @click="setListMode(m.id as 'scroll' | 'paged')"
                   :class="[
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
-                    listMode === m.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                    listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
                   :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
                 >
@@ -1402,26 +1402,26 @@ onUnmounted(() => {
               </div>
 
               <!-- Grid columns adjuster -->
-              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
-                <span class="text-zinc-500 text-[11px]">每行</span>
+              <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-fg-4 text-[11px]">每行</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="减少每行列数"
                 >
                   &lt;
                 </button>
-                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <span class="w-5 text-center font-mono font-bold text-accent">{{ activeCols }}</span>
                 <button
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="增加每行列数"
                 >
                   &gt;
                 </button>
-                <span class="text-zinc-500 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">列</span>
               </div>
             </div>
           </div>
@@ -1435,10 +1435,10 @@ onUnmounted(() => {
               v-for="p in performers"
               :key="p.id"
               @click="openPerformerDetail(p.id)"
-              class="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 hover:border-amber-500/40 hover:bg-zinc-900 transition-all cursor-pointer flex flex-col items-center text-center group"
+              class="p-4 rounded-2xl bg-surface/60 border border-line hover:border-accent-fill/40 hover:bg-surface transition-all cursor-pointer flex flex-col items-center text-center group"
             >
               <!-- Portrait when scraped, letter avatar otherwise (issue #6) -->
-              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-zinc-700/60 group-hover:ring-amber-500/50 transition">
+              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-line-strong/60 group-hover:ring-accent-fill/50 transition">
                 <img
                   v-if="p.image_url"
                   :src="getImageUrl(p.image_url)"
@@ -1450,18 +1450,18 @@ onUnmounted(() => {
                 />
                 <div
                   v-else
-                  class="w-full h-full bg-gradient-to-tr from-zinc-800 to-zinc-700 group-hover:from-amber-500 group-hover:to-yellow-400 flex items-center justify-center font-bold text-lg text-zinc-400 group-hover:text-black transition"
+                  class="w-full h-full bg-gradient-to-tr from-surface-2 to-surface-3 group-hover:from-accent-fill group-hover:to-accent-2 flex items-center justify-center font-bold text-lg text-fg-3 group-hover:text-on-fill transition"
                 >
                   {{ p.name.charAt(0).toUpperCase() }}
                 </div>
               </div>
-              <h3 class="text-xs font-semibold text-zinc-200 mt-3 group-hover:text-amber-400 transition truncate w-full">
+              <h3 class="text-xs font-semibold text-fg-2 mt-3 group-hover:text-accent transition truncate w-full">
                 {{ p.name }}
               </h3>
-              <div v-if="p.build || p.height" class="text-[10px] text-zinc-500 mt-1 truncate w-full">
+              <div v-if="p.build || p.height" class="text-[10px] text-fg-4 mt-1 truncate w-full">
                 {{ p.build || trMeasure(p.height) }}
               </div>
-              <div v-if="p.movies_count" class="text-[10px] text-zinc-600 mt-0.5">
+              <div v-if="p.movies_count" class="text-[10px] text-fg-5 mt-0.5">
                 {{ p.movies_count }} 部作品
               </div>
             </div>
@@ -1469,23 +1469,23 @@ onUnmounted(() => {
 
           <!-- Empty state -->
           <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
-            <UserIcon class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-zinc-400">没有符合条件的演员</div>
-            <div class="text-xs text-zinc-600">
+            <UserIcon class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-fg-3">没有符合条件的演员</div>
+            <div class="text-xs text-fg-5">
               当前仅有 {{ performerFacets.enriched }} 位演员抓取过身体属性档案，可放宽筛选条件或先补全演员数据
             </div>
           </div>
 
           <!-- Infinite-scroll footer: the list grows as the container bottom nears -->
-          <div v-if="listMode === 'scroll' && performers.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500">
-            <div v-if="isLoadingMore" class="flex items-center gap-2 text-amber-400 font-medium">
+          <div v-if="listMode === 'scroll' && performers.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
+            <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
               <Loader2 class="w-4 h-4 animate-spin" />
               <span>滑动加载更多演员中...</span>
             </div>
-            <div v-else-if="performers.length >= totalPerformers && totalPerformers > 0" class="flex items-center gap-2 text-zinc-500 text-xs">
-              <span class="w-12 h-px bg-zinc-800"></span>
+            <div v-else-if="performers.length >= totalPerformers && totalPerformers > 0" class="flex items-center gap-2 text-fg-4 text-xs">
+              <span class="w-12 h-px bg-surface-2"></span>
               <span>已加载全部 {{ totalPerformers.toLocaleString() }} 位演员</span>
-              <span class="w-12 h-px bg-zinc-800"></span>
+              <span class="w-12 h-px bg-surface-2"></span>
             </div>
           </div>
 
@@ -1506,20 +1506,20 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'studios'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-white tracking-tight">片商库</h1>
-              <span class="text-xs text-zinc-500 font-mono">({{ studioRows.length }} / {{ totalStudioRows.toLocaleString() }} 家)</span>
+              <h1 class="text-xl font-bold text-fg tracking-tight">片商库</h1>
+              <span class="text-xs text-fg-4 font-mono">({{ studioRows.length }} / {{ totalStudioRows.toLocaleString() }} 家)</span>
             </div>
 
             <div class="flex items-center gap-3">
               <!-- Sort: there is no filter drawer for studios, so the ordering lives here -->
-              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+              <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="s in STUDIO_SORTS"
                   :key="s.id"
                   @click="studioSortBy = s.id"
                   :class="[
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
-                    studioSortBy === s.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                    studioSortBy === s.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
                 >
                   {{ s.label }}
@@ -1527,7 +1527,7 @@ onUnmounted(() => {
               </div>
 
               <!-- How the list pages in: auto-load on scroll, or explicit pages -->
-              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+              <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="m in [
                     { id: 'scroll', label: '滑动加载' },
@@ -1537,7 +1537,7 @@ onUnmounted(() => {
                   @click="setListMode(m.id as 'scroll' | 'paged')"
                   :class="[
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
-                    listMode === m.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                    listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
                   :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
                 >
@@ -1546,26 +1546,26 @@ onUnmounted(() => {
               </div>
 
               <!-- Grid columns adjuster -->
-              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
-                <span class="text-zinc-500 text-[11px]">每行</span>
+              <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-fg-4 text-[11px]">每行</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="减少每行列数"
                 >
                   &lt;
                 </button>
-                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <span class="w-5 text-center font-mono font-bold text-accent">{{ activeCols }}</span>
                 <button
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="增加每行列数"
                 >
                   &gt;
                 </button>
-                <span class="text-zinc-500 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">列</span>
               </div>
             </div>
           </div>
@@ -1581,18 +1581,18 @@ onUnmounted(() => {
               v-for="s in studioRows"
               :key="s.name"
               @click="openStudioDetail(s)"
-              class="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 hover:border-amber-500/40 hover:bg-zinc-900 transition-all cursor-pointer flex flex-col items-center text-center group"
+              class="p-4 rounded-2xl bg-surface/60 border border-line hover:border-accent-fill/40 hover:bg-surface transition-all cursor-pointer flex flex-col items-center text-center group"
             >
-              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-zinc-700/60 group-hover:ring-amber-500/50 transition">
-                <div class="w-full h-full bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-2xl font-black text-black/70">
+              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-line-strong/60 group-hover:ring-accent-fill/50 transition">
+                <div class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-2xl font-black text-on-fill/70">
                   {{ s.name.charAt(0).toUpperCase() }}
                 </div>
               </div>
-              <h3 class="text-xs font-semibold text-zinc-200 mt-3 group-hover:text-amber-400 transition truncate w-full">
+              <h3 class="text-xs font-semibold text-fg-2 mt-3 group-hover:text-accent transition truncate w-full">
                 {{ s.name }}
               </h3>
-              <div class="text-[10px] text-zinc-500 mt-1">{{ s.works_count }} 部作品</div>
-              <div v-if="s.episodes_count" class="text-[10px] text-zinc-600 mt-0.5">
+              <div class="text-[10px] text-fg-4 mt-1">{{ s.works_count }} 部作品</div>
+              <div v-if="s.episodes_count" class="text-[10px] text-fg-5 mt-0.5">
                 {{ s.episodes_count }} 个片段
               </div>
             </div>
@@ -1600,21 +1600,21 @@ onUnmounted(() => {
 
           <!-- Empty state -->
           <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
-            <Building2 class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-zinc-400">没有符合条件的片商</div>
-            <div class="text-xs text-zinc-600">试试更换关键词，或清空搜索框</div>
+            <Building2 class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-fg-3">没有符合条件的片商</div>
+            <div class="text-xs text-fg-5">试试更换关键词，或清空搜索框</div>
           </div>
 
           <!-- Infinite-scroll footer: the list grows as the container bottom nears -->
-          <div v-if="listMode === 'scroll' && studioRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500">
-            <div v-if="isLoadingMore" class="flex items-center gap-2 text-amber-400 font-medium">
+          <div v-if="listMode === 'scroll' && studioRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
+            <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
               <Loader2 class="w-4 h-4 animate-spin" />
               <span>滑动加载更多片商中...</span>
             </div>
-            <div v-else-if="studioRows.length >= totalStudioRows && totalStudioRows > 0" class="flex items-center gap-2 text-zinc-500 text-xs">
-              <span class="w-12 h-px bg-zinc-800"></span>
+            <div v-else-if="studioRows.length >= totalStudioRows && totalStudioRows > 0" class="flex items-center gap-2 text-fg-4 text-xs">
+              <span class="w-12 h-px bg-surface-2"></span>
               <span>已加载全部 {{ totalStudioRows.toLocaleString() }} 家片商</span>
-              <span class="w-12 h-px bg-zinc-800"></span>
+              <span class="w-12 h-px bg-surface-2"></span>
             </div>
           </div>
 
@@ -1635,20 +1635,20 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'episodes'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-white tracking-tight">分集库</h1>
-              <span class="text-xs text-zinc-500 font-mono">({{ episodeRows.length }} / {{ totalEpisodeRows.toLocaleString() }} 个片段)</span>
+              <h1 class="text-xl font-bold text-fg tracking-tight">分集库</h1>
+              <span class="text-xs text-fg-4 font-mono">({{ episodeRows.length }} / {{ totalEpisodeRows.toLocaleString() }} 个片段)</span>
             </div>
 
             <div class="flex items-center gap-3">
               <!-- Sort: the same three orderings the drawer offers -->
-              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+              <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="s in EPISODE_SORTS"
                   :key="s.id"
                   @click="episodeSortBy = s.id"
                   :class="[
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
-                    episodeSortBy === s.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                    episodeSortBy === s.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
                 >
                   {{ s.label }}
@@ -1656,7 +1656,7 @@ onUnmounted(() => {
               </div>
 
               <!-- How the list pages in: auto-load on scroll, or explicit pages -->
-              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+              <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="m in [
                     { id: 'scroll', label: '滑动加载' },
@@ -1666,7 +1666,7 @@ onUnmounted(() => {
                   @click="setListMode(m.id as 'scroll' | 'paged')"
                   :class="[
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
-                    listMode === m.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                    listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
                   :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
                 >
@@ -1675,26 +1675,26 @@ onUnmounted(() => {
               </div>
 
               <!-- Grid columns adjuster -->
-              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
-                <span class="text-zinc-500 text-[11px]">每行</span>
+              <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-fg-4 text-[11px]">每行</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="减少每行列数"
                 >
                   &lt;
                 </button>
-                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <span class="w-5 text-center font-mono font-bold text-accent">{{ activeCols }}</span>
                 <button
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="增加每行列数"
                 >
                   &gt;
                 </button>
-                <span class="text-zinc-500 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">列</span>
               </div>
             </div>
           </div>
@@ -1720,29 +1720,29 @@ onUnmounted(() => {
 
           <!-- Empty state -->
           <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
-            <Clapperboard class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-zinc-400">没有符合条件的片段</div>
-            <div v-if="activeEpisodeFilterCount > 0 || episodeQuery" class="text-xs text-zinc-600">
+            <Clapperboard class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-fg-3">没有符合条件的片段</div>
+            <div v-if="activeEpisodeFilterCount > 0 || episodeQuery" class="text-xs text-fg-5">
               试试更换关键词，或在筛选面板里重置条件
             </div>
             <!-- The episodes table starts empty until the dedicated scrape runs: the
                  film scrape only records the scenes it happens to walk past. -->
-            <div v-else class="text-xs text-zinc-600 max-w-md mx-auto leading-relaxed">
+            <div v-else class="text-xs text-fg-5 max-w-md mx-auto leading-relaxed">
               分集库目前为空。影片刮削只记录顺带遇到的分集，完整的分集清单需要用
-              <span class="font-mono text-zinc-500">--mode episodes</span> 单独刮削一轮。
+              <span class="font-mono text-fg-4">--mode episodes</span> 单独刮削一轮。
             </div>
           </div>
 
           <!-- Infinite-scroll footer: the list grows as the container bottom nears -->
-          <div v-if="listMode === 'scroll' && episodeRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500">
-            <div v-if="isLoadingMore" class="flex items-center gap-2 text-amber-400 font-medium">
+          <div v-if="listMode === 'scroll' && episodeRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
+            <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
               <Loader2 class="w-4 h-4 animate-spin" />
               <span>滑动加载更多片段中...</span>
             </div>
-            <div v-else-if="episodeRows.length >= totalEpisodeRows && totalEpisodeRows > 0" class="flex items-center gap-2 text-zinc-500 text-xs">
-              <span class="w-12 h-px bg-zinc-800"></span>
+            <div v-else-if="episodeRows.length >= totalEpisodeRows && totalEpisodeRows > 0" class="flex items-center gap-2 text-fg-4 text-xs">
+              <span class="w-12 h-px bg-surface-2"></span>
               <span>已加载全部 {{ totalEpisodeRows.toLocaleString() }} 个片段</span>
-              <span class="w-12 h-px bg-zinc-800"></span>
+              <span class="w-12 h-px bg-surface-2"></span>
             </div>
           </div>
 
@@ -1762,48 +1762,48 @@ onUnmounted(() => {
         <!-- 5. Favorites Tab — five server-driven sections -->
         <div v-else-if="currentTab === 'favorites'" class="space-y-8">
           <div class="flex items-center justify-between flex-wrap gap-3">
-            <h1 class="text-xl font-bold text-white tracking-tight">我的收藏</h1>
+            <h1 class="text-xl font-bold text-fg tracking-tight">我的收藏</h1>
             <div class="flex items-center gap-3">
-              <span class="text-xs text-zinc-500 font-mono">({{ favoriteTotal }} 项)</span>
+              <span class="text-xs text-fg-4 font-mono">({{ favoriteTotal }} 项)</span>
               <!-- Grid columns adjuster: only meaningful once there are movie cards -->
               <div
                 v-if="favMovies.length > 0"
-                class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs"
+                class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs"
               >
-                <span class="text-zinc-500 text-[11px]">每行</span>
+                <span class="text-fg-4 text-[11px]">每行</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="减少每行列数"
                 >
                   &lt;
                 </button>
-                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <span class="w-5 text-center font-mono font-bold text-accent">{{ activeCols }}</span>
                 <button
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
-                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
                   title="增加每行列数"
                 >
                   &gt;
                 </button>
-                <span class="text-zinc-500 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">列</span>
               </div>
             </div>
           </div>
 
           <div v-if="favoritesLoading && favoriteTotal === 0" class="text-center py-24">
-            <Loader2 class="w-8 h-8 text-amber-500 animate-spin mx-auto" />
+            <Loader2 class="w-8 h-8 text-accent-fill animate-spin mx-auto" />
           </div>
 
           <template v-else-if="favoriteTotal > 0">
             <!-- 1. Movies -->
             <section v-if="favMovies.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
-                <Film class="w-4 h-4 text-amber-400" />
-                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.movie }}</h2>
-                <span class="text-xs text-zinc-500 font-mono">{{ favMovies.length }}</span>
+              <div class="flex items-center gap-2 pb-2 border-b border-line">
+                <Film class="w-4 h-4 text-accent" />
+                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.movie }}</h2>
+                <span class="text-xs text-fg-4 font-mono">{{ favMovies.length }}</span>
               </div>
               <div
                 class="grid transition-all duration-200"
@@ -1826,20 +1826,20 @@ onUnmounted(() => {
 
             <!-- 2. Performers -->
             <section v-if="favPerformers.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
-                <UserIcon class="w-4 h-4 text-amber-400" />
-                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.performer }}</h2>
-                <span class="text-xs text-zinc-500 font-mono">{{ favPerformers.length }}</span>
+              <div class="flex items-center gap-2 pb-2 border-b border-line">
+                <UserIcon class="w-4 h-4 text-accent" />
+                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.performer }}</h2>
+                <span class="text-xs text-fg-4 font-mono">{{ favPerformers.length }}</span>
               </div>
               <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
                 <div
                   v-for="f in favPerformers"
                   :key="f.key"
                   @click="openPerformerDetail(Number(f.key))"
-                  class="group relative rounded-2xl overflow-hidden bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/50 transition-all duration-200 cursor-pointer select-none"
+                  class="group relative rounded-2xl overflow-hidden bg-surface/60 border border-line/80 hover:border-accent-fill/50 transition-all duration-200 cursor-pointer select-none"
                 >
-                  <div class="relative w-full aspect-[3/4] bg-gradient-to-tr from-amber-600 to-yellow-400">
-                    <span class="absolute inset-0 flex items-center justify-center text-2xl font-black text-black/70">
+                  <div class="relative w-full aspect-[3/4] bg-gradient-to-tr from-accent-deep to-accent-2">
+                    <span class="absolute inset-0 flex items-center justify-center text-2xl font-black text-on-fill/70">
                       {{ (f.name || '?').charAt(0).toUpperCase() }}
                     </span>
                     <img
@@ -1853,14 +1853,14 @@ onUnmounted(() => {
                     />
                     <button
                       @click.stop="toggleFavoriteEntity('performer', f.key)"
-                      class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 hover:bg-black/80 backdrop-blur-md flex items-center justify-center text-rose-400 transition"
+                      class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-scrim/50 hover:bg-scrim/80 backdrop-blur-md flex items-center justify-center text-danger transition"
                       title="取消收藏该演员"
                     >
                       <Heart class="w-3 h-3" fill="currentColor" />
                     </button>
                   </div>
                   <div class="p-2">
-                    <div class="text-[11px] font-semibold text-zinc-200 truncate" :title="f.name">{{ f.name }}</div>
+                    <div class="text-[11px] font-semibold text-fg-2 truncate" :title="f.name">{{ f.name }}</div>
                   </div>
                 </div>
               </div>
@@ -1868,19 +1868,19 @@ onUnmounted(() => {
 
             <!-- 3. Episodes -->
             <section v-if="favEpisodes.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
-                <Layers class="w-4 h-4 text-amber-400" />
-                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.episode }}</h2>
-                <span class="text-xs text-zinc-500 font-mono">{{ favEpisodes.length }}</span>
+              <div class="flex items-center gap-2 pb-2 border-b border-line">
+                <Layers class="w-4 h-4 text-accent" />
+                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.episode }}</h2>
+                <span class="text-xs text-fg-4 font-mono">{{ favEpisodes.length }}</span>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div
                   v-for="f in favEpisodes"
                   :key="f.key"
                   @click="f.movie_id && openMovieDetailById(f.movie_id)"
-                  class="group flex gap-3 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/50 transition-all duration-200 overflow-hidden cursor-pointer select-none p-2.5"
+                  class="group flex gap-3 rounded-2xl bg-surface/60 border border-line/80 hover:border-accent-fill/50 transition-all duration-200 overflow-hidden cursor-pointer select-none p-2.5"
                 >
-                  <div class="relative w-24 shrink-0 aspect-video rounded-xl overflow-hidden bg-zinc-950">
+                  <div class="relative w-24 shrink-0 aspect-video rounded-xl overflow-hidden bg-sunken">
                     <img
                       v-if="f.thumbnail_url"
                       :src="getImageUrl(f.thumbnail_url)"
@@ -1889,30 +1889,30 @@ onUnmounted(() => {
                       referrerpolicy="no-referrer"
                       class="w-full h-full object-cover"
                     />
-                    <div v-else class="w-full h-full flex items-center justify-center text-zinc-700">
+                    <div v-else class="w-full h-full flex items-center justify-center text-fg-5">
                       <Layers class="w-5 h-5 stroke-1" />
                     </div>
                   </div>
                   <div class="flex-1 min-w-0 flex flex-col justify-between gap-1">
                     <div class="min-w-0">
                       <div class="flex items-start justify-between gap-2">
-                        <span class="text-xs font-bold text-amber-300 truncate" :title="f.title || ''">{{ f.title }}</span>
+                        <span class="text-xs font-bold text-accent-soft truncate" :title="f.title || ''">{{ f.title }}</span>
                         <button
                           @click.stop="toggleFavoriteEntity('episode', f.key)"
-                          class="shrink-0 text-rose-400 transition"
+                          class="shrink-0 text-danger transition"
                           title="取消收藏该片段"
                         >
                           <Heart class="w-3.5 h-3.5" fill="currentColor" />
                         </button>
                       </div>
-                      <div v-if="f.movie_title" class="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-1 truncate">
-                        <Film class="w-2.5 h-2.5 text-zinc-500 shrink-0" />
+                      <div v-if="f.movie_title" class="text-[11px] text-fg-3 mt-0.5 flex items-center gap-1 truncate">
+                        <Film class="w-2.5 h-2.5 text-fg-4 shrink-0" />
                         <span class="truncate" :title="f.movie_title">出处: {{ f.movie_title }}</span>
                       </div>
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-zinc-500">
+                    <div class="flex items-center gap-2 text-[10px] text-fg-4">
                       <span v-if="f.studio_name" class="truncate max-w-[120px]" :title="f.studio_name">{{ f.studio_name }}</span>
-                      <span v-if="f.has_zh" class="text-emerald-400 flex items-center gap-0.5 shrink-0">
+                      <span v-if="f.has_zh" class="text-success flex items-center gap-0.5 shrink-0">
                         <Languages class="w-2.5 h-2.5" />中
                       </span>
                     </div>
@@ -1923,28 +1923,28 @@ onUnmounted(() => {
 
             <!-- 4. Studios — clicking opens the studio page, as a favorited performer does -->
             <section v-if="favStudios.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
-                <Building2 class="w-4 h-4 text-amber-400" />
-                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.studio }}</h2>
-                <span class="text-xs text-zinc-500 font-mono">{{ favStudios.length }}</span>
+              <div class="flex items-center gap-2 pb-2 border-b border-line">
+                <Building2 class="w-4 h-4 text-accent" />
+                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.studio }}</h2>
+                <span class="text-xs text-fg-4 font-mono">{{ favStudios.length }}</span>
               </div>
               <div class="flex flex-wrap gap-2">
                 <div
                   v-for="f in favStudios"
                   :key="f.key"
-                  class="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-amber-500/50 transition"
+                  class="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-surface/70 border border-line hover:border-accent-fill/50 transition"
                 >
                   <button
                     @click="openStudioDetail({ name: f.key, works_count: f.works_count ?? undefined })"
-                    class="text-xs font-medium text-zinc-300 hover:text-amber-300 transition"
+                    class="text-xs font-medium text-fg-2 hover:text-accent-soft transition"
                     :title="`打开 ${f.key} 的片商档案`"
                   >
                     {{ f.key }}
                   </button>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 font-mono">{{ f.works_count || 0 }}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-fg-4 font-mono">{{ f.works_count || 0 }}</span>
                   <button
                     @click.stop="toggleFavoriteEntity('studio', f.key)"
-                    class="text-rose-400 hover:text-rose-300 transition"
+                    class="text-danger hover:text-danger-soft transition"
                     title="取消收藏该片商"
                   >
                     <Heart class="w-3 h-3" fill="currentColor" />
@@ -1955,24 +1955,24 @@ onUnmounted(() => {
 
             <!-- 5. Directors -->
             <section v-if="favDirectors.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-zinc-800">
-                <Clapperboard class="w-4 h-4 text-amber-400" />
-                <h2 class="text-sm font-bold text-zinc-100">{{ FAVORITE_LABELS.director }}</h2>
-                <span class="text-xs text-zinc-500 font-mono">{{ favDirectors.length }}</span>
+              <div class="flex items-center gap-2 pb-2 border-b border-line">
+                <Clapperboard class="w-4 h-4 text-accent" />
+                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.director }}</h2>
+                <span class="text-xs text-fg-4 font-mono">{{ favDirectors.length }}</span>
               </div>
               <div class="flex flex-wrap gap-2">
                 <div
                   v-for="f in favDirectors"
                   :key="f.key"
-                  class="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-zinc-900/70 border border-zinc-800 hover:border-amber-500/50 transition"
+                  class="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-surface/70 border border-line hover:border-accent-fill/50 transition"
                 >
-                  <button @click="filterByDirector(f.key)" class="text-xs font-medium text-zinc-300 hover:text-amber-300 transition" :title="`查看 ${f.key} 导演的全部影片`">
+                  <button @click="filterByDirector(f.key)" class="text-xs font-medium text-fg-2 hover:text-accent-soft transition" :title="`查看 ${f.key} 导演的全部影片`">
                     {{ f.key }}
                   </button>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 font-mono">{{ f.works_count || 0 }}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-fg-4 font-mono">{{ f.works_count || 0 }}</span>
                   <button
                     @click.stop="toggleFavoriteEntity('director', f.key)"
-                    class="text-rose-400 hover:text-rose-300 transition"
+                    class="text-danger hover:text-danger-soft transition"
                     title="取消收藏该导演"
                   >
                     <Heart class="w-3 h-3" fill="currentColor" />
@@ -1983,58 +1983,58 @@ onUnmounted(() => {
           </template>
 
           <div v-else class="text-center py-24 space-y-3">
-            <Heart class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-zinc-400">暂无收藏</div>
-            <div class="text-xs text-zinc-600">影片、演员、片商、导演和分集片段都可以收藏，点击心形图标即可加入</div>
+            <Heart class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-fg-3">暂无收藏</div>
+            <div class="text-xs text-fg-5">影片、演员、片商、导演和分集片段都可以收藏，点击心形图标即可加入</div>
           </div>
         </div>
 
         <!-- 6. Settings & Cache Tab -->
         <div v-else-if="currentTab === 'settings'" class="max-w-3xl space-y-6">
-          <h1 class="text-xl font-bold text-white tracking-tight">存储、缓存与系统设置</h1>
+          <h1 class="text-xl font-bold text-fg tracking-tight">存储、缓存与系统设置</h1>
 
           <!-- Section 1: SQLite Engine & Stats -->
-          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
             <div class="flex items-center gap-3">
-              <HardDrive class="w-5 h-5 text-amber-400" />
+              <HardDrive class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-white">本地离线数据中心</div>
-                <div class="text-xs text-zinc-400">SQLite3 WAL 极速引擎 + FTS5 全文搜索</div>
+                <div class="text-sm font-bold text-fg">本地离线数据中心</div>
+                <div class="text-xs text-fg-3">SQLite3 WAL 极速引擎 + FTS5 全文搜索</div>
               </div>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-2">
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">影片总收录</span>
-                <div class="text-base font-bold text-white mt-0.5">{{ stats ? stats.movies.toLocaleString() : 0 }}</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">影片总收录</span>
+                <div class="text-base font-bold text-fg mt-0.5">{{ stats ? stats.movies.toLocaleString() : 0 }}</div>
               </div>
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">演员总收录</span>
-                <div class="text-base font-bold text-white mt-0.5">{{ stats ? stats.performers.toLocaleString() : 0 }}</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">演员总收录</span>
+                <div class="text-base font-bold text-fg mt-0.5">{{ stats ? stats.performers.toLocaleString() : 0 }}</div>
               </div>
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">分集/片段</span>
-                <div class="text-base font-bold text-amber-400 mt-0.5">{{ stats ? stats.episodes.toLocaleString() : 0 }}</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">分集/片段</span>
+                <div class="text-base font-bold text-accent mt-0.5">{{ stats ? stats.episodes.toLocaleString() : 0 }}</div>
               </div>
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">演职关联</span>
-                <div class="text-base font-bold text-zinc-300 mt-0.5">{{ stats ? stats.movie_performers.toLocaleString() : 0 }}</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">演职关联</span>
+                <div class="text-base font-bold text-fg-2 mt-0.5">{{ stats ? stats.movie_performers.toLocaleString() : 0 }}</div>
               </div>
             </div>
           </div>
 
           <!-- Section 2: Offline Image Disk Cache System -->
-          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <ImageIcon class="w-5 h-5 text-amber-400" />
+                <ImageIcon class="w-5 h-5 text-accent" />
                 <div>
-                  <div class="text-sm font-bold text-white">离线图片磁盘缓存系统</div>
-                  <div class="text-xs text-zinc-400">自动下载海报与分集图至本地磁盘，彻底告别外网依赖</div>
+                  <div class="text-sm font-bold text-fg">离线图片磁盘缓存系统</div>
+                  <div class="text-xs text-fg-3">自动下载海报与分集图至本地磁盘，彻底告别外网依赖</div>
                 </div>
               </div>
               <button
                 @click="loadCacheStats"
-                class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition"
+                class="p-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 hover:text-fg transition"
                 title="刷新缓存统计"
               >
                 <RefreshCw class="w-3.5 h-3.5" />
@@ -2043,22 +2043,22 @@ onUnmounted(() => {
 
             <!-- Stats metrics -->
             <div class="grid grid-cols-2 gap-3 text-xs pt-1">
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">已缓存图片数量</span>
-                <div class="text-base font-bold text-emerald-400 mt-0.5">{{ cacheStats.count.toLocaleString() }} 张</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">已缓存图片数量</span>
+                <div class="text-base font-bold text-success mt-0.5">{{ cacheStats.count.toLocaleString() }} 张</div>
               </div>
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">占用磁盘空间</span>
-                <div class="text-base font-bold text-amber-300 mt-0.5">{{ cacheStats.size_mb }} MB</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">占用磁盘空间</span>
+                <div class="text-base font-bold text-accent-soft mt-0.5">{{ cacheStats.size_mb }} MB</div>
               </div>
             </div>
 
             <!-- Cache directory location -->
-            <div v-if="cacheStats.path" class="text-[11px] text-zinc-500 font-mono bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 truncate">
+            <div v-if="cacheStats.path" class="text-[11px] text-fg-4 font-mono bg-sunken p-2.5 rounded-xl border border-line truncate">
               本地存储目录: {{ cacheStats.path }}
             </div>
 
-            <div v-if="cacheStatusMsg" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+            <div v-if="cacheStatusMsg" class="p-3 rounded-xl bg-accent-fill/10 border border-accent-fill/20 text-xs text-accent-soft">
               {{ cacheStatusMsg }}
             </div>
 
@@ -2067,7 +2067,7 @@ onUnmounted(() => {
               <button
                 @click="handleBatchDownloadCache"
                 :disabled="isCacheLoading"
-                class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition disabled:opacity-50"
+                class="px-4 py-2 rounded-xl bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs shadow-lg shadow-accent-fill/20 flex items-center gap-2 transition disabled:opacity-50"
               >
                 <Download class="w-3.5 h-3.5" />
                 <span>一键预下载离线图片库</span>
@@ -2076,7 +2076,7 @@ onUnmounted(() => {
               <button
                 @click="handleClearCache"
                 :disabled="isCacheLoading"
-                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-rose-500/20 text-zinc-300 hover:text-rose-300 border border-zinc-700 hover:border-rose-500/30 text-xs font-medium flex items-center gap-2 transition disabled:opacity-50"
+                class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-danger-fill/20 text-fg-2 hover:text-danger-soft border border-line-strong hover:border-danger-fill/30 text-xs font-medium flex items-center gap-2 transition disabled:opacity-50"
               >
                 <Trash2 class="w-3.5 h-3.5" />
                 <span>清空图片缓存</span>
@@ -2085,20 +2085,20 @@ onUnmounted(() => {
           </div>
 
           <!-- Section 3: Synopsis Machine Translation (EN -> ZH, issue #4) -->
-          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <Languages class="w-5 h-5 text-amber-400" />
+                <Languages class="w-5 h-5 text-accent" />
                 <div>
-                  <div class="text-sm font-bold text-white">剧情简介中文翻译</div>
-                  <div class="text-xs text-zinc-400">
+                  <div class="text-sm font-bold text-fg">剧情简介中文翻译</div>
+                  <div class="text-xs text-fg-3">
                     调用大模型 API 把英文简介批量译成中文并写回本地库，之后完全离线可用
                   </div>
                 </div>
               </div>
               <button
                 @click="loadTranslationStats"
-                class="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition"
+                class="p-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 hover:text-fg transition"
                 title="刷新翻译进度"
               >
                 <RefreshCw class="w-3.5 h-3.5" />
@@ -2107,54 +2107,54 @@ onUnmounted(() => {
 
             <!-- Progress metrics -->
             <div v-if="translationStats" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">可翻译简介</span>
-                <div class="text-base font-bold text-white mt-0.5">{{ translationStats.translation_total.toLocaleString() }}</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">可翻译简介</span>
+                <div class="text-base font-bold text-fg mt-0.5">{{ translationStats.translation_total.toLocaleString() }}</div>
               </div>
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">已翻译</span>
-                <div class="text-base font-bold text-emerald-400 mt-0.5">{{ translationStats.translation_done.toLocaleString() }}</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">已翻译</span>
+                <div class="text-base font-bold text-success mt-0.5">{{ translationStats.translation_done.toLocaleString() }}</div>
               </div>
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">待翻译</span>
-                <div class="text-base font-bold text-amber-300 mt-0.5">{{ translationStats.translation_pending.toLocaleString() }}</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">待翻译</span>
+                <div class="text-base font-bold text-accent-soft mt-0.5">{{ translationStats.translation_pending.toLocaleString() }}</div>
               </div>
-              <div class="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80">
-                <span class="text-zinc-500">翻译失败</span>
-                <div class="text-base font-bold text-rose-400 mt-0.5">{{ translationStats.translation_failed.toLocaleString() }}</div>
+              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
+                <span class="text-fg-4">翻译失败</span>
+                <div class="text-base font-bold text-danger mt-0.5">{{ translationStats.translation_failed.toLocaleString() }}</div>
               </div>
             </div>
 
             <!-- Progress bar -->
             <div
               v-if="translationStats && translationStats.translation_total > 0"
-              class="h-2 rounded-full bg-zinc-800 overflow-hidden"
+              class="h-2 rounded-full bg-surface-2 overflow-hidden"
             >
               <div
-                class="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500"
+                class="h-full bg-gradient-to-r from-accent-fill to-success transition-all duration-500"
                 :style="{ width: `${(translationStats.translation_done / translationStats.translation_total) * 100}%` }"
               ></div>
             </div>
 
             <!-- Translation mode: one film at a time vs. explicit batch runs -->
-            <div v-if="!IS_TAURI" class="p-4 rounded-xl bg-zinc-950/60 border border-zinc-800 space-y-3">
-              <div class="text-xs font-semibold text-zinc-300">翻译方式</div>
+            <div v-if="!IS_TAURI" class="p-4 rounded-xl bg-sunken/60 border border-line space-y-3">
+              <div class="text-xs font-semibold text-fg-2">翻译方式</div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   @click="setTranslateMode('single')"
                   class="text-left p-3 rounded-xl border transition"
                   :class="translateMode === 'single'
-                    ? 'bg-amber-500/10 border-amber-500/40'
-                    : 'bg-zinc-900 border-zinc-700 hover:border-zinc-600'"
+                    ? 'bg-accent-fill/10 border-accent-fill/40'
+                    : 'bg-surface border-line-strong hover:border-line-strong'"
                 >
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-bold"
-                      :class="translateMode === 'single' ? 'text-amber-300' : 'text-zinc-200'">
+                      :class="translateMode === 'single' ? 'text-accent-soft' : 'text-fg-2'">
                       单部自动翻译
                     </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">省 token</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-success-fill/20 text-success-soft border border-success-fill/30">省 token</span>
                   </div>
-                  <div class="text-[11px] text-zinc-500 mt-1 leading-relaxed">
+                  <div class="text-[11px] text-fg-4 mt-1 leading-relaxed">
                     打开某部影片时才翻译那一部。适合边看边译，不会一次性消耗大量额度。
                   </div>
                 </button>
@@ -2163,21 +2163,21 @@ onUnmounted(() => {
                   @click="setTranslateMode('batch')"
                   class="text-left p-3 rounded-xl border transition"
                   :class="translateMode === 'batch'
-                    ? 'bg-amber-500/10 border-amber-500/40'
-                    : 'bg-zinc-900 border-zinc-700 hover:border-zinc-600'"
+                    ? 'bg-accent-fill/10 border-accent-fill/40'
+                    : 'bg-surface border-line-strong hover:border-line-strong'"
                 >
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-bold"
-                      :class="translateMode === 'batch' ? 'text-amber-300' : 'text-zinc-200'">
+                      :class="translateMode === 'batch' ? 'text-accent-soft' : 'text-fg-2'">
                       批量翻译
                     </span>
                   </div>
-                  <div class="text-[11px] text-zinc-500 mt-1 leading-relaxed">
+                  <div class="text-[11px] text-fg-4 mt-1 leading-relaxed">
                     打开影片时不翻译，改由下方按钮一次性批量处理。适合把整库译完。
                   </div>
                 </button>
               </div>
-              <div class="text-[11px] text-zinc-500">
+              <div class="text-[11px] text-fg-4">
                 <template v-if="translateMode === 'single'">
                   已开启单部自动翻译：之后每打开一部尚未翻译的影片会自动翻译它，同一部影片本次运行内只翻译一次。
                 </template>
@@ -2190,17 +2190,17 @@ onUnmounted(() => {
             <!-- Translation sources: several saved API providers, one active -->
             <div v-if="!IS_TAURI" class="pt-1 space-y-3">
               <div class="flex items-center justify-between">
-                <div class="text-xs font-semibold text-zinc-300">翻译服务来源</div>
+                <div class="text-xs font-semibold text-fg-2">翻译服务来源</div>
                 <button
                   @click="openProviderForm()"
-                  class="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] border border-zinc-700 flex items-center gap-1.5 transition"
+                  class="px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong flex items-center gap-1.5 transition"
                 >
-                  <Sparkles class="w-3 h-3 text-amber-400" />
+                  <Sparkles class="w-3 h-3 text-accent" />
                   <span>添加来源</span>
                 </button>
               </div>
 
-              <div v-if="providerList.length === 0" class="text-xs text-amber-300/90 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div v-if="providerList.length === 0" class="text-xs text-accent-soft/90 p-3 rounded-xl bg-accent-fill/10 border border-accent-fill/20">
                 尚未配置任何来源。点「添加来源」选择服务商（DeepSeek / Claude / Gemini / 本地 Ollama 等）并填入 API Key。
               </div>
 
@@ -2210,38 +2210,38 @@ onUnmounted(() => {
                   :key="p.name"
                   class="flex items-center justify-between gap-3 p-3 rounded-xl border transition"
                   :class="p.active
-                    ? 'bg-amber-500/10 border-amber-500/30'
-                    : 'bg-zinc-950/60 border-zinc-800'"
+                    ? 'bg-accent-fill/10 border-accent-fill/30'
+                    : 'bg-sunken/60 border-line'"
                 >
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-xs font-semibold text-white truncate">{{ p.label }}</span>
-                      <span v-if="p.active" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-black font-bold">使用中</span>
-                      <span v-if="!p.has_key" class="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">缺 API Key</span>
+                      <span class="text-xs font-semibold text-fg truncate">{{ p.label }}</span>
+                      <span v-if="p.active" class="text-[10px] px-1.5 py-0.5 rounded bg-accent-fill text-on-fill font-bold">使用中</span>
+                      <span v-if="!p.has_key" class="text-[10px] px-1.5 py-0.5 rounded bg-danger-fill/20 text-danger-soft border border-danger-fill/30">缺 API Key</span>
                     </div>
-                    <div class="text-[11px] text-zinc-500 font-mono truncate mt-0.5">
+                    <div class="text-[11px] text-fg-4 font-mono truncate mt-0.5">
                       {{ p.type }} · {{ p.model || '默认模型' }} · {{ p.base_url || '默认端点' }}
                     </div>
-                    <div v-if="p.key_hint" class="text-[10px] text-zinc-600 font-mono">Key: {{ p.key_hint }}</div>
+                    <div v-if="p.key_hint" class="text-[10px] text-fg-5 font-mono">Key: {{ p.key_hint }}</div>
                   </div>
                   <div class="flex items-center gap-1.5 shrink-0">
                     <button
                       v-if="!p.active"
                       @click="activateProvider(p.name)"
-                      class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-amber-500/20 text-zinc-300 hover:text-amber-300 text-[11px] border border-zinc-700 transition"
+                      class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-accent-fill/20 text-fg-2 hover:text-accent-soft text-[11px] border border-line-strong transition"
                     >设为当前</button>
                     <button
                       @click="testProvider(p.name)"
                       :disabled="providerBusy"
-                      class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] border border-zinc-700 transition disabled:opacity-40"
+                      class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong transition disabled:opacity-40"
                     >测试</button>
                     <button
                       @click="openProviderForm(p)"
-                      class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] border border-zinc-700 transition"
+                      class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong transition"
                     >编辑</button>
                     <button
                       @click="removeProvider(p.name)"
-                      class="p-1.5 rounded-lg bg-zinc-800 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-zinc-700 transition"
+                      class="p-1.5 rounded-lg bg-surface-2 hover:bg-danger-fill/20 text-fg-3 hover:text-danger-soft border border-line-strong transition"
                       title="删除该来源"
                     >
                       <Trash2 class="w-3 h-3" />
@@ -2251,8 +2251,8 @@ onUnmounted(() => {
               </div>
 
               <!-- Add / edit form -->
-              <div v-if="providerForm.open" class="p-4 rounded-xl bg-zinc-950/80 border border-zinc-700 space-y-3">
-                <div class="text-xs font-semibold text-white">
+              <div v-if="providerForm.open" class="p-4 rounded-xl bg-sunken/80 border border-line-strong space-y-3">
+                <div class="text-xs font-semibold text-fg">
                   {{ providerForm.editing ? `编辑来源：${providerForm.editing}` : '添加翻译来源' }}
                 </div>
 
@@ -2264,67 +2264,67 @@ onUnmounted(() => {
                     :title="preset.hint"
                     class="px-2.5 py-1 rounded-lg text-[11px] border transition"
                     :class="providerForm.name === preset.id
-                      ? 'bg-amber-500 text-black border-amber-500 font-bold'
-                      : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'"
+                      ? 'bg-accent-fill text-on-fill border-accent-fill font-bold'
+                      : 'bg-surface-2 text-fg-2 border-line-strong hover:bg-surface-3'"
                   >{{ preset.label }}</button>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label class="space-y-1">
-                    <span class="text-[11px] text-zinc-400">配置名称（唯一标识）</span>
+                    <span class="text-[11px] text-fg-3">配置名称（唯一标识）</span>
                     <input v-model="providerForm.name" :disabled="!!providerForm.editing"
                       placeholder="deepseek"
-                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white font-mono disabled:opacity-60 focus:border-amber-500/50 focus:outline-none" />
+                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono disabled:opacity-60 focus:border-accent-fill/50 focus:outline-none" />
                   </label>
                   <label class="space-y-1">
-                    <span class="text-[11px] text-zinc-400">显示名称</span>
+                    <span class="text-[11px] text-fg-3">显示名称</span>
                     <input v-model="providerForm.label" placeholder="DeepSeek 深度求索"
-                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white focus:border-amber-500/50 focus:outline-none" />
+                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg focus:border-accent-fill/50 focus:outline-none" />
                   </label>
                   <label class="space-y-1">
-                    <span class="text-[11px] text-zinc-400">接口类型</span>
+                    <span class="text-[11px] text-fg-3">接口类型</span>
                     <select v-model="providerForm.type"
-                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white focus:border-amber-500/50 focus:outline-none">
+                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg focus:border-accent-fill/50 focus:outline-none">
                       <option value="openai">openai（OpenAI 兼容接口）</option>
                       <option value="anthropic">anthropic（Claude 官方接口）</option>
                       <option value="gemini">gemini（Google Gemini）</option>
                     </select>
                   </label>
                   <label class="space-y-1">
-                    <span class="text-[11px] text-zinc-400">模型名</span>
+                    <span class="text-[11px] text-fg-3">模型名</span>
                     <input v-model="providerForm.model" placeholder="deepseek-flash"
-                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white font-mono focus:border-amber-500/50 focus:outline-none" />
+                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono focus:border-accent-fill/50 focus:outline-none" />
                   </label>
                   <label class="space-y-1 sm:col-span-2">
-                    <span class="text-[11px] text-zinc-400">API 端点 (Base URL)</span>
+                    <span class="text-[11px] text-fg-3">API 端点 (Base URL)</span>
                     <input v-model="providerForm.base_url" placeholder="https://api.deepseek.com"
-                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white font-mono focus:border-amber-500/50 focus:outline-none" />
+                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono focus:border-accent-fill/50 focus:outline-none" />
                   </label>
                   <label class="space-y-1 sm:col-span-2">
-                    <span class="text-[11px] text-zinc-400">
+                    <span class="text-[11px] text-fg-3">
                       API Key
-                      <span v-if="providerForm.editing" class="text-zinc-500">（留空则保持原 Key 不变）</span>
+                      <span v-if="providerForm.editing" class="text-fg-4">（留空则保持原 Key 不变）</span>
                     </span>
                     <input v-model="providerForm.api_key" type="password" autocomplete="off"
                       :placeholder="providerForm.editing ? '••••••••（不修改）' : 'sk-...'"
-                      class="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-xs text-white font-mono focus:border-amber-500/50 focus:outline-none" />
+                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono focus:border-accent-fill/50 focus:outline-none" />
                   </label>
                 </div>
 
-                <div class="text-[11px] text-zinc-500 leading-relaxed">
+                <div class="text-[11px] text-fg-4 leading-relaxed">
                   API Key 只写入本机 <code class="font-mono">translate_config.json</code>（权限 600），
-                  不会写入数据库，也<b class="text-zinc-400">不会回传给前端</b>。
+                  不会写入数据库，也<b class="text-fg-3">不会回传给前端</b>。
                 </div>
 
                 <div class="flex items-center gap-2">
                   <button
                     @click="saveProvider"
                     :disabled="providerBusy"
-                    class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition disabled:opacity-40"
+                    class="px-4 py-2 rounded-lg bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs transition disabled:opacity-40"
                   >保存</button>
                   <button
                     @click="providerForm.open = false"
-                    class="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs border border-zinc-700 transition"
+                    class="px-4 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-xs border border-line-strong transition"
                   >取消</button>
                 </div>
               </div>
@@ -2333,42 +2333,42 @@ onUnmounted(() => {
                 v-if="providerTest"
                 class="p-3 rounded-xl text-[11px] font-mono whitespace-pre-wrap leading-relaxed"
                 :class="providerTest.ok
-                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
-                  : 'bg-rose-500/10 border border-rose-500/20 text-rose-300'"
+                  ? 'bg-success-fill/10 border border-success-fill/20 text-success-soft'
+                  : 'bg-danger-fill/10 border border-danger-fill/20 text-danger-soft'"
               >{{ providerTest.text }}</div>
 
-              <div v-if="providerMsg" class="text-[11px] text-amber-300">{{ providerMsg }}</div>
+              <div v-if="providerMsg" class="text-[11px] text-accent-soft">{{ providerMsg }}</div>
             </div>
 
             <div
               v-if="IS_TAURI"
-              class="p-3 rounded-xl bg-zinc-800/60 border border-zinc-700 text-xs text-zinc-300 space-y-1.5"
+              class="p-3 rounded-xl bg-surface-2/60 border border-line-strong text-xs text-fg-2 space-y-1.5"
             >
-              <div class="font-semibold text-white">桌面版请用命令行翻译</div>
-              <div class="text-zinc-400 leading-relaxed">
+              <div class="font-semibold text-fg">桌面版请用命令行翻译</div>
+              <div class="text-fg-3 leading-relaxed">
                 桌面版直接读写本地 SQLite，不经过本地服务进程，因此这里只显示进度、不能直接发起翻译。
                 命令行会读取同一份 <code class="font-mono">translate_config.json</code>：
               </div>
-              <code class="block bg-black/60 rounded-lg p-2 font-mono text-[11px] text-zinc-300 overflow-x-auto">
+              <code class="block bg-scrim/60 rounded-lg p-2 font-mono text-[11px] text-fg-2 overflow-x-auto">
                 python3 translate.py --list-profiles
               </code>
-              <code class="block bg-black/60 rounded-lg p-2 font-mono text-[11px] text-zinc-300 overflow-x-auto">
+              <code class="block bg-scrim/60 rounded-lg p-2 font-mono text-[11px] text-fg-2 overflow-x-auto">
                 python3 translate.py --profile deepseek --limit 20 --dry-run
               </code>
-              <div class="text-zinc-400">
+              <div class="text-fg-3">
                 试跑无误后去掉 <code class="font-mono">--limit</code> 与 <code class="font-mono">--dry-run</code> 即可全量翻译。
               </div>
             </div>
 
             <div
               v-else-if="translationStats"
-              class="text-[11px] text-zinc-500 font-mono bg-zinc-950 p-2.5 rounded-xl border border-zinc-800"
+              class="text-[11px] text-fg-4 font-mono bg-sunken p-2.5 rounded-xl border border-line"
             >
               当前使用: {{ translationStats.profile_label || translationStats.profile || translationStats.provider }}
               / {{ translationStats.model || '默认模型' }}
             </div>
 
-            <div v-if="translateMsg" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+            <div v-if="translateMsg" class="p-3 rounded-xl bg-success-fill/10 border border-success-fill/20 text-xs text-success-soft">
               {{ translateMsg }}
             </div>
 
@@ -2377,7 +2377,7 @@ onUnmounted(() => {
               <button
                 @click="handleRunTranslation(50)"
                 :disabled="isTranslating || !translationStats?.configured"
-                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg font-medium text-xs border border-line-strong flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Languages class="w-3.5 h-3.5" />
                 <span>试跑 50 条</span>
@@ -2386,7 +2386,7 @@ onUnmounted(() => {
               <button
                 @click="handleRunTranslation(null)"
                 :disabled="isTranslating || !translationStats?.configured || translationStats?.translation_pending === 0"
-                class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                class="px-5 py-2.5 rounded-xl bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs shadow-lg shadow-accent-fill/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Loader2 v-if="isTranslating" class="w-3.5 h-3.5 animate-spin" />
                 <Sparkles v-else class="w-3.5 h-3.5" />
@@ -2407,12 +2407,12 @@ onUnmounted(() => {
             closed vocabulary rather than a per-film queue, and its result is stored
             in a lookup table the client reads on startup.
           -->
-          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
             <div class="flex items-center gap-3">
-              <Sparkles class="w-5 h-5 text-amber-400" />
+              <Sparkles class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-white">演员属性术语表</div>
-                <div class="text-xs text-zinc-400">
+                <div class="text-sm font-bold text-fg">演员属性术语表</div>
+                <div class="text-xs text-fg-3">
                   身高、肤色、发色、纹身部位等属性取值来自一个很小的固定词表。整表翻译一次后客户端本地查表，
                   浏览演员不再产生任何 API 调用。
                 </div>
@@ -2420,15 +2420,15 @@ onUnmounted(() => {
             </div>
 
             <div class="flex items-center gap-2 text-xs">
-              <span class="text-zinc-500">已收录术语</span>
-              <span class="font-mono font-bold text-emerald-400">{{ glossaryCount() }}</span>
-              <span class="text-zinc-600">条（浏览器本地已加载）</span>
+              <span class="text-fg-4">已收录术语</span>
+              <span class="font-mono font-bold text-success">{{ glossaryCount() }}</span>
+              <span class="text-fg-5">条（浏览器本地已加载）</span>
             </div>
 
-            <div v-if="glossaryMsg" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+            <div v-if="glossaryMsg" class="p-3 rounded-xl bg-success-fill/10 border border-success-fill/20 text-xs text-success-soft">
               {{ glossaryMsg }}
             </div>
-            <div v-if="glossaryError" class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300">
+            <div v-if="glossaryError" class="p-3 rounded-xl bg-danger-fill/10 border border-danger-fill/20 text-xs text-danger-soft">
               {{ glossaryError }}
             </div>
 
@@ -2436,7 +2436,7 @@ onUnmounted(() => {
               <button
                 @click="handleRunGlossary(true)"
                 :disabled="glossaryBusy || !translationStats?.configured"
-                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg font-medium text-xs border border-line-strong flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Loader2 v-if="glossaryBusy" class="w-3.5 h-3.5 animate-spin" />
                 <Languages v-else class="w-3.5 h-3.5" />
@@ -2446,7 +2446,7 @@ onUnmounted(() => {
               <button
                 @click="handleRunGlossary(false)"
                 :disabled="glossaryBusy || !translationStats?.configured"
-                class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                class="px-5 py-2.5 rounded-xl bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs shadow-lg shadow-accent-fill/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Loader2 v-if="glossaryBusy" class="w-3.5 h-3.5 animate-spin" />
                 <Sparkles v-else class="w-3.5 h-3.5" />
@@ -2454,40 +2454,40 @@ onUnmounted(() => {
               </button>
             </div>
 
-            <div v-else class="text-xs text-zinc-400 leading-relaxed p-3 rounded-xl bg-zinc-800/60 border border-zinc-700">
+            <div v-else class="text-xs text-fg-3 leading-relaxed p-3 rounded-xl bg-surface-2/60 border border-line-strong">
               桌面版直接读写本地数据库，请用命令行运行：
-              <code class="font-mono text-zinc-300">python3 translate.py --glossary</code>
+              <code class="font-mono text-fg-2">python3 translate.py --glossary</code>
             </div>
           </div>
 
           <!-- Section 4: Data Import & Export (Custom Backup & Migration) -->
-          <div class="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
             <div class="flex items-center gap-3">
-              <Download class="w-5 h-5 text-amber-400" />
+              <Download class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-white">个人扩展数据备份与恢复</div>
-                <div class="text-xs text-zinc-400">导出或导入所有自定义标签、私密星级评分、观看状态、私密笔记与全部收藏</div>
+                <div class="text-sm font-bold text-fg">个人扩展数据备份与恢复</div>
+                <div class="text-xs text-fg-3">导出或导入所有自定义标签、私密星级评分、观看状态、私密笔记与全部收藏</div>
               </div>
             </div>
 
-            <div v-if="importStatusMsg" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+            <div v-if="importStatusMsg" class="p-3 rounded-xl bg-success-fill/10 border border-success-fill/20 text-xs text-success-soft">
               {{ importStatusMsg }}
             </div>
 
             <div class="flex items-center gap-3 pt-2">
               <button
                 @click="handleExportUserData"
-                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition"
+                class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg font-medium text-xs border border-line-strong flex items-center gap-2 transition"
               >
-                <Download class="w-3.5 h-3.5 text-amber-400" />
+                <Download class="w-3.5 h-3.5 text-accent" />
                 <span>导出备份数据 (JSON)</span>
               </button>
 
               <button
                 @click="triggerImportFileInput"
-                class="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs border border-zinc-700 flex items-center gap-2 transition"
+                class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg font-medium text-xs border border-line-strong flex items-center gap-2 transition"
               >
-                <Upload class="w-3.5 h-3.5 text-amber-400" />
+                <Upload class="w-3.5 h-3.5 text-accent" />
                 <span>导入恢复数据 (JSON)</span>
               </button>
               <input ref="fileInputRef" type="file" accept=".json" class="hidden" @change="handleImportFile" />

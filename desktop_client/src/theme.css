@@ -1,0 +1,108 @@
+/*
+ * Colour tokens.
+ *
+ * The app used to name its palette directly — `bg-zinc-900`, `text-amber-400` and
+ * 1,300 more sites across thirteen components. There was no seam to switch themes
+ * through, so there is now exactly one: every component asks for a semantic token
+ * (`bg-surface`, `text-accent`) and this file decides what that means.
+ *
+ * Two rules make the whole thing work:
+ *
+ * 1. `@theme inline` is mandatory. With plain `@theme`, Tailwind resolves `var()` at
+ *    `:root` and writes the *resolved* value into each utility, so a theme block on
+ *    `<html>` or a descendant would change nothing. `inline` keeps the `var()` in the
+ *    generated rule, which is what lets `[data-theme=...]` re-point it.
+ * 2. Values below are literal `oklch()`/hex, never `var(--color-zinc-950)`. Tailwind
+ *    only emits the theme variables some utility actually uses, so referencing one
+ *    from here breaks the moment the last `bg-zinc-950` disappears — which is exactly
+ *    what this refactor did.
+ *
+ * The values are the ones Tailwind's own theme.css holds for the shades they replace,
+ * copied rather than approximated, so this file on its own changes nothing on screen.
+ * `:root` carries the complete 经典·暗 set and every other theme overrides only what it
+ * changes: a theme that forgets a token inherits a working dark value instead of
+ * collapsing to transparent.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces, from the page down to a raised input. */
+  --app: oklch(14.1% 0.005 285.823);        /* zinc-950 — the page itself */
+  --sunken: oklch(14.1% 0.005 285.823);     /* zinc-950 — recessed: image wells, headers */
+  --surface: oklch(21% 0.006 285.885);      /* zinc-900 — cards and panels */
+  --surface-2: oklch(27.4% 0.006 286.033);  /* zinc-800 — raised: inputs, buttons, chips */
+  --surface-3: oklch(37% 0.013 285.805);    /* zinc-700 — surface-2's hover */
+
+  /* Hairlines. */
+  --line: oklch(27.4% 0.006 286.033);       /* zinc-800 */
+  --line-strong: oklch(37% 0.013 285.805);  /* zinc-700 */
+
+  /* Backdrops, and the chrome that sits on a photo. Both stay dark in every theme:
+     a light scrim over a white page is not a scrim, and the button on a poster has to
+     read against the poster, not against the theme. */
+  --scrim: #000000;
+  --on-danger: #ffffff;                     /* the glyph on a filled rose heart */
+
+  /* Text, five steps of one ramp. */
+  --fg: #ffffff;                            /* text-white — headings */
+  --fg-2: oklch(89.6% 0.005 286.3);         /* zinc-200/300 — body */
+  --fg-3: oklch(70.5% 0.015 286.067);       /* zinc-400 — secondary */
+  --fg-4: oklch(55.2% 0.016 285.938);       /* zinc-500 — muted */
+  --fg-5: oklch(44.2% 0.017 285.786);       /* zinc-600/700 — decorative, empty states */
+
+  /* The brand amber, split by job: once the page can be white, the value that reads
+     well as text is not the value that works as a fill, and the hover of a fill is not
+     either. */
+  --accent: oklch(82.8% 0.189 84.429);      /* amber-400 — accent text and icons */
+  --accent-soft: oklch(87.9% 0.169 91.605); /* amber-300 — brighter accent text, hovers */
+  --accent-fill: oklch(76.9% 0.188 70.08);  /* amber-500 — solid buttons, active chips */
+  --accent-deep: oklch(66.6% 0.179 58.318); /* amber-600 — the dark end of a gradient */
+  --accent-2: oklch(85.2% 0.199 91.936);    /* yellow-400 — the light end */
+  --on-fill: #000000;                       /* text on a fill */
+
+  /* Status. `-fill` is the solid chip or button, the base token is the text, and
+     `-soft` is the brighter text that sits on a `-fill/10` wash without going white. */
+  --success: oklch(76.5% 0.177 163.223);      /* emerald-400 */
+  --success-soft: oklch(84.5% 0.143 164.978); /* emerald-300 */
+  --success-fill: oklch(69.6% 0.17 162.48);   /* emerald-500 */
+  --danger: oklch(71.2% 0.194 13.428);        /* rose-400 */
+  --danger-soft: oklch(81% 0.117 11.638);     /* rose-300 */
+  --danger-fill: oklch(64.5% 0.246 16.439);   /* rose-500 */
+
+  /* Chrome. The three style families differ here and almost nowhere else; a non-glass
+     theme carries a transparent tint and no blur, so no component needs a JavaScript
+     branch to know which one it is rendering. See `.chrome` in style.css. */
+  --chrome-tint: transparent;
+  --chrome-blur: 0px;
+  --chrome-saturate: 100%;
+  --chrome-line: transparent;
+}
+
+@theme inline {
+  --color-app: var(--app);
+  --color-sunken: var(--sunken);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-scrim: var(--scrim);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-fg-4: var(--fg-4);
+  --color-fg-5: var(--fg-5);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fill: var(--accent-fill);
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-2: var(--accent-2);
+  --color-on-fill: var(--on-fill);
+  --color-on-danger: var(--on-danger);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-fill: var(--success-fill);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-fill: var(--danger-fill);
+}

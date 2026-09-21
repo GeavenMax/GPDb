@@ -139,24 +139,24 @@ function resetAll() {
     <!-- Backdrop -->
     <div
       v-if="open"
-      class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity"
+      class="fixed inset-0 z-40 bg-scrim/60 backdrop-blur-sm transition-opacity"
       @click="emit('close')"
     ></div>
 
     <!-- Slide-over Drawer -->
     <aside
       :class="[
-        'fixed top-0 right-0 bottom-0 w-80 max-w-full bg-zinc-950 border-l border-zinc-800 z-50 p-6 flex flex-col justify-between shadow-2xl transition-transform duration-300 ease-out select-none',
+        'fixed top-0 right-0 bottom-0 w-80 max-w-full bg-sunken border-l border-line z-50 p-6 flex flex-col justify-between shadow-2xl transition-transform duration-300 ease-out select-none',
         open ? 'translate-x-0' : 'translate-x-full'
       ]"
     >
-      <div class="space-y-6 overflow-y-auto darkScrollbars pr-1">
+      <div class="space-y-6 overflow-y-auto pr-1">
         <!-- Top bar -->
-        <div class="flex items-center justify-between pb-4 border-b border-zinc-800">
-          <div class="font-bold text-white text-base">
+        <div class="flex items-center justify-between pb-4 border-b border-line">
+          <div class="font-bold text-fg text-base">
             {{ isPerformerTab ? '演员属性筛选' : isEpisodeTab ? '分集筛选' : '高级筛选' }}
           </div>
-          <button @click="emit('close')" class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition">
+          <button @click="emit('close')" class="p-1 rounded-lg text-fg-3 hover:text-fg hover:bg-surface transition">
             <X class="w-5 h-5" />
           </button>
         </div>
@@ -166,10 +166,10 @@ function resetAll() {
           <!-- Coverage notice: the attribute data is only as complete as the scrape -->
           <div
             v-if="performerFacets && performerFacets.enriched < performerFacets.total"
-            class="p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-400 leading-relaxed"
+            class="p-3 rounded-xl bg-surface border border-line text-[11px] text-fg-3 leading-relaxed"
           >
             已抓取身体属性档案的演员：
-            <span class="font-bold text-amber-400">{{ performerFacets.enriched.toLocaleString() }}</span>
+            <span class="font-bold text-accent">{{ performerFacets.enriched.toLocaleString() }}</span>
             /
             {{ performerFacets.total.toLocaleString() }} 位。
             其余演员尚未抓取详情页，筛选结果只覆盖已建档的部分。
@@ -177,7 +177,7 @@ function resetAll() {
 
           <!-- Sort By -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">排序方式</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">排序方式</label>
             <div class="grid grid-cols-2 gap-1.5">
               <button
                 v-for="s in PERFORMER_SORTS"
@@ -186,8 +186,8 @@ function resetAll() {
                 :class="[
                   'px-3 py-2 rounded-xl text-xs font-medium border text-center transition',
                   performerFilters?.sortBy === s.id
-                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-400 font-bold'
-                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill/10 border-accent-fill/40 text-accent font-bold'
+                    : 'bg-surface/60 border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
                 {{ s.label }}
@@ -197,15 +197,15 @@ function resetAll() {
 
           <!-- Quick toggles -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">快速筛选</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">快速筛选</label>
             <div class="flex flex-wrap gap-1.5">
               <button
                 @click="patchPerformerFilters({ hasImage: !performerFilters?.hasImage })"
                 :class="[
                   'px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5',
                   performerFilters?.hasImage
-                    ? 'bg-amber-500 text-black font-bold border-amber-500'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                    : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
                 <Camera class="w-3 h-3" />
@@ -216,15 +216,15 @@ function resetAll() {
 
           <!-- Minimum works -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">作品数量下限</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">作品数量下限</label>
             <div class="flex flex-wrap gap-1.5">
               <button
                 @click="patchPerformerFilters({ minMovies: null })"
                 :class="[
                   'px-2.5 py-1 rounded-lg text-xs font-medium border transition',
                   performerFilters?.minMovies == null
-                    ? 'bg-amber-500 text-black font-bold border-amber-500'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                    : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
                 不限
@@ -236,8 +236,8 @@ function resetAll() {
                 :class="[
                   'px-2.5 py-1 rounded-lg text-xs font-medium border transition flex items-center gap-1',
                   performerFilters?.minMovies === n
-                    ? 'bg-amber-500 text-black font-bold border-amber-500'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                    : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
                 <Film class="w-3 h-3" />
@@ -248,7 +248,7 @@ function resetAll() {
 
           <!-- Attribute facets -->
           <div v-for="key in availableFacets" :key="key" class="space-y-2">
-            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">
               {{ FACET_LABELS[key] || key }}
             </label>
             <div class="flex flex-wrap gap-1.5">
@@ -259,8 +259,8 @@ function resetAll() {
                 :class="[
                   'px-2.5 py-1 rounded-lg text-xs font-medium border transition flex items-center gap-1',
                   isFacetActive(key, f.value)
-                    ? 'bg-amber-500 text-black font-bold border-amber-500'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                    : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
                 <!--
@@ -270,7 +270,7 @@ function resetAll() {
                 -->
                 <span :title="f.value">{{ tr(f.value) }}</span>
                 <span
-                  :class="isFacetActive(key, f.value) ? 'text-black/60' : 'text-zinc-600'"
+                  :class="isFacetActive(key, f.value) ? 'text-on-fill/60' : 'text-fg-5'"
                   class="text-[10px] font-mono"
                 >
                   {{ f.count }}
@@ -279,7 +279,7 @@ function resetAll() {
             </div>
           </div>
 
-          <div v-if="availableFacets.length === 0" class="text-xs text-zinc-600 italic">
+          <div v-if="availableFacets.length === 0" class="text-xs text-fg-5 italic">
             暂无已建档的属性数据
           </div>
         </template>
@@ -289,7 +289,7 @@ function resetAll() {
           <!-- Sort By. Also offered on the tab's toolbar, which is the faster path;
                this copy is here because every section of the drawer starts with it. -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">排序方式</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">排序方式</label>
             <div class="grid grid-cols-2 gap-1.5">
               <button
                 v-for="s in EPISODE_SORTS"
@@ -298,8 +298,8 @@ function resetAll() {
                 :class="[
                   'px-3 py-2 rounded-xl text-xs font-medium border text-center transition',
                   episodeSortBy === s.id
-                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-400 font-bold'
-                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill/10 border-accent-fill/40 text-accent font-bold'
+                    : 'bg-surface/60 border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
                 {{ s.label }}
@@ -309,15 +309,15 @@ function resetAll() {
 
           <!-- Quick toggles -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">快速筛选</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">快速筛选</label>
             <div class="flex flex-wrap gap-1.5">
               <button
                 @click="patchEpisodeFilters({ hasZh: !episodeFilters?.hasZh })"
                 :class="[
                   'px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5',
                   episodeFilters?.hasZh
-                    ? 'bg-amber-500 text-black font-bold border-amber-500'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                    : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
                 title="只显示已有中文简介的片段"
               >
@@ -329,8 +329,8 @@ function resetAll() {
                 :class="[
                   'px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5',
                   episodeFilters?.hasPerformers
-                    ? 'bg-amber-500 text-black font-bold border-amber-500'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                    : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
                 title="只显示已关联演员的片段"
               >
@@ -343,8 +343,8 @@ function resetAll() {
           <!-- Studio. Same list as the film section: scenes carry no studio of their
                own, so this filters on the studio of the film they came from. -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">来源片商 (Studio)</label>
-            <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto darkScrollbars pr-1">
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">来源片商 (Studio)</label>
+            <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
               <button
                 v-for="st in studios"
                 :key="st"
@@ -352,8 +352,8 @@ function resetAll() {
                 :class="[
                   'px-2.5 py-1 rounded-lg text-xs font-medium border transition',
                   episodeFilters?.studio === st
-                    ? 'bg-amber-500 text-black font-bold border-amber-500'
-                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                    : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
                 {{ st }}
@@ -366,7 +366,7 @@ function resetAll() {
         <template v-else>
         <!-- Sort By -->
         <div class="space-y-2">
-          <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">排序方式</label>
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">排序方式</label>
           <div class="grid grid-cols-2 gap-1.5">
             <button
               v-for="s in [
@@ -380,8 +380,8 @@ function resetAll() {
               :class="[
                 'px-3 py-2 rounded-xl text-xs font-medium border text-center transition',
                 local.sortBy === s.id
-                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-400 font-bold'
-                  : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-accent-fill/10 border-accent-fill/40 text-accent font-bold'
+                  : 'bg-surface/60 border-line text-fg-3 hover:text-fg-2'
               ]"
             >
               {{ s.label }}
@@ -391,8 +391,8 @@ function resetAll() {
 
         <!-- Studio Filter -->
         <div class="space-y-2">
-          <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">制片厂牌 (Studio)</label>
-          <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto darkScrollbars pr-1">
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">制片厂牌 (Studio)</label>
+          <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
             <button
               v-for="st in studios"
               :key="st"
@@ -400,8 +400,8 @@ function resetAll() {
               :class="[
                 'px-2.5 py-1 rounded-lg text-xs font-medium border transition',
                 local.studio === st
-                  ? 'bg-amber-500 text-black font-bold border-amber-500'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                  : 'bg-surface border-line text-fg-3 hover:text-fg-2'
               ]"
             >
               {{ st }}
@@ -411,9 +411,9 @@ function resetAll() {
 
         <!-- Active Director Filter — set from a film's page or the favorites page -->
         <div v-if="local.director" class="space-y-2">
-          <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">导演 (Director)</label>
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">导演 (Director)</label>
           <div class="flex items-center gap-2">
-            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 text-black border border-amber-500">
+            <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-accent-fill text-on-fill border border-accent-fill">
               <Clapperboard class="w-3 h-3" />
               {{ local.director }}
               <button @click="clearDirector" class="hover:opacity-70 transition" title="清除导演筛选">
@@ -425,7 +425,7 @@ function resetAll() {
 
         <!-- Category Filter -->
         <div class="space-y-2">
-          <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">影片分类 (Category)</label>
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">影片分类 (Category)</label>
           <div class="flex flex-wrap gap-1.5">
             <button
               v-for="cat in categories"
@@ -434,8 +434,8 @@ function resetAll() {
               :class="[
                 'px-2.5 py-1 rounded-lg text-xs font-medium border transition',
                 local.category === cat
-                  ? 'bg-amber-500 text-black font-bold border-amber-500'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                  : 'bg-surface border-line text-fg-3 hover:text-fg-2'
               ]"
             >
               {{ cat }}
@@ -446,17 +446,17 @@ function resetAll() {
       </div>
 
       <!-- Bottom Actions -->
-      <div class="pt-4 border-t border-zinc-800 flex gap-2">
+      <div class="pt-4 border-t border-line flex gap-2">
         <button
           @click="isPerformerTab ? emit('reset-performers') : isEpisodeTab ? emit('reset-episodes') : resetAll()"
-          class="flex-1 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-400 hover:text-white flex items-center justify-center gap-1.5 transition"
+          class="flex-1 py-2.5 rounded-xl bg-surface hover:bg-surface-2 border border-line text-xs font-semibold text-fg-3 hover:text-fg flex items-center justify-center gap-1.5 transition"
         >
           <RotateCcw class="w-3.5 h-3.5" />
           重置
         </button>
         <button
           @click="emit('close')"
-          class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition shadow-lg shadow-amber-500/20"
+          class="flex-1 py-2.5 rounded-xl bg-accent-fill hover:bg-accent text-on-fill text-xs font-bold transition shadow-lg shadow-accent-fill/20"
         >
           完成
         </button>

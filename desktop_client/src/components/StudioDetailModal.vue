@@ -79,34 +79,34 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 <template>
   <div
     v-if="studio"
-    class="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-md animate-fade-in"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-scrim/80 backdrop-blur-md animate-fade-in"
     :style="{ zIndex: zIndex ?? 50 }"
     @click.self="emit('close')"
   >
     <div
-      class="relative w-full max-w-4xl max-h-[90vh] bg-zinc-900 border border-zinc-700/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col darkScrollbars text-zinc-100"
+      class="relative w-full max-w-4xl max-h-[90vh] bg-surface border border-line-strong/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col text-fg"
     >
       <!-- Close Button -->
       <button
         @click="emit('close')"
-        class="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 border border-white/20 flex items-center justify-center text-zinc-300 hover:text-white transition"
+        class="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-scrim/60 hover:bg-scrim/90 border border-white/20 flex items-center justify-center text-fg-2 hover:text-fg transition"
       >
         <X class="w-4 h-4" />
       </button>
 
       <!-- Profile Header. No logo exists in the library, so the tile is the name's
            initial, matching the favorites page's studio chips. -->
-      <div class="p-6 md:p-8 bg-zinc-950 border-b border-zinc-800 flex items-center gap-6">
-        <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-amber-500/10 ring-1 ring-zinc-700/60">
-          <div class="w-full h-full bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-3xl font-black text-black">
+      <div class="p-6 md:p-8 bg-sunken border-b border-line flex items-center gap-6">
+        <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-accent-fill/10 ring-1 ring-line-strong/60">
+          <div class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-3xl font-black text-on-fill">
             {{ studio.name.charAt(0).toUpperCase() }}
           </div>
         </div>
         <div class="min-w-0 flex-1">
-          <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider">片商档案</div>
-          <h1 class="text-2xl md:text-3xl font-extrabold text-white truncate">{{ studio.name }}</h1>
-          <div class="text-xs text-zinc-400 mt-1 flex items-center gap-3 flex-wrap">
-            <span class="text-amber-400/80">{{ worksCount }} 部作品</span>
+          <div class="text-xs font-semibold text-accent uppercase tracking-wider">片商档案</div>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-fg truncate">{{ studio.name }}</h1>
+          <div class="text-xs text-fg-3 mt-1 flex items-center gap-3 flex-wrap">
+            <span class="text-accent/80">{{ worksCount }} 部作品</span>
             <span v-if="episodesCount">{{ episodesCount }} 个片段</span>
           </div>
         </div>
@@ -117,8 +117,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           :class="[
             'mr-10 shrink-0 self-start px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
             isFavorite
-              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-              : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-400 hover:text-rose-400'
+              ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
+              : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
           ]"
         >
           <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
@@ -128,15 +128,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
       <!-- Works Section -->
       <div class="p-6 md:p-8 space-y-6">
-        <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
+        <div class="flex items-center justify-between border-b border-line pb-4">
           <div class="flex items-center gap-2">
             <button
               @click="activeTab = 'movies'"
               :class="[
                 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition',
                 activeTab === 'movies'
-                  ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
-                  : 'bg-zinc-800/70 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                  ? 'bg-accent-fill text-on-fill shadow-lg shadow-accent-fill/20'
+                  : 'bg-surface-2/70 text-fg-3 hover:text-fg-2 hover:bg-surface-2'
               ]"
             >
               <Film class="w-3.5 h-3.5" />
@@ -148,8 +148,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               :class="[
                 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition',
                 activeTab === 'episodes'
-                  ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
-                  : 'bg-zinc-800/70 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                  ? 'bg-accent-fill text-on-fill shadow-lg shadow-accent-fill/20'
+                  : 'bg-surface-2/70 text-fg-3 hover:text-fg-2 hover:bg-surface-2'
               ]"
             >
               <Layers class="w-3.5 h-3.5" />
@@ -157,7 +157,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </button>
           </div>
 
-          <Loader2 v-if="loading" class="w-4 h-4 text-amber-400 animate-spin shrink-0" />
+          <Loader2 v-if="loading" class="w-4 h-4 text-accent animate-spin shrink-0" />
         </div>
 
         <!-- 1. Feature Movies Tab -->
@@ -173,8 +173,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               @toggle-favorite="emit('toggle-entity-favorite', 'movie', String(m.id))"
             />
           </div>
-          <div v-else-if="loading" class="text-center py-12 text-zinc-500 text-xs">正在读取作品清单…</div>
-          <div v-else class="text-center py-12 text-zinc-500 text-xs">该片商暂未收录长片电影</div>
+          <div v-else-if="loading" class="text-center py-12 text-fg-4 text-xs">正在读取作品清单…</div>
+          <div v-else class="text-center py-12 text-fg-4 text-xs">该片商暂未收录长片电影</div>
         </div>
 
         <!-- 2. Episodes & Scenes Tab -->
@@ -184,10 +184,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               v-for="ep in episodes"
               :key="ep.id"
               @click="ep.movie_id && emit('select-movie-id', ep.movie_id)"
-              class="flex flex-col bg-zinc-950/80 rounded-2xl border border-zinc-800/80 overflow-hidden hover:border-amber-500/40 transition group cursor-pointer"
+              class="flex flex-col bg-sunken/80 rounded-2xl border border-line/80 overflow-hidden hover:border-accent-fill/40 transition group cursor-pointer"
             >
               <!-- Episode thumbnail -->
-              <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-zinc-900 overflow-hidden">
+              <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-surface overflow-hidden">
                 <img
                   :src="getImageUrl(ep.thumbnail_url)"
                   :alt="ep.title"
@@ -201,41 +201,41 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
                 <div>
                   <div class="flex items-center justify-between gap-2">
-                    <span class="text-xs font-bold text-amber-300">{{ ep.title }}</span>
+                    <span class="text-xs font-bold text-accent-soft">{{ ep.title }}</span>
                     <div class="flex items-center gap-2 shrink-0">
-                      <span v-if="ep.release_year" class="text-[10px] text-zinc-500 font-mono flex items-center gap-1">
+                      <span v-if="ep.release_year" class="text-[10px] text-fg-4 font-mono flex items-center gap-1">
                         <Calendar class="w-2.5 h-2.5" /> {{ ep.release_year }}
                       </span>
                       <button
                         @click.stop="emit('toggle-entity-favorite', 'episode', String(ep.id))"
                         :title="isFav('episode', String(ep.id)) ? '取消收藏该片段' : '收藏该片段'"
                         class="transition"
-                        :class="isFav('episode', String(ep.id)) ? 'text-rose-400' : 'text-zinc-600 hover:text-rose-400'"
+                        :class="isFav('episode', String(ep.id)) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
                       >
                         <Heart class="w-3.5 h-3.5" :fill="isFav('episode', String(ep.id)) ? 'currentColor' : 'none'" />
                       </button>
                     </div>
                   </div>
 
-                  <div v-if="ep.movie_title" class="text-xs font-medium text-zinc-300 mt-1 flex items-center gap-1">
-                    <Building2 class="w-3 h-3 text-zinc-500" />
+                  <div v-if="ep.movie_title" class="text-xs font-medium text-fg-2 mt-1 flex items-center gap-1">
+                    <Building2 class="w-3 h-3 text-fg-4" />
                     <span>出处: {{ ep.movie_title }}</span>
                   </div>
 
                   <!-- Chinese once the parent film has been translated, original otherwise -->
-                  <div v-if="ep.description_zh || ep.description" class="text-xs text-zinc-400 mt-1.5 line-clamp-3 leading-relaxed">
+                  <div v-if="ep.description_zh || ep.description" class="text-xs text-fg-3 mt-1.5 line-clamp-3 leading-relaxed">
                     {{ ep.description_zh || ep.description }}
                   </div>
                 </div>
 
-                <div v-if="ep.action_notes" class="text-[10px] text-zinc-500 bg-zinc-900 px-2 py-1 rounded font-mono mt-2">
+                <div v-if="ep.action_notes" class="text-[10px] text-fg-4 bg-surface px-2 py-1 rounded font-mono mt-2">
                   动作标签: {{ ep.action_notes }}
                 </div>
               </div>
             </div>
           </div>
-          <div v-else-if="loading" class="text-center py-12 text-zinc-500 text-xs">正在读取片段清单…</div>
-          <div v-else class="text-center py-12 text-zinc-500 text-xs">该片商暂未收录独立分集片段</div>
+          <div v-else-if="loading" class="text-center py-12 text-fg-4 text-xs">正在读取片段清单…</div>
+          <div v-else class="text-center py-12 text-fg-4 text-xs">该片商暂未收录独立分集片段</div>
         </div>
       </div>
     </div>
