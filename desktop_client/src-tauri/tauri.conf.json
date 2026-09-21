@@ -8,7 +8,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build:icon && npm run build"
+    "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
@@ -32,9 +32,6 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "gen/icons/32x32.png",
-      "gen/icons/128x128.png",
-      "gen/icons/128x128@2x.png",
       "gen/icons/AppIcon.icns",
       "icons/icon.ico"
     ],

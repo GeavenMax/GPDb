@@ -84,12 +84,21 @@ cp "$TMP/512.png"  "$SET/icon_512x512.png"
 cp "$TMP/1024.png" "$SET/icon_512x512@2x.png"
 iconutil -c icns "$SET" -o "$OUT/AppIcon.icns"
 
-# The PNGs bundle.icon names. macOS itself reads the icns and the car and never looks
-# at these, but leaving the list pointing at the stock Tauri artwork would mean the
-# repository ships two different icons and only one of them is ours.
-cp "$TMP/32.png"  "$OUT/32x32.png"
-cp "$TMP/128.png" "$OUT/128x128.png"
-cp "$TMP/256.png" "$OUT/128x128@2x.png"
+# Deliberately no standalone PNGs, and bundle.icon lists none. Two reasons:
+#
+#  1. macOS reads the car and the icns and never looks at loose PNGs; they would only
+#     be for platforms this app does not build for.
+#  2. **ictool writes PNGs at 16 bits per channel**, and tauri::generate_context!
+#     decodes one into twice the sample count it expects for the stated dimensions.
+#     The build succeeds and the app then dies at startup with "invalid icon: The
+#     specified dimensions (32x32) don't match the number of pixels supplied by the
+#     rgba argument (2048)" — 2048 being 32x32x2. Nothing in that message points at
+#     bit depth. The icns escapes it because Tauri reads sizes from the icns header
+#     rather than trusting a decoded PNG.
+#
+# If a PNG ever is needed here, it has to be forced to 8-bit first: neither `sips -s
+# format png` nor `iconutil -c iconset` reliably does it (sips passes 16-bit through,
+# and iconutil only re-encodes the sizes the icns stores uncompressed).
 
 echo "==> done"
 ls -l "$OUT/Assets.car" "$OUT/AppIcon.icns"
