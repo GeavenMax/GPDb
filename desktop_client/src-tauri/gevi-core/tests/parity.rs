@@ -1038,6 +1038,189 @@ fn toggle_favorite_round_trips_and_validates() {
     assert_eq!(err.to_string(), "收藏对象不能为空");
 }
 
+// ---------------------------------------------------------------- MOVIE_COLUMNS
+
+/// `MOVIE_COLUMNS` 和 `map_movie_row` 是按**位置**对齐的，而位置错位不会编译失败。
+///
+/// 实测过：把 `MOVIE_COLUMNS` 里的 `m.movie_type` 和 `m.description` 换个位置，
+/// 本文件其余 26 条测试**全绿** —— 那时整行字段已经串位（`description` 里躺着影片
+/// 类型、`description_zh` 里躺着英文简介），只是没有一条测试读过这些标量字段。
+///
+/// 这一点在阶段 5 尤其要紧：`m.title_zh` 要追加到这个列表**末尾**，一旦追加进中间，
+/// 后面的字段整体串位，而且是静默的 —— 标题译错在界面上永远看着是对的。
+///
+/// 所以这里**按列名**取期望值：`SELECT *` 的列顺序与 `MOVIE_COLUMNS` 无关，无论列表
+/// 怎么重排，按名字读出来的值都不动，两边顺序一旦不一致就现形。
+#[test]
+fn movie_columns_and_their_reader_agree_by_name_not_by_position() {
+    let conn = db();
+    let tx = snapshot(&conn);
+
+    // 挑一部「每个列都非空」的影片。全空的话下面的比较就是一堆 None == None，
+    // 换没换位置都过 —— 这正是上面那次 mutation 能活下来的原因。
+    let id = count(
+        &tx,
+        "SELECT min(id) FROM movies WHERE description_zh IS NOT NULL AND trim(description_zh) != '' \
+         AND movie_type IS NOT NULL AND trim(movie_type) != '' \
+         AND director_name IS NOT NULL AND trim(director_name) != '' \
+         AND covers_json IS NOT NULL AND trim(covers_json) != '' \
+         AND rating IS NOT NULL AND trim(rating) != '' \
+         AND category IS NOT NULL AND trim(category) != '' \
+         AND studio_name IS NOT NULL AND trim(studio_name) != '' \
+         AND release_year IS NOT NULL AND duration_mins IS NOT NULL",
+    );
+    assert_ne!(
+        id, 0,
+        "库里找不到一部每个字段都非空的影片，这条测试会退化成全 None 的比较（等于没测）"
+    );
+
+    let m = queries::movies::get_movie_detail(&tx, id).unwrap().expect("影片在库里");
+
+    const NAMES: [&str; 16] = [
+        "id", "title", "studio_id", "studio_name", "release_year", "duration_mins", "category",
+        "rating", "movie_type", "description", "description_zh", "cover_icon", "cover_full",
+        "covers_json", "director_id", "director_name",
+    ];
+    let mut stmt = tx.prepare("SELECT * FROM movies WHERE id = ?1").unwrap();
+    // 索引先取出来：下面的闭包只借用 idx，不再借用 stmt（query_row 要 &mut stmt）。
+    let idx: HashMap<&str, usize> = NAMES
+        .iter()
+        .map(|n| {
+            let i = stmt
+                .column_index(n)
+                .unwrap_or_else(|e| panic!("movies 表没有列 {n}: {e}"));
+            (*n, i)
+        })
+        .collect();
+    let raw: HashMap<&str, Option<String>> = stmt
+        .query_row(params![id], |r| {
+            let mut out = HashMap::new();
+            for n in NAMES {
+                let v: rusqlite::types::Value = r.get(idx[n])?;
+                out.insert(
+                    n,
+                    match v {
+                        rusqlite::types::Value::Null => None,
+                        rusqlite::types::Value::Integer(i) => Some(i.to_string()),
+                        rusqlite::types::Value::Real(f) => Some(f.to_string()),
+                        rusqlite::types::Value::Text(t) => Some(t),
+                        rusqlite::types::Value::Blob(_) => None,
+                    },
+                );
+            }
+            Ok(out)
+        })
+        .unwrap();
+    let db_col = |n: &str| raw[n].clone();
+    let num = |v: Option<i64>| v.map(|n| n.to_string());
+
+    // (列名, 按列名读到的值, Movie 结构体里的值)。左边是独立的一份期望值。
+    let pairs: Vec<(&str, Option<String>, Option<String>)> = vec![
+        ("id", db_col("id"), Some(m.id.to_string())),
+        ("title", db_col("title"), Some(m.title.clone())),
+        ("studio_id", db_col("studio_id"), num(m.studio_id)),
+        ("studio_name", db_col("studio_name"), m.studio_name.clone()),
+        ("release_year", db_col("release_year"), num(m.release_year)),
+        ("duration_mins", db_col("duration_mins"), num(m.duration_mins)),
+        ("category", db_col("category"), m.category.clone()),
+        ("rating", db_col("rating"), m.rating.clone()),
+        ("movie_type", db_col("movie_type"), m.movie_type.clone()),
+        ("description", db_col("description"), m.description.clone()),
+        ("description_zh", db_col("description_zh"), m.description_zh.clone()),
+        ("cover_icon", db_col("cover_icon"), m.cover_icon.clone()),
+        ("cover_full", db_col("cover_full"), m.cover_full.clone()),
+        ("director_id", db_col("director_id"), num(m.director_id)),
+        ("director_name", db_col("director_name"), m.director_name.clone()),
+    ];
+
+    let mut wrong = Vec::new();
+    for (name, want, got) in &pairs {
+        if want != got {
+            wrong.push(format!("{name}: 库={want:?} 结构体={got:?}"));
+        }
+    }
+    assert!(
+        wrong.is_empty(),
+        "MOVIE_COLUMNS 的顺序与 map_movie_row 的索引已经错位：\n  {}",
+        wrong.join("\n  ")
+    );
+
+    // covers 是从 covers_json 派生的，单独比一次（上面那组比的是原始串）。
+    let want_covers: Option<Vec<String>> =
+        db_col("covers_json").and_then(|s| serde_json::from_str(&s).ok());
+    assert_eq!(m.covers, want_covers, "covers 必须由 covers_json 解析而来");
+    assert!(want_covers.is_some(), "挑的这部片应当有 covers_json");
+}
+
+/// 阶段 2 顺带修掉的既有毛病：片商作品页和演员作品页各自只 SELECT 了 10 列，
+/// 于是 `description_zh` 恒为 None（卡片上不亮 `中` 角标）、`director_name` 恒为 None
+/// （导演行不显示）。现在两处都改用 `MOVIE_COLUMNS`。
+///
+/// 挑的是**确实有中文简介和导演名**的那部片：否则「字段是 None」和「列根本没被
+/// SELECT」两种情况分不开，把列表改回 10 列测试照样绿。
+#[test]
+fn studio_and_performer_film_lists_carry_the_translation_and_the_director() {
+    let conn = db();
+    let tx = snapshot(&conn);
+
+    let (id, studio): (i64, String) = tx
+        .query_row(
+            "SELECT m.id, m.studio_name FROM movies m \
+             WHERE m.description_zh IS NOT NULL AND trim(m.description_zh) != '' \
+               AND m.director_name IS NOT NULL AND trim(m.director_name) != '' \
+               AND m.studio_name IS NOT NULL AND trim(m.studio_name) != '' \
+               AND EXISTS (SELECT 1 FROM movie_performers mp WHERE mp.movie_id = m.id) \
+             LIMIT 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .expect("库里应当有带中文简介、导演名、片商且挂在演员名下的影片");
+    let want_zh: String = tx
+        .query_row(
+            "SELECT description_zh FROM movies WHERE id = ?1",
+            params![id],
+            |r| r.get(0),
+        )
+        .unwrap();
+
+    let w = queries::studios::get_studio_works(&tx, studio).unwrap();
+    let in_studio = w
+        .movies
+        .iter()
+        .find(|m| m.id == id)
+        .expect("这部片应当在它片商的作品列表里");
+    assert_eq!(
+        in_studio.description_zh.as_deref(),
+        Some(want_zh.as_str()),
+        "片商作品页拿不到中文简介（列表被截短了？）"
+    );
+    assert!(in_studio.director_name.is_some(), "片商作品页拿不到导演名");
+    assert!(in_studio.movie_type.is_some(), "片商作品页拿不到影片类型");
+
+    let pid = count1(
+        &tx,
+        "SELECT performer_id FROM movie_performers WHERE movie_id = ?1 LIMIT 1",
+        id,
+    );
+    let p = queries::performers::get_performer_detail(&tx, pid)
+        .unwrap()
+        .expect("演员在库里");
+    let in_perf = p
+        .movies
+        .as_ref()
+        .unwrap()
+        .iter()
+        .find(|m| m.id == id)
+        .expect("这部片应当在该演员的作品列表里");
+    assert_eq!(
+        in_perf.description_zh.as_deref(),
+        Some(want_zh.as_str()),
+        "演员作品页拿不到中文简介（列表被截短了？）"
+    );
+    assert!(in_perf.director_name.is_some(), "演员作品页拿不到导演名");
+    assert!(in_perf.movie_type.is_some(), "演员作品页拿不到影片类型");
+}
+
 // ---------------------------------------------------------------- 测试自用
 
 /// 与实现里 PERFORMER_FACETS 同义，但由测试自己声明 —— 实现改了映射关系这里会现形。

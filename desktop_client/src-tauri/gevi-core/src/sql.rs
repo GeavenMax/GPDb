@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use crate::models::{Episode, Performer};
+use crate::models::{Episode, Movie, Performer};
 
 /// Attribute columns exposed as filter facets: (SQL column, API facet name,
 /// index within PERFORMER_COLUMNS). Mirrors PERFORMER_FACETS in server.py.
@@ -52,6 +52,58 @@ pub const CAST_SQL: &str = "SELECT mp.performer_id, \
      FROM movie_performers mp \
      LEFT JOIN performers p ON p.id = mp.performer_id \
      WHERE mp.movie_id = ?1";
+
+/// Film columns selected by every Movie query, in `map_movie_row` order.
+///
+/// One list, not four. The paged list, the detail page, a studio's works and a
+/// performer's films each used to carry their own copy, and the two short ones had
+/// already drifted: neither selected `movie_type`, `description`, `description_zh`,
+/// `covers_json`, `director_id` or `director_name`, so a studio page and a performer
+/// page showed no 中 badge and no director line for exactly the films they list.
+///
+/// A short list would have to be paired with a *second* mapper, because
+/// `map_movie_row` reads by index: dropping a column from the middle of the SELECT
+/// would not fail to compile, it would silently shift every field after the gap into
+/// the wrong struct field. Keeping the list whole is what makes one mapper safe.
+///
+/// The `m.` prefix is part of the constant — every caller aliases the table `movies m`,
+/// which is also what the filter fragments in `DIRECTOR_MATCH_SQL` assume.
+pub const MOVIE_COLUMNS: &str = "m.id, m.title, m.studio_id, m.studio_name, m.release_year, \
+     m.duration_mins, m.category, m.rating, m.movie_type, \
+     m.description, m.description_zh, m.cover_icon, m.cover_full, \
+     m.covers_json, m.director_id, m.director_name";
+
+/// One film row. Leaves the three collection fields `None`: filling them needs extra
+/// queries per film, so each caller decides which it wants (`get_movies` loads
+/// performers and directors, `get_movie_detail` also loads episodes).
+pub fn map_movie_row(r: &rusqlite::Row) -> rusqlite::Result<Movie> {
+    // The per-image list, as stored. A malformed value is treated as absent rather
+    // than failing the row: the caller still has cover_icon/cover_full to show.
+    let covers_json: Option<String> = r.get(13)?;
+    let covers: Option<Vec<String>> = covers_json.and_then(|s| serde_json::from_str(&s).ok());
+
+    Ok(Movie {
+        id: r.get(0)?,
+        title: r.get(1)?,
+        studio_id: r.get(2)?,
+        studio_name: r.get(3)?,
+        release_year: r.get(4)?,
+        duration_mins: r.get(5)?,
+        category: r.get(6)?,
+        rating: r.get(7)?,
+        movie_type: r.get(8)?,
+        description: r.get(9)?,
+        description_zh: r.get(10)?,
+        cover_icon: r.get(11)?,
+        cover_full: r.get(12)?,
+        covers,
+        director_id: r.get(14)?,
+        director_name: r.get(15)?,
+        directors: None,
+        performers: None,
+        episodes: None,
+    })
+}
 
 /// Performer columns selected by every Performer query, in map_performer_row order.
 pub const PERFORMER_COLUMNS: &str = "p.id, p.name, p.hair, p.eyes, p.body_hair, p.facial_hair, \

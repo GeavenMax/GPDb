@@ -768,7 +768,9 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             # Feature Movies starring this performer
             m_rows = conn.execute("""
                 SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year,
-                       m.duration_mins, m.category, m.rating, m.cover_icon, m.cover_full
+                       m.duration_mins, m.category, m.rating, m.movie_type,
+                       m.description, m.description_zh, m.cover_icon, m.cover_full,
+                       m.covers_json, m.director_id, m.director_name
                 FROM movies m
                 JOIN movie_performers mp ON m.id = mp.movie_id
                 WHERE mp.performer_id = ?
@@ -794,7 +796,9 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
         with get_db_connection() as conn:
             m_rows = conn.execute("""
                 SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year,
-                       m.duration_mins, m.category, m.rating, m.cover_icon, m.cover_full
+                       m.duration_mins, m.category, m.rating, m.movie_type,
+                       m.description, m.description_zh, m.cover_icon, m.cover_full,
+                       m.covers_json, m.director_id, m.director_name
                 FROM movies m
                 WHERE m.studio_name = ?
                 ORDER BY m.release_year DESC, m.id DESC

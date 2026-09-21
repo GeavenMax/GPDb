@@ -3,7 +3,10 @@
 use rusqlite::{params, Connection};
 
 use crate::models::{DirectorRef, FilterArgs, Movie, MoviesResponse, PerformerRef};
-use crate::sql::{CAST_SQL, DIRECTOR_MATCH_SQL, DIRECTOR_SEARCH_SQL, EPISODE_SQL, map_episode_row};
+use crate::sql::{
+    map_episode_row, map_movie_row, CAST_SQL, DIRECTOR_MATCH_SQL, DIRECTOR_SEARCH_SQL,
+    EPISODE_SQL, MOVIE_COLUMNS,
+};
 use crate::Result;
 
 pub fn get_movies(conn: &Connection,
@@ -94,15 +97,8 @@ pub fn get_movies(conn: &Connection,
 
     // Page items
     let select_query = format!(
-        "SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year, \
-                m.duration_mins, m.category, m.rating, m.movie_type, \
-                m.description, m.description_zh, m.cover_icon, m.cover_full, \
-                m.covers_json, m.director_id, m.director_name \
-         FROM movies m \
-         {} \
-         ORDER BY {} \
-         LIMIT ? OFFSET ?",
-        where_clause, sort_clause
+        "SELECT {} FROM movies m {} ORDER BY {} LIMIT ? OFFSET ?",
+        MOVIE_COLUMNS, where_clause, sort_clause
     );
 
     let mut full_params = params_vec;
@@ -111,31 +107,7 @@ pub fn get_movies(conn: &Connection,
     let full_slice: Vec<&dyn rusqlite::ToSql> = full_params.iter().map(|p| p.as_ref()).collect();
 
     let mut stmt = conn.prepare(&select_query).map_err(|e| e.to_string())?;
-    let movie_rows = stmt.query_map(&full_slice[..], |r| {
-        let covers_json_opt: Option<String> = r.get(13)?;
-        let covers: Option<Vec<String>> = covers_json_opt.and_then(|s| serde_json::from_str(&s).ok());
-        Ok(Movie {
-            id: r.get(0)?,
-            title: r.get(1)?,
-            studio_id: r.get(2)?,
-            studio_name: r.get(3)?,
-            release_year: r.get(4)?,
-            duration_mins: r.get(5)?,
-            category: r.get(6)?,
-            rating: r.get(7)?,
-            movie_type: r.get(8)?,
-            description: r.get(9)?,
-            description_zh: r.get(10)?,
-            cover_icon: r.get(11)?,
-            cover_full: r.get(12)?,
-            covers,
-            director_id: r.get(14)?,
-            director_name: r.get(15)?,
-            directors: None,
-            performers: None,
-            episodes: None,
-        })
-    }).map_err(|e| e.to_string())?;
+    let movie_rows = stmt.query_map(&full_slice[..], map_movie_row).map_err(|e| e.to_string())?;
 
     let mut items = Vec::new();
     for mr in movie_rows {
@@ -172,38 +144,12 @@ pub fn get_movies(conn: &Connection,
 
 pub fn get_movie_detail(conn: &Connection,
     id: i64,) -> Result<Option<Movie>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, title, studio_id, studio_name, release_year, duration_mins, \
-                category, rating, movie_type, description, description_zh, cover_icon, cover_full, \
-                covers_json, director_id, director_name \
-         FROM movies WHERE id = ?1"
-    ).map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {} FROM movies m WHERE m.id = ?1",
+        MOVIE_COLUMNS
+    )).map_err(|e| e.to_string())?;
 
-    let movie_res = stmt.query_row(params![id], |r| {
-        let covers_json_opt: Option<String> = r.get(13)?;
-        let covers: Option<Vec<String>> = covers_json_opt.and_then(|s| serde_json::from_str(&s).ok());
-        Ok(Movie {
-            id: r.get(0)?,
-            title: r.get(1)?,
-            studio_id: r.get(2)?,
-            studio_name: r.get(3)?,
-            release_year: r.get(4)?,
-            duration_mins: r.get(5)?,
-            category: r.get(6)?,
-            rating: r.get(7)?,
-            movie_type: r.get(8)?,
-            description: r.get(9)?,
-            description_zh: r.get(10)?,
-            cover_icon: r.get(11)?,
-            cover_full: r.get(12)?,
-            covers,
-            director_id: r.get(14)?,
-            director_name: r.get(15)?,
-            directors: None,
-            performers: None,
-            episodes: None,
-        })
-    });
+    let movie_res = stmt.query_row(params![id], map_movie_row);
 
     match movie_res {
         Ok(mut m) => {

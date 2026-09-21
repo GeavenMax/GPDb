@@ -4,7 +4,7 @@
 use rusqlite::{params, Connection};
 
 use crate::models::{Episode, Movie, StudioLibrary, StudioSummary, StudioWorks};
-use crate::sql::{map_episode_row, EPISODE_SQL};
+use crate::sql::{map_episode_row, map_movie_row, EPISODE_SQL, MOVIE_COLUMNS};
 use crate::Result;
 
 pub fn get_studios(conn: &Connection) -> Result<Vec<String>> {
@@ -95,37 +95,15 @@ pub fn get_studio_library(conn: &Connection,
 pub fn get_studio_works(conn: &Connection,
     studio_name: String,) -> Result<StudioWorks> {
 
-    let mut m_stmt = conn.prepare(
-        "SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year, \
-                m.duration_mins, m.category, m.rating, m.cover_icon, m.cover_full \
-         FROM movies m \
+    let mut m_stmt = conn.prepare(&format!(
+        "SELECT {} FROM movies m \
          WHERE m.studio_name = ?1 \
-         ORDER BY m.release_year DESC, m.id DESC"
-    ).map_err(|e| e.to_string())?;
+         ORDER BY m.release_year DESC, m.id DESC",
+        MOVIE_COLUMNS
+    )).map_err(|e| e.to_string())?;
 
-    let m_iter = m_stmt.query_map(params![studio_name], |r| {
-        Ok(Movie {
-            id: r.get(0)?,
-            title: r.get(1)?,
-            studio_id: r.get(2)?,
-            studio_name: r.get(3)?,
-            release_year: r.get(4)?,
-            duration_mins: r.get(5)?,
-            category: r.get(6)?,
-            rating: r.get(7)?,
-            movie_type: None,
-            description: None,
-            description_zh: None,
-            cover_icon: r.get(8)?,
-            cover_full: r.get(9)?,
-            covers: None,
-            director_id: None,
-            director_name: None,
-            directors: None,
-            performers: None,
-            episodes: None,
-        })
-    }).map_err(|e| e.to_string())?;
+    let m_iter = m_stmt.query_map(params![studio_name], map_movie_row)
+        .map_err(|e| e.to_string())?;
     let movies: Vec<Movie> = m_iter.filter_map(|r| r.ok()).collect();
 
     let mut e_stmt = conn.prepare(&format!(

@@ -8,8 +8,8 @@ use crate::models::{
     PerformersResponse,
 };
 use crate::sql::{
-    explode_attr, facet_sql, map_episode_row, map_performer_row, EPISODE_SQL, PERFORMER_COLUMNS,
-    PERFORMER_FACETS,
+    explode_attr, facet_sql, map_episode_row, map_movie_row, map_performer_row, EPISODE_SQL,
+    MOVIE_COLUMNS, PERFORMER_COLUMNS, PERFORMER_FACETS,
 };
 use crate::Result;
 
@@ -189,38 +189,16 @@ pub fn get_performer_detail(conn: &Connection,
 
     match perf_res {
         Ok(mut p) => {
-            let mut m_stmt = conn.prepare(
-                "SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year, \
-                        m.duration_mins, m.category, m.rating, m.cover_icon, m.cover_full \
-                 FROM movies m \
+            let mut m_stmt = conn.prepare(&format!(
+                "SELECT {} FROM movies m \
                  JOIN movie_performers mp ON m.id = mp.movie_id \
                  WHERE mp.performer_id = ?1 \
-                 ORDER BY m.release_year DESC, m.id DESC"
-            ).map_err(|e| e.to_string())?;
+                 ORDER BY m.release_year DESC, m.id DESC",
+                MOVIE_COLUMNS
+            )).map_err(|e| e.to_string())?;
 
-            let m_rows = m_stmt.query_map(params![id], |r| {
-                Ok(Movie {
-                    id: r.get(0)?,
-                    title: r.get(1)?,
-                    studio_id: r.get(2)?,
-                    studio_name: r.get(3)?,
-                    release_year: r.get(4)?,
-                    duration_mins: r.get(5)?,
-                    category: r.get(6)?,
-                    rating: r.get(7)?,
-                    movie_type: None,
-                    description: None,
-                    description_zh: None,
-                    cover_icon: r.get(8)?,
-                    cover_full: r.get(9)?,
-                    covers: None,
-                    director_id: None,
-                    director_name: None,
-                    directors: None,
-                    performers: None,
-                    episodes: None,
-                })
-            }).map_err(|e| e.to_string())?;
+            let m_rows = m_stmt.query_map(params![id], map_movie_row)
+                .map_err(|e| e.to_string())?;
 
             let movies: Vec<Movie> = m_rows.filter_map(|r| r.ok()).collect();
             p.movies_count = Some(movies.len() as i64);
