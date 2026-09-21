@@ -359,7 +359,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
                   <div v-if="ep.movie_title" class="text-xs font-medium text-zinc-300 mt-1 flex items-center gap-1 min-w-0">
                     <Film class="w-3 h-3 text-zinc-500 shrink-0" />
-                    <span>出处: {{ ep.movie_title }}</span>
+                    <!-- The film this scene came from. Clickable so a scene found on a
+                         performer's page can be traced back to its film; a scene whose
+                         film is gone keeps the label but not the jump.
+
+                         The label rather than the whole card: the card's still has no
+                         other click action, so it is what zooms on a single click. -->
+                    <button
+                      type="button"
+                      :disabled="!ep.movie_id"
+                      @click="ep.movie_id && emit('select-movie-id', ep.movie_id)"
+                      :title="ep.movie_id ? `跳转到《${ep.movie_title}》` : '该片段没有关联影片'"
+                      :class="[
+                        'truncate transition',
+                        ep.movie_id ? 'hover:text-amber-300 hover:underline' : 'cursor-default'
+                      ]"
+                    >出处: {{ ep.movie_title }}</button>
                     <button
                       v-if="ep.studio_name"
                       @click="emit('filter-studio', ep.studio_name)"
