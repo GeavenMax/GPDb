@@ -38,6 +38,21 @@ PERFORMER_FACETS: dict[str, str] = {
 
 _BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 
+# A director's name does not necessarily appear verbatim in movies.director_name:
+# rows scraped before the parser fix glue several names into one separator-free
+# string ("Bill ClaytonSteven Scarborough"), and even a fixed parser writes the
+# whole roster into that one column. movie_directors/directors hold the real
+# per-film roster, so both director lookups go through it. Each fragment takes
+# exactly one parameter for the name.
+DIRECTOR_MATCH_SQL = (
+    "EXISTS (SELECT 1 FROM movie_directors md JOIN directors d ON d.id = md.director_id"
+    " WHERE md.movie_id = m.id AND d.name = ?)"
+)
+DIRECTOR_SEARCH_SQL = (
+    "EXISTS (SELECT 1 FROM movie_directors md JOIN directors d ON d.id = md.director_id"
+    " WHERE md.movie_id = m.id AND d.name LIKE ?)"
+)
+
 
 def split_facet_value(raw: str | None) -> list[str]:
     """Explode a stored attribute into its individual values."""
@@ -416,23 +431,27 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                 if fts_test:
                     conditions.append(
                         "(m.id IN (SELECT id FROM movies_fts WHERE movies_fts MATCH ?)"
-                        " OR m.description_zh LIKE ? OR m.id = ?)"
+                        " OR m.description_zh LIKE ? OR m.id = ?"
+                        f" OR {DIRECTOR_SEARCH_SQL})"
                     )
-                    args.extend([f"{clean_q}*", like_q, numeric_id])
+                    args.extend([f"{clean_q}*", like_q, numeric_id, like_q])
                 else:
                     conditions.append(
                         "(m.title LIKE ? OR m.studio_name LIKE ? OR m.director_name LIKE ?"
-                        " OR m.description_zh LIKE ? OR m.id = ?)"
+                        " OR m.description_zh LIKE ? OR m.id = ?"
+                        f" OR {DIRECTOR_SEARCH_SQL})"
                     )
-                    args.extend([like_q, like_q, like_q, like_q, numeric_id])
+                    args.extend([like_q, like_q, like_q, like_q, numeric_id, like_q])
 
             if studio:
                 conditions.append("m.studio_name = ?")
                 args.append(studio)
 
             if director:
-                conditions.append("m.director_name = ?")
-                args.append(director)
+                # The OR keeps a library that has not been through
+                # `--mode directors` yet matching exactly as it did before.
+                conditions.append(f"({DIRECTOR_MATCH_SQL} OR m.director_name = ?)")
+                args.extend([director, director])
 
             if category:
                 conditions.append("m.category = ?")
@@ -477,6 +496,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             # Batch fetch performers for these movies
             movie_ids = [r["id"] for r in rows]
             perf_map = {}
+            dir_map = {}
             user_data_map = {}
             if movie_ids:
                 placeholders = ",".join("?" * len(movie_ids))
@@ -489,6 +509,23 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                     if mid not in perf_map:
                         perf_map[mid] = []
                     perf_map[mid].append({"id": pr["performer_id"], "name": pr["performer_name"]})
+
+                # Batch fetch the director roster, for the one-line name the cards
+                # show. Without it a card falls back to movies.director_name, which
+                # for rows scraped before the parser fix is every name glued into
+                # one truncated blob. Cheap: one query per page, like performers.
+                dir_rows = conn.execute(
+                    f"""SELECT md.movie_id, d.id, d.name
+                        FROM movie_directors md
+                        JOIN directors d ON d.id = md.director_id
+                        WHERE md.movie_id IN ({placeholders})
+                        ORDER BY md.movie_id ASC, md.position ASC, d.id ASC""",
+                    movie_ids
+                ).fetchall()
+                for dr in dir_rows:
+                    dir_map.setdefault(dr["movie_id"], []).append(
+                        {"id": dr["id"], "name": dr["name"]}
+                    )
 
                 # Batch fetch user data (rating, status, tags)
                 ud_rows = conn.execute(
@@ -522,6 +559,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             for r in rows:
                 m_dict = dict(r)
                 m_dict["performers"] = perf_map.get(m_dict["id"], [])
+                m_dict["directors"] = dir_map.get(m_dict["id"], [])
                 m_dict["userData"] = user_data_map.get(m_dict["id"], None)
                 if m_dict.get("covers_json"):
                     try:
@@ -560,6 +598,22 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                 (movie_id,)
             ).fetchall()
             movie["performers"] = [dict(p) for p in p_rows]
+
+            # Director roster. movies.director_name is one string; for rows scraped
+            # before the parser fix every name in it is glued together with no
+            # separator at all, so the UI cannot split it to offer one clickable
+            # name per director. movie_directors holds the real per-film roster.
+            # Empty for a library that has not been through `--mode directors` yet —
+            # the frontend falls back to the string in that case.
+            dir_rows = conn.execute(
+                """SELECT d.id AS id, d.name AS name
+                   FROM movie_directors md
+                   JOIN directors d ON d.id = md.director_id
+                   WHERE md.movie_id = ?
+                   ORDER BY md.position ASC, d.id ASC""",
+                (movie_id,)
+            ).fetchall()
+            movie["directors"] = [dict(d) for d in dir_rows]
 
             # Episodes / Scenes
             ep_rows = conn.execute(
@@ -617,18 +671,27 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             # movies_count is a correlated subquery, so the bounds are applied in the
             # outer query rather than as a HAVING on a GROUP BY.
             count_expr = "(SELECT count(*) FROM movie_performers mp WHERE mp.performer_id = p.id)"
+            # "作品数量" counts scenes as well as films. A performer whose work is
+            # mostly scenes used to sort below one with a handful of films while the
+            # card showed only the film number, so the two never agreed. Sort, the
+            # min/max bound and the displayed figure all use this now; the raw
+            # movies_count is still selected so the film count stays available.
+            works_expr = (
+                f"{count_expr} + (SELECT count(*) FROM episode_performers ep"
+                " WHERE ep.performer_id = p.id)"
+            )
             if min_movies.isdigit():
-                conditions.append(f"{count_expr} >= ?")
+                conditions.append(f"{works_expr} >= ?")
                 args.append(int(min_movies))
             if max_movies.isdigit():
-                conditions.append(f"{count_expr} <= ?")
+                conditions.append(f"{works_expr} <= ?")
                 args.append(int(max_movies))
 
             where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
             sort_map = {
-                "movies_desc": f"{count_expr} DESC, p.id DESC",
-                "movies_asc": f"{count_expr} ASC, p.id ASC",
+                "movies_desc": f"{works_expr} DESC, p.id DESC",
+                "movies_asc": f"{works_expr} ASC, p.id ASC",
                 "name_asc": "p.name ASC",
                 "id_desc": "p.id DESC",
                 "id_asc": "p.id ASC",
@@ -641,7 +704,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
 
             # List with movies_count
             select_sql = f"""
-                SELECT p.*, {count_expr} AS movies_count
+                SELECT p.*, {count_expr} AS movies_count, {works_expr} AS works_count
                 FROM performers p
                 {where_clause}
                 ORDER BY {order_by}
@@ -720,6 +783,10 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             perf["episodes"] = db.get_performer_episodes(perf_id)
             perf["episodes_count"] = len(perf["episodes"])
             db.close()
+
+            # Same definition of "作品" as the list query, so the number on the card
+            # and the number on the page it opens agree.
+            perf["works_count"] = perf["movies_count"] + perf["episodes_count"]
 
             self.send_json(perf)
 

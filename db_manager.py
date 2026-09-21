@@ -488,10 +488,17 @@ class DatabaseManager:
                         (m["id"], pid, pname)
                     )
 
-            # 3. Episodes
+            # 3. Director links. Written whenever the page actually credited someone -
+            # an empty list means the parse found no anchors, not that the film has no
+            # director, so the existing links are kept in that case (same reasoning as
+            # the cast list above).
+            if m.get("directors"):
+                self._link_directors(m["id"], m["directors"])
+
+            # 4. Episodes
             self._write_episodes(m["id"], m.get("episodes") or [])
 
-            # 4. FTS5 Index update
+            # 5. FTS5 Index update
             perf_names = " ".join(p[1] for p in m.get("performers", []))
             self.conn.execute("DELETE FROM movies_fts WHERE id = ?", (m["id"],))
             self.conn.execute("""
@@ -499,11 +506,96 @@ class DatabaseManager:
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (m["id"], m["title"], m.get("studio_name"), m.get("category"), m.get("description"), perf_names))
 
-            # 5. Scrape progress
+            # 6. Scrape progress
             self.conn.execute(
                 "INSERT OR REPLACE INTO scrape_progress (item_type, item_id, status) VALUES (?, ?, ?)",
                 ("movie", m["id"], status)
             )
+
+    def _link_directors(self, movie_id: int, directors: list[tuple[int, str]]) -> None:
+        """Replace one film's director links. The caller holds the lock and transaction.
+
+        Called only when the page really credited someone, so a failed parse cannot
+        wipe links an earlier scrape established.
+
+        The name is the lookup key, not the site ID: 33,757 films were scraped before
+        the parser kept the IDs, so for most of the library the name is the only thing
+        that ties a link to a person. A site ID is recorded the first time we learn it
+        and never overwritten - but only if no other row already claims it, since
+        `directors.site_id` is unique and the site does occasionally reuse a name
+        across two pages.
+        """
+        self.conn.execute("DELETE FROM movie_directors WHERE movie_id = ?", (movie_id,))
+        for position, (site_id, name) in enumerate(directors):
+            row = self.conn.execute(
+                "SELECT id FROM directors WHERE name = ?", (name,)
+            ).fetchone()
+            if row:
+                did = row[0]
+            else:
+                did = self.conn.execute(
+                    "INSERT INTO directors (name) VALUES (?)", (name,)
+                ).lastrowid
+            if site_id:
+                self.conn.execute(
+                    "UPDATE directors SET site_id = ? WHERE id = ? AND site_id IS NULL "
+                    "AND NOT EXISTS (SELECT 1 FROM directors WHERE site_id = ?)",
+                    (site_id, did, site_id),
+                )
+            self.conn.execute(
+                "INSERT OR REPLACE INTO movie_directors (movie_id, director_id, position) "
+                "VALUES (?, ?, ?)",
+                (movie_id, did, position),
+            )
+
+    def replace_movie_directors(self, links: list[tuple[int, list[str]]],
+                                batch_size: int = 500) -> None:
+        """Bulk-replace director links for many films.
+
+        The writer for `--mode directors`, which derives its links from
+        `movies.director_name` rather than from a page.
+
+        Replaces per film rather than truncating the table, because a scrape can be
+        running at the same time: those films were linked from the page itself, with
+        real site IDs, and must not be thrown away and re-guessed from a string.
+        Callers therefore pass only the films whose stored name is still glued.
+
+        Committed every `batch_size` films rather than once at the end, for the same
+        reason: one transaction over the whole library holds the write lock for the
+        length of the run, and a concurrent scraper's `busy_timeout` (5s) would
+        expire long before it, failing that scraper's writes. Re-running is
+        idempotent, so a batch boundary being a commit boundary costs nothing.
+        """
+        with self._write_lock:
+            for start in range(0, len(links), batch_size):
+                with self.conn:
+                    for movie_id, names in links[start:start + batch_size]:
+                        self.conn.execute(
+                            "DELETE FROM movie_directors WHERE movie_id = ?", (movie_id,)
+                        )
+                        for position, name in enumerate(names):
+                            row = self.conn.execute(
+                                "SELECT id FROM directors WHERE name = ?", (name,)
+                            ).fetchone()
+                            did = row[0] if row else self.conn.execute(
+                                "INSERT INTO directors (name) VALUES (?)", (name,)
+                            ).lastrowid
+                            self.conn.execute(
+                                "INSERT OR REPLACE INTO movie_directors "
+                                "(movie_id, director_id, position) VALUES (?, ?, ?)",
+                                (movie_id, did, position),
+                            )
+
+    def refresh_director_counts(self) -> int:
+        """Recompute `directors.works_count` from the links. Returns rows touched."""
+        with self._write_lock, self.conn:
+            self.conn.execute("UPDATE directors SET works_count = 0")
+            cur = self.conn.execute("""
+                UPDATE directors SET works_count = (
+                    SELECT count(*) FROM movie_directors md WHERE md.director_id = directors.id
+                )
+            """)
+            return cur.rowcount
 
     def save_episodes(self, movie_id: int, episodes: list[dict] | None) -> int:
         """Write only the episode rows of one film, leaving the movie row untouched.

@@ -108,6 +108,35 @@ const studioOptions = computed(() => {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 });
 
+/**
+ * How many chips the collapsed row shows. A filmography can span a dozen-plus
+ * studios, and an unbounded `flex-wrap` row pushed the grid most of a screen
+ * down — measured against the library, the busiest performers cross twenty.
+ */
+const STUDIO_CHIP_LIMIT = 8;
+const studiosExpanded = ref(false);
+
+/**
+ * The chips to render. Collapsed to the busiest `STUDIO_CHIP_LIMIT`, except that
+ * the active filter is always kept on screen — it can sit at position 20, and a
+ * highlighted chip you cannot see or click off is worse than a long row.
+ */
+const shownStudioOptions = computed(() => {
+  const all = studioOptions.value;
+  if (studiosExpanded.value || all.length <= STUDIO_CHIP_LIMIT) return all;
+  const head = all.slice(0, STUDIO_CHIP_LIMIT);
+  const active = all.find(o => o.name === studioFilter.value);
+  if (active && !head.includes(active)) {
+    return [...head.slice(0, STUDIO_CHIP_LIMIT - 1), active];
+  }
+  return head;
+});
+
+/** What the "更多" button is hiding. Zero once expanded. */
+const collapsedStudioCount = computed(() =>
+  Math.max(0, studioOptions.value.length - shownStudioOptions.value.length)
+);
+
 watch(studioOptions, (opts) => {
   if (studioFilter.value && !opts.some(o => o.name === studioFilter.value)) {
     studioFilter.value = '';
@@ -117,6 +146,7 @@ watch(studioOptions, (opts) => {
 watch(() => props.performer?.id, () => {
   portraitError.value = false;
   studioFilter.value = '';
+  studiosExpanded.value = false;
 });
 
 const visibleMovies = computed(() => {
@@ -189,7 +219,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </h1>
           <div class="text-xs text-fg-3 mt-1 flex items-center gap-3 flex-wrap">
             <span>ID: #{{ performer.id }}</span>
-            <span v-if="performer.movies_count" class="text-accent/80">{{ performer.movies_count }} 部作品</span>
+            <span
+              v-if="performer.works_count ?? performer.movies_count"
+              class="text-accent/80"
+            >{{ performer.works_count ?? performer.movies_count }} 部作品</span>
             <span v-if="!performer.image_url" class="text-fg-5">暂无照片</span>
           </div>
         </div>
@@ -293,24 +326,37 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!--
           Studio filter. Hidden for a single-studio performer: a filter row with one
-          choice is just noise. Clicking the active chip clears it.
+          choice is just noise. Clicking the active chip clears it. Collapsed to the
+          busiest few, with the rest behind the toggle on the right.
         -->
-        <div v-if="studioOptions.length > 1" class="flex items-center gap-2 flex-wrap">
-          <span class="text-[11px] font-semibold text-fg-4 uppercase tracking-wider shrink-0">片商</span>
-          <button
-            v-for="opt in studioOptions"
-            :key="opt.name"
-            @click="studioFilter = studioFilter === opt.name ? '' : opt.name"
-            :class="[
-              'px-2.5 py-1 rounded-lg text-xs font-medium border transition',
-              studioFilter === opt.name
-                ? 'bg-accent-fill text-on-fill border-accent-fill shadow'
-                : 'bg-surface-2/70 hover:bg-surface-2 border-line-strong text-fg-2 hover:text-accent-soft'
-            ]"
-          >
-            {{ opt.name }}
-            <span :class="studioFilter === opt.name ? 'text-on-fill/60' : 'text-fg-4'">{{ opt.count }}</span>
-          </button>
+        <div v-if="studioOptions.length > 1" class="space-y-1.5">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-semibold text-fg-4 uppercase tracking-wider">片商</span>
+            <button
+              v-if="collapsedStudioCount > 0 || studiosExpanded"
+              type="button"
+              @click="studiosExpanded = !studiosExpanded"
+              class="text-[11px] font-medium text-fg-4 hover:text-accent-soft transition shrink-0"
+            >
+              {{ studiosExpanded ? '收起' : `+${collapsedStudioCount} 更多` }}
+            </button>
+          </div>
+          <div :class="['flex items-center gap-2 flex-wrap', studiosExpanded ? 'max-h-40 overflow-y-auto' : '']">
+            <button
+              v-for="opt in shownStudioOptions"
+              :key="opt.name"
+              @click="studioFilter = studioFilter === opt.name ? '' : opt.name"
+              :class="[
+                'px-2.5 py-1 rounded-lg text-xs font-medium border transition',
+                studioFilter === opt.name
+                  ? 'bg-accent-fill text-on-fill border-accent-fill shadow'
+                  : 'bg-surface-2/70 hover:bg-surface-2 border-line-strong text-fg-2 hover:text-accent-soft'
+              ]"
+            >
+              {{ opt.name }}
+              <span :class="studioFilter === opt.name ? 'text-on-fill/60' : 'text-fg-4'">{{ opt.count }}</span>
+            </button>
+          </div>
         </div>
 
         <!-- 1. Feature Movies Tab -->

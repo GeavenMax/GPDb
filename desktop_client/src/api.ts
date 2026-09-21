@@ -127,6 +127,24 @@ export const FACET_LABELS: Record<string, string> = {
   foreskin: '包皮',
 };
 
+/**
+ * The film tab's blank state. Only ever needed to *reset* to — the grid reads the
+ * fields directly — but it lives here with the other two so the three tabs reset
+ * the same way. `FilterState` has no sort-independent "active" counter, so this
+ * object doubles as the comparison baseline.
+ */
+export function createMovieFilters(): FilterState {
+  return {
+    query: '',
+    studio: '',
+    director: '',
+    yearMin: null,
+    yearMax: null,
+    category: '',
+    sortBy: 'year_desc',
+  };
+}
+
 export function createPerformerFilters(): PerformerFilterState {
   return {
     query: '',

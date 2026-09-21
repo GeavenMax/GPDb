@@ -104,6 +104,14 @@ pub struct PerformerRef {
     pub image_url: Option<String>,
 }
 
+/// One entry of a film's director roster, from movie_directors. Carries no image:
+/// directors are the only credited party the site gives no portrait for.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DirectorRef {
+    pub id: i64,
+    pub name: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Episode {
     pub id: i64,
@@ -140,6 +148,10 @@ pub struct Movie {
     pub covers: Option<Vec<String>>,
     pub director_id: Option<i64>,
     pub director_name: Option<String>,
+    /// Real per-film director roster. `director_name` is a single string that
+    /// predates the parser fix and can hold several glued names, so this is what
+    /// the UI renders one clickable name per director from.
+    pub directors: Option<Vec<DirectorRef>>,
     pub performers: Option<Vec<PerformerRef>>,
     pub episodes: Option<Vec<Episode>>,
 }
@@ -230,6 +242,9 @@ pub struct Performer {
     /// Multi-value attributes exploded into lists (see PERFORMER_FACETS).
     pub attributes: Option<HashMap<String, Vec<String>>>,
     pub movies_count: Option<i64>,
+    /// Films *and* scenes. What "作品数量" means in the UI — see `works_expr` in
+    /// `get_performers`. `movies_count` stays the film-only figure.
+    pub works_count: Option<i64>,
     pub movies: Option<Vec<Movie>>,
     /// Scene/episode appearances, which the performer page lists in their own tab.
     pub episodes: Option<Vec<Episode>>,
@@ -264,6 +279,10 @@ pub struct FilterArgs {
     pub query: Option<String>,
     pub studio: Option<String>,
     pub category: Option<String>,
+    /// Silently dropped by serde until now: the frontend has always sent
+    /// `director`, so clicking a director name narrowed the list in the browser
+    /// build and did nothing here.
+    pub director: Option<String>,
     #[serde(alias = "year_min")]
     pub year_min: Option<i64>,
     #[serde(alias = "year_max")]
@@ -322,6 +341,19 @@ fn find_db_path() -> PathBuf {
 
 /// The five kinds of thing a favorite can point at. Mirrors FAVORITE_TYPES in db_manager.py.
 const FAVORITE_TYPES: [&str; 5] = ["movie", "performer", "studio", "director", "episode"];
+
+/// A director's name does not necessarily appear verbatim in movies.director_name:
+/// rows scraped before the parser fix glue several names into one separator-free
+/// string ("Bill ClaytonSteven Scarborough"), and even a fixed parser writes the
+/// whole roster into that one column. movie_directors/directors hold the real
+/// per-film roster, so both director lookups go through it. Each fragment takes
+/// exactly one bound parameter for the name.
+const DIRECTOR_MATCH_SQL: &str = "EXISTS (SELECT 1 FROM movie_directors md \
+     JOIN directors d ON d.id = md.director_id \
+     WHERE md.movie_id = m.id AND d.name = ?)";
+const DIRECTOR_SEARCH_SQL: &str = "EXISTS (SELECT 1 FROM movie_directors md \
+     JOIN directors d ON d.id = md.director_id \
+     WHERE md.movie_id = m.id AND d.name LIKE ?)";
 
 /// One favorited item, shaped for the card that renders it.
 ///
@@ -598,14 +630,18 @@ fn get_movies(
         let q_trimmed = q.trim();
         if !q_trimmed.is_empty() {
             let clean_q: String = q_trimmed.chars().filter(|c| c.is_alphanumeric() || c.is_whitespace()).collect();
-            conditions.push("(m.title LIKE ? OR m.studio_name LIKE ? OR m.director_name LIKE ? OR m.description_zh LIKE ? OR m.id = ?)".to_string());
+            conditions.push(format!(
+                "(m.title LIKE ? OR m.studio_name LIKE ? OR m.director_name LIKE ? OR m.description_zh LIKE ? OR m.id = ? OR {})",
+                DIRECTOR_SEARCH_SQL
+            ));
             let like_q = format!("%{}%", clean_q);
             let id_val: i64 = clean_q.parse().unwrap_or(-1);
             params_vec.push(Box::new(like_q.clone()));
             params_vec.push(Box::new(like_q.clone()));
             params_vec.push(Box::new(like_q.clone()));
-            params_vec.push(Box::new(like_q));
+            params_vec.push(Box::new(like_q.clone()));
             params_vec.push(Box::new(id_val));
+            params_vec.push(Box::new(like_q));
         }
     }
 
@@ -622,6 +658,17 @@ fn get_movies(
         if !cat_trimmed.is_empty() {
             conditions.push("m.category = ?".to_string());
             params_vec.push(Box::new(cat_trimmed.to_string()));
+        }
+    }
+
+    if let Some(ref dir) = f.director {
+        let dir_trimmed = dir.trim();
+        if !dir_trimmed.is_empty() {
+            // The OR keeps a library that has not been through `--mode directors`
+            // yet matching exactly as it did before.
+            conditions.push(format!("({} OR m.director_name = ?)", DIRECTOR_MATCH_SQL));
+            params_vec.push(Box::new(dir_trimmed.to_string()));
+            params_vec.push(Box::new(dir_trimmed.to_string()));
         }
     }
 
@@ -692,6 +739,7 @@ fn get_movies(
             covers,
             director_id: r.get(14)?,
             director_name: r.get(15)?,
+            directors: None,
             performers: None,
             episodes: None,
         })
@@ -709,6 +757,20 @@ fn get_movies(
                 })
             }).map_err(|e| e.to_string())?;
             m.performers = Some(p_iter.filter_map(Result::ok).collect());
+
+            // Director roster, for the one-line name the cards show. Without it a
+            // card falls back to movies.director_name, which for rows scraped
+            // before the parser fix is every name glued into one truncated blob.
+            let mut d_stmt = conn.prepare(
+                "SELECT d.id, d.name FROM movie_directors md \
+                 JOIN directors d ON d.id = md.director_id \
+                 WHERE md.movie_id = ?1 ORDER BY md.position ASC, d.id ASC"
+            ).map_err(|e| e.to_string())?;
+            let d_iter = d_stmt.query_map(params![m.id], |dr| {
+                Ok(DirectorRef { id: dr.get(0)?, name: dr.get(1)? })
+            }).map_err(|e| e.to_string())?;
+            m.directors = Some(d_iter.filter_map(Result::ok).collect());
+
             items.push(m);
         }
     }
@@ -746,6 +808,7 @@ fn get_movie_detail(id: i64) -> Result<Option<Movie>, String> {
             covers,
             director_id: r.get(14)?,
             director_name: r.get(15)?,
+            directors: None,
             performers: None,
             episodes: None,
         })
@@ -763,6 +826,19 @@ fn get_movie_detail(id: i64) -> Result<Option<Movie>, String> {
                 })
             }).map_err(|e| e.to_string())?;
             m.performers = Some(p_iter.filter_map(Result::ok).collect());
+
+            // Director roster — see DIRECTOR_MATCH_SQL. Empty for a library that
+            // has not been through `--mode directors` yet; the frontend falls
+            // back to the director_name string in that case.
+            let mut d_stmt = conn.prepare(
+                "SELECT d.id, d.name FROM movie_directors md \
+                 JOIN directors d ON d.id = md.director_id \
+                 WHERE md.movie_id = ?1 ORDER BY md.position ASC, d.id ASC"
+            ).map_err(|e| e.to_string())?;
+            let d_iter = d_stmt.query_map(params![m.id], |dr| {
+                Ok(DirectorRef { id: dr.get(0)?, name: dr.get(1)? })
+            }).map_err(|e| e.to_string())?;
+            m.directors = Some(d_iter.filter_map(Result::ok).collect());
 
             // Episodes
             let mut ep_stmt = conn.prepare(
@@ -840,8 +916,17 @@ fn get_performers(
     }
 
     let count_expr = "(SELECT count(*) FROM movie_performers mp WHERE mp.performer_id = p.id)";
+    // "作品数量" counts scenes as well as films. A performer whose work is mostly
+    // scenes used to sort below one with a handful of films while the card showed
+    // only the film number, so the two never agreed. Sort, the lower bound and the
+    // displayed figure all use this now; the raw movies_count is still selected so
+    // the film count stays available.
+    let works_expr = format!(
+        "{} + (SELECT count(*) FROM episode_performers ep WHERE ep.performer_id = p.id)",
+        count_expr
+    );
     if let Some(min) = f.min_movies {
-        conditions.push(format!("{} >= ?", count_expr));
+        conditions.push(format!("{} >= ?", works_expr));
         params_vec.push(Box::new(min));
     }
 
@@ -852,11 +937,11 @@ fn get_performers(
     };
 
     let sort_clause = match f.sort_by.as_deref() {
-        Some("movies_asc") => format!("{} ASC, p.id ASC", count_expr),
+        Some("movies_asc") => format!("{} ASC, p.id ASC", works_expr),
         Some("name_asc") => "p.name ASC".to_string(),
         Some("id_desc") => "p.id DESC".to_string(),
         Some("id_asc") => "p.id ASC".to_string(),
-        _ => format!("{} DESC, p.id DESC", count_expr),
+        _ => format!("{} DESC, p.id DESC", works_expr),
     };
 
     let count_query = format!("SELECT count(*) FROM performers p {}", where_clause);
@@ -864,12 +949,12 @@ fn get_performers(
     let total: i64 = conn.query_row(&count_query, &params_slice[..], |r| r.get(0)).map_err(|e| e.to_string())?;
 
     let select_query = format!(
-        "SELECT {}, {} AS movies_count \
+        "SELECT {}, {} AS movies_count, {} AS works_count \
          FROM performers p \
          {} \
          ORDER BY {} \
          LIMIT ? OFFSET ?",
-        PERFORMER_COLUMNS, count_expr, where_clause, sort_clause
+        PERFORMER_COLUMNS, count_expr, works_expr, where_clause, sort_clause
     );
 
     let mut full_params = params_vec;
@@ -967,6 +1052,7 @@ fn map_performer_row(r: &rusqlite::Row) -> rusqlite::Result<Performer> {
         image_url: r.get(14)?,
         attributes: Some(attributes),
         movies_count: r.get(15)?,
+        works_count: r.get(16)?,
         movies: None,
         episodes: None,
         episodes_count: None,
@@ -977,7 +1063,9 @@ fn map_performer_row(r: &rusqlite::Row) -> rusqlite::Result<Performer> {
 fn get_performer_detail(id: i64) -> Result<Option<Performer>, String> {
     let conn = open_db()?;
     let mut stmt = conn.prepare(&format!(
-        "SELECT {}, 0 FROM performers p WHERE p.id = ?1",
+        // The two trailing zeros stand in for movies_count / works_count: the
+        // detail payload counts its own loaded lists instead (below).
+        "SELECT {}, 0, 0 FROM performers p WHERE p.id = ?1",
         PERFORMER_COLUMNS
     )).map_err(|e| e.to_string())?;
 
@@ -1012,6 +1100,7 @@ fn get_performer_detail(id: i64) -> Result<Option<Performer>, String> {
                     covers: None,
                     director_id: None,
                     director_name: None,
+                    directors: None,
                     performers: None,
                     episodes: None,
                 })
@@ -1032,6 +1121,10 @@ fn get_performer_detail(id: i64) -> Result<Option<Performer>, String> {
             let episodes: Vec<Episode> = e_iter.filter_map(Result::ok).collect();
             p.episodes_count = Some(episodes.len() as i64);
             p.episodes = Some(episodes);
+
+            // Same definition of "作品" as the list query, so the number on the card
+            // and the number on the page it opens agree.
+            p.works_count = Some(p.movies_count.unwrap_or(0) + p.episodes_count.unwrap_or(0));
 
             Ok(Some(p))
         }
@@ -1315,6 +1408,7 @@ fn get_studio_works(studio_name: String) -> Result<StudioWorks, String> {
             covers: None,
             director_id: None,
             director_name: None,
+            directors: None,
             performers: None,
             episodes: None,
         })

@@ -13,8 +13,9 @@ import FilterDrawer from './components/FilterDrawer.vue';
 import SyncModal from './components/SyncModal.vue';
 import PaginationBar from './components/PaginationBar.vue';
 import {
-  api, createPerformerFilters, countActivePerformerFilters, createEpisodeFilters,
-  countActiveEpisodeFilters, EPISODE_SORTS, FACET_KEYS, FACET_LABELS, IS_TAURI,
+  api, createMovieFilters, createPerformerFilters, countActivePerformerFilters,
+  createEpisodeFilters, countActiveEpisodeFilters, EPISODE_SORTS, FACET_KEYS,
+  FACET_LABELS, IS_TAURI,
 } from './api';
 import { getImageUrl } from './utils/image';
 import { openLightbox, viewableImageFrom, zoomsOnClick, lightboxImage } from './utils/lightbox';
@@ -157,15 +158,7 @@ function layerOf(kind: ModalKind) {
   return 50 + (i < 0 ? 0 : i) * 10;
 }
 
-const filters = reactive<FilterState>({
-  query: '',
-  studio: '',
-  director: '',
-  yearMin: null,
-  yearMax: null,
-  category: '',
-  sortBy: 'year_desc',
-});
+const filters = reactive<FilterState>(createMovieFilters());
 
 // Synopsis language preference (issue #4). Falls back to English per-movie
 // whenever a Chinese translation has not been generated yet.
@@ -518,6 +511,10 @@ function togglePerformerFacet(key: keyof PerformerFilterState, value: string) {
   else list.splice(idx, 1);
 }
 
+function resetMovieFilters() {
+  Object.assign(filters, createMovieFilters());
+}
+
 function resetPerformerFilters() {
   Object.assign(performerFilters, createPerformerFilters());
 }
@@ -526,6 +523,12 @@ function resetPerformerFilters() {
 function resetEpisodeFilters() {
   Object.assign(episodeFilters, createEpisodeFilters());
   episodeSortBy.value = 'id_desc';
+}
+
+/** The studio tab has no drawer; its only state is the search box and the sort. */
+function resetStudioFilters() {
+  studioQuery.value = '';
+  studioSortBy.value = 'works_desc';
 }
 
 async function loadCacheStats() {
@@ -987,9 +990,7 @@ function hideBrokenImage(e: Event) {
 function filterByStudio(studioName: string) {
   filters.studio = studioName;
   filters.director = '';
-  if (selectedMovie.value) closeMovieDetail();
-  if (selectedPerformer.value) closePerformerDetail();
-  if (selectedEpisode.value) closeEpisodeDetail();
+  closeAllModals();
   currentTab.value = 'movies';
   fetchMovies(true);
 }
@@ -998,11 +999,47 @@ function filterByStudio(studioName: string) {
 function filterByDirector(directorName: string) {
   filters.director = directorName;
   filters.studio = '';
-  if (selectedMovie.value) closeMovieDetail();
-  if (selectedPerformer.value) closePerformerDetail();
-  if (selectedEpisode.value) closeEpisodeDetail();
+  closeAllModals();
   currentTab.value = 'movies';
   fetchMovies(true);
+}
+
+/** Drop every detail level at once. Modal ids are looked up rather than assumed
+ *  non-null, because only the top of the stack is guaranteed to be populated. */
+function closeAllModals() {
+  if (selectedMovie.value) closeMovieDetail();
+  if (selectedPerformer.value) closePerformerDetail();
+  if (selectedStudio.value) closeStudioDetail();
+  if (selectedEpisode.value) closeEpisodeDetail();
+}
+
+/**
+ * A click in the sidebar.
+ *
+ * Clicking a library you are *already in* means "back up one level": the only
+ * second level these tabs have is a filtered list — `filterByStudio` /
+ * `filterByDirector` drop you into exactly that — so the click clears that tab's
+ * filters and scrolls to the top. Clearing is what triggers the refetch, via the
+ * same watchers the drawer writes through, which also means a click on a tab that
+ * was never filtered costs nothing.
+ */
+function handleNavClick(tab: AppTab) {
+  // A modal covers the sidebar, so this is a no-op today; kept so the handler
+  // stays correct if that layering ever changes.
+  closeAllModals();
+
+  if (tab !== currentTab.value) {
+    currentTab.value = tab;
+    return;
+  }
+
+  if (tab === 'movies') resetMovieFilters();
+  else if (tab === 'performers') resetPerformerFilters();
+  else if (tab === 'studios') resetStudioFilters();
+  else if (tab === 'episodes') resetEpisodeFilters();
+  else return;   // favorites / settings have nothing to clear
+
+  scrollContainerRef.value?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function openMovieDetail(m: Movie) {
@@ -1168,7 +1205,7 @@ onUnmounted(() => {
             ? activeEpisodeFilterCount > 0
             : currentTab === 'studios'
               ? false
-              : Boolean(filters.studio || filters.category || filters.sortBy !== 'year_desc')
+              : Boolean(filters.studio || filters.director || filters.category || filters.sortBy !== 'year_desc')
       "
       @toggle-filter="isFilterOpen = !isFilterOpen"
       @toggle-sync="isSyncOpen = true"
@@ -1180,7 +1217,7 @@ onUnmounted(() => {
       <!-- Sidebar -->
       <Sidebar
         :current-tab="currentTab"
-        @change-tab="(t) => currentTab = t"
+        @change-tab="handleNavClick"
       />
 
       <!-- Main Stage -->
@@ -1466,8 +1503,8 @@ onUnmounted(() => {
               <div v-if="p.build || p.height" class="text-[10px] text-fg-4 mt-1 truncate w-full">
                 {{ p.build || trMeasure(p.height) }}
               </div>
-              <div v-if="p.movies_count" class="text-[10px] text-fg-5 mt-0.5">
-                {{ p.movies_count }} 部作品
+              <div v-if="p.works_count ?? p.movies_count" class="text-[10px] text-fg-5 mt-0.5">
+                {{ p.works_count ?? p.movies_count }} 部作品
               </div>
             </div>
           </div>

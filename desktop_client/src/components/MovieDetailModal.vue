@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown } from '@lucide/vue';
 import type { Movie, UserTag, FavoriteType } from '../types';
+import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { api, IS_TAURI } from '../api';
@@ -106,6 +107,24 @@ watch(() => props.movie, (m) => {
 }, { immediate: true });
 
 const hasZh = computed(() => Boolean(zhDescription.value?.trim()));
+
+/**
+ * The film's directors, one name each, to render as separate clickable chips.
+ *
+ * Prefers the roster the detail endpoint reads from movie_directors. Falls back to
+ * `director_name` — split on " / " when the fixed parser wrote it, whole otherwise —
+ * so a library that has not been through `scraper_v2.py --mode directors` still shows
+ * its director, glued names and all, exactly as before.
+ */
+const directorNames = computed<string[]>(() => {
+  const roster = props.movie?.directors;
+  if (roster && roster.length > 0) {
+    return roster.map(d => d.name).filter(n => n.trim());
+  }
+  const raw = props.movie?.director_name?.trim();
+  if (!raw) return [];
+  return raw.split(' / ').map(s => s.trim()).filter(Boolean);
+});
 
 /**
  * Episodes that still have an English-only synopsis.
@@ -470,23 +489,34 @@ onUnmounted(() => {
                 </button>
               </div>
 
-              <div v-if="movie.director_name" class="flex items-center gap-1.5 bg-surface border border-line px-2.5 py-1 rounded-md text-xs text-fg-2">
+              <!-- One chip per director. The roster comes from the junction table;
+                   `director_name` is a single string that, for rows scraped before
+                   the parser fix, has every name glued together with no separator
+                   ("Bill ClaytonSteven Scarborough") — unclickable and unfilterable.
+                   The string stays as the fallback for a library that has not been
+                   through `--mode directors`, split on " / " when the fixed parser
+                   wrote it. -->
+              <div v-if="directorNames.length > 0" class="flex items-center gap-1.5 bg-surface border border-line px-2.5 py-1 rounded-md text-xs text-fg-2 flex-wrap">
                 <Clapperboard class="w-3.5 h-3.5 text-accent" />
                 <span class="text-fg-4">导演:</span>
-                <button
-                  @click="emit('filter-director', movie.director_name)"
-                  class="font-medium text-fg-2 hover:text-accent-soft hover:underline transition"
-                >
-                  {{ movie.director_name }}
-                </button>
-                <button
-                  @click="emit('toggle-entity-favorite', 'director', movie.director_name)"
-                  :title="isFav('director', movie.director_name) ? '取消收藏该导演' : '收藏该导演'"
-                  class="transition"
-                  :class="isFav('director', movie.director_name) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
-                >
-                  <Heart class="w-3.5 h-3.5" :fill="isFav('director', movie.director_name) ? 'currentColor' : 'none'" />
-                </button>
+                <template v-for="(name, i) in directorNames" :key="name">
+                  <span v-if="i > 0" class="text-fg-5">·</span>
+                  <button
+                    @click="emit('filter-director', name)"
+                    class="font-medium text-fg-2 hover:text-accent-soft hover:underline transition"
+                    :title="`查看 ${name} 的全部影片`"
+                  >
+                    {{ name }}
+                  </button>
+                  <button
+                    @click="emit('toggle-entity-favorite', 'director', name)"
+                    :title="isFav('director', name) ? '取消收藏该导演' : '收藏该导演'"
+                    class="transition"
+                    :class="isFav('director', name) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
+                  >
+                    <Heart class="w-3 h-3" :fill="isFav('director', name) ? 'currentColor' : 'none'" />
+                  </button>
+                </template>
               </div>
             </div>
 

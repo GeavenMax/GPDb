@@ -267,14 +267,41 @@ class BatchScraper:
             raw_desc = re.sub(r'<[^>]+>', ' ', desc_m.group(1))
             description = html.unescape(re.sub(r'\s+', ' ', raw_desc)).strip()
 
-        # Director & ID
-        director_id = None
-        director_name = ""
-        dir_m = re.search(r'Director:</div>\s*<div[^>]*>(?:<a href=[\'\"]director/(\d+)[\'\"][^>]*>)?(.*?)(?:</a>)?</div>', html_text, re.DOTALL)
+        # Director(s).
+        #
+        # Every director is its own <a href='director/ID'>Name</a> inside the cell, but
+        # the old parse stripped all tags from the whole cell and concatenated what was
+        # left. An 18-director film therefore became one 211-character "name"
+        # ("Fred HalstedPeter de RomeRobert Prion...") and director_id kept only the
+        # first anchor, so searching by director could never match. 8,000+ films are
+        # stored that way.
+        #
+        # Names are joined with " / " now so a multi-director film is at least legible
+        # in the single column that holds them, and the pairs are returned whole so
+        # save_movie can write the movie_directors links.
+        directors = []
+        dir_m = re.search(r'Director:</div>\s*<div[^>]*>(.*?)</div>', html_text, re.DOTALL)
         if dir_m:
-            if dir_m.group(1):
-                director_id = int(dir_m.group(1))
-            director_name = html.unescape(re.sub(r'<[^>]+>', '', dir_m.group(2)).strip())
+            for did, raw_name in re.findall(
+                r'<a\s+href=[\'"]director/(\d+)[\'"][^>]*>(.*?)</a>', dir_m.group(1), re.DOTALL
+            ):
+                name = html.unescape(re.sub(r'<[^>]+>', ' ', raw_name))
+                name = re.sub(r'\s+', ' ', name).strip()
+                if name:
+                    directors.append((int(did), name))
+
+        if directors:
+            director_id = directors[0][0]
+            director_name = " / ".join(name for _, name in directors)
+        else:
+            # No anchor: either the film has no director recorded, or it is credited to
+            # someone the site has no page for. Keep the cell's plain text so the film
+            # still records who made it - just without an ID.
+            director_id = None
+            director_name = ""
+            if dir_m:
+                plain = html.unescape(re.sub(r'<[^>]+>', ' ', dir_m.group(1)))
+                director_name = re.sub(r'\s+', ' ', plain).strip()
 
         # Covers (front, back, and any variant covers)
         #
@@ -371,6 +398,9 @@ class BatchScraper:
             "covers_known": covers_known,
             "director_id": director_id,
             "director_name": director_name,
+            # Every (site_id, name) pair the page credited, in site order. save_movie
+            # turns these into movie_directors rows; empty when the cell had no anchors.
+            "directors": directors,
             "performers": performers,
             "episodes": episodes
         }

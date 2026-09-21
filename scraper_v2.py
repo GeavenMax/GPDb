@@ -37,6 +37,8 @@ Usage:
   python3 scraper_v2.py --mode performers --limit 500
   python3 scraper_v2.py --mode episodes --limit 200 --dry-run
   python3 scraper_v2.py --mode fix-years --apply
+  python3 scraper_v2.py --mode directors
+  python3 scraper_v2.py --mode directors --apply --verify 20
   python3 scraper_v2.py --mode failures
 
 Zero third-party dependencies: standard library only, per project convention.
@@ -995,6 +997,336 @@ def run_fix_years(db: DatabaseManager, db_path: str, apply: bool,
     print("   回滚办法：用本次生成的 backups/gevi.db.backup-* 覆盖 gevi.db。")
 
 
+# --------------------------------------------------------------------------
+# 导演分词 (--mode directors)
+# --------------------------------------------------------------------------
+
+# A name at or below this length is taken as atomic on sight, and seeds the
+# dictionary. Measured against the library: 2,388 of the 3,992 stored values are
+# this short, and every one of them that turned out to be a glued pair would have
+# to be two sub-8-character names — which the data does not contain.
+DIRECTOR_SEED_MAX_LEN = 15
+# Nothing longer than this is accepted as one person. The longest real name in the
+# library is 30 characters; without the ceiling, a whole 211-character glued string
+# could be filed as a single "director".
+DIRECTOR_MAX_ATOMIC = 30
+# Cost of using a word the dictionary knows, versus one character of a word it does
+# not (`len + UNKNOWN_BIAS`). Small enough that a known name always wins over
+# leaving a fragment, large enough that a needless split still costs something.
+DIRECTOR_KNOWN_COST = 0.01
+
+
+def _director_full_cover(s: str, words: set[str], max_piece: int) -> list[str] | None:
+    """Split `s` into dictionary words with nothing left over, or None.
+
+    This is the test for "is this string several names glued together?" — it only
+    answers yes when the *entire* string is accounted for by known names.
+    """
+    n = len(s)
+    reach = [False] * (n + 1)
+    prev: list[int | None] = [None] * (n + 1)
+    reach[0] = True
+    for i in range(n):
+        if not reach[i]:
+            continue
+        for j in range(i + 1, min(n, i + max_piece) + 1):
+            if not reach[j] and s[i:j] in words:
+                reach[j] = True
+                prev[j] = i
+    if not reach[n]:
+        return None
+    out: list[str] = []
+    k = n
+    while k > 0:
+        out.append(s[prev[k]:k])          # type: ignore[index]
+        k = prev[k]                       # type: ignore[index]
+    return out[::-1]
+
+
+def build_director_dictionary(names: list[str]) -> tuple[set[str], set[str]]:
+    """Grow a dictionary of atomic director names. Returns (seeds, atomics).
+
+    The naive dictionary — every name short enough to be one person — is not enough:
+    `Kristofer Weston` (16) and `Steven Scarborough` (18) never appear alone, so they
+    are absent from it and get shredded into fragments. Bootstrapping fixes that: a
+    long name is treated as atomic unless it can be explained *entirely* as two or
+    more names already in the dictionary, and each pass adds the names that pass that
+    test, which in turn explains more strings on the next pass. Converges in two.
+
+    The candidate is removed from the dictionary while it is being tested. Otherwise
+    the string trivially "covers itself" as one word, every candidate looks glued, and
+    55 real glued entries (`Bill ClaytonSteven Scarborough`) survive as atomic names.
+    """
+    seeds = {n for n in names if len(n) <= DIRECTOR_SEED_MAX_LEN}
+    atomics = set(seeds)
+    for _ in range(12):
+        max_piece = max(len(w) for w in atomics)
+        nxt = set(seeds)
+        for n in names:
+            if n in seeds or len(n) > DIRECTOR_MAX_ATOMIC:
+                continue
+            pieces = _director_full_cover(n, atomics - {n}, max_piece)
+            if pieces is not None and len(pieces) >= 2:
+                continue                  # explained as other names -> it is a glue
+            nxt.add(n)
+        if len(nxt) == len(atomics):
+            return seeds, nxt
+        atomics = nxt
+    return seeds, atomics
+
+
+def segment_director_name(s: str, words: set[str], max_piece: int) -> list[tuple[str, bool]]:
+    """Hardest-working split of one stored value: [(piece, is_known_name)].
+
+    A shortest-path DP rather than greedy longest-match, because greedy mis-splits
+    names that contain a lowercase particle or an initial — it takes `Peter de` as
+    one unit if that is in the dictionary and strands `Rome`. The cost is what makes
+    the choice: reaching a known name costs almost nothing, so the path prefers few
+    unknown fragments first and few cuts second.
+    """
+    n = len(s)
+    INF = float("inf")
+    cost = [INF] * (n + 1)
+    prev: list[int | None] = [None] * (n + 1)
+    known = [False] * (n + 1)
+    cost[0] = 0.0
+    for i in range(n):
+        if cost[i] == INF:
+            continue
+        for j in range(i + 1, min(n, i + max_piece) + 1):
+            piece = s[i:j]
+            hit = piece in words
+            c = cost[i] + (DIRECTOR_KNOWN_COST if hit else len(piece) + DIRECTOR_KNOWN_COST)
+            if c < cost[j] - 1e-9:
+                cost[j] = c
+                prev[j] = i
+                known[j] = hit
+    if cost[n] == INF:
+        return [(s, False)]
+    out: list[tuple[str, bool]] = []
+    k = n
+    while k > 0:
+        out.append((s[prev[k]:k], known[k]))   # type: ignore[index]
+        k = prev[k]                            # type: ignore[index]
+    return out[::-1]
+
+
+def split_director_value(value: str, words: set[str], max_piece: int) -> tuple[list[str], bool]:
+    """One stored `director_name` -> ([names], confident?).
+
+    A value written by the fixed parser already reads "A / B / C" and is split on the
+    separator rather than guessed at — the parse is authoritative, and that is exactly
+    why this mode can be run again while a scrape is in progress without damaging the
+    films the scrape has already done properly. Everything else is a value from before
+    the parser was fixed and has to be guessed at with the DP.
+
+    A single name with no separator still goes through the DP; it just comes back as
+    one piece, so the guess is only ever "which names are in here", never "is this one
+    name or several".
+    """
+    if " / " in value:
+        return [p.strip() for p in value.split(" / ") if p.strip()], True
+    pieces = segment_director_name(value, words, max_piece)
+    return [p.strip() for p, _ in pieces if p.strip()], all(k for _, k in pieces)
+
+
+def run_directors(db: DatabaseManager, db_path: str, apply: bool,
+                  verify: int = 0, no_backup: bool = False) -> None:
+    """Rebuild the director tables from what the movie rows already hold.
+
+    Offline by default: the stored director values are enough to recover the names,
+    because the site's own markup separated them and only the old parse glued them
+    together. `--verify N` goes to the network to check the guess against N real
+    pages, which is the only way to put a number on the accuracy.
+
+    Two kinds of row are treated differently, and the difference is what makes this
+    safe to re-run while a scrape is in progress:
+
+      * a name already written as "A / B" came from the fixed parser, so it is truth —
+        its names seed the dictionary, and the film is left to the scraper's own
+        `movie_directors` rows rather than re-guessed from the string;
+      * anything else is a value from before the fix, and gets split by the DP.
+
+    Writes only under --apply, and only to the two new tables — `movies.director_name`
+    is left exactly as it is, so rolling back is `DELETE FROM movie_directors`.
+    """
+    conn = db.conn
+    all_values = [r[0] for r in conn.execute(
+        "SELECT DISTINCT director_name FROM movies "
+        "WHERE director_name IS NOT NULL AND trim(director_name) <> ''"
+    )]
+    glued_values = [v for v in all_values if " / " not in v]
+    # Names the parser already resolved authoritatively. Only whole names, never the
+    # combined string, go in: "A / B" must not enter the dictionary as one entry.
+    known = {p.strip() for v in all_values if " / " in v
+             for p in v.split(" / ") if p.strip()}
+    total_movies = conn.execute(
+        "SELECT COUNT(*) FROM movies WHERE director_name IS NOT NULL "
+        "AND trim(director_name) <> ''"
+    ).fetchone()[0]
+    glued_movies = conn.execute(
+        "SELECT COUNT(*) FROM movies WHERE director_name IS NOT NULL "
+        "AND trim(director_name) <> '' AND director_name NOT LIKE '% / %'"
+    ).fetchone()[0]
+
+    print("=" * 74)
+    print("🎬 【导演分词】把粘连的导演串还原成独立导演")
+    print("=" * 74)
+    print(f"\n库中有导演字段的影片 {total_movies:,} 条，去重后 {len(all_values):,} 个不同的值。")
+    print(f"  其中 {glued_movies:,} 条是修复前抓的粘连串（本次要拆的目标），"
+          f"{total_movies - glued_movies:,} 条已由新解析器写好，原样保留。")
+    if known:
+        print(f"  新解析器已确认的独立导演名 {len(known):,} 个，直接作为词典种子。")
+
+    seeds, words = build_director_dictionary(list(glued_values) + sorted(known))
+    words |= known
+    seeds |= known
+    max_piece = max(len(w) for w in words)
+    print(f"分词词典: 种子 {len(seeds):,} 个 (长度 ≤{DIRECTOR_SEED_MAX_LEN} 或已确认) "
+          f"→ 自举后 {len(words):,} 个原子名 (最长 {max_piece} 字符)")
+
+    # Split every distinct glued value once, then reuse it for each film.
+    splits: dict[str, list[str]] = {}
+    unsure: list[tuple[str, list[str]]] = []
+    for v in glued_values:
+        names, confident = split_director_value(v, words, max_piece)
+        splits[v] = names
+        if not confident:
+            unsure.append((v, names))
+
+    recovered = {n for names in splits.values() for n in names} | known
+    multi = sum(1 for names in splits.values() if len(names) > 1)
+    print(f"拆出 {len(recovered):,} 个不同的导演；{multi:,} 个粘连串含多个导演。")
+    print(f"⚠️  低置信度值 {len(unsure):,} 个（占粘连串 "
+          f"{100*len(unsure)/max(1,len(glued_values)):.1f}%），已写入待复核清单。")
+
+    print("\n--- 最长的几条粘连串 ---")
+    for v in sorted(glued_values, key=len, reverse=True)[:3]:
+        print(f"\n  {v[:150]}{'…' if len(v) > 150 else ''}")
+        for name in splits[v]:
+            print(f"     → {name}")
+
+    review_path = BASE_DIR / "logs" / "director_segmentation_review.txt"
+    if apply:
+        review_path.parent.mkdir(exist_ok=True)
+        with open(review_path, "w", encoding="utf-8") as f:
+            f.write("# 导演分词待复核清单\n")
+            f.write(f"# 共 {len(unsure)} 条。每行: 原始值\t拆出的名字(用 | 分隔)\n")
+            f.write("# 词典外的片段多为「从未单独出现过」的真名（如 Veronique De Paul），\n")
+            f.write("# 少量来自源头本身就残破的行（如 'oflixBarranco Deeick'）——后者可忽略。\n\n")
+            for v, names in sorted(unsure):
+                f.write(f"{v}\t{' | '.join(names)}\n")
+
+    if not apply:
+        print(f"\nℹ️  以上仅为预览，未改动任何数据。落库请加 --apply：")
+        print(f"     python3 scraper_v2.py --mode directors --apply")
+        print(f"   待复核清单届时写入: {review_path}")
+        return
+
+    if not no_backup:
+        backup_database(db_path, db)
+
+    # Only the glued rows. A film the fixed parser has already been through has exact
+    # links, written from the page with real site IDs — re-deriving them from the
+    # string would be a downgrade, and would race the scrape that is still running.
+    links = [
+        (mid, splits[value])
+        for mid, value in conn.execute(
+            "SELECT id, director_name FROM movies "
+            "WHERE director_name IS NOT NULL AND trim(director_name) <> '' "
+            "AND director_name NOT LIKE '% / %'"
+        )
+    ]
+    db.replace_movie_directors(links)
+    db.refresh_director_counts()
+
+    n_directors = conn.execute("SELECT COUNT(*) FROM directors").fetchone()[0]
+    n_links = conn.execute("SELECT COUNT(*) FROM movie_directors").fetchone()[0]
+    no_link = conn.execute(
+        "SELECT COUNT(*) FROM movies m WHERE m.director_name IS NOT NULL "
+        "AND trim(m.director_name) <> '' AND NOT EXISTS "
+        "(SELECT 1 FROM movie_directors md WHERE md.movie_id = m.id)"
+    ).fetchone()[0]
+    print(f"\n✅ 已重建 {len(links):,} 部影片的导演关联；"
+          f"库中共 {n_directors:,} 位导演、{n_links:,} 条关联。")
+    if no_link:
+        print(f"   ℹ️  {no_link:,} 部有导演名的影片目前没有关联行 —— "
+              f"它们是在本次运行之后才入库的，等下一次重跑补上。")
+    print(f"   待复核清单: {review_path}")
+    print("   回滚办法：DELETE FROM movie_directors; DELETE FROM directors;")
+    print("   （movies.director_name 全程未被改动）")
+
+    if verify:
+        verify_director_splits(db, verify)
+
+
+def verify_director_splits(db: DatabaseManager, n: int) -> None:
+    """Re-fetch N multi-director pages and compare the site's cast list to ours.
+
+    The segmentation is a guess about strings we never saw the markup for. This is
+    the check: the pages still list every director as its own `<a>`, so re-reading a
+    sample gives the answer key outright, and the two lists can be compared directly.
+    """
+    rows = db.conn.execute(
+        "SELECT md.movie_id, count(*) c FROM movie_directors md "
+        "GROUP BY md.movie_id HAVING c > 1 ORDER BY c DESC LIMIT ?", (n,)
+    ).fetchall()
+    if not rows:
+        print("\n⚠️  没有多导演影片可供抽样校验。")
+        return
+
+    print(f"\n--- 抽样重抓校验 ({len(rows)} 部多导演影片) ---")
+    parsers = _HtmlParsers()
+    jar = CookieJar()
+    client = BrowserClient(jar)
+    try:
+        client.get("/")
+    except Exception as e:
+        print(f"⚠️  预热失败，跳过校验: {e}", file=sys.stderr)
+        return
+
+    exact = partial = miss = 0
+    for movie_id, _count in rows:
+        try:
+            status, body, _, _ = client.get(f"/video/{movie_id}", referer=f"{BASE_URL}/")
+        except Exception as e:
+            print(f"  {movie_id:>7}  抓取失败: {e}")
+            miss += 1
+            continue
+        if status != 200 or not body:
+            print(f"  {movie_id:>7}  HTTP {status}")
+            miss += 1
+            continue
+
+        parsed = parsers.parse_movie(movie_id, body)
+        truth = [name for _, name in (parsed or {}).get("directors", [])]
+        mine = [r[0] for r in db.conn.execute(
+            "SELECT d.name FROM movie_directors md JOIN directors d ON d.id = md.director_id "
+            "WHERE md.movie_id = ? ORDER BY md.position", (movie_id,)
+        )]
+        if [t.strip() for t in truth] == mine:
+            exact += 1
+            mark = "✅"
+        else:
+            overlap = len(set(truth) & set(mine))
+            if overlap:
+                partial += 1
+                mark = "🟡"
+            else:
+                miss += 1
+                mark = "❌"
+        print(f"  {movie_id:>7} {mark} 站点 {len(truth)} 人 / 我方 {len(mine)} 人")
+        if mark != "✅":
+            print(f"            站点: {' / '.join(truth)}")
+            print(f"            我方: {' / '.join(mine)}")
+
+    graded = exact + partial + miss
+    if graded:
+        print(f"\n校验结果: 完全一致 {exact}/{graded} ({100*exact/graded:.0f}%)，"
+              f"部分重合 {partial}，完全不符 {miss}")
+    print("   注：站点名单是标准答案，不一致说明该条分词有误，需人工看过再决定是否改词典。")
+
+
 def run_audit(db: DatabaseManager) -> None:
     """Report what the database actually contains, without touching the network."""
     conn = db.conn
@@ -1094,8 +1426,9 @@ def main() -> None:
     )
     parser.add_argument("--mode", default="gaps",
                         choices=["gaps", "new", "failed", "failures", "recheck-404",
-                                 "performers", "episodes", "refresh", "fix-years", "audit"],
-                        help="抓取模式 (默认 gaps: 只补齐缺失字段)")
+                                 "performers", "episodes", "refresh", "fix-years", "audit",
+                                 "directors"],
+                        help="抓取模式 (默认 gaps: 只补齐缺失字段；directors: 离线拆分粘连的导演名)")
     parser.add_argument("--db", default="gevi.db", help="SQLite 数据库路径")
     parser.add_argument("--gaps", help="--mode gaps 时检查哪些字段, 逗号分隔 "
                                       "(description,year,duration,cover,cover_variants,cast,studio,director)。"
@@ -1127,7 +1460,10 @@ def main() -> None:
     safe.add_argument("--dry-run", action="store_true", help="只抓取校验，不写数据库")
     safe.add_argument("--no-backup", action="store_true", help="运行前不自动备份数据库")
     safe.add_argument("--apply", action="store_true",
-                      help="真正执行 --mode fix-years 的修复 (不加则只列出将要改动的行)")
+                      help="真正执行 --mode fix-years 的修复 / --mode directors 的落库 "
+                           "(不加则只列出将要改动的行)")
+    safe.add_argument("--verify", type=int, default=0, metavar="N",
+                      help="--mode directors 落库后，抽样重抓 N 部多导演影片核对分词准确率")
 
     args = parser.parse_args()
 
@@ -1145,6 +1481,11 @@ def main() -> None:
 
     if args.mode == "fix-years":
         run_fix_years(db, db_path, apply=args.apply, no_backup=args.no_backup)
+        return
+
+    if args.mode == "directors":
+        run_directors(db, db_path, apply=args.apply, verify=args.verify,
+                      no_backup=args.no_backup)
         return
 
     def on_sigint(signum, frame):

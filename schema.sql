@@ -204,3 +204,43 @@ CREATE TABLE IF NOT EXISTS attr_glossary (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+-- 11. 导演 (Directors) —— 实体表 + 影片关联表
+--
+-- 背景：导演在站点上是独立实体（每个名字都指向 director/<ID>），但本库一直只在
+-- movies 上留了 director_id / director_name 两列冗余字段。而解析阶段把
+-- "Director:" 单元格里的 <a> 标签整段剥掉再拼接，于是多导演影片存成了一条人名
+-- 首尾相接的粘连串 —— 库内最长 211 字符、18 个导演挤在一个"名字"里：
+--
+--   Fred HalstedPeter de RomeRobert PrionJim West...Jack Deveau
+--
+-- 后果是按导演检索永远匹配不上（筛选是精确等值 m.director_name = ?），
+-- 而且 director_id 只留下了第一个导演的 ID（原正则的 group(1)）。
+--
+-- 这两张表把导演还原成实体：
+--   directors        一个导演一行
+--   movie_directors  影片 ↔ 导演，position 保留站点给出的顺序
+--
+-- 关于 id：站点 ID（director/242）只在重抓过该影片之后才知道，而库里这 33,757
+-- 条历史数据只有名字。所以 id 用本库自增主键、site_id 单独可空存放站点 ID ——
+-- 名字是唯一贯穿新老数据的键（收藏功能也是按名字存的，见 user_favorites）。
+--
+-- 建表不改 movies，所以分词结果可以随时重跑：
+--   DELETE FROM movie_directors;  然后重跑 --mode directors --apply 即可回到空状态。
+CREATE TABLE IF NOT EXISTS directors (
+    id INTEGER PRIMARY KEY,          -- 本库内部 ID（rowid 自增）
+    site_id INTEGER UNIQUE,          -- 站点 director/<ID>，重抓后回填；分词阶段为 NULL
+    name TEXT NOT NULL UNIQUE,
+    works_count INTEGER DEFAULT 0,   -- 影片数，由 --mode directors 回填
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS movie_directors (
+    movie_id INTEGER NOT NULL,
+    director_id INTEGER NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,   -- 站点顺序，从 0 开始；分词结果里是串内顺序
+    PRIMARY KEY (movie_id, director_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_movie_directors_director ON movie_directors(director_id);
+CREATE INDEX IF NOT EXISTS idx_directors_name ON directors(name);

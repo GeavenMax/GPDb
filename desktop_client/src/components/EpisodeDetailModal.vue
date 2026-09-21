@@ -97,48 +97,54 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <X class="w-4 h-4" />
       </button>
 
-      <!-- Hero: the still IS the panel's content, so it zooms on a single click. -->
-      <div class="relative w-full aspect-video bg-sunken shrink-0 overflow-hidden">
-        <img
-          v-if="episode.thumbnail_url && !stillError"
-          :src="getImageUrl(episode.thumbnail_url)"
-          :alt="heading"
-          referrerpolicy="no-referrer"
-          data-zoom-click
-          @error="stillError = true"
-          class="w-full h-full object-cover object-center cursor-zoom-in"
-        />
-        <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2 text-fg-5">
-          <Clapperboard class="w-10 h-10 stroke-1" />
-          <span class="text-xs font-medium text-fg-5">暂无剧照</span>
+      <!-- Still, centred and capped at 400px.
+           Every scene still on the site is 200px wide (measured: 12 random
+           thumbnails, all exactly 200×112), so a full-width hero was blowing
+           them up ~4× and they read as mush. 400px is 2× native — the most
+           that still shows real pixels. Single click still opens the viewer
+           for anyone who wants a closer look. -->
+      <div class="px-6 md:px-8 pt-6 md:pt-8 shrink-0">
+        <div class="relative mx-auto w-full max-w-[400px] aspect-video rounded-2xl bg-sunken border border-line/60 overflow-hidden">
+          <img
+            v-if="episode.thumbnail_url && !stillError"
+            :src="getImageUrl(episode.thumbnail_url)"
+            :alt="heading"
+            referrerpolicy="no-referrer"
+            data-zoom-click
+            @error="stillError = true"
+            class="w-full h-full object-contain object-center cursor-zoom-in"
+          />
+          <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2 text-fg-5">
+            <Clapperboard class="w-10 h-10 stroke-1" />
+            <span class="text-xs font-medium text-fg-5">暂无剧照</span>
+          </div>
         </div>
+      </div>
 
-        <!-- Scrim for the heading. Not interactive: the still underneath must keep
-             receiving the click that opens the viewer. -->
-        <div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/50 to-transparent pointer-events-none"></div>
-
-        <div class="absolute bottom-0 left-0 right-0 p-6 md:p-8 min-w-0 pointer-events-none">
-          <div class="text-xs font-semibold text-accent uppercase tracking-wider flex items-center gap-2">
-            <span>分集档案</span>
-            <span
-              v-if="episode.description_zh?.trim()"
-              class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-success-fill/90 text-on-fill flex items-center gap-0.5 pointer-events-auto"
-              title="已有中文简介"
-            >
-              <Languages class="w-2.5 h-2.5" />
-              中
-            </span>
-          </div>
-          <h1 class="text-xl md:text-3xl font-extrabold text-fg mt-1 break-words">{{ heading }}</h1>
-          <div class="text-xs text-fg-2 mt-1.5 flex items-center gap-3 flex-wrap">
-            <span v-if="episode.release_year" class="flex items-center gap-1">
-              <Calendar class="w-3 h-3" /> {{ episode.release_year }}
-            </span>
-            <span v-if="episode.studio_name">{{ episode.studio_name }}</span>
-            <span v-if="episode.episode_count > 1" class="text-fg-3">
-              该影片共 {{ episode.episode_count }} 个片段
-            </span>
-          </div>
+      <!-- Heading, in normal flow below the still. It used to sit on top of the
+           image behind a scrim; with the still capped at 400px there is no
+           longer a full-width band for it to sit on. -->
+      <div class="px-6 md:px-8 pt-5 shrink-0">
+        <div class="text-xs font-semibold text-accent uppercase tracking-wider flex items-center gap-2">
+          <span>分集档案</span>
+          <span
+            v-if="episode.description_zh?.trim()"
+            class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-success-fill/90 text-on-fill flex items-center gap-0.5"
+            title="已有中文简介"
+          >
+            <Languages class="w-2.5 h-2.5" />
+            中
+          </span>
+        </div>
+        <h1 class="text-xl md:text-2xl font-extrabold text-fg mt-1 break-words">{{ heading }}</h1>
+        <div class="text-xs text-fg-2 mt-1.5 flex items-center gap-3 flex-wrap">
+          <span v-if="episode.release_year" class="flex items-center gap-1">
+            <Calendar class="w-3 h-3" /> {{ episode.release_year }}
+          </span>
+          <span v-if="episode.studio_name">{{ episode.studio_name }}</span>
+          <span v-if="episode.episode_count > 1" class="text-fg-3">
+            该影片共 {{ episode.episode_count }} 个片段
+          </span>
         </div>
       </div>
 

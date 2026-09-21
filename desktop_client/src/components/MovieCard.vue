@@ -43,6 +43,39 @@ const shownDescription = computed(() => {
 const hasTranslation = computed(
   () => props.translated ?? Boolean(props.movie.description_zh?.trim()),
 );
+
+/**
+ * One line naming the film's director(s), for the card.
+ *
+ * A card has room for a name, not a roster. Historical rows put every director in
+ * a single separator-free string ("Fred HalstedPeter de RomeRobert Prion…"), which
+ * the card truncated mid-word and which is exactly the "several people read as
+ * one" defect — so when the detail endpoint's roster says there are several, the
+ * line becomes "首位 等N人". Falls back to the string as-is for a library that has
+ * not been through `scraper_v2.py --mode directors`.
+ */
+const directorLine = computed(() => {
+  const roster = props.movie.directors;
+  if (roster && roster.length > 0) {
+    const first = roster[0].name.trim();
+    if (!first) return '';
+    return roster.length > 1 ? `${first} 等${roster.length}人` : first;
+  }
+  const raw = props.movie.director_name?.trim();
+  if (!raw) return '';
+  const parts = raw.split(' / ').map(s => s.trim()).filter(Boolean);
+  if (parts.length > 1) return `${parts[0]} 等${parts.length}人`;
+  return raw;
+});
+
+/** Full roster for the tooltip, so the card can still name everyone. */
+const directorTitle = computed(() => {
+  const roster = props.movie.directors;
+  if (roster && roster.length > 0) {
+    return `导演: ${roster.map(d => d.name).join(' / ')}`;
+  }
+  return `导演: ${props.movie.director_name || ''}`;
+});
 </script>
 
 <template>
@@ -134,9 +167,9 @@ const hasTranslation = computed(
           >
             +{{ (movie.performers?.length || 0) - 3 }}
           </span>
-          <span v-if="movie.director_name" class="flex items-center gap-1 text-[10px] text-fg-4 truncate max-w-[120px]" :title="`导演: ${movie.director_name}`">
+          <span v-if="directorLine" class="flex items-center gap-1 text-[10px] text-fg-4 truncate max-w-[120px]" :title="directorTitle">
             <Clapperboard class="w-2.5 h-2.5" />
-            {{ movie.director_name }}
+            {{ directorLine }}
           </span>
         </div>
 
@@ -260,9 +293,9 @@ const hasTranslation = computed(
         <!-- Row 3: Category or Director -->
         <div class="flex items-center gap-2 text-[11px] text-fg-3 mt-1">
           <span v-if="movie.category" class="truncate">{{ movie.category }}</span>
-          <span v-if="movie.director_name" class="flex items-center gap-1 text-fg-4 text-[10px] truncate" :title="`导演: ${movie.director_name}`">
+          <span v-if="directorLine" class="flex items-center gap-1 text-fg-4 text-[10px] truncate" :title="directorTitle">
             <Clapperboard class="w-2.5 h-2.5 text-fg-3" />
-            {{ movie.director_name }}
+            {{ directorLine }}
           </span>
         </div>
       </div>

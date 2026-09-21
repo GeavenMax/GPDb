@@ -38,6 +38,15 @@ export interface Movie {
   covers?: string[];
   director_id?: number | null;
   director_name?: string | null;
+  /**
+   * Real per-film director roster, from the movie_directors junction table.
+   * `director_name` is one string and, for rows scraped before the parser fix,
+   * holds every name glued together with no separator at all — so this is the
+   * only reliable source for one clickable name per director. Absent from list
+   * responses (detail only) and empty on a library that has not been through
+   * `scraper_v2.py --mode directors` yet.
+   */
+  directors?: Array<{ id: number; name: string }> | null;
   performers?: Array<{ id: number; name: string; image_url?: string | null }>;
   episodes?: Episode[];
   userData?: UserMovieData | null;
@@ -64,6 +73,12 @@ export interface Performer {
   attributes?: Record<string, string[]>;
   movies?: Movie[];
   movies_count?: number;
+  /**
+   * Films *and* scenes — what the UI shows as "作品". Scenes live in a separate
+   * table, so `movies_count` alone under-reported anyone whose work is mostly
+   * scenes, and the grid's "作品最多" sort disagreed with the number on the card.
+   */
+  works_count?: number;
   episodes?: Episode[];
   episodes_count?: number;
 }
@@ -267,7 +282,12 @@ export interface Episode {
 export interface FilterState {
   query: string;
   studio: string;
-  /** No director table exists, so this filters on movies.director_name directly. */
+  /**
+   * A single director's name. Matched through the movie_directors junction table
+   * (so a film with several directors is found by any one of them), falling back
+   * to exact equality on movies.director_name for libraries that have not been
+   * through `scraper_v2.py --mode directors`.
+   */
   director: string;
   yearMin: number | null;
   yearMax: number | null;
