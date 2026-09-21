@@ -156,8 +156,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <X class="w-4 h-4" />
       </button>
 
-      <!-- Profile Header -->
-      <div class="p-6 md:p-8 bg-zinc-950 border-b border-zinc-800 flex items-center gap-6">
+      <!-- Profile Header. The attribute profile lives here rather than in a section of
+           its own below: it is a dozen short label/value pairs, and as a full-width
+           block of boxes it pushed the filmography below the fold for no gain. -->
+      <div class="p-6 md:p-8 bg-zinc-950 border-b border-zinc-800 flex flex-wrap items-start gap-5">
         <!-- Portrait (issue #6), falls back to the letter tile when unscraped.
              data-zoom-click: the portrait has no click action of its own, so a single
              click opens the viewer (see utils/lightbox.ts). -->
@@ -178,9 +180,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             {{ performer.name.charAt(0).toUpperCase() }}
           </div>
         </div>
-        <div class="min-w-0 flex-1">
+
+        <div class="min-w-0 max-w-full">
           <div class="text-xs font-semibold text-amber-400 uppercase tracking-wider">演员档案</div>
-          <h1 class="text-2xl md:text-3xl font-extrabold text-white truncate">{{ performer.name }}</h1>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-white truncate" :title="performer.name">
+            {{ performer.name }}
+          </h1>
           <div class="text-xs text-zinc-400 mt-1 flex items-center gap-3 flex-wrap">
             <span>ID: #{{ performer.id }}</span>
             <span v-if="performer.movies_count" class="text-amber-400/80">{{ performer.movies_count }} 部作品</span>
@@ -188,11 +193,60 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </div>
         </div>
 
+        <!-- Attribute profile as chips, to the right of the name: one chip per
+             attribute, label grey and value emphasised, so a dozen of them read as a
+             block instead of a wall of boxes. Multi-value attributes ("<br />"-
+             separated lists) get one value inside their own chip.
+             basis-17rem is what makes this degrade: when the name and the chips cannot
+             share a line the chips wrap below it, rather than the name being cut off. -->
+        <div
+          v-if="SPECS.length > 0"
+          class="flex-1 basis-[17rem] min-w-0 flex flex-wrap content-start gap-1.5"
+          aria-label="身体属性档案"
+        >
+          <span
+            v-for="spec in SPECS"
+            :key="spec.key"
+            class="inline-flex items-baseline gap-1.5 max-w-full px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800"
+          >
+            <span class="text-[11px] text-zinc-500 shrink-0">{{ spec.label }}</span>
+            <span
+              v-for="v in spec.values"
+              :key="v"
+              :title="v"
+              :class="[
+                'text-[11px] font-semibold break-words',
+                spec.accent ? 'text-amber-400' : 'text-zinc-200'
+              ]"
+            >
+              {{ spec.measure ? trMeasure(v) : tr(v) }}
+            </span>
+          </span>
+
+          <!-- Full width of its own: a tattoo description is prose, not a value. The
+               note about only the locations being translated lives in the tooltip, to
+               keep the chip to one line. -->
+          <span
+            v-if="tattoos.length > 0"
+            class="inline-flex items-baseline gap-1.5 basis-full px-2 py-0.5 rounded-lg bg-zinc-900/80 border border-zinc-800"
+            title="纹身标识：部位译中文，描述保留原文"
+          >
+            <span class="text-[11px] text-zinc-500 shrink-0">纹身</span>
+            <span class="text-[11px] font-semibold text-zinc-200 break-words">
+              {{ tattoos.map(trTattoo).join('、') }}
+            </span>
+          </span>
+        </div>
+
+        <div v-else class="flex-1 basis-[17rem] min-w-0 text-xs text-zinc-500 italic">
+          该演员的详情页尚未抓取，暂无声色属性档案。
+        </div>
+
         <!-- Fav button leaves room for the absolutely-positioned close button -->
         <button
           @click="emit('toggle-favorite', performer)"
           :class="[
-            'mr-10 shrink-0 self-start px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
+            'mr-10 shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
             isFavorite
               ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
               : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-400 hover:text-rose-400'
@@ -201,46 +255,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
           <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
         </button>
-      </div>
-
-      <!-- Specs Grid -->
-      <div class="p-6 md:p-8 border-b border-zinc-800">
-        <div class="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">身体属性档案</div>
-
-        <div v-if="SPECS.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          <div
-            v-for="spec in SPECS"
-            :key="spec.key"
-            class="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800/80"
-          >
-            <div class="text-[11px] text-zinc-500">{{ spec.label }}</div>
-            <!-- Multi-value attributes are stored as "<br />"-separated lists -->
-            <div class="flex flex-wrap gap-1 mt-1">
-              <span
-                v-for="v in spec.values"
-                :key="v"
-                :title="v"
-                :class="[
-                  'text-sm font-semibold',
-                  spec.accent ? 'text-amber-400' : 'text-zinc-200'
-                ]"
-              >
-                {{ spec.measure ? trMeasure(v) : tr(v) }}
-              </span>
-            </div>
-          </div>
-
-          <div v-if="tattoos.length > 0" class="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800/80 col-span-2">
-            <div class="text-[11px] text-zinc-500">纹身标识 <span class="text-zinc-600">(部位译中文，描述保留原文)</span></div>
-            <div class="text-sm font-semibold text-zinc-200 mt-0.5">
-              {{ tattoos.map(trTattoo).join('、') }}
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="text-xs text-zinc-500 italic">
-          该演员的详情页尚未抓取，暂无声色属性档案。
-        </div>
       </div>
 
       <!-- Works Section (Divided into Movies vs Episodes) -->
