@@ -768,42 +768,23 @@ onUnmounted(() => {
           <span>收录章节 / 场景片段 ({{ movie.episodes.length }})</span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div
-            v-for="ep in movie.episodes"
+        <div class="grid grid-cols-1 gap-3">
+          <!-- One row per scene, in the shared reading layout — see EpisodeRow.
+               The film's own scenes are ordered by id, so the row's index is the
+               scene's position in the film (the same number the library shows).
+               No 出处 and no year: this *is* the film. -->
+          <EpisodeRow
+            v-for="(ep, i) in movie.episodes"
             :key="ep.id"
-            class="flex flex-col bg-sunken/80 rounded-2xl border border-line/80 overflow-hidden hover:border-line-strong transition"
-          >
-            <!-- Scene thumbnail. The card carries no click action, so the still
-                 zooms on one click like the poster above. -->
-            <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-surface overflow-hidden">
-              <img :src="getImageUrl(ep.thumbnail_url)" :alt="ep.title" loading="lazy" referrerpolicy="no-referrer" data-zoom-click class="w-full h-full object-cover" />
-            </div>
-
-            <!-- Scene Info -->
-            <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
-              <div>
-                <div class="flex items-start justify-between gap-2">
-                  <div class="text-xs font-bold text-accent-soft">{{ ep.title }}</div>
-                  <button
-                    @click="emit('toggle-entity-favorite', 'episode', String(ep.id))"
-                    :title="isFav('episode', String(ep.id)) ? '取消收藏该片段' : '收藏该片段'"
-                    class="shrink-0 transition"
-                    :class="isFav('episode', String(ep.id)) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
-                  >
-                    <Heart class="w-3.5 h-3.5" :fill="isFav('episode', String(ep.id)) ? 'currentColor' : 'none'" />
-                  </button>
-                </div>
-                <!-- Chinese once the parent film has been translated, original otherwise -->
-                <div v-if="ep.description_zh || ep.description" class="text-xs text-fg-3 mt-1 line-clamp-3 leading-relaxed">
-                  {{ ep.description_zh || ep.description }}
-                </div>
-              </div>
-              <div v-if="ep.action_notes" class="text-[10px] text-fg-4 bg-surface px-2 py-1 rounded font-mono">
-                动作标签: {{ ep.action_notes }}
-              </div>
-            </div>
-          </div>
+            :episode="ep"
+            :ordinal="i + 1"
+            :ordinal-count="movie.episodes.length"
+            :show-source="false"
+            :show-year="false"
+            zoom-on-click
+            :is-favorite="isFav('episode', String(ep.id))"
+            @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+          />
         </div>
       </div>
     </div>

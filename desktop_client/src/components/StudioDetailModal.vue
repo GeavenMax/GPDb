@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { X, Film, Layers, Calendar, Heart, Building2, Loader2 } from '@lucide/vue';
+import { X, Film, Layers, Heart, Loader2 } from '@lucide/vue';
 import type { Movie, StudioWorks, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
-import { getImageUrl } from '../utils/image';
+import EpisodeRow from './EpisodeRow.vue';
 import { claimEscape } from '../utils/escape';
 
 /**
@@ -179,60 +179,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- 2. Episodes & Scenes Tab -->
         <div v-else-if="activeTab === 'episodes'">
-          <div v-if="episodes.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div
+          <div v-if="episodes.length > 0" class="grid grid-cols-1 gap-3">
+            <!-- One row per scene, in the shared reading layout — see EpisodeRow.
+                 The whole row opens the film, so the 出处 label is not a link here. -->
+            <EpisodeRow
               v-for="ep in episodes"
               :key="ep.id"
-              @click="ep.movie_id && emit('select-movie-id', ep.movie_id)"
-              class="flex flex-col bg-sunken/80 rounded-2xl border border-line/80 overflow-hidden hover:border-accent-fill/40 transition group cursor-pointer"
-            >
-              <!-- Episode thumbnail -->
-              <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-surface overflow-hidden">
-                <img
-                  :src="getImageUrl(ep.thumbnail_url)"
-                  :alt="ep.title"
-                  loading="lazy"
-                  referrerpolicy="no-referrer"
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-
-              <!-- Episode info -->
-              <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
-                <div>
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="text-xs font-bold text-accent-soft">{{ ep.title }}</span>
-                    <div class="flex items-center gap-2 shrink-0">
-                      <span v-if="ep.release_year" class="text-[10px] text-fg-4 font-mono flex items-center gap-1">
-                        <Calendar class="w-2.5 h-2.5" /> {{ ep.release_year }}
-                      </span>
-                      <button
-                        @click.stop="emit('toggle-entity-favorite', 'episode', String(ep.id))"
-                        :title="isFav('episode', String(ep.id)) ? '取消收藏该片段' : '收藏该片段'"
-                        class="transition"
-                        :class="isFav('episode', String(ep.id)) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
-                      >
-                        <Heart class="w-3.5 h-3.5" :fill="isFav('episode', String(ep.id)) ? 'currentColor' : 'none'" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div v-if="ep.movie_title" class="text-xs font-medium text-fg-2 mt-1 flex items-center gap-1">
-                    <Building2 class="w-3 h-3 text-fg-4" />
-                    <span>出处: {{ ep.movie_title }}</span>
-                  </div>
-
-                  <!-- Chinese once the parent film has been translated, original otherwise -->
-                  <div v-if="ep.description_zh || ep.description" class="text-xs text-fg-3 mt-1.5 line-clamp-3 leading-relaxed">
-                    {{ ep.description_zh || ep.description }}
-                  </div>
-                </div>
-
-                <div v-if="ep.action_notes" class="text-[10px] text-fg-4 bg-surface px-2 py-1 rounded font-mono mt-2">
-                  动作标签: {{ ep.action_notes }}
-                </div>
-              </div>
-            </div>
+              :episode="ep"
+              clickable
+              :is-favorite="isFav('episode', String(ep.id))"
+              @select-movie-id="emit('select-movie-id', $event)"
+              @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+            />
           </div>
           <div v-else-if="loading" class="text-center py-12 text-fg-4 text-xs">正在读取片段清单…</div>
           <div v-else class="text-center py-12 text-fg-4 text-xs">该片商暂未收录独立分集片段</div>

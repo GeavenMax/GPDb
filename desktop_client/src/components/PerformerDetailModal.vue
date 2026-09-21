@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { X, Film, Layers, Calendar, Heart } from '@lucide/vue';
+import { X, Film, Layers, Heart } from '@lucide/vue';
 import type { Performer, Movie, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
+import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
@@ -332,81 +333,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- 2. Episodes & Scenes Tab -->
         <div v-else-if="activeTab === 'episodes'">
-          <div v-if="visibleEpisodes.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div
+          <div v-if="visibleEpisodes.length > 0" class="grid grid-cols-1 gap-3">
+            <!-- One row per scene, in the shared reading layout — see EpisodeRow.
+                 The row carries no click action here (only the 出处 and 片商 labels
+                 do), so the still zooms on one click. -->
+            <EpisodeRow
               v-for="ep in visibleEpisodes"
               :key="ep.id"
-              class="flex flex-col bg-sunken/80 rounded-2xl border border-line/80 overflow-hidden hover:border-accent-fill/40 transition group"
-            >
-              <!-- Episode thumbnail. The card itself carries no click action (only the
-                   出处 and 片商 labels below do), so the still zooms on one click. -->
-              <div v-if="ep.thumbnail_url" class="relative w-full aspect-video bg-surface overflow-hidden">
-                <img
-                  :src="getImageUrl(ep.thumbnail_url)"
-                  :alt="ep.title"
-                  loading="lazy"
-                  referrerpolicy="no-referrer"
-                  data-zoom-click
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-
-              <!-- Episode info -->
-              <div class="p-4 space-y-2 flex-1 flex flex-col justify-between">
-                <div>
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="text-xs font-bold text-accent-soft">{{ ep.title }}</span>
-                    <div class="flex items-center gap-2 shrink-0">
-                      <span v-if="ep.release_year" class="text-[10px] text-fg-4 font-mono flex items-center gap-1">
-                        <Calendar class="w-2.5 h-2.5" /> {{ ep.release_year }}
-                      </span>
-                      <button
-                        @click="emit('toggle-entity-favorite', 'episode', String(ep.id))"
-                        :title="isFav('episode', String(ep.id)) ? '取消收藏该片段' : '收藏该片段'"
-                        class="transition"
-                        :class="isFav('episode', String(ep.id)) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
-                      >
-                        <Heart class="w-3.5 h-3.5" :fill="isFav('episode', String(ep.id)) ? 'currentColor' : 'none'" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div v-if="ep.movie_title" class="text-xs font-medium text-fg-2 mt-1 flex items-center gap-1 min-w-0">
-                    <Film class="w-3 h-3 text-fg-4 shrink-0" />
-                    <!-- The film this scene came from. Clickable so a scene found on a
-                         performer's page can be traced back to its film; a scene whose
-                         film is gone keeps the label but not the jump.
-
-                         The label rather than the whole card: the card's still has no
-                         other click action, so it is what zooms on a single click. -->
-                    <button
-                      type="button"
-                      :disabled="!ep.movie_id"
-                      @click="ep.movie_id && emit('select-movie-id', ep.movie_id)"
-                      :title="ep.movie_id ? `跳转到《${ep.movie_title}》` : '该片段没有关联影片'"
-                      :class="[
-                        'truncate transition',
-                        ep.movie_id ? 'hover:text-accent-soft hover:underline' : 'cursor-default'
-                      ]"
-                    >出处: {{ ep.movie_title }}</button>
-                    <button
-                      v-if="ep.studio_name"
-                      @click="emit('filter-studio', ep.studio_name)"
-                      class="text-fg-4 hover:text-accent text-[10px] ml-1 shrink-0 transition"
-                    >({{ ep.studio_name }})</button>
-                  </div>
-
-                  <!-- Chinese once the parent film has been translated, original otherwise -->
-                  <div v-if="ep.description_zh || ep.description" class="text-xs text-fg-3 mt-1.5 line-clamp-3 leading-relaxed">
-                    {{ ep.description_zh || ep.description }}
-                  </div>
-                </div>
-
-                <div v-if="ep.action_notes" class="text-[10px] text-fg-4 bg-surface px-2 py-1 rounded font-mono mt-2">
-                  动作标签: {{ ep.action_notes }}
-                </div>
-              </div>
-            </div>
+              :episode="ep"
+              zoom-on-click
+              show-studio
+              :is-favorite="isFav('episode', String(ep.id))"
+              @select-movie-id="emit('select-movie-id', $event)"
+              @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+              @filter-studio="emit('filter-studio', $event)"
+            />
           </div>
           <div v-else class="text-center py-12 text-fg-4 text-xs">
             {{ studioFilter ? `该演员没有 ${studioFilter} 的分集片段` : '暂无收录该演员的独立分集片段' }}
