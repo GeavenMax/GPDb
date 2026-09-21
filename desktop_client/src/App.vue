@@ -974,6 +974,9 @@ function asMovie(f: FavoriteItem): Movie {
   return {
     id: Number(f.key),
     title: f.title || `#${f.key}`,
+    // Without this the favorites tab is the one grid still showing English in
+    // Chinese mode — the card falls back to `title` whenever `title_zh` is absent.
+    title_zh: f.title_zh ?? null,
     cover_full: f.cover_full ?? null,
     release_year: f.release_year ?? null,
     studio_name: f.studio_name ?? null,

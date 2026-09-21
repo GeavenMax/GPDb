@@ -39,6 +39,13 @@ export interface Movie {
   director_id?: number | null;
   director_name?: string | null;
   /**
+   * Chinese title. In Chinese mode this is what the card shows as the film's name,
+   * with the original `title` beneath it in smaller type — the pun in the English
+   * title is often the point, so neither one is dropped. Null until the title has
+   * been translated; see `utils/bilingual.ts` for the fallback rule.
+   */
+  title_zh?: string | null;
+  /**
    * Real per-film director roster, from the movie_directors junction table.
    * `director_name` is one string and, for rows scraped before the parser fix,
    * holds every name glued together with no separator at all — so this is the
@@ -139,6 +146,12 @@ export interface EpisodeSummary {
   description_zh?: string | null;
   action_notes?: string | null;
   movie_title?: string | null;
+  /**
+   * The parent film's Chinese title. The episode itself is never translated — its
+   * own `title` is a site-generated placeholder — so this is the only Chinese a
+   * scene card can show.
+   */
+  movie_title_zh?: string | null;
   studio_name?: string | null;
   release_year?: number | null;
   episode_ordinal: number;
@@ -275,6 +288,8 @@ export interface Episode {
   description_zh?: string | null;
   action_notes?: string | null;
   movie_title?: string | null;
+  /** The parent film's Chinese title; see `EpisodeSummary.movie_title_zh`. */
+  movie_title_zh?: string | null;
   studio_name?: string | null;
   release_year?: number | null;
 }
@@ -312,6 +327,12 @@ export interface FavoriteItem {
   key: string;
   created_at?: string;
   title?: string | null;
+  /**
+   * Chinese title of a favourited film, or of a favourited scene's parent film.
+   * Without it the favourites tab is the one grid in the app still showing English
+   * in Chinese mode.
+   */
+  title_zh?: string | null;
   name?: string;
   release_year?: number | null;
   studio_name?: string | null;

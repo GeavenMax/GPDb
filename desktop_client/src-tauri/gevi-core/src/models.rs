@@ -56,6 +56,10 @@ pub struct Episode {
     /// Parent film context, so an episode can be shown outside its film (the
     /// performer detail page lists a performer's episodes across many films).
     pub movie_title: Option<String>,
+    /// The parent film's Chinese title. The episode itself is never translated —
+    /// its own `title` is a placeholder the site generates ("Episode #<row id>") —
+    /// so this is the only Chinese a scene card can show.
+    pub movie_title_zh: Option<String>,
     pub studio_name: Option<String>,
     pub release_year: Option<i64>,
 }
@@ -78,6 +82,9 @@ pub struct Movie {
     pub covers: Option<Vec<String>>,
     pub director_id: Option<i64>,
     pub director_name: Option<String>,
+    /// Chinese title. Shown as the primary name with `title` beneath it in smaller
+    /// type, so the frontend needs both. Null until the title is translated.
+    pub title_zh: Option<String>,
     /// Real per-film director roster. `director_name` is a single string that
     /// predates the parser fix and can hold several glued names, so this is what
     /// the UI renders one clickable name per director from.
@@ -126,6 +133,8 @@ pub struct EpisodeSummary {
     pub description_zh: Option<String>,
     pub action_notes: Option<String>,
     pub movie_title: Option<String>,
+    /// The parent film's Chinese title; see `Episode::movie_title_zh`.
+    pub movie_title_zh: Option<String>,
     pub studio_name: Option<String>,
     pub release_year: Option<i64>,
     /// Rank of this scene inside its own film, 1-based, by id order — the site names
@@ -257,6 +266,10 @@ pub struct FavoriteItem {
     pub key: String,
     pub created_at: Option<String>,
     pub title: Option<String>,
+    /// Chinese title of a favourited film or of a favourited scene's parent film.
+    /// Without it the favourites tab is the one grid in the app still showing
+    /// English in Chinese mode.
+    pub title_zh: Option<String>,
     pub name: Option<String>,
     pub release_year: Option<i64>,
     pub studio_name: Option<String>,

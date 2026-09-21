@@ -941,13 +941,14 @@ class DatabaseManager:
 
         cur.execute("""
             SELECT f.entity_key, f.created_at, m.title, m.release_year, m.studio_name,
-                   m.cover_full, m.description_zh IS NOT NULL
+                   m.cover_full, m.description_zh IS NOT NULL, m.title_zh
             FROM user_favorites f JOIN movies m ON m.id = CAST(f.entity_key AS INTEGER)
             WHERE f.entity_type = 'movie' ORDER BY f.created_at DESC
         """)
         out["movie"] = [
             {"key": r[0], "created_at": r[1], "title": r[2], "release_year": r[3],
-             "studio_name": r[4], "cover_full": r[5], "has_zh": bool(r[6])}
+             "studio_name": r[4], "cover_full": r[5], "has_zh": bool(r[6]),
+             "title_zh": r[7]}
             for r in cur.fetchall()
         ]
 
@@ -963,14 +964,15 @@ class DatabaseManager:
 
         cur.execute("""
             SELECT f.entity_key, f.created_at, e.title, e.thumbnail_url, e.movie_id,
-                   m.title, m.studio_name, e.description_zh IS NOT NULL
+                   m.title, m.studio_name, e.description_zh IS NOT NULL, m.title_zh
             FROM user_favorites f JOIN episodes e ON e.id = CAST(f.entity_key AS INTEGER)
             LEFT JOIN movies m ON m.id = e.movie_id
             WHERE f.entity_type = 'episode' ORDER BY f.created_at DESC
         """)
         out["episode"] = [
             {"key": r[0], "created_at": r[1], "title": r[2], "thumbnail_url": r[3],
-             "movie_id": r[4], "movie_title": r[5], "studio_name": r[6], "has_zh": bool(r[7])}
+             "movie_id": r[4], "movie_title": r[5], "studio_name": r[6], "has_zh": bool(r[7]),
+             "title_zh": r[8]}
             for r in cur.fetchall()
         ]
 
@@ -1087,7 +1089,8 @@ class DatabaseManager:
         cur = self.conn.cursor()
         cur.execute("""
             SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh,
-                   e.action_notes, m.title as movie_title, m.studio_name, m.release_year
+                   e.action_notes, m.title as movie_title, m.studio_name, m.release_year,
+                   m.title_zh
             FROM episodes e
             JOIN episode_performers ep ON e.id = ep.episode_id
             LEFT JOIN movies m ON e.movie_id = m.id
@@ -1105,6 +1108,7 @@ class DatabaseManager:
                 "description_zh": r[5],
                 "action_notes": r[6],
                 "movie_title": r[7],
+                "movie_title_zh": r[10],
                 "studio_name": r[8],
                 "release_year": r[9]
             })
@@ -1114,7 +1118,8 @@ class DatabaseManager:
         cur = self.conn.cursor()
         cur.execute("""
             SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh,
-                   e.action_notes, m.title as movie_title, m.studio_name, m.release_year
+                   e.action_notes, m.title as movie_title, m.studio_name, m.release_year,
+                   m.title_zh
             FROM episodes e
             JOIN movies m ON e.movie_id = m.id
             WHERE m.studio_name = ?
@@ -1131,6 +1136,7 @@ class DatabaseManager:
                 "description_zh": r[5],
                 "action_notes": r[6],
                 "movie_title": r[7],
+                "movie_title_zh": r[10],
                 "studio_name": r[8],
                 "release_year": r[9]
             })
@@ -1228,7 +1234,11 @@ class DatabaseManager:
                    -- off the id order matches how the film's own page lists them.
                    (SELECT count(*) FROM episodes e2
                      WHERE e2.movie_id = e.movie_id AND e2.id <= e.id) AS episode_ordinal,
-                   (SELECT count(*) FROM episodes e2 WHERE e2.movie_id = e.movie_id) AS episode_count
+                   (SELECT count(*) FROM episodes e2 WHERE e2.movie_id = e.movie_id) AS episode_count,
+                   -- Appended last so the two subquery indices above stay put. Not the
+                   -- episode's own title: the site names those "Episode #<row id>", so
+                   -- the parent film's Chinese name is the only Chinese a card can show.
+                   m.title_zh
             {from_clause}
             {where}
             ORDER BY {order}
@@ -1243,6 +1253,7 @@ class DatabaseManager:
             "description_zh": r[5],
             "action_notes": r[6],
             "movie_title": r[7],
+            "movie_title_zh": r[12],
             "studio_name": r[8],
             "release_year": r[9],
             "episode_ordinal": r[10],

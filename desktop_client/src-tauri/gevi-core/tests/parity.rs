@@ -325,6 +325,20 @@ fn search_reaches_chinese_titles_through_like() {
     // CJK：纯中文查询 MATCH 不到行就落到 LIKE 分支，但**混着写的查询可能命中
     // FTS 分支**，那条路上没加 title_zh 就永远搜不到中文。那条分支 Rust 这边
     // 没有，测不到，只能在 server.py 的两处一起改（已改）。
+
+    // 上面验的是 total，即谓词里有 title_zh；这里验的是**返回的行**里带着它，
+    // 即 MOVIE_COLUMNS 里有、map_movie_row 也读到了。真库上整列是 NULL，只有
+    // 自建库能把「列没被 SELECT」和「值恰好为 NULL」分开 —— 前者会让 title_zh
+    // 恒为 None，而界面上就永远只有原文，看不出是坏了。
+    let rows = queries::movies::get_movies(&conn, None, Some(1), Some(50)).unwrap().items;
+    let by_id: HashMap<i64, Option<String>> =
+        rows.iter().map(|m| (m.id, m.title_zh.clone())).collect();
+    assert_eq!(
+        by_id[&1].as_deref(),
+        Some("警察故事"),
+        "get_movies 没把 title_zh 带出来 —— MOVIE_COLUMNS / map_movie_row 里漏了"
+    );
+    assert_eq!(by_id[&2], None, "没有中文片名的影片应当是 None，而不是空串");
 }
 
 #[test]
@@ -1183,11 +1197,19 @@ fn movie_columns_and_their_reader_agree_by_name_not_by_position() {
 
     let m = queries::movies::get_movie_detail(&tx, id).unwrap().expect("影片在库里");
 
-    const NAMES: [&str; 16] = [
+    const NAMES: [&str; 17] = [
         "id", "title", "studio_id", "studio_name", "release_year", "duration_mins", "category",
         "rating", "movie_type", "description", "description_zh", "cover_icon", "cover_full",
-        "covers_json", "director_id", "director_name",
+        "covers_json", "director_id", "director_name", "title_zh",
     ];
+    // 只比列名不断言长度的话，给 MOVIE_COLUMNS 追加一列而 NAMES / pairs 没跟上时，
+    // 新列既不被读也不被比，这条测试照样绿。这个列表里全是裸列名、没有函数调用，
+    // 所以数逗号是可靠的。
+    assert_eq!(
+        gevi_core::sql::MOVIE_COLUMNS.split(',').count(),
+        NAMES.len(),
+        "MOVIE_COLUMNS 的列数与 NAMES 对不上：新加的列不会被这条测试覆盖"
+    );
     let mut stmt = tx.prepare("SELECT * FROM movies WHERE id = ?1").unwrap();
     // 索引先取出来：下面的闭包只借用 idx，不再借用 stmt（query_row 要 &mut stmt）。
     let idx: HashMap<&str, usize> = NAMES
@@ -1238,6 +1260,11 @@ fn movie_columns_and_their_reader_agree_by_name_not_by_position() {
         ("cover_full", db_col("cover_full"), m.cover_full.clone()),
         ("director_id", db_col("director_id"), num(m.director_id)),
         ("director_name", db_col("director_name"), m.director_name.clone()),
+        // 这一对现在是**空比**：真库是只读打开的，而 `title_zh` 整列还是 NULL
+        // （第一批片名要等阶段 7 才落库），两边恒为 None == None。留着它是为了让
+        // 上面那条列数断言有个对应的读者，真正的验证在
+        // `search_reaches_chinese_titles_through_like` 的自建内存库里做。
+        ("title_zh", db_col("title_zh"), m.title_zh.clone()),
     ];
 
     let mut wrong = Vec::new();

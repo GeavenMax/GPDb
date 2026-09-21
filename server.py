@@ -554,7 +554,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                 SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year,
                        m.duration_mins, m.category, m.rating, m.movie_type,
                        m.description, m.description_zh, m.cover_icon, m.cover_full,
-                       m.covers_json, m.director_id, m.director_name
+                       m.covers_json, m.director_id, m.director_name, m.title_zh
                 FROM movies m
                 {where_clause}
                 ORDER BY {order_by}
@@ -839,7 +839,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                 SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year,
                        m.duration_mins, m.category, m.rating, m.movie_type,
                        m.description, m.description_zh, m.cover_icon, m.cover_full,
-                       m.covers_json, m.director_id, m.director_name
+                       m.covers_json, m.director_id, m.director_name, m.title_zh
                 FROM movies m
                 JOIN movie_performers mp ON m.id = mp.movie_id
                 WHERE mp.performer_id = ?
@@ -867,7 +867,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                 SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year,
                        m.duration_mins, m.category, m.rating, m.movie_type,
                        m.description, m.description_zh, m.cover_icon, m.cover_full,
-                       m.covers_json, m.director_id, m.director_name
+                       m.covers_json, m.director_id, m.director_name, m.title_zh
                 FROM movies m
                 WHERE m.studio_name = ?
                 ORDER BY m.release_year DESC, m.id DESC

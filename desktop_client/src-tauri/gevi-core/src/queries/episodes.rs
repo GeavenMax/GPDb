@@ -84,7 +84,8 @@ pub fn get_episode_library(conn: &Connection,
                 e.action_notes, m.title, m.studio_name, m.release_year, \
                 (SELECT count(*) FROM episodes e2 \
                   WHERE e2.movie_id = e.movie_id AND e2.id <= e.id), \
-                (SELECT count(*) FROM episodes e2 WHERE e2.movie_id = e.movie_id) \
+                (SELECT count(*) FROM episodes e2 WHERE e2.movie_id = e.movie_id), \
+                m.title_zh \
          {} {} ORDER BY {} LIMIT ? OFFSET ?",
         from_clause, where_clause, sort_clause
     );
@@ -106,6 +107,7 @@ pub fn get_episode_library(conn: &Connection,
                 description_zh: r.get(5)?,
                 action_notes: r.get(6)?,
                 movie_title: r.get(7)?,
+                movie_title_zh: r.get(12)?,
                 studio_name: r.get(8)?,
                 release_year: r.get(9)?,
                 episode_ordinal: r.get(10)?,

@@ -12,8 +12,9 @@ pub fn get_favorites(conn: &Connection) -> Result<FavoritesResponse> {
     // Movies: the display fields a poster card needs, plus whether a translation exists.
     let mut stmt = conn
         .prepare(
+            // `m.title_zh` appended last so no index above it moves.
             "SELECT f.entity_key, f.created_at, m.title, m.release_year, m.studio_name, \
-                    m.cover_full, m.description_zh IS NOT NULL \
+                    m.cover_full, m.description_zh IS NOT NULL, m.title_zh \
              FROM user_favorites f JOIN movies m ON m.id = CAST(f.entity_key AS INTEGER) \
              WHERE f.entity_type = 'movie' ORDER BY f.created_at DESC",
         )
@@ -28,6 +29,7 @@ pub fn get_favorites(conn: &Connection) -> Result<FavoritesResponse> {
                 studio_name: r.get(4)?,
                 cover_full: r.get(5)?,
                 has_zh: Some(r.get::<usize, i64>(6)? != 0),
+                title_zh: r.get(7)?,
                 ..Default::default()
             })
         })
@@ -59,7 +61,7 @@ pub fn get_favorites(conn: &Connection) -> Result<FavoritesResponse> {
     let mut stmt = conn
         .prepare(
             "SELECT f.entity_key, f.created_at, e.title, e.thumbnail_url, e.movie_id, \
-                    m.title, m.studio_name, e.description_zh IS NOT NULL \
+                    m.title, m.studio_name, e.description_zh IS NOT NULL, m.title_zh \
              FROM user_favorites f JOIN episodes e ON e.id = CAST(f.entity_key AS INTEGER) \
              LEFT JOIN movies m ON m.id = e.movie_id \
              WHERE f.entity_type = 'episode' ORDER BY f.created_at DESC",
@@ -76,6 +78,7 @@ pub fn get_favorites(conn: &Connection) -> Result<FavoritesResponse> {
                 movie_title: r.get(5)?,
                 studio_name: r.get(6)?,
                 has_zh: Some(r.get::<usize, i64>(7)? != 0),
+                title_zh: r.get(8)?,
                 ..Default::default()
             })
         })

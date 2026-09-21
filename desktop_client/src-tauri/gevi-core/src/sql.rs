@@ -141,10 +141,13 @@ pub const CAST_SQL: &str = "SELECT mp.performer_id, \
 ///
 /// The `m.` prefix is part of the constant — every caller aliases the table `movies m`,
 /// which is also what the filter fragments in `DIRECTOR_MATCH_SQL` assume.
+/// New columns go on the **end**: `map_movie_row` reads by index, so inserting one
+/// in the middle does not fail to compile, it silently shifts every field after it
+/// into the wrong struct field.
 pub const MOVIE_COLUMNS: &str = "m.id, m.title, m.studio_id, m.studio_name, m.release_year, \
      m.duration_mins, m.category, m.rating, m.movie_type, \
      m.description, m.description_zh, m.cover_icon, m.cover_full, \
-     m.covers_json, m.director_id, m.director_name";
+     m.covers_json, m.director_id, m.director_name, m.title_zh";
 
 /// One film row. Leaves the three collection fields `None`: filling them needs extra
 /// queries per film, so each caller decides which it wants (`get_movies` loads
@@ -172,6 +175,7 @@ pub fn map_movie_row(r: &rusqlite::Row) -> rusqlite::Result<Movie> {
         covers,
         director_id: r.get(14)?,
         director_name: r.get(15)?,
+        title_zh: r.get(16)?,
         directors: None,
         performers: None,
         episodes: None,
@@ -187,8 +191,11 @@ pub const PERFORMER_COLUMNS: &str = "p.id, p.name, p.hair, p.eyes, p.body_hair, 
 ///
 /// The LEFT JOIN is what lets the performer page list episodes from many films at
 /// once; the caller appends its own WHERE and ORDER BY.
+/// New columns go on the **end**; `map_episode_row` reads by index too. This is the
+/// parent film's `title_zh` (index 10), not the episode's own title — episodes are
+/// never translated, their `title` is a site-generated placeholder.
 pub const EPISODE_SQL: &str = "SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, \
-     e.description_zh, e.action_notes, m.title, m.studio_name, m.release_year \
+     e.description_zh, e.action_notes, m.title, m.studio_name, m.release_year, m.title_zh \
      FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id";
 
 pub fn map_episode_row(r: &rusqlite::Row) -> rusqlite::Result<Episode> {
@@ -201,6 +208,7 @@ pub fn map_episode_row(r: &rusqlite::Row) -> rusqlite::Result<Episode> {
         description_zh: r.get(5)?,
         action_notes: r.get(6)?,
         movie_title: r.get(7)?,
+        movie_title_zh: r.get(10)?,
         studio_name: r.get(8)?,
         release_year: r.get(9)?,
     })
