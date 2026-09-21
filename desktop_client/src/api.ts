@@ -26,8 +26,12 @@ const isTauri = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in windo
 
 /**
  * True when the app talks to SQLite through Tauri commands rather than the local
- * Python server. Translation runs server-side only, so the UI hides those
- * controls in this mode instead of offering an action that cannot succeed.
+ * Python server.
+ *
+ * The settings page works in both modes: managing translation sources is a file
+ * edit, so it runs natively (`commands/translate.rs` on the same
+ * `translate_config.json` the CLI reads). What stays server-side only is actually
+ * *running* a translation, and the试译 button, because both need Python's providers.
  */
 export const IS_TAURI = isTauri;
 
@@ -53,6 +57,25 @@ async function tauriInvoke<T>(cmd: string, args: Record<string, unknown> = {}): 
     return invoke<T>(cmd, args);
   }
   throw new Error('Not in Tauri environment');
+}
+
+/**
+ * Run a translation-source command through Tauri, reporting the result the way the
+ * HTTP branch does.
+ *
+ * The Rust commands return the updated source list directly and reject with a plain
+ * message string, whereas the Python endpoints answer `{success, profiles, error}`.
+ * Adapting here means the settings UI keeps one shape to handle in both modes.
+ */
+async function tauriProviderAction(
+  cmd: string,
+  args: Record<string, unknown>
+): Promise<{ success: boolean; profiles?: TranslationProfile[]; error?: string }> {
+  try {
+    return { success: true, profiles: await tauriInvoke<TranslationProfile[]>(cmd, args) };
+  } catch (e: any) {
+    return { success: false, error: typeof e === 'string' ? e : e?.message || '操作失败' };
+  }
 }
 
 function emptyFavoriteGroups(): Record<FavoriteType, FavoriteItem[]> {
@@ -622,9 +645,16 @@ export const api = {
   },
 
   // Translation sources the user can switch between. The API key is never part of
-  // these payloads — the backend only reports whether one is stored.
+  // these payloads — neither backend reports one, only whether it is stored.
   async getTranslationProviders(): Promise<TranslationProviders> {
     const empty: TranslationProviders = { profiles: [], presets: [], config_file: '' };
+    if (isTauri) {
+      try {
+        return await tauriInvoke<TranslationProviders>('get_translation_providers');
+      } catch {
+        return empty;
+      }
+    }
     try {
       const res = await fetch('/api/translate/providers');
       if (res.ok) return await res.json();
@@ -633,22 +663,38 @@ export const api = {
   },
 
   async saveTranslationProvider(payload: TranslationProviderInput): Promise<{ success: boolean; profiles?: TranslationProfile[]; error?: string }> {
+    if (isTauri) return tauriProviderAction('save_translation_provider', { input: payload });
     return postProviderAction('save', { ...payload });
   },
 
   async activateTranslationProvider(name: string): Promise<{ success: boolean; profiles?: TranslationProfile[]; error?: string }> {
+    if (isTauri) return tauriProviderAction('activate_translation_provider', { name });
     return postProviderAction('activate', { name });
   },
 
   async deleteTranslationProvider(name: string): Promise<{ success: boolean; profiles?: TranslationProfile[]; error?: string }> {
+    if (isTauri) return tauriProviderAction('delete_translation_provider', { name });
     return postProviderAction('delete', { name });
   },
 
-  /** Round-trip one short string so the user can verify a key before a big run. */
+  /**
+   * Round-trip one short string so the user can verify a key before a big run.
+   *
+   * Still server-side only: it makes a real outbound call through `translate.py`'s
+   * providers, which live in Python. Desktop builds get a message pointing at the
+   * command line rather than the generic "request failed" that a fetch rejection
+   * would produce.
+   */
   async testTranslationProvider(name: string | null): Promise<{
     success: boolean; profile?: string; model?: string; elapsed?: number;
     source?: string; result?: string; error?: string;
   }> {
+    if (isTauri) {
+      return {
+        success: false,
+        error: '桌面版暂不支持在此试译，请用命令行：python3 translate.py --list-profiles 与 --profile <名称>',
+      };
+    }
     try {
       const res = await fetch('/api/translate/providers/test', {
         method: 'POST',

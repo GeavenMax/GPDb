@@ -8,5 +8,6 @@ pub mod error;
 pub mod models;
 pub mod queries;
 pub mod sql;
+pub mod translate_config;
 
 pub use error::{Error, Result};

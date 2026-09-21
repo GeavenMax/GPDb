@@ -5,8 +5,10 @@
 //! 薄壳。加一个功能的落点因此是确定的：queries 里写查询 → commands 里包一层 →
 //! 下面这张表里注册。
 
-mod commands;
-mod db;
+// `pub` on these two so `tests/` can reach the command layer. A binary crate exposes
+// nothing to anyone else either way; it just makes the wiring testable.
+pub mod commands;
+pub mod db;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,6 +28,10 @@ pub fn run() {
             commands::library::get_categories,
             commands::user::get_favorites,
             commands::user::toggle_favorite,
+            commands::translate::get_translation_providers,
+            commands::translate::save_translation_provider,
+            commands::translate::activate_translation_provider,
+            commands::translate::delete_translation_provider,
             commands::sync::run_sync,
         ])
         .run(tauri::generate_context!())

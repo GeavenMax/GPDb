@@ -10,4 +10,5 @@
 pub mod detail;
 pub mod library;
 pub mod sync;
+pub mod translate;
 pub mod user;

@@ -2273,8 +2273,11 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Translation sources: several saved API providers, one active -->
-            <div v-if="!IS_TAURI" class="pt-1 space-y-3">
+            <!-- Translation sources: several saved API providers, one active.
+                 Shown in both modes. The desktop build edits the same
+                 translate_config.json natively (src-tauri/src/commands/translate.rs),
+                 so this is the one part of translation that does not need Python. -->
+            <div class="pt-1 space-y-3">
               <div class="flex items-center justify-between">
                 <div class="text-xs font-semibold text-fg-2">翻译服务来源</div>
                 <button
@@ -2316,7 +2319,11 @@ onUnmounted(() => {
                       @click="activateProvider(p.name)"
                       class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-accent-fill/20 text-fg-2 hover:text-accent-soft text-[11px] border border-line-strong transition"
                     >设为当前</button>
+                    <!-- 试译 makes a real outbound call through translate.py's providers,
+                         which the desktop build does not carry. Hidden rather than
+                         disabled so it cannot look like a working button. -->
                     <button
+                      v-if="!IS_TAURI"
                       @click="testProvider(p.name)"
                       :disabled="providerBusy"
                       class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong transition disabled:opacity-40"
@@ -2430,10 +2437,12 @@ onUnmounted(() => {
               v-if="IS_TAURI"
               class="p-3 rounded-xl bg-surface-2/60 border border-line-strong text-xs text-fg-2 space-y-1.5"
             >
-              <div class="font-semibold text-fg">桌面版请用命令行翻译</div>
+              <div class="font-semibold text-fg">桌面版：来源在这里管理，翻译请用命令行</div>
               <div class="text-fg-3 leading-relaxed">
-                桌面版直接读写本地 SQLite，不经过本地服务进程，因此这里只显示进度、不能直接发起翻译。
-                命令行会读取同一份 <code class="font-mono">translate_config.json</code>：
+                上面的「翻译服务来源」直接写入 <code class="font-mono">translate_config.json</code>，
+                与命令行读的是同一份文件，改完即可用。
+                但<b class="text-fg-2">发起翻译</b>仍走 Python（单部自动翻译、批量翻译、试译按钮都用它的接口实现），
+                所以这里只显示进度、不能直接开跑：
               </div>
               <code class="on-scrim block bg-scrim/60 rounded-lg p-2 font-mono text-[11px] text-fg-2 overflow-x-auto">
                 python3 translate.py --list-profiles
