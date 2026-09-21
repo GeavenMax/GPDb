@@ -24,8 +24,8 @@
  * Six themes, and the three style families differ in more than hue:
  *
  *   经典         opaque chrome, no blur, the palette the app shipped with
- *   流体玻璃     translucent chrome over a soft wallpaper; light hairlines, a sheen on
- *                the top edge, heavy blur and saturation — Apple's Liquid Glass
+ *   流体玻璃     translucent chrome over a soft wallpaper; light hairlines, a lit top
+ *                edge, a thin but heavily saturated blur — Apple's Liquid Glass
  *   Material You surfaces tinted from the brand amber, no blur, no shadows: depth comes
  *                from the surface ladder alone (tones, not elevation)
  *
@@ -100,6 +100,7 @@
   --chrome-bar-blur: 12px;                             /* was backdrop-blur-md */
   --chrome-saturate: 100%;
   --chrome-sheen: none;                                /* the frosted top highlight */
+  --chrome-edge: none;                                 /* the 1px lit top edge — glass only */
   --wallpaper: none;                                   /* the ground the glass blurs */
 }
 
@@ -118,6 +119,15 @@
  * tiles, the whole-provider cards — and a capsule radius turns a 300x200 box into an
  * ellipse. The capsule reading of Liquid Glass comes from the badges, hearts and
  * avatars that are already `rounded-full`.
+ *
+ * The 流体玻璃 ladder is a step larger than 经典's throughout, which is the whole of what
+ * "aligned with the system" means here. The obvious next step — `corner-shape: squircle`,
+ * the continuous-curvature corner that Apple's own radii are drawn with — is *not* used,
+ * because Safari does not implement it in any shipping version including 27 (verified
+ * against caniuse for `corner-block-end-shape: squircle`; the property is Chromium-only
+ * so far). WKWebView is the only engine this app runs in, so declaring it would be a
+ * silent no-op dressed up as a design decision. Revisit if that changes; the CSS is one
+ * line here plus one in `style.css`.
  */
 :root {
   --r-md: 0.375rem;   /* rounded-md — micro badges */
@@ -178,8 +188,14 @@
 
 /* 流体玻璃·暗 — Liquid Glass. The ground goes a shade deeper and cooler so the frosted
    layers above it have something to read against, hairlines become *light* (a dark line
-   on glass reads as a crack), and a sheen fades in from the top edge. Saturation is
-   pushed so the wallpaper's colour bleeds through the blur instead of turning grey. */
+   on glass reads as a crack), and the top edge is lit by two separate layers: a 1px
+   `--chrome-edge` line and a short `--chrome-sheen` glint beneath it.
+
+   The material is deliberately *thin* — 20px of blur, not the 28px this started at, with
+   saturation pushed hard. A wide blur smears the wallpaper's amber and violet across each
+   other until the layer greys out, which is the murk the macOS 27 material avoids; less
+   blur keeps the colour distinct, more saturation keeps it coloured, and the alpha is up
+   a few points to hold text contrast over the sharper background. */
 [data-theme='glass-dark'] {
   color-scheme: dark;
 
@@ -197,13 +213,14 @@
   --fg-4: oklch(57% 0.012 275);
   --fg-5: oklch(46% 0.012 275);
 
-  --chrome-panel: oklch(24% 0.012 275 / 0.62);
-  --chrome-side: oklch(16% 0.012 275 / 0.55);
-  --chrome-bar: oklch(16% 0.012 275 / 0.45);
-  --chrome-blur: 28px;
-  --chrome-bar-blur: 28px;
-  --chrome-saturate: 180%;
-  --chrome-sheen: linear-gradient(180deg, oklch(100% 0 0 / 0.1), oklch(100% 0 0 / 0) 42%);
+  --chrome-panel: oklch(24% 0.012 275 / 0.66);
+  --chrome-side: oklch(16% 0.012 275 / 0.6);
+  --chrome-bar: oklch(16% 0.012 275 / 0.52);
+  --chrome-blur: 20px;
+  --chrome-bar-blur: 22px;   /* the one layer with content scrolling under it */
+  --chrome-saturate: 210%;
+  --chrome-sheen: linear-gradient(180deg, oklch(100% 0 0 / 0.1), oklch(100% 0 0 / 0) 26%);
+  --chrome-edge: linear-gradient(180deg, oklch(100% 0 0 / 0.16), oklch(100% 0 0 / 0) 1px);
   --wallpaper:
     radial-gradient(52% 44% at 6% 0%, oklch(58% 0.16 62 / 0.42), transparent 70%),
     radial-gradient(46% 40% at 97% 90%, oklch(46% 0.17 300 / 0.34), transparent 72%),
@@ -217,7 +234,11 @@
 
 /* 流体玻璃·浅 — the same material on a bright ground. The amber moves to its light-theme
    values, and the hairlines flip back to dark, but low-alpha: on glass a full-strength
-   line looks drawn on rather than lit. */
+   line looks drawn on rather than lit.
+
+   Note what does *not* flip: `--chrome-edge`, which stays white in both. A lit top edge is
+   white light on the pane in either appearance — that is the whole point of it, and a dark
+   edge line on dark glass would read as a crack instead. */
 [data-theme='glass-light'] {
   color-scheme: light;
 
@@ -247,13 +268,14 @@
   --danger: oklch(58.6% 0.253 17.585);
   --danger-soft: oklch(51.4% 0.222 16.935);
 
-  --chrome-panel: oklch(100% 0 0 / 0.62);
-  --chrome-side: oklch(100% 0 0 / 0.45);
-  --chrome-bar: oklch(100% 0 0 / 0.45);
-  --chrome-blur: 28px;
-  --chrome-bar-blur: 28px;
-  --chrome-saturate: 170%;
-  --chrome-sheen: linear-gradient(180deg, oklch(100% 0 0 / 0.55), oklch(100% 0 0 / 0) 40%);
+  --chrome-panel: oklch(100% 0 0 / 0.66);
+  --chrome-side: oklch(100% 0 0 / 0.52);
+  --chrome-bar: oklch(100% 0 0 / 0.5);
+  --chrome-blur: 20px;
+  --chrome-bar-blur: 22px;
+  --chrome-saturate: 190%;
+  --chrome-sheen: linear-gradient(180deg, oklch(100% 0 0 / 0.5), oklch(100% 0 0 / 0) 26%);
+  --chrome-edge: linear-gradient(180deg, oklch(100% 0 0 / 0.8), oklch(100% 0 0 / 0) 1px);
   --wallpaper:
     radial-gradient(52% 44% at 6% 0%, oklch(84% 0.13 68 / 0.5), transparent 70%),
     radial-gradient(46% 40% at 97% 90%, oklch(80% 0.11 300 / 0.38), transparent 72%),

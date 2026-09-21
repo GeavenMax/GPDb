@@ -39,9 +39,13 @@ img {
   .chrome-panel,
   .chrome-side,
   .chrome-bar {
-    /* The frosted top-edge highlight. `none` in the flat themes, and safe to set here
-       because Tailwind's `bg-*` utilities only ever touch background-color. */
-    background-image: var(--chrome-sheen);
+    /* The lit top edge, painted over the frosted wash beneath it. Two layers rather than
+       one because they are two different things: `--chrome-edge` is a hard 1px line at the
+       very top (light catching the rim of the pane) and `--chrome-sheen` is a soft glint
+       fading out below it. Both are `none` in the flat themes, and `none, none` is a valid
+       `background-image`, so nothing needs to branch. Safe to set here because Tailwind's
+       `bg-*` utilities only ever touch background-color. */
+    background-image: var(--chrome-edge), var(--chrome-sheen);
   }
   /* Panels and the sidebar only blur where they are translucent, which is the glass
      themes alone — hence a separate token. A backdrop-filter on an opaque layer is a
