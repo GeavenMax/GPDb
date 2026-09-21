@@ -1,3 +1,8 @@
+# gevi-core 是 workspace 成员而不是普通 path 依赖：这样两者共用 src-tauri/target，
+# `cargo test -p gevi-core` 不必从零再编译一遍 rusqlite。
+[workspace]
+members = ["gevi-core"]
+
 [package]
 name = "gevi-plus"
 version = "0.1.0"
@@ -20,6 +25,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
+# 查询层。它自己不依赖 tauri —— 见 gevi-core/src/lib.rs。
+gevi-core = { path = "gevi-core" }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"

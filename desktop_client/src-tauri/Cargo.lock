@@ -1109,9 +1109,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "gevi-core"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "gevi-plus"
 version = "0.1.0"
 dependencies = [
+ "gevi-core",
  "log",
  "rusqlite",
  "serde",
