@@ -110,8 +110,10 @@
 [data-theme='classic-light'] {
   color-scheme: light;
 
-  --app: oklch(98.5% 0 0);                  /* zinc-50 */
-  --sunken: oklch(96.7% 0.001 286.375);     /* zinc-100 */
+  /* A touch below zinc-50: the app's panels are `bg-surface/60` washes and its stat
+     tiles are `bg-sunken/60`, and at 98.5% neither separates from a white card. */
+  --app: oklch(97.5% 0 0);
+  --sunken: oklch(95.6% 0.001 286.375);
   --surface: #ffffff;
   --surface-2: oklch(96.7% 0.001 286.375);
   --surface-3: oklch(92% 0.004 286.32);
@@ -120,7 +122,7 @@
 
   --fg: oklch(21% 0.006 285.885);           /* zinc-900 — 17.7:1 on white */
   --fg-2: oklch(37% 0.013 285.805);         /* zinc-700 — 10.4:1 */
-  --fg-3: oklch(55.2% 0.016 285.938);       /* zinc-500 — 4.8:1 */
+  --fg-3: oklch(53% 0.016 285.938);         /* a step under zinc-500, for the darker page */
   --fg-4: oklch(62% 0.015 286.067);         /* 3.7:1 — decoration only, but matched to
                                                the dark ramp's last step rather than to
                                                zinc-400, which all but vanishes */

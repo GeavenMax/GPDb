@@ -18,6 +18,7 @@ import {
 } from './api';
 import { getImageUrl } from './utils/image';
 import { openLightbox, viewableImageFrom, zoomsOnClick, lightboxImage } from './utils/lightbox';
+import { initTheme, setTheme, themeChoice, themeOptions } from './utils/theme';
 import type {
   Movie,
   Performer,
@@ -43,7 +44,7 @@ import { FAVORITE_TYPES } from './types';
 import { loadGlossary, glossaryCount, trMeasure } from './utils/glossary';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
-  Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers,
+  Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
 } from '@lucide/vue';
 
 /** Labels for the five favorites sections and the type pickers. */
@@ -1122,6 +1123,10 @@ function onGlobalDblClick(e: MouseEvent) {
 }
 
 onMounted(async () => {
+  // index.html's inline script already put the stored theme on <html> before the first
+  // paint; this starts the OS listener that keeps 跟随系统 current.
+  initTheme();
+
   // Hearts come from the database, not localStorage — so they survive a browser
   // change and travel with an export. Both loads are fire-and-forget: a failure
   // leaves the UI usable, just without hearts or Chinese attribute labels.
@@ -1992,6 +1997,50 @@ onUnmounted(() => {
         <!-- 6. Settings & Cache Tab -->
         <div v-else-if="currentTab === 'settings'" class="max-w-3xl space-y-6">
           <h1 class="text-xl font-bold text-fg tracking-tight">存储、缓存与系统设置</h1>
+
+          <!-- Section 0: 外观. Three styles × dark/light, flat, plus 跟随系统. The
+               swatch strip is inline-styled because it draws colours this page is not
+               wearing — a preview of 经典·浅 has to be drawn in 经典·浅 while the
+               settings panel is still 经典·暗. -->
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
+            <div class="flex items-center gap-3">
+              <Palette class="w-5 h-5 text-accent" />
+              <div>
+                <div class="text-sm font-bold text-fg">外观主题</div>
+                <div class="text-xs text-fg-3">默认跟随系统；三套风格各自有深色与浅色两版</div>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                v-for="opt in themeOptions"
+                :key="opt.id"
+                @click="setTheme(opt.id)"
+                class="text-left p-3 rounded-xl border transition flex items-start gap-3"
+                :class="themeChoice === opt.id
+                  ? 'bg-accent-fill/10 border-accent-fill/40'
+                  : 'bg-surface border-line-strong hover:border-line-strong'"
+              >
+                <span
+                  class="shrink-0 w-9 h-9 rounded-lg border border-line-strong/60 overflow-hidden flex flex-col"
+                  :style="{ backgroundColor: opt.swatch[0] }"
+                  aria-hidden="true"
+                >
+                  <span class="flex-1" :style="{ backgroundColor: opt.swatch[1] }"></span>
+                  <span class="h-2.5" :style="{ backgroundColor: opt.swatch[2] }"></span>
+                </span>
+                <span class="min-w-0">
+                  <span class="flex items-center gap-2">
+                    <span
+                      class="text-xs font-bold"
+                      :class="themeChoice === opt.id ? 'text-accent-soft' : 'text-fg-2'"
+                    >{{ opt.label }}</span>
+                    <Check v-if="themeChoice === opt.id" class="w-3 h-3 text-accent" />
+                  </span>
+                  <span class="block text-[11px] text-fg-4 mt-1 leading-relaxed">{{ opt.hint }}</span>
+                </span>
+              </button>
+            </div>
+          </div>
 
           <!-- Section 1: SQLite Engine & Stats -->
           <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">

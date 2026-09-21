@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="referrer" content="no-referrer" />
     <title>GEVI Database - Offline Media Library</title>
+    <script>
+      /*
+       * Paints the stored theme before Vue mounts. theme.css keys every theme off
+       * `data-theme` on <html>, and the bundle that would set it loads after the first
+       * paint — without this, a light theme starts dark and snaps a frame later.
+       *
+       * Must stay in sync with src/utils/theme.ts (same keys, same resolution); this
+       * copy exists only because it cannot import the module.
+       */
+      (function () {
+        var choice = localStorage.getItem('gevi_theme') || 'auto';
+        var style, scheme;
+        if (choice === 'auto') {
+          style = localStorage.getItem('gevi_theme_style') || 'classic';
+          scheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } else {
+          var parts = choice.split('-');
+          style = parts[0];
+          scheme = parts[1];
+        }
+        document.documentElement.setAttribute('data-theme', style + '-' + scheme);
+      })();
+    </script>
   </head>
   <body class="antialiased selection:bg-accent-fill/30 selection:text-accent-soft">
     <div id="app"></div>
