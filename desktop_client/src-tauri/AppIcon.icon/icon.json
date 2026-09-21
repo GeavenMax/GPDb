@@ -1,0 +1,19 @@
+{
+  "fill": {
+    "automatic-gradient": "extended-srgb:0.50000,0.29000,0.06000,1.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "G.svg"
+        }
+      ]
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

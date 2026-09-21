@@ -42,7 +42,10 @@ function clearSearch() {
   <header class="chrome-bar h-16 border-b border-line sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
     <!-- Brand -->
     <div class="flex items-center gap-3 select-none">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-fill via-accent-2 to-accent-deep flex items-center justify-center shadow-lg shadow-accent-fill/20 font-black text-on-fill tracking-tighter text-lg">
+      <!-- Same light as the app icon: lit from the top-left, deepening to the bottom-right.
+           The gradient used to run to-tr, which put the darkest tone top-right — the exact
+           opposite of the icon, so the two G's read as unrelated marks. -->
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-2 via-accent-fill to-accent-deep flex items-center justify-center shadow-lg shadow-accent-fill/20 font-black text-on-fill tracking-tighter text-lg">
         G
       </div>
       <div>

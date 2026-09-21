@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Names the icon inside Assets.car. Without this macOS falls back to
+	     CFBundleIconFile (the .icns) and loses the light/dark/tinted variants —
+	     the catalog is there, it just never gets asked for anything. Tauri merges
+	     these keys over the Info.plist it generates. -->
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
+</dict>
+</plist>
