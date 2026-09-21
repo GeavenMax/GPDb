@@ -15,6 +15,9 @@ import type {
   StudioLibraryResponse,
   StudioSortBy,
   StudioWorks,
+  EpisodeFilterState,
+  EpisodeLibraryResponse,
+  EpisodeSortBy,
 } from './types';
 import { FAVORITE_TYPES } from './types';
 
@@ -148,6 +151,26 @@ export function countActivePerformerFilters(f: PerformerFilterState): number {
   if (f.sortBy !== 'movies_desc') n++;
   return n;
 }
+
+export function createEpisodeFilters(): EpisodeFilterState {
+  return { studio: '', hasZh: false, hasPerformers: false };
+}
+
+export function countActiveEpisodeFilters(f: EpisodeFilterState, sortBy: EpisodeSortBy): number {
+  let n = 0;
+  if (f.studio) n++;
+  if (f.hasZh) n++;
+  if (f.hasPerformers) n++;
+  if (sortBy !== 'id_desc') n++;
+  return n;
+}
+
+/** Sort options for the episode library's drawer, in the order they are offered. */
+export const EPISODE_SORTS: Array<{ id: EpisodeSortBy; label: string }> = [
+  { id: 'id_desc', label: '最新入库' },
+  { id: 'year_desc', label: '影片年份' },
+  { id: 'movie_asc', label: '影片名 A-Z' },
+];
 
 export const api = {
   async getStats(): Promise<DatabaseStats> {
@@ -360,6 +383,46 @@ export const api = {
       });
       if (query) params.set('query', query);
       const res = await fetch(`/api/studio-library?${params.toString()}`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return { items: [], total: 0 };
+  },
+
+  /**
+   * The episode library grid, paged, searchable and filterable.
+   *
+   * Unlike `getStudioWorks()` / `getPerformerDetail()`, which return the episodes of
+   * one film or one performer, this is the whole episodes table.
+   */
+  async getEpisodeLibrary(
+    query: string = '',
+    sortBy: EpisodeSortBy = 'id_desc',
+    filters: EpisodeFilterState = createEpisodeFilters(),
+    page: number = 1,
+    pageSize: number = 24
+  ): Promise<EpisodeLibraryResponse> {
+    if (isTauri) {
+      return tauriInvoke<EpisodeLibraryResponse>('get_episode_library', {
+        query,
+        sort: sortBy,
+        studio: filters.studio,
+        hasZh: filters.hasZh,
+        hasPerformers: filters.hasPerformers,
+        page,
+        pageSize,
+      });
+    }
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        sort: sortBy,
+      });
+      if (query) params.set('q', query);
+      if (filters.studio) params.set('studio', filters.studio);
+      if (filters.hasZh) params.set('hasZh', '1');
+      if (filters.hasPerformers) params.set('hasPerformers', '1');
+      const res = await fetch(`/api/episode-library?${params.toString()}`);
       if (res.ok) return await res.json();
     } catch {}
     return { items: [], total: 0 };

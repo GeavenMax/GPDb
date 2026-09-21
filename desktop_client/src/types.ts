@@ -98,6 +98,52 @@ export interface StudioWorks {
   episodes_count: number;
 }
 
+/** An episode's cast, as the library cards need it: id to open, name to label. */
+export interface EpisodeCastRef {
+  id: number;
+  name: string;
+}
+
+/** Sort keys accepted by the episode library, on both the HTTP and Tauri paths. */
+export type EpisodeSortBy = 'id_desc' | 'year_desc' | 'movie_asc';
+
+/**
+ * One row of the episode library grid.
+ *
+ * The site names every episode "Episode #<its own row id>", so `title` carries no
+ * position at all — `episode_ordinal` is the scene's rank inside its own film, which
+ * is what a card can actually show ("第 3 集 / 共 5 集").
+ */
+export interface EpisodeSummary {
+  id: number;
+  movie_id?: number | null;
+  title: string;
+  thumbnail_url?: string | null;
+  description?: string | null;
+  /** Chinese synopsis; null until the parent film has been translated. */
+  description_zh?: string | null;
+  action_notes?: string | null;
+  movie_title?: string | null;
+  studio_name?: string | null;
+  release_year?: number | null;
+  episode_ordinal: number;
+  episode_count: number;
+  performers: EpisodeCastRef[];
+}
+
+export interface EpisodeLibraryResponse {
+  items: EpisodeSummary[];
+  total: number;
+}
+
+/** The episode library's filters, as the drawer edits them. */
+export interface EpisodeFilterState {
+  studio: string;
+  /** Only episodes whose synopsis has been translated — the readable ones. */
+  hasZh: boolean;
+  hasPerformers: boolean;
+}
+
 /** Performer attributes that can be filtered on, keyed by API facet name. */
 export type PerformerFacetKey =
   | 'bodyType'
@@ -233,7 +279,7 @@ export interface FilterState {
 export type FavoriteType = 'movie' | 'performer' | 'studio' | 'director' | 'episode';
 
 /** Every top-level view, i.e. everything the sidebar can switch to. */
-export type AppTab = 'movies' | 'performers' | 'studios' | 'favorites' | 'settings';
+export type AppTab = 'movies' | 'performers' | 'studios' | 'episodes' | 'favorites' | 'settings';
 
 export const FAVORITE_TYPES: FavoriteType[] = ['movie', 'performer', 'studio', 'director', 'episode'];
 

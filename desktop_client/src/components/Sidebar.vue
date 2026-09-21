@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Film, Users, Heart, HardDrive, Building2 } from '@lucide/vue';
+import { Film, Users, Heart, HardDrive, Building2, Clapperboard } from '@lucide/vue';
 import type { AppTab } from '../types';
 
 defineProps<{ currentTab: AppTab }>();
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { id: 'movies', label: '影片库', icon: Film },
   { id: 'performers', label: '演员库', icon: Users },
   { id: 'studios', label: '片商库', icon: Building2 },
+  { id: 'episodes', label: '分集库', icon: Clapperboard },
   { id: 'favorites', label: '我的收藏', icon: Heart },
 ] as const;
 

@@ -229,6 +229,12 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/studio-library":
                 return self.handle_studio_library(query_params)
 
+            # 8c. /api/episode-library
+            # The whole episodes table, not scoped to a film or a performer the way
+            # the two per-entity routes are.
+            if path == "/api/episode-library":
+                return self.handle_episode_library(query_params)
+
             # 9. /api/categories
             if path == "/api/categories":
                 return self.handle_categories()
@@ -1148,6 +1154,43 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
         try:
             items, total = db.list_studios(
                 query=query, sort=sort, limit=page_size, offset=(page - 1) * page_size
+            )
+        finally:
+            db.close()
+
+        self.send_json({
+            "items": items,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+        })
+
+    def handle_episode_library(self, params: dict):
+        """One page of the global episode library.
+
+        The two on/off filters mean "only rows that have this". Their use is finding
+        scenes worth reading, and an episode whose synopsis is still untranslated
+        cannot be judged from its card — only 31 of ~18k have a Chinese one so far.
+        """
+        query = params.get("q", [""])[0].strip()
+        studio = params.get("studio", [""])[0].strip()
+        # Anything unrecognised falls back to the default rather than 500ing on a
+        # hand-edited URL; db_manager.list_episodes does the same for `sort`.
+        sort = params.get("sort", ["id_desc"])[0].strip()
+        if sort not in ("id_desc", "year_desc", "movie_asc"):
+            sort = "id_desc"
+        falsy = ("", "0", "false", "False")
+        has_zh = params.get("hasZh", ["0"])[0] not in falsy
+        has_performers = params.get("hasPerformers", ["0"])[0] not in falsy
+        page = max(1, int(params.get("page", [1])[0]))
+        page_size = max(1, min(100, int(params.get("pageSize", [24])[0])))
+
+        db = DatabaseManager(str(DB_PATH))
+        try:
+            items, total = db.list_episodes(
+                query=query, sort=sort, studio=studio, has_zh=has_zh,
+                has_performers=has_performers,
+                limit=page_size, offset=(page - 1) * page_size,
             )
         finally:
             db.close()

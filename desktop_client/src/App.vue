@@ -6,11 +6,16 @@ import MovieCard from './components/MovieCard.vue';
 import MovieDetailModal from './components/MovieDetailModal.vue';
 import PerformerDetailModal from './components/PerformerDetailModal.vue';
 import StudioDetailModal from './components/StudioDetailModal.vue';
+import EpisodeCard from './components/EpisodeCard.vue';
+import EpisodeDetailModal from './components/EpisodeDetailModal.vue';
 import ImageLightbox from './components/ImageLightbox.vue';
 import FilterDrawer from './components/FilterDrawer.vue';
 import SyncModal from './components/SyncModal.vue';
 import PaginationBar from './components/PaginationBar.vue';
-import { api, createPerformerFilters, countActivePerformerFilters, FACET_KEYS, FACET_LABELS, IS_TAURI } from './api';
+import {
+  api, createPerformerFilters, countActivePerformerFilters, createEpisodeFilters,
+  countActiveEpisodeFilters, EPISODE_SORTS, FACET_KEYS, FACET_LABELS, IS_TAURI,
+} from './api';
 import { getImageUrl } from './utils/image';
 import { openLightbox, viewableImageFrom, zoomsOnClick, lightboxImage } from './utils/lightbox';
 import type {
@@ -30,6 +35,9 @@ import type {
   StudioSummary,
   StudioSortBy,
   StudioWorks,
+  EpisodeSummary,
+  EpisodeSortBy,
+  EpisodeFilterState,
 } from './types';
 import { FAVORITE_TYPES } from './types';
 import { loadGlossary, glossaryCount, trMeasure } from './utils/glossary';
@@ -74,6 +82,21 @@ const STUDIO_SORTS = [
 ] as const;
 
 /**
+ * The episode library. Its rows come from the whole `episodes` table rather than
+ * from one film or one performer, which is the only place a scene can be browsed
+ * on its own — the site titles every episode "Episode #<row id>", so there is no
+ * positional label to search on either.
+ */
+const episodeRows = ref<EpisodeSummary[]>([]);
+const totalEpisodeRows = ref(0);
+const episodeQuery = ref('');
+const episodeSortBy = ref<EpisodeSortBy>('id_desc');
+const episodeFilters = reactive<EpisodeFilterState>(createEpisodeFilters());
+const activeEpisodeFilterCount = computed(() =>
+  countActiveEpisodeFilters(episodeFilters, episodeSortBy.value)
+);
+
+/**
  * Favorited keys, grouped by type. Kept as plain string sets so a heart can be
  * coloured with a single `.has()` regardless of which of the five kinds it is
  * (movie/performer/episode key on the numeric id as a string; studio/director on
@@ -101,13 +124,22 @@ const studioWorks = ref<StudioWorks | null>(null);
 const studioWorksLoading = ref(false);
 
 /**
+ * The scene being viewed. Unlike the studio, everything it shows is already in the
+ * grid row it was opened from, so there is nothing to fetch — only the neighbour
+ * lookup for ‹ / › needs the list it was opened in.
+ */
+const selectedEpisode = ref<EpisodeSummary | null>(null);
+/** The rows ‹ / › pages through: whatever the grid had loaded when it was opened. */
+const episodeList = ref<EpisodeSummary[]>([]);
+
+/**
  * Detail views can open one another — a performer's filmography links to a
  * movie, a movie's cast links to a performer, a studio's films link to both.
  * All must stay mounted so the user can navigate back, so the open order decides
  * which one sits on top. Openers push to the end; the last entry gets the highest
  * layer.
  */
-type ModalKind = 'movie' | 'performer' | 'studio';
+type ModalKind = 'movie' | 'performer' | 'studio' | 'episode';
 
 const modalStack = ref<ModalKind[]>([]);
 
@@ -263,6 +295,7 @@ const listMode = ref<'scroll' | 'paged'>(
 const moviePage = ref(1);
 const performerPage = ref(1);
 const studioPage = ref(1);
+const episodePage = ref(1);
 const isLoading = ref(false);
 const isLoadingMore = ref(false);
 
@@ -285,6 +318,7 @@ function goToPage(n: number) {
   if (currentTab.value === 'movies') fetchMovies(true, n);
   else if (currentTab.value === 'performers') fetchPerformers(true, n);
   else if (currentTab.value === 'studios') fetchStudios(true, n);
+  else if (currentTab.value === 'episodes') fetchEpisodes(true, n);
   scrollContainerRef.value?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -293,6 +327,7 @@ function reloadCurrentTab() {
   if (currentTab.value === 'movies') fetchMovies(true);
   else if (currentTab.value === 'performers') fetchPerformers(true);
   else if (currentTab.value === 'studios') fetchStudios(true);
+  else if (currentTab.value === 'episodes') fetchEpisodes(true);
   else return;
   nextTick(() => fillViewport());
 }
@@ -486,6 +521,12 @@ function resetPerformerFilters() {
   Object.assign(performerFilters, createPerformerFilters());
 }
 
+/** Clears the drawer's episode section, sort included — it is edited in there too. */
+function resetEpisodeFilters() {
+  Object.assign(episodeFilters, createEpisodeFilters());
+  episodeSortBy.value = 'id_desc';
+}
+
 async function loadCacheStats() {
   cacheStats.value = await api.getCacheStats();
 }
@@ -657,6 +698,36 @@ async function loadMoreStudios() {
   await fetchStudios(false, studioPage.value + 1);
 }
 
+async function fetchEpisodes(replace = true, targetPage = 1) {
+  episodePage.value = targetPage;
+  if (replace) isLoading.value = true;
+  else isLoadingMore.value = true;
+
+  try {
+    const res = await api.getEpisodeLibrary(
+      episodeQuery.value, episodeSortBy.value, episodeFilters, episodePage.value, pageSize.value
+    );
+    if (replace) {
+      episodeRows.value = res.items;
+    } else {
+      // Episodes have a real id, so duplicates are unlikely; the filter is for a
+      // page arriving twice (a fast scroll firing two loads at the same cursor).
+      const existing = new Set(episodeRows.value.map(e => e.id));
+      episodeRows.value.push(...res.items.filter(e => !existing.has(e.id)));
+    }
+    totalEpisodeRows.value = res.total;
+  } finally {
+    isLoading.value = false;
+    isLoadingMore.value = false;
+  }
+}
+
+async function loadMoreEpisodes() {
+  if (isLoading.value || isLoadingMore.value) return;
+  if (episodeRows.value.length >= totalEpisodeRows.value) return;
+  await fetchEpisodes(false, episodePage.value + 1);
+}
+
 // Waterfall Infinite Scroll
 //
 // This used to be an IntersectionObserver rooted at the scroll container. That
@@ -684,6 +755,8 @@ function handleScroll() {
     if (!isLoading.value && !isLoadingMore.value && performers.value.length < totalPerformers.value) loadMorePerformers();
   } else if (currentTab.value === 'studios') {
     if (!isLoading.value && !isLoadingMore.value && studioRows.value.length < totalStudioRows.value) loadMoreStudios();
+  } else if (currentTab.value === 'episodes') {
+    if (!isLoading.value && !isLoadingMore.value && episodeRows.value.length < totalEpisodeRows.value) loadMoreEpisodes();
   }
 }
 
@@ -709,6 +782,9 @@ async function fillViewport() {
     } else if (currentTab.value === 'studios') {
       if (isLoading.value || isLoadingMore.value || studioRows.value.length >= totalStudioRows.value) return;
       await loadMoreStudios();
+    } else if (currentTab.value === 'episodes') {
+      if (isLoading.value || isLoadingMore.value || episodeRows.value.length >= totalEpisodeRows.value) return;
+      await loadMoreEpisodes();
     } else {
       return;
     }
@@ -721,11 +797,13 @@ const searchQuery = computed({
   get: () => {
     if (currentTab.value === 'performers') return performerFilters.query;
     if (currentTab.value === 'studios') return studioQuery.value;
+    if (currentTab.value === 'episodes') return episodeQuery.value;
     return filters.query;
   },
   set: (val: string) => {
     if (currentTab.value === 'performers') performerFilters.query = val;
     else if (currentTab.value === 'studios') studioQuery.value = val;
+    else if (currentTab.value === 'episodes') episodeQuery.value = val;
     else filters.query = val;
   },
 });
@@ -755,6 +833,12 @@ watch([studioQuery, studioSortBy], () => {
   if (currentTab.value === 'studios') reloadCurrentTab();
 });
 
+// Episodes take both: a sort control in the toolbar (as studios do) and a drawer
+// for the three filters, which is where the sort also lives.
+watch([episodeQuery, episodeSortBy, episodeFilters], () => {
+  if (currentTab.value === 'episodes') reloadCurrentTab();
+}, { deep: true });
+
 watch(currentTab, (newTab) => {
   scrollContainerRef.value?.scrollTo({ top: 0 });
   if (newTab === 'movies') {
@@ -766,6 +850,8 @@ watch(currentTab, (newTab) => {
     loadPerformerFacets();
   } else if (newTab === 'studios') {
     if (studioRows.value.length === 0) reloadCurrentTab();
+  } else if (newTab === 'episodes') {
+    if (episodeRows.value.length === 0) reloadCurrentTab();
   } else if (newTab === 'favorites') {
     // Always refetched: the page is a server-side snapshot of five tables and the
     // scrape running in the background keeps adding rows it can point at.
@@ -795,6 +881,11 @@ function togglePerformerFavorite(p: Performer) {
 /** Studios have no id — the name is the key, here and in the library filter. */
 function toggleStudioFavorite(name: string) {
   void toggleFavoriteEntity('studio', name);
+}
+
+/** Episodes key on their row id, like films. */
+function toggleEpisodeFavorite(ep: EpisodeSummary) {
+  void toggleFavoriteEntity('episode', String(ep.id));
 }
 
 async function toggleFavoriteEntity(type: FavoriteType, key: string) {
@@ -897,6 +988,7 @@ function filterByStudio(studioName: string) {
   filters.director = '';
   if (selectedMovie.value) closeMovieDetail();
   if (selectedPerformer.value) closePerformerDetail();
+  if (selectedEpisode.value) closeEpisodeDetail();
   currentTab.value = 'movies';
   fetchMovies(true);
 }
@@ -907,6 +999,7 @@ function filterByDirector(directorName: string) {
   filters.studio = '';
   if (selectedMovie.value) closeMovieDetail();
   if (selectedPerformer.value) closePerformerDetail();
+  if (selectedEpisode.value) closeEpisodeDetail();
   currentTab.value = 'movies';
   fetchMovies(true);
 }
@@ -964,6 +1057,35 @@ function closeStudioDetail() {
   selectedStudio.value = null;
   studioWorks.value = null;
   popModal('studio');
+}
+
+/**
+ * Open a scene.
+ *
+ * `rows` is the grid the card was clicked in, so ‹ / › can walk the loaded pages
+ * without a request — the modal is a viewer, not a second browser.
+ */
+function openEpisodeDetail(ep: EpisodeSummary, rows: EpisodeSummary[]) {
+  pushModal('episode');
+  episodeList.value = rows;
+  selectedEpisode.value = ep;
+}
+
+function closeEpisodeDetail() {
+  selectedEpisode.value = null;
+  episodeList.value = [];
+  popModal('episode');
+}
+
+/** ‹ / › inside the loaded rows. The index is looked up rather than stored, so a
+ *  reload behind the modal cannot leave it pointing at the wrong scene. */
+function navigateEpisode(delta: number) {
+  const current = selectedEpisode.value;
+  if (!current) return;
+  const i = episodeList.value.findIndex(e => e.id === current.id);
+  if (i < 0) return;
+  const next = episodeList.value[i + delta];
+  if (next) selectedEpisode.value = next;
 }
 
 /**
@@ -1037,7 +1159,11 @@ onUnmounted(() => {
       :filter-active="
         currentTab === 'performers'
           ? activePerformerFilterCount > 0
-          : Boolean(filters.studio || filters.category || filters.sortBy !== 'year_desc')
+          : currentTab === 'episodes'
+            ? activeEpisodeFilterCount > 0
+            : currentTab === 'studios'
+              ? false
+              : Boolean(filters.studio || filters.category || filters.sortBy !== 'year_desc')
       "
       @toggle-filter="isFilterOpen = !isFilterOpen"
       @toggle-sync="isSyncOpen = true"
@@ -1505,7 +1631,135 @@ onUnmounted(() => {
           />
         </div>
 
-        <!-- 4. Favorites Tab — five server-driven sections -->
+        <!-- 4. Episodes Tab — the whole episodes table, browsable on its own -->
+        <div v-else-if="currentTab === 'episodes'" class="space-y-6">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-bold text-white tracking-tight">分集库</h1>
+              <span class="text-xs text-zinc-500 font-mono">({{ episodeRows.length }} / {{ totalEpisodeRows.toLocaleString() }} 个片段)</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <!-- Sort: the same three orderings the drawer offers -->
+              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+                <button
+                  v-for="s in EPISODE_SORTS"
+                  :key="s.id"
+                  @click="episodeSortBy = s.id"
+                  :class="[
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    episodeSortBy === s.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                  ]"
+                >
+                  {{ s.label }}
+                </button>
+              </div>
+
+              <!-- How the list pages in: auto-load on scroll, or explicit pages -->
+              <div class="flex items-center gap-0.5 bg-zinc-900 border border-zinc-800 rounded-xl p-0.5 text-xs">
+                <button
+                  v-for="m in [
+                    { id: 'scroll', label: '滑动加载' },
+                    { id: 'paged', label: '翻页' }
+                  ]"
+                  :key="m.id"
+                  @click="setListMode(m.id as 'scroll' | 'paged')"
+                  :class="[
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    listMode === m.id ? 'bg-amber-500 text-black font-bold' : 'text-zinc-400 hover:text-zinc-200'
+                  ]"
+                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                >
+                  {{ m.label }}
+                </button>
+              </div>
+
+              <!-- Grid columns adjuster -->
+              <div class="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-zinc-500 text-[11px]">每行</span>
+                <button
+                  @click="decreaseCols"
+                  :disabled="activeCols <= 2"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="减少每行列数"
+                >
+                  &lt;
+                </button>
+                <span class="w-5 text-center font-mono font-bold text-amber-400">{{ activeCols }}</span>
+                <button
+                  @click="increaseCols"
+                  :disabled="activeCols >= activeColsMax"
+                  class="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-zinc-200 hover:text-white transition font-mono font-bold"
+                  title="增加每行列数"
+                >
+                  &gt;
+                </button>
+                <span class="text-zinc-500 text-[11px]">列</span>
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-if="episodeRows.length > 0"
+            class="grid gap-4 transition-all duration-200"
+            :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
+          >
+            <EpisodeCard
+              v-for="ep in episodeRows"
+              :key="ep.id"
+              :episode="ep"
+              :lang="descLang"
+              :is-favorite="isFavorite('episode', ep.id)"
+              @select="openEpisodeDetail(ep, episodeRows)"
+              @select-movie-id="openMovieDetailById"
+              @select-performer="openPerformerDetail"
+              @filter-studio="filterByStudio"
+              @toggle-favorite="toggleEpisodeFavorite"
+            />
+          </div>
+
+          <!-- Empty state -->
+          <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
+            <Clapperboard class="w-12 h-12 text-zinc-700 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-zinc-400">没有符合条件的片段</div>
+            <div v-if="activeEpisodeFilterCount > 0 || episodeQuery" class="text-xs text-zinc-600">
+              试试更换关键词，或在筛选面板里重置条件
+            </div>
+            <!-- The episodes table starts empty until the dedicated scrape runs: the
+                 film scrape only records the scenes it happens to walk past. -->
+            <div v-else class="text-xs text-zinc-600 max-w-md mx-auto leading-relaxed">
+              分集库目前为空。影片刮削只记录顺带遇到的分集，完整的分集清单需要用
+              <span class="font-mono text-zinc-500">--mode episodes</span> 单独刮削一轮。
+            </div>
+          </div>
+
+          <!-- Infinite-scroll footer: the list grows as the container bottom nears -->
+          <div v-if="listMode === 'scroll' && episodeRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-zinc-500">
+            <div v-if="isLoadingMore" class="flex items-center gap-2 text-amber-400 font-medium">
+              <Loader2 class="w-4 h-4 animate-spin" />
+              <span>滑动加载更多片段中...</span>
+            </div>
+            <div v-else-if="episodeRows.length >= totalEpisodeRows && totalEpisodeRows > 0" class="flex items-center gap-2 text-zinc-500 text-xs">
+              <span class="w-12 h-px bg-zinc-800"></span>
+              <span>已加载全部 {{ totalEpisodeRows.toLocaleString() }} 个片段</span>
+              <span class="w-12 h-px bg-zinc-800"></span>
+            </div>
+          </div>
+
+          <!-- Paged mode: explicit controls, incl. a customisable page size -->
+          <PaginationBar
+            v-if="listMode === 'paged' && episodeRows.length > 0"
+            :page="episodePage"
+            :page-size="pageSize"
+            :total="totalEpisodeRows"
+            :loading="isLoading"
+            :page-size-options="PAGE_SIZE_OPTIONS"
+            @update:page="goToPage"
+            @update:page-size="setPageSize"
+          />
+        </div>
+
+        <!-- 5. Favorites Tab — five server-driven sections -->
         <div v-else-if="currentTab === 'favorites'" class="space-y-8">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <h1 class="text-xl font-bold text-white tracking-tight">我的收藏</h1>
@@ -1735,7 +1989,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- 5. Settings & Cache Tab -->
+        <!-- 6. Settings & Cache Tab -->
         <div v-else-if="currentTab === 'settings'" class="max-w-3xl space-y-6">
           <h1 class="text-xl font-bold text-white tracking-tight">存储、缓存与系统设置</h1>
 
@@ -2293,6 +2547,21 @@ onUnmounted(() => {
       @toggle-entity-favorite="toggleFavoriteEntity"
     />
 
+    <EpisodeDetailModal
+      :episode="selectedEpisode"
+      :list="episodeList"
+      :lang="descLang"
+      :z-index="layerOf('episode')"
+      :is-top="modalStack[modalStack.length - 1] === 'episode'"
+      :is-favorite="selectedEpisode ? isFavorite('episode', selectedEpisode.id) : false"
+      @close="closeEpisodeDetail"
+      @navigate="navigateEpisode"
+      @select-movie-id="openMovieDetailById"
+      @select-performer="openPerformerDetail"
+      @filter-studio="filterByStudio"
+      @toggle-favorite="toggleEpisodeFavorite"
+    />
+
     <FilterDrawer
       :open="isFilterOpen"
       :tab="currentTab"
@@ -2301,12 +2570,17 @@ onUnmounted(() => {
       :categories="categories"
       :performer-filters="performerFilters"
       :performer-facets="performerFacets"
+      :episode-filters="episodeFilters"
+      :episode-sort-by="episodeSortBy"
       @close="isFilterOpen = false"
       @update:filters="(f) => Object.assign(filters, f)"
       @update:performer-filters="(f) => Object.assign(performerFilters, f)"
       @toggle-performer-facet="togglePerformerFacet"
+      @update:episode-filters="(f) => Object.assign(episodeFilters, f)"
+      @update:episode-sort="(s) => episodeSortBy = s"
       @reset="Object.assign(filters, { query: '', studio: '', category: '', sortBy: 'year_desc' })"
       @reset-performers="resetPerformerFilters"
+      @reset-episodes="resetEpisodeFilters"
     />
 
     <SyncModal

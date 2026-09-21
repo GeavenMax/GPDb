@@ -962,6 +962,101 @@ class DatabaseManager:
         ]
         return items, total
 
+    def list_episodes(self, query: str = "", sort: str = "id_desc", studio: str = "",
+                      has_zh: bool = False, has_performers: bool = False,
+                      limit: int = 24, offset: int = 0) -> tuple[list[dict], int]:
+        """One page of the episode library, plus how many episodes match the search.
+
+        Unlike get_performer_episodes / get_studio_episodes, this one is not scoped to
+        anything — it is the whole table — so the film is a LEFT JOIN: an episode whose
+        movie row is gone must still be listed rather than silently dropped.
+        """
+        conds: list[str] = []
+        args: list = []
+        if query:
+            # The search box is free text, so % and _ must reach LIKE as literals.
+            escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            like = f"%{escaped}%"
+            # e.title is deliberately not searched: the site names every single episode
+            # "Episode #N" (15,107 of 15,107), so it can never match what someone types.
+            conds.append("(m.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\'"
+                         " OR e.description_zh LIKE ? ESCAPE '\\')")
+            args += [like, like, like]
+        if studio:
+            conds.append("m.studio_name = ?")
+            args.append(studio)
+        if has_zh:
+            conds.append("e.description_zh IS NOT NULL AND trim(e.description_zh) != ''")
+        if has_performers:
+            conds.append("EXISTS (SELECT 1 FROM episode_performers ep WHERE ep.episode_id = e.id)")
+        where = f"WHERE {' AND '.join(conds)}" if conds else ""
+
+        order = {
+            "year_desc": "m.release_year DESC, e.id DESC",
+            "movie_asc": "m.title COLLATE NOCASE ASC, e.id ASC",
+        }.get(sort, "e.id DESC")
+
+        from_clause = "FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id"
+        row = self.conn.execute(f"SELECT count(*) {from_clause} {where}", args).fetchone()
+        total = row[0] if row else 0
+
+        cur = self.conn.execute(f"""
+            SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description,
+                   e.description_zh, e.action_notes, m.title, m.studio_name, m.release_year,
+                   -- The site names every episode "Episode #<its own row id>", so the
+                   -- title carries no position. The scene's rank inside its own film is
+                   -- what a card can actually show ("第 3 集 / 共 5 集"), and reading it
+                   -- off the id order matches how the film's own page lists them.
+                   (SELECT count(*) FROM episodes e2
+                     WHERE e2.movie_id = e.movie_id AND e2.id <= e.id) AS episode_ordinal,
+                   (SELECT count(*) FROM episodes e2 WHERE e2.movie_id = e.movie_id) AS episode_count
+            {from_clause}
+            {where}
+            ORDER BY {order}
+            LIMIT ? OFFSET ?
+        """, [*args, limit, offset])
+        items = [{
+            "id": r[0],
+            "movie_id": r[1],
+            "title": r[2],
+            "thumbnail_url": r[3],
+            "description": r[4],
+            "description_zh": r[5],
+            "action_notes": r[6],
+            "movie_title": r[7],
+            "studio_name": r[8],
+            "release_year": r[9],
+            "episode_ordinal": r[10],
+            "episode_count": r[11],
+        } for r in cur.fetchall()]
+        self._attach_episode_performers(items)
+        return items, total
+
+    def _attach_episode_performers(self, items: list[dict]) -> None:
+        """Fill in each episode's cast as [{"id", "name"}], in place.
+
+        A second query rather than group_concat inside the main one: the library cards
+        need the performer *ids* to open a performer (a name alone cannot), and with an
+        aggregate string they would not line up with the names. json_group_array would
+        carry both, but JSON1 is not something every sqlite3 build on macOS ships, so
+        the portable form wins. PK (episode_id, performer_id) covers the lookup.
+        """
+        if not items:
+            return
+        ids = [it["id"] for it in items]
+        marks = ",".join("?" * len(ids))
+        cur = self.conn.execute(f"""
+            SELECT episode_id, performer_id, performer_name
+            FROM episode_performers
+            WHERE episode_id IN ({marks})
+            ORDER BY episode_id, performer_id
+        """, ids)
+        by_episode: dict[int, list[dict]] = {}
+        for episode_id, performer_id, name in cur.fetchall():
+            by_episode.setdefault(episode_id, []).append({"id": performer_id, "name": name})
+        for it in items:
+            it["performers"] = by_episode.get(it["id"], [])
+
     def get_stats(self) -> dict[str, int]:
         cur = self.conn.cursor()
         stats = {}

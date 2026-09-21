@@ -1,19 +1,28 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { X, RotateCcw, Camera, Film, Clapperboard } from '@lucide/vue';
-import type { FilterState, PerformerFilterState, PerformerFacets, PerformerSortBy } from '../types';
-import { FACET_KEYS, FACET_LABELS } from '../api';
+import { X, RotateCcw, Camera, Film, Clapperboard, Languages, Users } from '@lucide/vue';
+import type {
+  FilterState,
+  PerformerFilterState,
+  PerformerFacets,
+  PerformerSortBy,
+  EpisodeFilterState,
+  EpisodeSortBy,
+} from '../types';
+import { FACET_KEYS, FACET_LABELS, EPISODE_SORTS } from '../api';
 import { tr } from '../utils/glossary';
 
 const props = defineProps<{
   open: boolean;
-  /** Which tab the drawer is filtering; the performer section only applies there. */
+  /** Which tab the drawer is filtering; each section only applies to its own tab. */
   tab?: string;
   filters: FilterState;
   studios: string[];
   categories: string[];
   performerFilters?: PerformerFilterState;
   performerFacets?: PerformerFacets;
+  episodeFilters?: EpisodeFilterState;
+  episodeSortBy?: EpisodeSortBy;
 }>();
 
 const emit = defineEmits<{
@@ -21,8 +30,11 @@ const emit = defineEmits<{
   (e: 'update:filters', filters: FilterState): void;
   (e: 'update:performer-filters', filters: PerformerFilterState): void;
   (e: 'toggle-performer-facet', key: keyof PerformerFilterState, value: string): void;
+  (e: 'update:episode-filters', filters: EpisodeFilterState): void;
+  (e: 'update:episode-sort', sortBy: EpisodeSortBy): void;
   (e: 'reset'): void;
   (e: 'reset-performers'): void;
+  (e: 'reset-episodes'): void;
 }>();
 
 const local = ref<FilterState>({ ...props.filters });
@@ -32,6 +44,16 @@ watch(() => props.filters, (val) => {
 }, { deep: true });
 
 const isPerformerTab = computed(() => props.tab === 'performers');
+const isEpisodeTab = computed(() => props.tab === 'episodes');
+
+/**
+ * Episodes are filtered by a different shape than films, so the drawer edits a
+ * parallel state object. The studio list is the one thing shared with the movie
+ * section — both filter on the same `movies.studio_name` column.
+ */
+function patchEpisodeFilters(patch: Partial<EpisodeFilterState>) {
+  emit('update:episode-filters', { ...(props.episodeFilters as EpisodeFilterState), ...patch });
+}
 
 const MIN_MOVIE_OPTIONS = [1, 5, 10, 25, 50];
 
@@ -132,7 +154,7 @@ function resetAll() {
         <!-- Top bar -->
         <div class="flex items-center justify-between pb-4 border-b border-zinc-800">
           <div class="font-bold text-white text-base">
-            {{ isPerformerTab ? '演员属性筛选' : '高级筛选' }}
+            {{ isPerformerTab ? '演员属性筛选' : isEpisodeTab ? '分集筛选' : '高级筛选' }}
           </div>
           <button @click="emit('close')" class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-900 transition">
             <X class="w-5 h-5" />
@@ -262,6 +284,84 @@ function resetAll() {
           </div>
         </template>
 
+        <!-- ============ Episode filters ============ -->
+        <template v-else-if="isEpisodeTab">
+          <!-- Sort By. Also offered on the tab's toolbar, which is the faster path;
+               this copy is here because every section of the drawer starts with it. -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">排序方式</label>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button
+                v-for="s in EPISODE_SORTS"
+                :key="s.id"
+                @click="emit('update:episode-sort', s.id)"
+                :class="[
+                  'px-3 py-2 rounded-xl text-xs font-medium border text-center transition',
+                  episodeSortBy === s.id
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-400 font-bold'
+                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                ]"
+              >
+                {{ s.label }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick toggles -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">快速筛选</label>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                @click="patchEpisodeFilters({ hasZh: !episodeFilters?.hasZh })"
+                :class="[
+                  'px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5',
+                  episodeFilters?.hasZh
+                    ? 'bg-amber-500 text-black font-bold border-amber-500'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                ]"
+                title="只显示已有中文简介的片段"
+              >
+                <Languages class="w-3 h-3" />
+                有中文简介
+              </button>
+              <button
+                @click="patchEpisodeFilters({ hasPerformers: !episodeFilters?.hasPerformers })"
+                :class="[
+                  'px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5',
+                  episodeFilters?.hasPerformers
+                    ? 'bg-amber-500 text-black font-bold border-amber-500'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                ]"
+                title="只显示已关联演员的片段"
+              >
+                <Users class="w-3 h-3" />
+                有演员
+              </button>
+            </div>
+          </div>
+
+          <!-- Studio. Same list as the film section: scenes carry no studio of their
+               own, so this filters on the studio of the film they came from. -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">来源片商 (Studio)</label>
+            <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto darkScrollbars pr-1">
+              <button
+                v-for="st in studios"
+                :key="st"
+                @click="patchEpisodeFilters({ studio: episodeFilters?.studio === st ? '' : st })"
+                :class="[
+                  'px-2.5 py-1 rounded-lg text-xs font-medium border transition',
+                  episodeFilters?.studio === st
+                    ? 'bg-amber-500 text-black font-bold border-amber-500'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                ]"
+              >
+                {{ st }}
+              </button>
+            </div>
+          </div>
+        </template>
+
         <!-- ============ Movie filters ============ -->
         <template v-else>
         <!-- Sort By -->
@@ -348,7 +448,7 @@ function resetAll() {
       <!-- Bottom Actions -->
       <div class="pt-4 border-t border-zinc-800 flex gap-2">
         <button
-          @click="isPerformerTab ? emit('reset-performers') : resetAll()"
+          @click="isPerformerTab ? emit('reset-performers') : isEpisodeTab ? emit('reset-episodes') : resetAll()"
           class="flex-1 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs font-semibold text-zinc-400 hover:text-white flex items-center justify-center gap-1.5 transition"
         >
           <RotateCcw class="w-3.5 h-3.5" />
