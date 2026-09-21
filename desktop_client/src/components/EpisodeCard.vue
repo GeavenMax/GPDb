@@ -62,7 +62,7 @@ const shownDescription = computed(() => {
       <!-- Position in the parent film (the site's own "Episode #<row id>" says nothing) -->
       <span
         v-if="positionLabel"
-        class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-scrim/70 text-accent-soft backdrop-blur-md z-10"
+        class="on-scrim absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-scrim/70 text-accent-soft backdrop-blur-md z-10"
       >
         {{ positionLabel }}
       </span>
@@ -80,7 +80,7 @@ const shownDescription = computed(() => {
       <button
         @click.stop="emit('toggle-favorite', episode)"
         :class="[
-          'absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 z-10',
+          'on-scrim absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 z-10',
           isFavorite
             ? 'bg-danger-fill text-on-danger shadow-lg shadow-danger-fill/40 opacity-100'
             : 'bg-scrim/40 text-fg-3 hover:text-danger hover:bg-scrim/80 opacity-0 group-hover:opacity-100'

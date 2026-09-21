@@ -25,6 +25,56 @@ img {
   cursor: zoom-in;
 }
 
+/*
+ * The floating-layer material. One class per role, each reading its colour, blur and
+ * sheen from the theme (theme.css), so 经典 renders flat and opaque, 流体玻璃 frosted,
+ * and Material You a plain tonal surface — without a single component knowing which
+ * theme is active.
+ *
+ * A chrome class *replaces* the `bg-*` utility the element used to carry rather than
+ * stacking with it: an opaque background under a translucent one would make the blur
+ * pointless.
+ */
+@layer components {
+  .chrome-panel,
+  .chrome-side,
+  .chrome-bar {
+    /* The frosted top-edge highlight. `none` in the flat themes, and safe to set here
+       because Tailwind's `bg-*` utilities only ever touch background-color. */
+    background-image: var(--chrome-sheen);
+  }
+  /* Panels and the sidebar only blur where they are translucent, which is the glass
+     themes alone — hence a separate token. A backdrop-filter on an opaque layer is a
+     composite the browser still pays for, and the modal panel is a scrolling container:
+     blurring it while it scrolls a long synopsis is exactly the jank to avoid. */
+  .chrome-panel,
+  .chrome-side {
+    -webkit-backdrop-filter: blur(var(--chrome-blur)) saturate(var(--chrome-saturate));
+    backdrop-filter: blur(var(--chrome-blur)) saturate(var(--chrome-saturate));
+  }
+  /* The top bar has content scrolling under it in every theme, so it blurs in every
+     theme — it is the one layer that was already translucent before this refactor. */
+  .chrome-bar {
+    -webkit-backdrop-filter: blur(var(--chrome-bar-blur)) saturate(var(--chrome-saturate));
+    backdrop-filter: blur(var(--chrome-bar-blur)) saturate(var(--chrome-saturate));
+  }
+  .chrome-panel {
+    background-color: var(--chrome-panel); /* modals, dialogs */
+  }
+  .chrome-side {
+    background-color: var(--chrome-side); /* sidebar, filter drawer */
+  }
+  .chrome-bar {
+    background-color: var(--chrome-bar); /* top bar, image-viewer toolbar */
+  }
+
+  /* The coloured ground the glass is there to blur. `none` everywhere else, so this is
+     one class on the app shell rather than a theme branch. */
+  .wallpaper {
+    background-image: var(--wallpaper);
+  }
+}
+
 /* Custom smooth scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

@@ -39,7 +39,7 @@ function clearSearch() {
 </script>
 
 <template>
-  <header class="h-16 border-b border-line bg-sunken/80 backdrop-blur-md sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
+  <header class="chrome-bar h-16 border-b border-line sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
     <!-- Brand -->
     <div class="flex items-center gap-3 select-none">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-fill via-accent-2 to-accent-deep flex items-center justify-center shadow-lg shadow-accent-fill/20 font-black text-on-fill tracking-tighter text-lg">

@@ -38,7 +38,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown, true));
 <template>
   <div
     v-if="lightboxImage"
-    class="fixed inset-0 z-[200] bg-scrim/95 backdrop-blur-sm flex flex-col animate-fade-in"
+    class="on-scrim fixed inset-0 z-[200] bg-scrim/95 backdrop-blur-sm flex flex-col animate-fade-in"
   >
     <!-- Header: the alt text doubles as the caption, so a grid cover opened here
          still says which film it belongs to. -->

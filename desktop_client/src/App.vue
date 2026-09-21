@@ -1150,7 +1150,7 @@ onUnmounted(() => {
     scrolling. Everything bound to `<main>` — the scroll-based loader in
     particular — then sits on an element that never scrolls.
   -->
-  <div class="h-screen overflow-hidden bg-app text-fg flex flex-col antialiased">
+  <div class="wallpaper h-screen overflow-hidden bg-app text-fg flex flex-col antialiased">
     <!-- Navbar -->
     <Navbar
       v-model="searchQuery"
@@ -1853,7 +1853,7 @@ onUnmounted(() => {
                     />
                     <button
                       @click.stop="toggleFavoriteEntity('performer', f.key)"
-                      class="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-scrim/50 hover:bg-scrim/80 backdrop-blur-md flex items-center justify-center text-danger transition"
+                      class="on-scrim absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-scrim/50 hover:bg-scrim/80 backdrop-blur-md flex items-center justify-center text-danger transition"
                       title="取消收藏该演员"
                     >
                       <Heart class="w-3 h-3" fill="currentColor" />
@@ -2349,10 +2349,10 @@ onUnmounted(() => {
                 桌面版直接读写本地 SQLite，不经过本地服务进程，因此这里只显示进度、不能直接发起翻译。
                 命令行会读取同一份 <code class="font-mono">translate_config.json</code>：
               </div>
-              <code class="block bg-scrim/60 rounded-lg p-2 font-mono text-[11px] text-fg-2 overflow-x-auto">
+              <code class="on-scrim block bg-scrim/60 rounded-lg p-2 font-mono text-[11px] text-fg-2 overflow-x-auto">
                 python3 translate.py --list-profiles
               </code>
-              <code class="block bg-scrim/60 rounded-lg p-2 font-mono text-[11px] text-fg-2 overflow-x-auto">
+              <code class="on-scrim block bg-scrim/60 rounded-lg p-2 font-mono text-[11px] text-fg-2 overflow-x-auto">
                 python3 translate.py --profile deepseek --limit 20 --dry-run
               </code>
               <div class="text-fg-3">

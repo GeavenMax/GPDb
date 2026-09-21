@@ -38,7 +38,7 @@ async function startSync() {
     class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim/80 backdrop-blur-sm animate-fade-in"
     @click.self="emit('close')"
   >
-    <div class="relative w-full max-w-md bg-surface border border-line-strong/80 rounded-3xl shadow-2xl p-6 text-fg space-y-6">
+    <div class="relative w-full max-w-md chrome-panel border border-line-strong/80 rounded-3xl shadow-2xl p-6 text-fg space-y-6">
       <!-- Close Button -->
       <button
         @click="emit('close')"

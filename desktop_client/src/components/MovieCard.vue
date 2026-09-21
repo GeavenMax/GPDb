@@ -214,7 +214,7 @@ const hasTranslation = computed(
       <button
         @click.stop="emit('toggle-favorite', movie)"
         :class="[
-          'absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 z-10',
+          'on-scrim absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-md transition-all duration-200 z-10',
           isFavorite
             ? 'bg-danger-fill text-on-danger shadow-lg shadow-danger-fill/40 opacity-100'
             : 'bg-scrim/40 text-fg-3 hover:text-danger hover:bg-scrim/80 opacity-0 group-hover:opacity-100'

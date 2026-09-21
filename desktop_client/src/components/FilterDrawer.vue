@@ -146,7 +146,7 @@ function resetAll() {
     <!-- Slide-over Drawer -->
     <aside
       :class="[
-        'fixed top-0 right-0 bottom-0 w-80 max-w-full bg-sunken border-l border-line z-50 p-6 flex flex-col justify-between shadow-2xl transition-transform duration-300 ease-out select-none',
+        'fixed top-0 right-0 bottom-0 chrome-side w-80 max-w-full border-l border-line z-50 p-6 flex flex-col justify-between shadow-2xl transition-transform duration-300 ease-out select-none',
         open ? 'translate-x-0' : 'translate-x-full'
       ]"
     >

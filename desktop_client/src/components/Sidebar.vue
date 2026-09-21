@@ -108,7 +108,7 @@ function tabClass(id: AppTab, active: boolean) {
 </script>
 
 <template>
-  <aside class="w-56 border-r border-line bg-sunken p-4 flex flex-col justify-between select-none">
+  <aside class="chrome-side w-56 border-r border-line p-4 flex flex-col justify-between select-none">
     <div class="space-y-4">
       <div class="px-2 text-[11px] font-semibold text-fg-4 uppercase tracking-wider">
         资源检索

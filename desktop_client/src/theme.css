@@ -17,13 +17,32 @@
  *    from here breaks the moment the last `bg-zinc-950` disappears — which is exactly
  *    what this refactor did.
  *
- * The values are the ones Tailwind's own theme.css holds for the shades they replace,
- * copied rather than approximated, so this file on its own changes nothing on screen.
  * `:root` carries the complete 经典·暗 set and every other theme overrides only what it
  * changes: a theme that forgets a token inherits a working dark value instead of
  * collapsing to transparent.
+ *
+ * Six themes, and the three style families differ in more than hue:
+ *
+ *   经典         opaque chrome, no blur, the palette the app shipped with
+ *   流体玻璃     translucent chrome over a soft wallpaper; light hairlines, a sheen on
+ *                the top edge, heavy blur and saturation — Apple's Liquid Glass
+ *   Material You surfaces tinted from the brand amber, no blur, no shadows: depth comes
+ *                from the surface ladder alone (tones, not elevation)
+ *
+ * The families are told apart by tokens, never by a JavaScript branch: a non-glass
+ * theme sets `--chrome-blur: 0px` and an opaque `--chrome-panel`/`--chrome-side`, and
+ * the three classes in style.css that consume them render flat. Only the *floating*
+ * layers carry those classes (sidebar, top bar, modals, drawer) — content cards stay
+ * opaque, because a long scrolling grid is no place for a full-screen compositing pass.
+ *
+ * `.on-scrim` sits in the same selector list as `:root` above, which re-asserts the dark
+ * ramp on the element itself — for text painted on a photograph or on the scrim rather
+ * than on the page. Custom properties inherit, and a declaration on the element beats an
+ * inherited one at any specificity, so `.on-scrim` inside `[data-theme='classic-light']`
+ * still gets the dark ramp.
  */
-:root {
+:root,
+.on-scrim {
   color-scheme: dark;
 
   /* Surfaces, from the page down to a raised input. */
@@ -37,9 +56,11 @@
   --line: oklch(27.4% 0.006 286.033);       /* zinc-800 */
   --line-strong: oklch(37% 0.013 285.805);  /* zinc-700 */
 
-  /* Backdrops, and the chrome that sits on a photo. Both stay dark in every theme:
-     a light scrim over a white page is not a scrim, and the button on a poster has to
-     read against the poster, not against the theme. */
+  /* Backdrops, and the two colours that sit on a fixed dark ground. Both stay dark in
+     every theme: a light scrim over a white page is not a scrim, and the glyph on a
+     poster's button reads against the poster, not against the theme. `.on-scrim` (this
+     same ramp, re-asserted on the element) is what keeps `text-fg-3` legible when it is
+     painted on a photograph instead of on the page. */
   --scrim: #000000;
   --on-danger: #ffffff;                     /* the glyph on a filled rose heart */
 
@@ -69,13 +90,232 @@
   --danger-soft: oklch(81% 0.117 11.638);     /* rose-300 */
   --danger-fill: oklch(64.5% 0.246 16.439);   /* rose-500 */
 
-  /* Chrome. The three style families differ here and almost nowhere else; a non-glass
-     theme carries a transparent tint and no blur, so no component needs a JavaScript
-     branch to know which one it is rendering. See `.chrome` in style.css. */
-  --chrome-tint: transparent;
-  --chrome-blur: 0px;
+  /* Chrome: the material of a floating layer. 经典·暗 is this block's own values with
+     the blur switched off, so the class renders exactly what the components used to ask
+     for by hand (`bg-sunken`, `bg-sunken/80 backdrop-blur-md`, `bg-surface`). */
+  --chrome-panel: oklch(21% 0.006 285.885);            /* modal panels — was bg-surface */
+  --chrome-side: oklch(14.1% 0.005 285.823);           /* sidebar, drawer — was bg-sunken */
+  --chrome-bar: oklch(14.1% 0.005 285.823 / 0.8);      /* top bar — was bg-sunken/80 */
+  --chrome-blur: 0px;                                  /* opaque layers: nothing to blur */
+  --chrome-bar-blur: 12px;                             /* was backdrop-blur-md */
   --chrome-saturate: 100%;
-  --chrome-line: transparent;
+  --chrome-sheen: none;                                /* the frosted top highlight */
+  --wallpaper: none;                                   /* the ground the glass blurs */
+}
+
+/* 经典·浅 — the same layout with the ramp inverted. The amber has to move: amber-400 on
+   white is 2.1:1 and unreadable, so accent text becomes amber-700 (5.0:1) while the
+   fill stays the brand amber-500 under black text (9.8:1). Surfaces are white on a
+   zinc-50 page, the arrangement Plex and Jellyfin use. */
+[data-theme='classic-light'] {
+  color-scheme: light;
+
+  --app: oklch(98.5% 0 0);                  /* zinc-50 */
+  --sunken: oklch(96.7% 0.001 286.375);     /* zinc-100 */
+  --surface: #ffffff;
+  --surface-2: oklch(96.7% 0.001 286.375);
+  --surface-3: oklch(92% 0.004 286.32);
+  --line: oklch(92% 0.004 286.32);          /* zinc-200 */
+  --line-strong: oklch(87.1% 0.006 286.286);
+
+  --fg: oklch(21% 0.006 285.885);           /* zinc-900 — 17.7:1 on white */
+  --fg-2: oklch(37% 0.013 285.805);         /* zinc-700 — 10.4:1 */
+  --fg-3: oklch(55.2% 0.016 285.938);       /* zinc-500 — 4.8:1 */
+  --fg-4: oklch(62% 0.015 286.067);         /* 3.7:1 — decoration only, but matched to
+                                               the dark ramp's last step rather than to
+                                               zinc-400, which all but vanishes */
+  --fg-5: oklch(87.1% 0.006 286.286);
+
+  --accent: oklch(55.5% 0.163 48.998);      /* amber-700 */
+  --accent-soft: oklch(47.3% 0.137 46.201); /* amber-800 — on a light page a hover goes
+                                               *darker*, so `soft` inverts its meaning */
+  --accent-fill: oklch(76.9% 0.188 70.08);
+  --accent-deep: oklch(66.6% 0.179 58.318);
+  --accent-2: oklch(85.2% 0.199 91.936);
+
+  --success: oklch(50.8% 0.118 165.612);       /* emerald-700 — 5.4:1 */
+  --success-soft: oklch(43.2% 0.095 166.913);
+  --danger: oklch(58.6% 0.253 17.585);         /* rose-600 — 4.5:1 */
+  --danger-soft: oklch(51.4% 0.222 16.935);
+
+  /* A sticky bar is translucent here too — on a white page the scroll under it still
+     reads as depth, and it costs nothing at 12px of blur. */
+  --chrome-panel: #ffffff;
+  --chrome-side: oklch(98.5% 0 0);
+  --chrome-bar: oklch(98.5% 0 0 / 0.85);
+  --chrome-blur: 0px;
+  --chrome-bar-blur: 12px;
+  --chrome-saturate: 100%;
+  --chrome-sheen: none;
+  --wallpaper: none;
+}
+
+/* 流体玻璃·暗 — Liquid Glass. The ground goes a shade deeper and cooler so the frosted
+   layers above it have something to read against, hairlines become *light* (a dark line
+   on glass reads as a crack), and a sheen fades in from the top edge. Saturation is
+   pushed so the wallpaper's colour bleeds through the blur instead of turning grey. */
+[data-theme='glass-dark'] {
+  color-scheme: dark;
+
+  --app: oklch(13.5% 0.012 275);
+  --sunken: oklch(11.5% 0.012 275);
+  --surface: oklch(21.5% 0.01 275);
+  --surface-2: oklch(27% 0.012 275);
+  --surface-3: oklch(34% 0.014 275);
+  --line: oklch(100% 0 0 / 0.1);
+  --line-strong: oklch(100% 0 0 / 0.18);
+
+  --fg: #ffffff;
+  --fg-2: oklch(92% 0.005 275);
+  --fg-3: oklch(72% 0.01 275);
+  --fg-4: oklch(57% 0.012 275);
+  --fg-5: oklch(46% 0.012 275);
+
+  --chrome-panel: oklch(24% 0.012 275 / 0.62);
+  --chrome-side: oklch(16% 0.012 275 / 0.55);
+  --chrome-bar: oklch(16% 0.012 275 / 0.45);
+  --chrome-blur: 28px;
+  --chrome-bar-blur: 28px;
+  --chrome-saturate: 180%;
+  --chrome-sheen: linear-gradient(180deg, oklch(100% 0 0 / 0.1), oklch(100% 0 0 / 0) 42%);
+  --wallpaper:
+    radial-gradient(52% 44% at 6% 0%, oklch(58% 0.16 62 / 0.42), transparent 70%),
+    radial-gradient(46% 40% at 97% 90%, oklch(46% 0.17 300 / 0.34), transparent 72%),
+    radial-gradient(38% 32% at 72% 6%, oklch(58% 0.12 210 / 0.2), transparent 70%);
+}
+
+/* 流体玻璃·浅 — the same material on a bright ground. The amber moves to its light-theme
+   values, and the hairlines flip back to dark, but low-alpha: on glass a full-strength
+   line looks drawn on rather than lit. */
+[data-theme='glass-light'] {
+  color-scheme: light;
+
+  --app: oklch(96.5% 0.008 250);
+  --sunken: oklch(93.5% 0.008 250);
+  --surface: #ffffff;
+  --surface-2: oklch(95% 0.006 250);
+  --surface-3: oklch(90.5% 0.01 250);
+  --line: oklch(0% 0 0 / 0.1);
+  --line-strong: oklch(0% 0 0 / 0.18);
+
+  --fg: oklch(21% 0.006 285.885);
+  --fg-2: oklch(37% 0.013 285.805);
+  --fg-3: oklch(52.5% 0.016 285.938);       /* a step darker than zinc-500: this theme's
+                                               page is darker than zinc-50 */
+  --fg-4: oklch(62% 0.015 286.067);
+  --fg-5: oklch(87.1% 0.006 286.286);
+
+  --accent: oklch(55.5% 0.163 48.998);
+  --accent-soft: oklch(47.3% 0.137 46.201);
+  --accent-fill: oklch(76.9% 0.188 70.08);
+  --accent-deep: oklch(66.6% 0.179 58.318);
+  --accent-2: oklch(85.2% 0.199 91.936);
+
+  --success: oklch(50.8% 0.118 165.612);
+  --success-soft: oklch(43.2% 0.095 166.913);
+  --danger: oklch(58.6% 0.253 17.585);
+  --danger-soft: oklch(51.4% 0.222 16.935);
+
+  --chrome-panel: oklch(100% 0 0 / 0.62);
+  --chrome-side: oklch(100% 0 0 / 0.45);
+  --chrome-bar: oklch(100% 0 0 / 0.45);
+  --chrome-blur: 28px;
+  --chrome-bar-blur: 28px;
+  --chrome-saturate: 170%;
+  --chrome-sheen: linear-gradient(180deg, oklch(100% 0 0 / 0.55), oklch(100% 0 0 / 0) 40%);
+  --wallpaper:
+    radial-gradient(52% 44% at 6% 0%, oklch(84% 0.13 68 / 0.5), transparent 70%),
+    radial-gradient(46% 40% at 97% 90%, oklch(80% 0.11 300 / 0.38), transparent 72%),
+    radial-gradient(38% 32% at 72% 6%, oklch(84% 0.09 210 / 0.28), transparent 70%);
+}
+
+/* Material You·暗 — tonal, not neutral. Every grey carries a little of the seed's
+   warmth (hue 70-80, chroma 0.012-0.018), which is what makes a Material surface read
+   as *tinted* even where nothing looks brown. The accent is the seed's light tone; the
+   dark tones are gone entirely and depth comes from the surface ladder. */
+[data-theme='my-dark'] {
+  color-scheme: dark;
+
+  --app: oklch(15.5% 0.012 70);
+  --sunken: oklch(13% 0.012 70);
+  --surface: oklch(21% 0.014 70);
+  --surface-2: oklch(26% 0.016 70);
+  --surface-3: oklch(32% 0.018 70);
+  --line: oklch(30% 0.014 70);
+  --line-strong: oklch(40% 0.016 70);
+
+  --fg: oklch(96% 0.008 80);
+  --fg-2: oklch(89% 0.012 80);
+  --fg-3: oklch(74% 0.014 80);
+  --fg-4: oklch(59% 0.016 80);
+  --fg-5: oklch(47% 0.016 80);
+
+  --accent: oklch(88% 0.1 88);              /* primary tone: bright, low-chroma amber */
+  --accent-soft: oklch(93% 0.07 92);
+  --accent-fill: oklch(84% 0.12 82);
+  --accent-deep: oklch(74% 0.14 70);
+  --accent-2: oklch(92% 0.09 95);
+  --on-fill: oklch(20% 0.05 60);            /* on-primary is a *brown*, never black */
+
+  --success: oklch(85% 0.13 165);
+  --success-soft: oklch(90% 0.1 165);
+  --success-fill: oklch(78% 0.13 165);
+  --danger: oklch(82% 0.12 20);
+  --danger-soft: oklch(88% 0.09 20);
+  --danger-fill: oklch(60% 0.19 18);
+
+  /* Material has no frosted layer: the top bar is an opaque surface tone like the rest. */
+  --chrome-panel: oklch(21% 0.014 70);
+  --chrome-side: oklch(17% 0.012 70);
+  --chrome-bar: oklch(17% 0.012 70);
+  --chrome-blur: 0px;
+  --chrome-bar-blur: 0px;
+  --chrome-saturate: 100%;
+  --chrome-sheen: none;
+  --wallpaper: none;
+}
+
+/* Material You·浅 — a warm off-white page (never #fff, that is the tonal palette's
+   surface-container-lowest and belongs to cards), a dark primary on top of it. */
+[data-theme='my-light'] {
+  color-scheme: light;
+
+  --app: oklch(97.5% 0.014 80);
+  --sunken: oklch(94.5% 0.016 80);
+  --surface: oklch(99% 0.006 80);
+  --surface-2: oklch(93.5% 0.018 80);
+  --surface-3: oklch(89% 0.02 80);
+  --line: oklch(88% 0.016 80);
+  --line-strong: oklch(80% 0.018 80);
+
+  --fg: oklch(24% 0.03 60);
+  --fg-2: oklch(36% 0.028 60);
+  --fg-3: oklch(48% 0.024 60);
+  --fg-4: oklch(60% 0.02 60);
+  --fg-5: oklch(72% 0.016 60);
+
+  --accent: oklch(45% 0.13 55);
+  --accent-soft: oklch(38% 0.12 52);
+  --accent-fill: oklch(62% 0.15 62);
+  --accent-deep: oklch(52% 0.14 55);
+  --accent-2: oklch(78% 0.15 82);
+  --on-fill: oklch(20% 0.05 60);
+
+  --success: oklch(45% 0.11 165);
+  --success-soft: oklch(38% 0.09 166);
+  --success-fill: oklch(74% 0.13 165);
+  --danger: oklch(52% 0.2 18);
+  --danger-soft: oklch(45% 0.17 16);
+  --danger-fill: oklch(62% 0.2 17);
+
+  --chrome-panel: oklch(99% 0.006 80);
+  --chrome-side: oklch(97.5% 0.014 80);
+  --chrome-bar: oklch(97.5% 0.014 80);
+  --chrome-blur: 0px;
+  --chrome-bar-blur: 0px;
+  --chrome-saturate: 100%;
+  --chrome-sheen: none;
+  --wallpaper: none;
 }
 
 @theme inline {

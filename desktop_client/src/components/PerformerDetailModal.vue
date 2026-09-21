@@ -146,12 +146,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     @click.self="emit('close')"
   >
     <div
-      class="relative w-full max-w-4xl max-h-[90vh] bg-surface border border-line-strong/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col text-fg"
+      class="relative w-full max-w-4xl max-h-[90vh] chrome-panel border border-line-strong/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col text-fg"
     >
       <!-- Close Button -->
       <button
         @click="emit('close')"
-        class="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-scrim/60 hover:bg-scrim/90 border border-white/20 flex items-center justify-center text-fg-2 hover:text-fg transition"
+        class="absolute top-4 right-4 z-20 w-8 h-8 on-scrim rounded-full bg-scrim/60 hover:bg-scrim/90 border border-white/20 flex items-center justify-center text-fg-2 hover:text-fg transition"
       >
         <X class="w-4 h-4" />
       </button>
