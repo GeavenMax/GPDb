@@ -222,9 +222,15 @@ fn translation_config_matches_translate_py() {
     let root = root.as_path();
 
     // 1. The shape in use today.
+    //
+    // The key here is a fixture, and must stay one: this file is tracked, and an
+    // earlier revision of it carried the placeholder text replaced below with the
+    // user's *real* DeepSeek key pasted in. The comparison only needs a non-empty
+    // string of the same rough length — `the_real_config_on_disk_parses_the_same_way`
+    // below covers the actual key by reading the ignored file at test time.
     compare(root, &py, "current",
         r#"{"active":"deepseek","profiles":{
-            "deepseek":{"type":"openai","label":"DeepSeek 深度求索","api_key":"sk-0990620430ac46c0827310aa18d4ee01","model":"deepseek-flash","base_url":"https://api.deepseek.com"},
+            "deepseek":{"type":"openai","label":"DeepSeek 深度求索","api_key":"sk-fixture-not-a-real-key-0001","model":"deepseek-flash","base_url":"https://api.deepseek.com"},
             "openai":{"type":"openai","label":"OpenAI","api_key":"","model":"gpt-4o-mini","base_url":"https://api.openai.com/v1"}}}"#,
         &ops("[]"));
 

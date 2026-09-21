@@ -84,6 +84,66 @@ SYSTEM_PROMPT = """你是一名成人影片资料库的专职译者。你会收�
 其中 i 是输入的序号，必须与输入一一对应，不得遗漏或调换顺序。"""
 
 
+# Film titles need their own prompt, and can NOT reuse SYSTEM_PROMPT above:
+#
+# * Its rule 4 lists 片名 among the things that must stay in Latin letters, so the
+#   model would faithfully hand back the English title and the whole run would be a
+#   no-op that still cost money. (GLOSSARY_SYSTEM_PROMPT has the mirror-image problem:
+#   its rule 1 forbids the parenthetical a pun sometimes needs.)
+# * Its rule 3 (「不要意译或润色」) is exactly wrong here. A pun cannot survive a literal
+#   translation — 意译 is the whole job.
+TITLE_SYSTEM_PROMPT = """你是一名成人影片资料库的专职译者。你会收到一批英文片名（部分附带剧情简介作为背景），需要逐个译成简体中文。
+
+这些片名大量使用双关语、谐音、俚语和性暗示，用来指代影片的主打内容、欲望、男性性特征等成人内容。翻译的核心就是把这些隐喻在中文里落地。
+
+翻译要求：
+1. 优先把双关的意思**化进中文片名本身**，让中文读者不看原文也能领会那一层意思。
+   例：Creamy Ranch 里的 creamy 既指「浓郁」也指精液，中文片名要让这层意思还在；
+   Full Depth 里的 depth 是体位上的双关，译名要保住。
+2. **只有当中文确实承载不了这个双关时**，才在片名后加一个极短的括号点明，括号内不超过 6 个字。
+   能融进正文就绝不加括号。
+3. 保留系列编号（Part 2、Vol. 3）、人名、厂牌名的拉丁字母写法，不要音译。
+   例：Count Vladimir 保持 "Count Vladimir"，不要写成「弗拉基米尔伯爵」。
+4. 不要音译；不要把英文原名原样再抄一遍当作译文。
+5. 中文片名尽量不超过 20 个字，要像一个片名，不要写成一句解释。
+6. 附带的简介只用来判断片名里的双关指向什么，**不要翻译简介本身**。
+
+只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
+
+输出格式（必须严格遵守）：
+{"translations": [{"src": "英文原名", "zh": "中文译名"}]}
+src 必须**逐字符照抄**输入里的英文原名（含大小写、撇号、标点），一条都不能省略、不能改写。
+不要合并相同的片名：输入里有几条就输出几条 —— 本模式按 src 而不是按位置对应。"""
+
+
+# How much of a synopsis rides along as pun context, and how much of it the dry-run
+# listing echoes back. The verdict only needs the premise: a 2,000-character synopsis
+# costs tokens on every title in the batch for no extra signal, and pasting it into
+# the listing would bury the translations the run exists to show.
+TITLE_CONTEXT_CHARS = 300
+TITLE_CONTEXT_SHOWN = 60
+
+
+# Content tags rather than prose: a fixed vocabulary where the target is the wording a
+# Chinese catalogue would actually use.
+CATEGORY_SYSTEM_PROMPT = """你是一名成人影片资料库的术语译者。你会收到一批影片分类标签（英文），需要逐个译成简体中文。
+
+分类标签描述的是影片的内容类型、题材或卖点，属于固定小词表。
+
+翻译要求：
+1. 用中文同类资料库里常见的说法，简洁、直接，2 到 8 个字。
+   例：Twink→嫩弟，Bareback→无套，Wrestling→摔角，General Hardcore→普通硬核。
+2. 不要解释、不要加括号补充、不要音译。
+3. 缩写和符号按行业内的约定处理：J/O→手交，S/M→性虐，POV→第一人称视角。
+4. 不确定时按字面直译，不要臆造。
+
+只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
+
+输出格式（必须严格遵守）：
+{"translations": [{"i": 1, "zh": "第一条译文"}, {"i": 2, "zh": "第二条译文"}]}
+其中 i 是输入的序号，必须与输入一一对应，不得遗漏或调换顺序。"""
+
+
 # --------------------------------------------------------------------------
 # Providers
 # --------------------------------------------------------------------------
@@ -96,14 +156,35 @@ class Provider:
     """Base class: one JSON-mode chat completion returning a list of strings."""
 
     def __init__(self, api_key: str, model: str, base_url: str = "",
-                 timeout: float = 180.0, system_prompt: str | None = None):
+                 timeout: float = 180.0, system_prompt: str | None = None,
+                 noun: str = "简介", echo_source: bool = False):
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         # Which prompt to use depends on what is being translated (synopses vs the
-        # attribute glossary); everything else about the call is identical.
+        # attribute glossary vs film titles); everything else about the call is
+        # identical.
         self.system_prompt = system_prompt or SYSTEM_PROMPT
+        # Only the wording of the user turn; the system prompt carries the rules.
+        self.noun = noun
+        # Ask the model to echo each source string back with its translation, and have
+        # extract_translations match on that instead of on position. See the note on
+        # `sources` in extract_translations for why titles need it.
+        self.echo_source = echo_source
+
+    def user_turn(self, texts: list[str], contexts: list[str] | None = None) -> str:
+        if contexts is None:
+            numbered = "\n".join(f"{i}. {t}" for i, t in enumerate(texts, 1))
+        else:
+            # Title mode: the source line is what gets translated and echoed back as
+            # `src`; the context is background for judging a pun, labelled so the
+            # model does not translate it too.
+            numbered = "\n\n".join(
+                f"{i}. {t}\n   剧情背景（仅供判断双关，不要翻译）：{c}"
+                for i, (t, c) in enumerate(zip(texts, contexts), 1)
+            )
+        return f"请翻译以下 {len(texts)} 条{self.noun}：\n\n{numbered}"
 
     def _post(self, url: str, payload: dict, headers: dict) -> dict:
         data = json.dumps(payload).encode("utf-8")
@@ -119,7 +200,8 @@ class Provider:
         except json.JSONDecodeError as e:
             raise TranslationError(f"Non-JSON response from {url}: {e}") from e
 
-    def translate(self, texts: list[str]) -> list[str]:
+    def translate(self, texts: list[str],
+                  contexts: list[str] | None = None) -> list[str]:
         raise NotImplementedError
 
 
@@ -149,16 +231,38 @@ class AnthropicProvider(Provider):
         "additionalProperties": False,
     }
 
-    def translate(self, texts: list[str]) -> list[str]:
-        numbered = "\n".join(f"{i}. {t}" for i, t in enumerate(texts, 1))
+    def schema(self) -> dict:
+        """SCHEMA, or the src-echoing variant when echo_source is on.
+
+        A structured-output request is enforced, not suggested: leaving `src` out of
+        the schema while the prompt asks for it would have the API strip the field,
+        and every title would come back unmatched.
+        """
+        if not self.echo_source:
+            return self.SCHEMA
+        item = {
+            "type": "object",
+            "properties": {"src": {"type": "string"}, "zh": {"type": "string"}},
+            "required": ["src", "zh"],
+            "additionalProperties": False,
+        }
+        return {
+            "type": "object",
+            "properties": {"translations": {"type": "array", "items": item}},
+            "required": ["translations"],
+            "additionalProperties": False,
+        }
+
+    def translate(self, texts: list[str],
+                  contexts: list[str] | None = None) -> list[str]:
         payload = {
             "model": self.model,
             "max_tokens": 16000,
             "system": self.system_prompt,
-            "messages": [{"role": "user", "content": f"请翻译以下 {len(texts)} 条简介：\n\n{numbered}"}],
+            "messages": [{"role": "user", "content": self.user_turn(texts, contexts)}],
             "output_config": {
                 "effort": "low",  # mechanical translation task: no deep reasoning needed
-                "format": {"type": "json_schema", "schema": self.SCHEMA},
+                "format": {"type": "json_schema", "schema": self.schema()},
             },
         }
         body = self._post(
@@ -174,7 +278,7 @@ class AnthropicProvider(Provider):
         if body.get("stop_reason") == "refusal":
             raise TranslationError("Model declined the request (stop_reason=refusal)")
         text = "".join(b.get("text", "") for b in body.get("content", []) if b.get("type") == "text")
-        return extract_translations(text, len(texts))
+        return extract_translations(text, len(texts), sources=texts if self.echo_source else None)
 
 
 class OpenAICompatProvider(Provider):
@@ -183,13 +287,13 @@ class OpenAICompatProvider(Provider):
     DEFAULT_MODEL = "deepseek-chat"
     DEFAULT_BASE_URL = "https://api.deepseek.com"
 
-    def translate(self, texts: list[str]) -> list[str]:
-        numbered = "\n".join(f"{i}. {t}" for i, t in enumerate(texts, 1))
+    def translate(self, texts: list[str],
+                  contexts: list[str] | None = None) -> list[str]:
         payload = {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": f"请翻译以下 {len(texts)} 条简介：\n\n{numbered}"},
+                {"role": "user", "content": self.user_turn(texts, contexts)},
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.3,
@@ -206,7 +310,7 @@ class OpenAICompatProvider(Provider):
             text = body["choices"][0]["message"]["content"]
         except (KeyError, IndexError) as e:
             raise TranslationError(f"Unexpected response shape: {json.dumps(body)[:400]}") from e
-        return extract_translations(text, len(texts))
+        return extract_translations(text, len(texts), sources=texts if self.echo_source else None)
 
 
 class GeminiProvider(Provider):
@@ -215,12 +319,12 @@ class GeminiProvider(Provider):
     DEFAULT_MODEL = "gemini-2.5-flash"
     DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com"
 
-    def translate(self, texts: list[str]) -> list[str]:
-        numbered = "\n".join(f"{i}. {t}" for i, t in enumerate(texts, 1))
+    def translate(self, texts: list[str],
+                  contexts: list[str] | None = None) -> list[str]:
         base = self.base_url or self.DEFAULT_BASE_URL
         payload = {
             "systemInstruction": {"parts": [{"text": self.system_prompt}]},
-            "contents": [{"role": "user", "parts": [{"text": f"请翻译以下 {len(texts)} 条简介：\n\n{numbered}"}]}],
+            "contents": [{"role": "user", "parts": [{"text": self.user_turn(texts, contexts)}]}],
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0.3},
         }
         body = self._post(
@@ -238,7 +342,7 @@ class GeminiProvider(Provider):
             )
         except (KeyError, IndexError) as e:
             raise TranslationError(f"Unexpected response shape: {json.dumps(body)[:400]}") from e
-        return extract_translations(text, len(texts))
+        return extract_translations(text, len(texts), sources=texts if self.echo_source else None)
 
 
 PROVIDERS: dict[str, type[Provider]] = {
@@ -248,11 +352,29 @@ PROVIDERS: dict[str, type[Provider]] = {
 }
 
 
-def extract_translations(raw: str, expected: int) -> list[str]:
+def extract_translations(raw: str, expected: int,
+                         sources: list[str] | None = None) -> list[str]:
     """Pull the ordered translation list out of a model response.
 
     Returns a list of length `expected`; entries the model failed to return are
     empty strings so the caller can retry exactly those.
+
+    `sources` switches the matching from position to content. Pass the exact input
+    list and each result is matched by the `src` the model echoed back; anything
+    that does not match a source comes back empty and is retried.
+
+    Why titles need this: the positional path below trusts `i`, and falls back to the
+    item's position when `i` is missing. That is safe for 470-character synopses,
+    where a shift is obvious on sight. For an 18-character title it is neither
+    visible nor recoverable - the model merges duplicate lines (the library has
+    3,365 repeated titles; "Boys Will Be Boys" appears 17 times), every later entry
+    slides up one, and because the values are all non-empty the per-item retry in
+    `translate_batch` never fires. The wrong translation is then written over a
+    title that had nothing to do with it, permanently.
+
+    With `sources` the failure mode becomes a miss, not a shift: an unmatched or
+    merged entry returns "" and gets retried. The cost is ~40% more output tokens,
+    which for a title is nothing.
     """
     text = raw.strip()
     # Tolerate a stray ```json fence even though the prompt forbids one.
@@ -278,6 +400,9 @@ def extract_translations(raw: str, expected: int) -> list[str]:
     if not isinstance(items, list):
         raise TranslationError(f"Missing 'translations' array in: {raw[:300]}")
 
+    if sources is not None:
+        return _match_by_source(items, sources)
+
     out = [""] * expected
     for pos, item in enumerate(items):
         if isinstance(item, str):
@@ -293,6 +418,65 @@ def extract_translations(raw: str, expected: int) -> list[str]:
             continue
         if 0 <= idx < expected and value:
             out[idx] = str(value).strip()
+    return out
+
+
+def _norm_source(s: str) -> str:
+    """Casefold and collapse whitespace, for matching an echoed source loosely.
+
+    Titles carry apostrophes, ampersands and double spaces ("Guess Who's Cummin' to
+    Dinner", "Nutt  Crackers"), and a model asked to echo one back may "tidy" it. An
+    exact-only match would then call every entry a miss, and the whole run would
+    return empty — the safe direction, but a total loss.
+    """
+    return " ".join(s.casefold().split())
+
+
+def _match_by_source(items: list, sources: list[str]) -> list[str]:
+    """Resolve a src-echoing response against the inputs it claims to answer.
+
+    Deliberately no positional fallback: an entry whose `src` matches no input is
+    dropped (so it is retried) rather than being placed at the item's index, which
+    is the shift this whole protocol exists to prevent. A loose match (case and
+    whitespace only) is still a match on content, so it keeps that guarantee.
+
+    A source that appears twice in one batch resolves to the same translation for
+    both - that is the desired behaviour, not a collision. (It cannot arise from the
+    title path as collected today, since `get_untranslated_titles` groups by title,
+    but a dict keyed by source must not silently drop one of them.)
+    """
+    # Indexed to a *list* of positions, not one: a plain `{s: i}` keeps only the last
+    # occurrence of a repeated source, so the earlier ones quietly came back empty.
+    exact: dict[str, list[int]] = {}
+    loose: dict[str, list[int]] = {}
+    for i, s in enumerate(sources):
+        exact.setdefault(s, []).append(i)
+        loose.setdefault(_norm_source(s), []).append(i)
+
+    out = [""] * len(sources)
+    unmatched: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        src = item.get("src") or item.get("source") or item.get("en") or ""
+        value = item.get("zh") or item.get("translation") or ""
+        if not value:
+            continue
+        key = str(src).strip()
+        slots = exact.get(key)
+        if slots is None:
+            slots = loose.get(_norm_source(key))
+        if slots is None:
+            unmatched.append(key or "<空>")
+        else:
+            for i in slots:
+                out[i] = str(value).strip()
+    if unmatched:
+        # Surfaced rather than silent: a systematic mismatch (the model translating
+        # the source line instead of echoing it) looks exactly like "the model
+        # dropped everything", and the fix is a prompt change, not a retry.
+        print(f"  ⚠️  {len(unmatched)} 条译文对不上原文，将作为漏译重试: "
+              f"{', '.join(unmatched[:3])}", file=sys.stderr)
     return out
 
 
@@ -528,7 +712,8 @@ def is_local_endpoint(base_url: str) -> bool:
     return host in ("localhost", "127.0.0.1", "::1", "0.0.0.0")
 
 
-def build_provider(settings: dict, system_prompt: str | None = None) -> Provider:
+def build_provider(settings: dict, system_prompt: str | None = None,
+                   noun: str = "简介", echo_source: bool = False) -> Provider:
     name = (settings["provider"] or "").strip().lower()
     if not name:
         raise SystemExit(
@@ -549,6 +734,8 @@ def build_provider(settings: dict, system_prompt: str | None = None) -> Provider
         model=settings["model"] or cls.DEFAULT_MODEL,
         base_url=settings["base_url"] or cls.DEFAULT_BASE_URL,
         system_prompt=system_prompt,
+        noun=noun,
+        echo_source=echo_source,
     )
 
 
@@ -751,6 +938,96 @@ def translate_glossary(db: DatabaseManager, dry_run: bool = False,
             "terms": db.load_glossary()}
 
 
+def collect_category_terms(db: DatabaseManager) -> list[str]:
+    """Every distinct atomic category term in the library.
+
+    `movies.category` holds raw strings that may carry several tokens joined by the
+    site's inline `<br />` separator ("Wrestling<br />J/O"), so the raw values are
+    split through the same `split_facet_value` the API uses. The library's 74 raw
+    values collapse to 53 atomic terms, and two of the raw values are a bare trailing
+    separator ("General Hardcore<br />") whose empty token is dropped here.
+
+    Kept separate from collect_glossary_terms rather than merged into it: the two
+    vocabularies, prompts, collectors and lifetimes are all different, and while the
+    two sets happen not to overlap today (53 category terms vs ~80 attribute terms),
+    that is luck rather than design - several words ("Muscle", "Twink") are plausible
+    in both, and `tr()` would then have to guess which table was meant.
+    """
+    from server import split_facet_value
+
+    terms: set[str] = set()
+    rows = db.conn.execute(
+        "SELECT DISTINCT category FROM movies "
+        "WHERE category IS NOT NULL AND trim(category) != ''"
+    ).fetchall()
+    for (raw,) in rows:
+        for term in split_facet_value(raw):
+            if term:
+                terms.add(term)
+    return sorted(terms)
+
+
+def translate_categories(db: DatabaseManager, dry_run: bool = False,
+                         provider: Provider | None = None) -> dict:
+    """Translate the whole category vocabulary in one call and store it.
+
+    Shaped exactly like translate_glossary: 53 terms fit one request comfortably, and
+    already-translated terms are skipped so re-running costs nothing when no new
+    category has appeared.
+    """
+    terms = collect_category_terms(db)
+    existing = db.load_category_glossary()
+    pending = [t for t in terms if t not in existing]
+
+    print("=" * 70)
+    print("🏷️  GEVI 影片分类术语表翻译")
+    print(f"   词表共 {len(terms)} 条 | 已译 {len(existing)} 条 | 本次待译 {len(pending)} 条")
+    if dry_run:
+        print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
+    print("=" * 70)
+
+    if not pending:
+        print("🎉 分类术语表已是最新，无需调用 API。")
+        return {"success": True, "total": len(terms), "translated": 0,
+                "failed": 0, "pending": 0, "terms": existing}
+
+    if provider is None:
+        provider = build_provider(resolve_settings(argparse.Namespace()),
+                                  system_prompt=CATEGORY_SYSTEM_PROMPT, noun="分类词")
+    print(f"   服务商: {provider.__class__.__name__} | 模型: {provider.model}")
+
+    # Positional, like the attribute glossary: one call, no duplicate terms, and the
+    # dry-run listing prints every pair for eyeballing before anything is written.
+    try:
+        results = provider.translate(pending)
+    except TranslationError as e:
+        print(f"\n  ⚠️  分类术语表翻译失败: {e}", file=sys.stderr)
+        raise
+
+    mapping: dict[str, str] = {}
+    failed = 0
+    for term, zh in zip(pending, results):
+        if zh:
+            mapping[term] = zh
+        else:
+            failed += 1
+
+    if dry_run:
+        for term, zh in mapping.items():
+            print(f"   {term:24s} → {zh}")
+    elif mapping:
+        db.save_category_glossary(mapping)
+
+    print(f"\n{'（试运行，未写库）' if dry_run else '✨ 已写入分类术语表'}: "
+          f"成功 {len(mapping)} 条 | 失败 {failed} 条")
+    if failed and not dry_run:
+        print("   失败条目未入库，再次运行本命令会自动重试。")
+
+    return {"success": True, "total": len(terms), "translated": len(mapping),
+            "failed": failed, "pending": len(pending),
+            "terms": db.load_category_glossary()}
+
+
 # --------------------------------------------------------------------------
 # Batch driver
 # --------------------------------------------------------------------------
@@ -784,6 +1061,73 @@ def store_translation(db: DatabaseManager, task: dict, zh: str | None) -> None:
         db.set_episode_translation(task["id"], zh)
 
 
+def translate_batch(provider: Provider, texts: list[str],
+                    contexts: list[str] | None = None) -> list[str]:
+    """Translate one batch, retrying dropped items one at a time.
+
+    A partial answer is common enough that losing a whole batch to one dropped line
+    would matter; retrying per item means only the dropped lines cost a call.
+
+    A batch-level failure returns all-empty rather than falling through to the
+    per-item retry: N separate calls for a batch that just failed wholesale is the
+    wrong bet, and the empty results record a failed attempt on every row, which is
+    what makes the next run pick them up again.
+    """
+    try:
+        results = provider.translate(texts, contexts)
+    except TranslationError as e:
+        print(f"\n  ⚠️  批次失败: {e}", file=sys.stderr)
+        return [""] * len(texts)
+
+    for i, v in enumerate(results):
+        if not v:
+            try:
+                single = provider.translate(
+                    [texts[i]], [contexts[i]] if contexts else None
+                )
+                if single and single[0]:
+                    results[i] = single[0]
+            except TranslationError:
+                pass
+    return results
+
+
+def drive_batches(provider: Provider, batches: list[list[dict]], workers: int,
+                  dry_run: bool, handle, t0: float) -> tuple[int, int]:
+    """Run every batch through `handle` across a thread pool, reporting progress.
+
+    `handle(batch) -> (saved, failed)` owns what a batch means; this owns the
+    concurrency and the one-line progress counter, so the synopsis and title runs
+    differ only in their `handle`.
+    """
+    done = 0
+    saved = 0
+    failed = 0
+    progress_lock = threading.Lock()
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(handle, b) for b in batches]
+        for fut in as_completed(futures):
+            s, f = fut.result()
+            with progress_lock:
+                saved += s
+                failed += f
+                done += 1
+                elapsed = time.time() - t0
+                rate = saved / elapsed if elapsed > 0 else 0
+                sys.stdout.write(
+                    f"\r[{done}/{len(batches)} 批] ({done / len(batches) * 100:5.1f}%) | "
+                    f"已翻译: {saved:,} | 失败: {failed:,} | Speed: {rate:4.1f} 条/s"
+                )
+                sys.stdout.flush()
+
+    elapsed = time.time() - t0
+    print(f"\n\n✨ 翻译完成！耗时 {elapsed:.1f}s | 成功 {saved:,} 条 | 失败 {failed:,} 条")
+    if failed and not dry_run:
+        print("   失败条目已记录重试次数，可再次运行本命令自动重试。")
+    return saved, failed
+
+
 def run_translation(
     db: DatabaseManager,
     provider: Provider,
@@ -808,29 +1152,9 @@ def run_translation(
         print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
     print("=" * 70)
 
-    t0 = time.time()
-    done = 0
-    saved = 0
-    failed = 0
-    progress_lock = threading.Lock()
-
     def handle(batch: list[dict]) -> tuple[int, int]:
         texts = [r["text"] for r in batch]
-        try:
-            results = provider.translate(texts)
-        except TranslationError as e:
-            print(f"\n  ⚠️  批次失败: {e}", file=sys.stderr)
-            return 0, len(batch)
-
-        # Retry dropped items individually so a partial batch is not lost.
-        for i, v in enumerate(results):
-            if not v:
-                try:
-                    single = provider.translate([texts[i]])
-                    if single and single[0]:
-                        results[i] = single[0]
-                except TranslationError:
-                    pass
+        results = translate_batch(provider, texts)
 
         batch_saved = 0
         batch_failed = 0
@@ -842,6 +1166,8 @@ def run_translation(
                 continue
             batch_saved += 1
             if dry_run:
+                # Only the first two per batch: a synopsis is long enough that
+                # printing all of them would bury the progress line.
                 if batch_saved <= 2:
                     print(f"\n  [{row['kind']}] #{row['id']} {row['title']}\n"
                           f"    EN: {row['text'][:110]}\n    ZH: {zh[:110]}")
@@ -849,26 +1175,103 @@ def run_translation(
                 store_translation(db, row, zh)
         return batch_saved, batch_failed
 
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = [pool.submit(handle, b) for b in batches]
-        for fut in as_completed(futures):
-            s, f = fut.result()
-            with progress_lock:
-                saved += s
-                failed += f
-                done += 1
-                elapsed = time.time() - t0
-                rate = saved / elapsed if elapsed > 0 else 0
-                sys.stdout.write(
-                    f"\r[{done}/{len(batches)} 批] ({done / len(batches) * 100:5.1f}%) | "
-                    f"已翻译: {saved:,} | 失败: {failed:,} | Speed: {rate:4.1f} 条/s"
-                )
-                sys.stdout.flush()
+    drive_batches(provider, batches, workers, dry_run, handle, time.time())
 
-    elapsed = time.time() - t0
-    print(f"\n\n✨ 翻译完成！耗时 {elapsed:.1f}s | 成功 {saved:,} 条 | 失败 {failed:,} 条")
-    if failed and not dry_run:
-        print("   失败条目已记录重试次数，可再次运行本命令自动重试。")
+
+# --------------------------------------------------------------------------
+# Film titles
+# --------------------------------------------------------------------------
+
+def collect_title_tasks(db: DatabaseManager, limit: int | None,
+                        with_context: bool = True) -> list[dict]:
+    """Distinct untranslated titles, as one flat list of {i, title, text}.
+
+    `text` is what rides along as pun context: the longest synopsis of that title's
+    films, or the bare title when `with_context` is off (the control group for
+    comparing the two runs).
+    """
+    tasks: list[dict] = []
+    for i, row in enumerate(db.get_untranslated_titles(limit=limit)):
+        context = (row.get("description") or "") if with_context else ""
+        tasks.append({
+            "i": i,
+            "title": row["title"],
+            "text": context[:TITLE_CONTEXT_CHARS],
+        })
+    return tasks
+
+
+def run_title_translation(
+    db: DatabaseManager,
+    provider: Provider,
+    limit: int | None,
+    batch_size: int,
+    workers: int,
+    dry_run: bool,
+    with_context: bool = True,
+) -> None:
+    tasks = collect_title_tasks(db, limit, with_context)
+    total = len(tasks)
+    if total == 0:
+        print("🎉 没有需要翻译的片名（全部已翻译或没有片名）。")
+        return
+
+    stats = db.get_title_translation_stats()
+    batches = [tasks[i:i + batch_size] for i in range(0, total, batch_size)]
+    print("=" * 70)
+    print(f"🎬 GEVI 片名批量翻译 | 服务商: {provider.__class__.__name__} | 模型: {provider.model}")
+    print(f"   全库片名: {stats['translatable']:,} 条 | 已译: {stats['translated']:,} 条 | "
+          f"本次待译: {total:,} 条")
+    print(f"   批次大小: {batch_size} | 批次数: {len(batches)} | 并发: {workers} | "
+          f"简介上下文: {'带' if with_context else '不带'}")
+    if dry_run:
+        print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
+    print("=" * 70)
+
+    # Dry-run output is for a human to read and judge, so it is collected per task
+    # index and printed at the end in the order the tasks were collected (which
+    # get_untranslated_titles already returns alphabetically). Printing from inside
+    # `handle` would interleave batches across the worker threads and arrive in
+    # completion order, which is exactly the wrong shape for reviewing puns.
+    review: list[str] = [""] * total
+
+    def handle(batch: list[dict]) -> tuple[int, int]:
+        texts = [r["title"] for r in batch]
+        contexts = [r["text"] for r in batch] if with_context else None
+        results = translate_batch(provider, texts, contexts)
+
+        batch_saved = 0
+        batch_failed = 0
+        for row, zh in zip(batch, results):
+            if not zh:
+                batch_failed += 1
+                if not dry_run:
+                    db.set_movie_title_translation(row["title"], None)
+                continue
+            batch_saved += 1
+            if dry_run:
+                review[row["i"]] = zh
+            else:
+                db.set_movie_title_translation(row["title"], zh)
+        return batch_saved, batch_failed
+
+    drive_batches(provider, batches, workers, dry_run, handle, time.time())
+
+    if dry_run:
+        print("\n" + "=" * 70)
+        print(f"📋 译文清单（按原文排序，共 {total} 条）")
+        print("=" * 70)
+        for row, zh in zip(tasks, review):
+            mark = "  " if zh else "❌"
+            print(f"{mark} {row['title']}")
+            if zh:
+                print(f"     → {zh}")
+                if with_context and row["text"]:
+                    print(f"     〔{row['text'][:TITLE_CONTEXT_SHOWN]}〕")
+            else:
+                print("     → (未译出，下次运行会重试)")
+        missing = sum(1 for zh in review if not zh)
+        print(f"\n共 {total} 条：译出 {total - missing} 条 | 未译出 {missing} 条")
 
 
 def main():
@@ -881,12 +1284,19 @@ def main():
     parser.add_argument("--base-url", help="自定义 API 端点")
     parser.add_argument("--db", type=str, default="gevi.db", help="SQLite 数据库路径")
     parser.add_argument("--limit", type=int, default=None, help="本次最多翻译多少条")
-    parser.add_argument("--batch-size", type=int, default=20, help="每批翻译多少条 (默认 20)")
+    parser.add_argument("--batch-size", type=int, default=None,
+                        help="每批翻译多少条（默认：简介 20，片名 50）")
     parser.add_argument("--workers", type=int, default=4, help="并发批次数 (默认 4)")
     parser.add_argument("--dry-run", action="store_true", help="试运行：只翻译不写库")
     parser.add_argument("--stats", action="store_true", help="只打印翻译进度统计后退出")
     parser.add_argument("--glossary", action="store_true",
                         help="只翻译演员属性术语表（一次调用，约 74 个词，之后永久复用）")
+    parser.add_argument("--categories", action="store_true",
+                        help="只翻译影片分类术语表（一次调用，约 53 个词，之后永久复用）")
+    parser.add_argument("--titles", action="store_true",
+                        help="只翻译影片片名（按 title 去重，译文体现原标题的双关）")
+    parser.add_argument("--no-context", action="store_true",
+                        help="片名模式不带简介上下文。用于和默认模式对比双关译准不准")
     parser.add_argument("--list-profiles", action="store_true",
                         help="列出已保存的翻译服务配置后退出 (不显示 API Key)")
     args = parser.parse_args()
@@ -909,12 +1319,19 @@ def main():
 
     if args.stats:
         s = db.get_translation_stats()
+        t = db.get_title_translation_stats()
         print("\n📊 【剧情简介翻译进度】")
         print(f"  - 可翻译简介总数: {s['translatable']:,}")
         print(f"  - 已翻译 (中文):  {s['translated']:,}")
         print(f"  - 待翻译:         {s['pending']:,}")
         print(f"  - 翻译失败:       {s['failed']:,}")
         print(f"  - 完成度:         {(s['translated'] / s['translatable'] * 100) if s['translatable'] else 0:.1f}%\n")
+        print("🎬 【片名翻译进度】(按去重后的片名计)")
+        print(f"  - 全库片名:       {t['titles']:,}")
+        print(f"  - 已翻译:         {t['translated']:,}")
+        print(f"  - 待翻译:         {t['pending']:,}")
+        print(f"  - 翻译失败:       {t['failed']:,}")
+        print(f"  - 完成度:         {(t['translated'] / t['titles'] * 100) if t['titles'] else 0:.1f}%\n")
         return
 
     if args.glossary:
@@ -924,7 +1341,32 @@ def main():
             db,
             dry_run=args.dry_run,
             provider=build_provider(resolve_settings(args),
-                                    system_prompt=GLOSSARY_SYSTEM_PROMPT),
+                                    system_prompt=GLOSSARY_SYSTEM_PROMPT, noun="属性词"),
+        )
+        return
+
+    if args.categories:
+        translate_categories(
+            db,
+            dry_run=args.dry_run,
+            provider=build_provider(resolve_settings(args),
+                                    system_prompt=CATEGORY_SYSTEM_PROMPT, noun="分类词"),
+        )
+        return
+
+    if args.titles:
+        # The only mode that echoes sources back (see extract_translations): titles are
+        # short enough that a positional shift is invisible and permanent.
+        run_title_translation(
+            db=db,
+            provider=build_provider(resolve_settings(args),
+                                    system_prompt=TITLE_SYSTEM_PROMPT,
+                                    noun="片名", echo_source=True),
+            limit=args.limit,
+            batch_size=args.batch_size or 50,
+            workers=args.workers,
+            dry_run=args.dry_run,
+            with_context=not args.no_context,
         )
         return
 
@@ -933,7 +1375,7 @@ def main():
         db=db,
         provider=provider,
         limit=args.limit,
-        batch_size=args.batch_size,
+        batch_size=args.batch_size or 20,
         workers=args.workers,
         dry_run=args.dry_run,
     )
