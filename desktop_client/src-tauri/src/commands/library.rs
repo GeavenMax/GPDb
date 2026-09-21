@@ -1,11 +1,11 @@
 //! Paged browse commands: films, performers and their facets, studios, episodes,
 //! categories, and the library-wide counts.
 
-use gevi_core::models::{
+use gpdb_core::models::{
     DatabaseStats, EpisodeLibrary, FilterArgs, Glossaries, MoviesResponse, PerformerFacets,
     PerformerFilterArgs, PerformersResponse, StudioLibrary,
 };
-use gevi_core::queries;
+use gpdb_core::queries;
 
 use crate::db::open_db;
 

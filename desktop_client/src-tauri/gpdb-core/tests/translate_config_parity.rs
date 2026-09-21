@@ -14,7 +14,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use gevi_core::translate_config as tc;
+use gpdb_core::translate_config as tc;
 
 /// The project root that holds `translate.py`, found by walking up from this crate
 /// rather than by counting parents — an off-by-one there silently turned this whole
@@ -165,7 +165,7 @@ fn redact_keys(v: &serde_json::Value) -> serde_json::Value {
 /// Canonicalise both sides through `serde_json::Value` (objects are BTreeMaps, so
 /// key order is not part of the comparison) before asserting equality.
 fn compare(root: &Path, py: &str, name: &str, fixture: &str, ops: &[serde_json::Value]) {
-    let dir = std::env::temp_dir().join(format!("gevi_xlate_{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("gpdb_xlate_{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
     let rust_path = dir.join(format!("{name}_rust.json"));
     let py_path = dir.join(format!("{name}_py.json"));
@@ -286,7 +286,7 @@ fn translation_config_matches_translate_py() {
 
 #[test]
 fn providers_payload_never_carries_a_key() {
-    let dir = std::env::temp_dir().join(format!("gevi_xlate_leak_{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("gpdb_xlate_leak_{}", std::process::id()));
     fs::create_dir_all(&dir).unwrap();
     let path = dir.join("leak.json");
     fs::write(&path, r#"{"active":"s","profiles":{"s":{

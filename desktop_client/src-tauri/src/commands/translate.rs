@@ -3,7 +3,7 @@
 //! 这一层就是 `server.py` 原来那几个 `handle_translate_provider_*`，只是从 HTTP
 //! 搬到了进程内。分工是刻意的：
 //!
-//! - `gevi-core::translate_config` 负责**文件格式**，逐条对齐 `translate.py`；
+//! - `gpdb-core::translate_config` 负责**文件格式**，逐条对齐 `translate.py`；
 //! - 这里负责**表单的传输语义** —— 哪个字段可以缺、缺了算什么。
 //!
 //! 两者分开，`translate_config_parity.rs` 才能把 core 单独拿去和 `translate.py`
@@ -12,7 +12,7 @@
 //! 配置文件与 `gevi.db` 同目录（`translate.py` 用的也是仓库根目录），所以换库
 //! 路径会一并换掉翻译配置 —— 这正是用户把库和配置当成一套东西时的预期。
 
-use gevi_core::translate_config as tc;
+use gpdb_core::translate_config as tc;
 use std::path::{Path, PathBuf};
 
 /// `translate_config.json`，与当前数据库同一个目录。

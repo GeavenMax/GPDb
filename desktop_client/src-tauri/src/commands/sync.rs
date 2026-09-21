@@ -1,9 +1,9 @@
 //! 增量同步：跑 sync_gevi.py，从它的标准输出里读回新增数量。
 //!
 //! 这不是查询，所以留在 app 侧。阶段 7 连它一起重新考虑 —— 它依赖 Python 解释器
-//! 和仓库根目录下的脚本，是 GEVI+ 里最后一块非 SQLite 的依赖。
+//! 和仓库根目录下的脚本，是 GPDb 里最后一块非 SQLite 的依赖。
 
-use gevi_core::models::SyncResult;
+use gpdb_core::models::SyncResult;
 use std::path::PathBuf;
 
 #[tauri::command]

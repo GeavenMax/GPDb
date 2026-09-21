@@ -10,7 +10,7 @@
  * Marking the event itself settles it: the first modal to act on a keypress
  * claims it, and any later listener in the same dispatch backs off.
  */
-const CLAIMED = Symbol('gevi.escapeClaimed');
+const CLAIMED = Symbol('gpdb.escapeClaimed');
 
 /** True for the first caller to claim this keypress, false for every later one. */
 export function claimEscape(e: KeyboardEvent): boolean {

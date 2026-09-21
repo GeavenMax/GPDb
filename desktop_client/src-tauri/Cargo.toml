@@ -1,12 +1,12 @@
-# gevi-core 是 workspace 成员而不是普通 path 依赖：这样两者共用 src-tauri/target，
-# `cargo test -p gevi-core` 不必从零再编译一遍 rusqlite。
+# gpdb-core 是 workspace 成员而不是普通 path 依赖：这样两者共用 src-tauri/target，
+# `cargo test -p gpdb-core` 不必从零再编译一遍 rusqlite。
 [workspace]
-members = ["gevi-core"]
+members = ["gpdb-core"]
 
 [package]
-name = "gevi-plus"
+name = "gpdb"
 version = "0.1.0"
-description = "GEVI+ — 离线影视库桌面端"
+description = "GPDb — 离线影视库桌面端"
 authors = ["you"]
 license = ""
 repository = ""
@@ -15,18 +15,18 @@ rust-version = "1.77.2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-# Cargo 包名不允许 `+`，所以这里是 gevi-plus；显示名走 tauri.conf.json 的
-# productName (GEVI+) 与 mainBinaryName (gevi-plus)。
+# 显示名走 tauri.conf.json 的 productName (GPDb) 与 mainBinaryName (gpdb)。
+# 注意 `gpdb-core` 与 `gpdb_lib` 是编译期耦合的一整套，改名时必须一起动。
 [lib]
-name = "gevi_plus_lib"
+name = "gpdb_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
-# 查询层。它自己不依赖 tauri —— 见 gevi-core/src/lib.rs。
-gevi-core = { path = "gevi-core" }
+# 查询层。它自己不依赖 tauri —— 见 gpdb-core/src/lib.rs。
+gpdb-core = { path = "gpdb-core" }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"

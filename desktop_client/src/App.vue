@@ -20,6 +20,7 @@ import {
 import { getImageUrl } from './utils/image';
 import { openLightbox, viewableImageFrom, zoomsOnClick, lightboxImage } from './utils/lightbox';
 import { initTheme, setTheme, themeChoice, themeOptions } from './utils/theme';
+import { PREFS } from './utils/prefs';
 import type {
   Movie,
   Performer,
@@ -164,31 +165,31 @@ const filters = reactive<FilterState>(createMovieFilters());
 // Synopsis language preference (issue #4). Falls back to English per-movie
 // whenever a Chinese translation has not been generated yet.
 const descLang = ref<'zh' | 'en'>(
-  (localStorage.getItem('gevi_desc_lang') as 'zh' | 'en') || 'zh'
+  (localStorage.getItem(PREFS.descLang) as 'zh' | 'en') || 'zh'
 );
 
 function setDescLang(lang: 'zh' | 'en') {
   descLang.value = lang;
-  localStorage.setItem('gevi_desc_lang', lang);
+  localStorage.setItem(PREFS.descLang, lang);
 }
 
 // Dynamic Grid Columns state (persisted to localStorage)
-const gridCols = ref<number>(Number(localStorage.getItem('gevi_grid_cols')) || 5);
+const gridCols = ref<number>(Number(localStorage.getItem(PREFS.gridCols)) || 5);
 // List view uses its own column count: the cards are horizontal and much wider,
 // so the useful range is 2-4 rather than 2-8.
-const listCols = ref<number>(Number(localStorage.getItem('gevi_list_cols')) || 3);
+const listCols = ref<number>(Number(localStorage.getItem(PREFS.listCols)) || 3);
 
 function decreaseCols() {
   if (viewMode.value === 'list') {
     if (listCols.value > 2) {
       listCols.value--;
-      localStorage.setItem('gevi_list_cols', String(listCols.value));
+      localStorage.setItem(PREFS.listCols, String(listCols.value));
     }
     return;
   }
   if (gridCols.value > 2) {
     gridCols.value--;
-    localStorage.setItem('gevi_grid_cols', String(gridCols.value));
+    localStorage.setItem(PREFS.gridCols, String(gridCols.value));
   }
 }
 
@@ -196,13 +197,13 @@ function increaseCols() {
   if (viewMode.value === 'list') {
     if (listCols.value < 4) {
       listCols.value++;
-      localStorage.setItem('gevi_list_cols', String(listCols.value));
+      localStorage.setItem(PREFS.listCols, String(listCols.value));
     }
     return;
   }
   if (gridCols.value < 8) {
     gridCols.value++;
-    localStorage.setItem('gevi_grid_cols', String(gridCols.value));
+    localStorage.setItem(PREFS.gridCols, String(gridCols.value));
   }
 }
 
@@ -240,12 +241,12 @@ const translateMsg = ref('');
  * 'batch' leaves translation to the explicit buttons in Settings.
  */
 const translateMode = ref<'single' | 'batch'>(
-  localStorage.getItem('gevi_translate_mode') === 'batch' ? 'batch' : 'single'
+  localStorage.getItem(PREFS.translateMode) === 'batch' ? 'batch' : 'single'
 );
 
 function setTranslateMode(mode: 'single' | 'batch') {
   translateMode.value = mode;
-  localStorage.setItem('gevi_translate_mode', mode);
+  localStorage.setItem(PREFS.translateMode, mode);
 }
 
 // Translation sources (multiple saved API providers, switchable by hand).
@@ -274,7 +275,7 @@ const providerTest = ref<{ ok: boolean; text: string } | null>(null);
 // Ceiling is 96: the performer endpoint and both Tauri commands clamp pageSize
 // to 100, so anything larger would desync the page count from the backend.
 const PAGE_SIZE_OPTIONS = [24, 48, 96]; // all divide by 2, 3, 4, 6, 8
-const pageSize = ref(snapPageSize(Number(localStorage.getItem('gevi_page_size'))));
+const pageSize = ref(snapPageSize(Number(localStorage.getItem(PREFS.pageSize))));
 
 /** Snap to an offered option, so a stale stored value is not sent to the API. */
 function snapPageSize(size: number): number {
@@ -285,7 +286,7 @@ function snapPageSize(size: number): number {
   );
 }
 const listMode = ref<'scroll' | 'paged'>(
-  localStorage.getItem('gevi_list_mode') === 'paged' ? 'paged' : 'scroll'
+  localStorage.getItem(PREFS.listMode) === 'paged' ? 'paged' : 'scroll'
 );
 const moviePage = ref(1);
 const performerPage = ref(1);
@@ -297,7 +298,7 @@ const isLoadingMore = ref(false);
 function setListMode(mode: 'scroll' | 'paged') {
   if (listMode.value === mode) return;
   listMode.value = mode;
-  localStorage.setItem('gevi_list_mode', mode);
+  localStorage.setItem(PREFS.listMode, mode);
   // Page counts mean different things per mode; start each switch from the top.
   reloadCurrentTab();
 }
@@ -305,7 +306,7 @@ function setListMode(mode: 'scroll' | 'paged') {
 function setPageSize(size: number) {
   if (size === pageSize.value) return;
   pageSize.value = size;
-  localStorage.setItem('gevi_page_size', String(size));
+  localStorage.setItem(PREFS.pageSize, String(size));
   reloadCurrentTab();
 }
 
@@ -561,7 +562,7 @@ async function handleExportUserData() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `gevi_user_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `gpdb_user_backup_${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

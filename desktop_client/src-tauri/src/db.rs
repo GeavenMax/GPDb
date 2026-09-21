@@ -51,9 +51,9 @@ pub fn open_db() -> Result<Connection, String> {
         "PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;",
     );
 
-    // The queries in `gevi_core` name columns this file may predate; SQLite fails at
+    // The queries in `gpdb_core` name columns this file may predate; SQLite fails at
     // prepare time for a missing column, so the whole library would come up empty. See
-    // `gevi_core::migrate` for why the desktop has to do this itself.
+    // `gpdb_core::migrate` for why the desktop has to do this itself.
     //
     // Done once per process per database, not per command: `open_db` is called on every
     // command, and this takes a write lock. The path is recorded only on success, so a
@@ -62,7 +62,7 @@ pub fn open_db() -> Result<Connection, String> {
     let key = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
     let needs_migration = !migrated_paths().lock().unwrap().contains(&key);
     if needs_migration {
-        gevi_core::migrate::ensure_schema(&conn).map_err(|e| {
+        gpdb_core::migrate::ensure_schema(&conn).map_err(|e| {
             format!("Failed to upgrade the schema of {:?}: {}", path, e)
         })?;
         migrated_paths().lock().unwrap().insert(key);

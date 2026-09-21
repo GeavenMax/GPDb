@@ -1,9 +1,9 @@
 [package]
-name = "gevi-core"
+name = "gpdb-core"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.77.2"
-description = "GEVI+ 查询层：只依赖 rusqlite 与 serde，不依赖 Tauri"
+description = "GPDb 查询层：只依赖 rusqlite 与 serde，不依赖 Tauri"
 
 # 这个 crate 是 path 依赖，不进 workspace 的发布物。它的存在本身就是约束：
 # 这里没有 tauri 依赖，所以 queries/ 里不可能 `use tauri::*` —— 边界由 Cargo 的

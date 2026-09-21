@@ -6,7 +6,7 @@
  * that is the seam theme.css watches; this module owns the localStorage and the
  * matchMedia listener, nothing else.
  *
- * 跟随系统 remembers the *style* separately (`gevi_theme_style`), so following the
+ * 跟随系统 remembers the *style* separately (`PREFS.themeStyle`), so following the
  * system means "keep 流体玻璃, track the OS light/dark switch" rather than snapping
  * back to 经典 every time. A module-level `ref` is enough state: there is exactly one
  * app shell and one settings panel, and it matches how `utils/lightbox.ts` keeps the
@@ -14,10 +14,13 @@
  *
  * Keep the resolution in sync with the inline script in index.html — that copy exists
  * only to set the attribute before Vue mounts, and it is the one thing here that
- * cannot be imported.
+ * cannot be imported. Both must agree on the fallback style too, or the first frame
+ * is painted in one theme and corrected to another a moment later.
  */
 
 import { computed, ref } from 'vue';
+
+import { PREFS } from './prefs';
 
 export type ThemeStyle = 'classic' | 'glass' | 'my';
 export type ThemeId =
@@ -29,9 +32,8 @@ export type ThemeId =
   | 'my-light';
 export type ThemeChoice = 'auto' | ThemeId;
 
-/** Mirrors App.vue's other preferences (`gevi_desc_lang`, `gevi_grid_cols`). */
-const CHOICE_KEY = 'gevi_theme';
-const STYLE_KEY = 'gevi_theme_style';
+const CHOICE_KEY = PREFS.theme;
+const STYLE_KEY = PREFS.themeStyle;
 
 const STYLES: Record<ThemeStyle, string> = {
   classic: '经典',
@@ -76,9 +78,20 @@ function readChoice(): ThemeChoice {
   return stored === 'auto' || isThemeId(stored) ? stored : 'auto';
 }
 
+/**
+ * What 跟随系统 resolves to before the user has chosen anything.
+ *
+ * 流体玻璃 rather than 经典: the glass family is the app's intended look, and a fresh
+ * install should open on it. Someone who explicitly picks 经典 still gets 经典 — this
+ * is only the value for "no preference recorded".
+ *
+ * index.html hardcodes this same style in its pre-paint script; the two must agree.
+ */
+export const DEFAULT_STYLE: ThemeStyle = 'glass';
+
 function readStyle(): ThemeStyle {
   const stored = localStorage.getItem(STYLE_KEY);
-  return stored === 'glass' || stored === 'my' ? stored : 'classic';
+  return stored === 'classic' || stored === 'glass' || stored === 'my' ? stored : DEFAULT_STYLE;
 }
 
 function styleOf(id: ThemeId): ThemeStyle {

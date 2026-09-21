@@ -1,7 +1,7 @@
 //! The one piece of state the user writes: favorites.
 
-use gevi_core::models::FavoritesResponse;
-use gevi_core::queries;
+use gpdb_core::models::FavoritesResponse;
+use gpdb_core::queries;
 
 use crate::db::open_db;
 

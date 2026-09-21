@@ -13,7 +13,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use gevi_core::migrate;
+use gpdb_core::migrate;
 use rusqlite::Connection;
 
 /// Walk up to the repo root, the way `parity.rs` finds `translate.py`.

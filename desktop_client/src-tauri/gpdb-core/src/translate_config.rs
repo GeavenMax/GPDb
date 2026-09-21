@@ -3,7 +3,7 @@
 //! Both processes read the same file: a source added in the desktop app has to be
 //! the source the command-line translator picks up. So this is a faithful port of
 //! `translate.py`'s profile handling rather than a fresh design, and it lives in
-//! `gevi-core` (no Tauri) so it can be tested without building the app.
+//! `gpdb-core` (no Tauri) so it can be tested without building the app.
 //!
 //! Standing constraint: the API key never leaves this module. Callers get `has_key`
 //! and a masked `key_hint`, never the key. The one exception is `save_profile`,

@@ -18,7 +18,7 @@ import { api } from '../api';
 
 /**
  * The `<br />` spellings the site uses as a multi-value separator, enumerated in every
- * case exactly as `BR_SPELLINGS` (`gevi-core/src/sql.rs`) and `_BR_SPELLINGS`
+ * case exactly as `BR_SPELLINGS` (`gpdb-core/src/sql.rs`) and `_BR_SPELLINGS`
  * (`server.py`) do.
  *
  * Three places have to agree on this set — the two SQL expressions that turn a column

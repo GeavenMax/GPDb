@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { Film, Users, Heart, HardDrive, Building2, Clapperboard } from '@lucide/vue';
 import type { AppTab } from '../types';
+import { PREFS } from '../utils/prefs';
 
 defineProps<{ currentTab: AppTab }>();
 
@@ -24,7 +25,7 @@ const NAV_ITEMS = [
 
 type NavId = (typeof NAV_ITEMS)[number]['id'];
 
-const ORDER_KEY = 'gevi_nav_order';
+const ORDER_KEY = PREFS.navOrder;
 
 /**
  * The order is a UI preference, so it lives in localStorage alongside the grid

@@ -1,6 +1,6 @@
 //! 分类折叠与分隔符：Rust 和 server.py 必须给出同一个答案。
 //!
-//! 浏览器版走 `server.py`，桌面版走 `gevi-core`，同一个库。两边只要有一边把分类
+//! 浏览器版走 `server.py`，桌面版走 `gpdb-core`，同一个库。两边只要有一边把分类
 //! 折叠得不一样，用户就会看到两个不同的筛选抽屉；分隔符集只要有一边不认某种写法，
 //! 同一个值在这边拆成 "Brown"、在那边还是 "Brown<br />Blond"，筛选就静默地时灵
 //! 时不灵。
@@ -177,7 +177,7 @@ fn collapse_agrees_with_python_on_the_library() {
         .iter()
         .map(|s| s.as_str().unwrap().to_string())
         .collect();
-    let rust_terms = gevi_core::sql::collapse_categories(&rows);
+    let rust_terms = gpdb_core::sql::collapse_categories(&rows);
 
     assert_eq!(
         rust_terms, py_terms,
@@ -224,7 +224,7 @@ fn separator_sets_agree_on_every_probe() {
     let request = serde_json::json!({ "op": "split", "probes": probes }).to_string();
     let py_tokens = str_list(&run_driver(&root, &py, &request), "tokens");
     let rust_tokens: Vec<Vec<String>> =
-        probes.iter().map(|p| gevi_core::sql::explode_attr(Some(p.to_string()))).collect();
+        probes.iter().map(|p| gpdb_core::sql::explode_attr(Some(p.to_string()))).collect();
     assert_eq!(rust_tokens, py_tokens, "两边的拆词结果不一致");
 
     // 2. SQL 侧：Python 生成的表达式在 SQLite 里的命中，必须和 Rust 表达式一致。
@@ -246,7 +246,7 @@ fn separator_sets_agree_on_every_probe() {
         .collect();
 
     let scratch = Connection::open_in_memory().unwrap();
-    let expr = gevi_core::sql::facet_sql("category", "m").replace("m.category", "?1");
+    let expr = gpdb_core::sql::facet_sql("category", "m").replace("m.category", "?1");
     for (i, probe) in probes.iter().enumerate() {
         let rust_hit: bool = scratch
             .query_row(
@@ -295,7 +295,7 @@ fn the_category_filter_matches_tokens_and_stays_case_sensitive() {
         conn.query_row(
             &format!(
                 "SELECT count(*) FROM movies m WHERE {}",
-                gevi_core::sql::facet_match_sql("category", "m")
+                gpdb_core::sql::facet_match_sql("category", "m")
             ),
             [c],
             |r| r.get(0),
@@ -347,7 +347,7 @@ fn glossaries_agree_with_python_and_read_their_own_table() {
              INSERT INTO category_glossary (term, zh) VALUES ('J/O', '独自撸');",
         )
         .unwrap();
-    let fixture = gevi_core::queries::glossary::get_glossaries(&scratch).unwrap();
+    let fixture = gpdb_core::queries::glossary::get_glossaries(&scratch).unwrap();
     assert_eq!(
         fixture.terms.get("Swimmer").map(String::as_str),
         Some("游泳体型"),
@@ -368,7 +368,7 @@ fn glossaries_agree_with_python_and_read_their_own_table() {
     // 2. 真库上对拍：属性词表这一半是实的（库里已有译文），分类那一半要等阶段 7。
     let Some((root, py)) = harness() else { return };
     let conn = Connection::open_with_flags(find_db(), OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
-    let rust = gevi_core::queries::glossary::get_glossaries(&conn).unwrap();
+    let rust = gpdb_core::queries::glossary::get_glossaries(&conn).unwrap();
 
     let request = serde_json::json!({ "op": "glossary" }).to_string();
     let out = run_driver(&root, &py, &request);

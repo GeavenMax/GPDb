@@ -1,7 +1,7 @@
 //! Commands that return one entity in full, for the detail modals.
 
-use gevi_core::models::{Movie, Performer, StudioWorks};
-use gevi_core::queries;
+use gpdb_core::models::{Movie, Performer, StudioWorks};
+use gpdb_core::queries;
 
 use crate::db::open_db;
 

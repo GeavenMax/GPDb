@@ -12,13 +12,13 @@
 //!
 //! 只读打开真库，不写、不建副本。路径可用 `GEVI_DB` 覆盖。
 
-use gevi_core::models::{FilterArgs, MoviesResponse, PerformerFilterArgs};
-use gevi_core::queries;
+use gpdb_core::models::{FilterArgs, MoviesResponse, PerformerFilterArgs};
+use gpdb_core::queries;
 use rusqlite::{params, Connection, OpenFlags};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-/// 测试二进制的 cwd 是 crate 根（gevi-core/），真库在上面三层。
+/// 测试二进制的 cwd 是 crate 根（gpdb-core/），真库在上面三层。
 fn find_db() -> PathBuf {
     if let Ok(p) = std::env::var("GEVI_DB") {
         return PathBuf::from(p);
@@ -83,10 +83,10 @@ const WORKS_EXPR: &str = "(SELECT count(*) FROM movie_performers mp WHERE mp.per
 fn error_display_is_identical_to_the_old_to_string() {
     let db_err = rusqlite::Error::QueryReturnedNoRows;
     let expected = db_err.to_string();
-    assert_eq!(gevi_core::Error::from(db_err).to_string(), expected);
+    assert_eq!(gpdb_core::Error::from(db_err).to_string(), expected);
 
     let msg = "未知的收藏类型 'bogus'".to_string();
-    assert_eq!(gevi_core::Error::from(msg.clone()).to_string(), msg);
+    assert_eq!(gpdb_core::Error::from(msg.clone()).to_string(), msg);
 }
 
 // ---------------------------------------------------------------- 纯函数
@@ -94,7 +94,7 @@ fn error_display_is_identical_to_the_old_to_string() {
 /// `<br />` 有四种写法，全都要切干净。
 #[test]
 fn explode_attr_splits_every_br_spelling() {
-    use gevi_core::sql::explode_attr;
+    use gpdb_core::sql::explode_attr;
     assert_eq!(explode_attr(Some("Brown<br />Blond".into())), ["Brown", "Blond"]);
     assert_eq!(explode_attr(Some("A<br/>B<br>C".into())), ["A", "B", "C"]);
     assert_eq!(explode_attr(Some("  单个  ".into())), ["单个"]);
@@ -935,7 +935,7 @@ fn studio_and_category_lists_match_sql() {
     // 一边漏词、重复计词、或只认部分分隔符写法，这里都会对不上。
     let mut expect: HashMap<String, i64> = HashMap::new();
     for (raw, n) in raw_category_counts(&tx) {
-        for term in gevi_core::sql::explode_attr(Some(raw)).into_iter().collect::<std::collections::BTreeSet<_>>() {
+        for term in gpdb_core::sql::explode_attr(Some(raw)).into_iter().collect::<std::collections::BTreeSet<_>>() {
             *expect.entry(term).or_insert(0) += n;
         }
     }
@@ -1206,7 +1206,7 @@ fn movie_columns_and_their_reader_agree_by_name_not_by_position() {
     // 新列既不被读也不被比，这条测试照样绿。这个列表里全是裸列名、没有函数调用，
     // 所以数逗号是可靠的。
     assert_eq!(
-        gevi_core::sql::MOVIE_COLUMNS.split(',').count(),
+        gpdb_core::sql::MOVIE_COLUMNS.split(',').count(),
         NAMES.len(),
         "MOVIE_COLUMNS 的列数与 NAMES 对不上：新加的列不会被这条测试覆盖"
     );

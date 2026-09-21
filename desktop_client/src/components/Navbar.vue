@@ -46,8 +46,8 @@ function clearSearch() {
         G
       </div>
       <div>
-        <div class="font-bold text-fg text-base tracking-wide flex items-center gap-2">
-          GEVI <span class="text-xs px-2 py-0.5 rounded-full bg-accent-fill/10 text-accent border border-accent-fill/20 font-medium">+</span>
+        <div class="font-bold text-fg text-base tracking-wide">
+          GPDb
         </div>
         <div class="text-[11px] text-fg-3">已收录 {{ movieCount.toLocaleString() }} 部影片</div>
       </div>

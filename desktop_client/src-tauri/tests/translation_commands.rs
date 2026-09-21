@@ -10,7 +10,7 @@
 
 use std::path::PathBuf;
 
-use gevi_plus_lib::commands::translate;
+use gpdb_lib::commands::translate;
 
 /// The repo's config file, found the way the parity test finds `translate.py`.
 fn repo_config() -> Option<PathBuf> {
@@ -31,7 +31,7 @@ fn the_command_layer_resolves_the_cli_config_file() {
     };
 
     let got = translate::get_translation_providers().expect("reading the providers");
-    let want = gevi_core::translate_config::list_profiles(&expected_path);
+    let want = gpdb_core::translate_config::list_profiles(&expected_path);
 
     // Non-empty when the file has sources: the failure this guards against is an empty
     // list rendering as "nothing configured".
@@ -65,7 +65,7 @@ fn saving_a_copy_of_the_real_config_keeps_the_stored_key() {
         return;
     };
 
-    let dir = std::env::temp_dir().join(format!("gevi_cmd_xlate_{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("gpdb_cmd_xlate_{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let tmp = dir.join("translate_config.json");
     assert_ne!(
@@ -75,7 +75,7 @@ fn saving_a_copy_of_the_real_config_keeps_the_stored_key() {
     );
     std::fs::write(&tmp, std::fs::read_to_string(&real).unwrap()).unwrap();
 
-    let before = gevi_core::translate_config::list_profiles(&tmp);
+    let before = gpdb_core::translate_config::list_profiles(&tmp);
     let Some(existing) = before.first() else {
         eprintln!("skipping: the config has no sources to round-trip");
         return;
@@ -84,14 +84,14 @@ fn saving_a_copy_of_the_real_config_keeps_the_stored_key() {
     assert!(!hint.is_empty(), "the fixture source has no key, so nothing is at risk");
 
     // Touch only the model, exactly as the form does when the key field is left blank.
-    let input: gevi_core::translate_config::ProfileInput =
-        serde_json::from_value(serde_json::json!({ "name": name, "model": "gevi-round-trip-probe" }))
+    let input: gpdb_core::translate_config::ProfileInput =
+        serde_json::from_value(serde_json::json!({ "name": name, "model": "gpdb-round-trip-probe" }))
             .unwrap();
-    gevi_core::translate_config::save_profile(&tmp, &input).unwrap();
+    gpdb_core::translate_config::save_profile(&tmp, &input).unwrap();
 
-    let after = gevi_core::translate_config::list_profiles(&tmp);
+    let after = gpdb_core::translate_config::list_profiles(&tmp);
     let updated = after.iter().find(|p| p.name == name).expect("the source survived");
-    assert_eq!(updated.model, "gevi-round-trip-probe");
+    assert_eq!(updated.model, "gpdb-round-trip-probe");
     assert_eq!(
         updated.key_hint, hint,
         "saving without a key must leave the stored key alone"
