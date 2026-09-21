@@ -26,6 +26,7 @@ Modes (pick exactly one):
   performers    Scrape performer profiles for known IDs that have none.
   episodes      Re-read films that have no episode rows, for their scene list only.
   refresh       Re-scrape everything older than --min-age-days.
+  fix-years     Clear release years that cannot be true. No network access.
   audit         Offline data-quality report. No network access.
 
 Usage:
@@ -35,6 +36,7 @@ Usage:
   python3 scraper_v2.py --mode new --start 1 --end 90000
   python3 scraper_v2.py --mode performers --limit 500
   python3 scraper_v2.py --mode episodes --limit 200 --dry-run
+  python3 scraper_v2.py --mode fix-years --apply
   python3 scraper_v2.py --mode failures
 
 Zero third-party dependencies: standard library only, per project convention.
@@ -894,30 +896,104 @@ class ScraperV2:
 
     def backup_database(self) -> None:
         """Copy the database aside before writing, so any run can be rolled back."""
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        dest = Path(f"{self.db_path}.backup-{stamp}")
-        try:
-            self.db.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-            shutil.copy2(self.db_path, dest)
-            size_mb = dest.stat().st_size / 1024 / 1024
-            print(f"💾 已备份数据库: {dest.name} ({size_mb:.1f} MB)")
-            self._prune_backups(keep=5)
-        except Exception as e:
-            print(f"⚠️  备份失败: {e}", file=sys.stderr)
-            sys.exit("已中止：数据安全优先，请先手动备份。")
-
-    def _prune_backups(self, keep: int) -> None:
-        backups = sorted(Path(self.db_path).parent.glob(Path(self.db_path).name + ".backup-*"))
-        for old in backups[:-keep]:
-            try:
-                old.unlink()
-            except OSError:
-                pass
+        backup_database(self.db_path, self.db)
 
 
 # --------------------------------------------------------------------------
 # Offline audit
 # --------------------------------------------------------------------------
+
+def backup_database(db_path: str, db: DatabaseManager, keep: int = 5) -> None:
+    """Copy the database aside before writing, so any run can be rolled back.
+
+    Module level rather than only a method on ScraperV2: the offline repair modes
+    write to the database too, and every path that writes should leave the same
+    way back. On failure this exits instead of returning — an unbacked-up write is
+    the one outcome not worth risking for a repair that can wait.
+    """
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    dest = Path(f"{db_path}.backup-{stamp}")
+    try:
+        db.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        shutil.copy2(db_path, dest)
+        size_mb = dest.stat().st_size / 1024 / 1024
+        print(f"💾 已备份数据库: {dest.name} ({size_mb:.1f} MB)")
+        prune_backups(db_path, keep)
+    except Exception as e:
+        print(f"⚠️  备份失败: {e}", file=sys.stderr)
+        sys.exit("已中止：数据安全优先，请先手动备份。")
+
+
+def prune_backups(db_path: str, keep: int) -> None:
+    backups = sorted(Path(db_path).parent.glob(Path(db_path).name + ".backup-*"))
+    for old in backups[:-keep]:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+
+
+def run_fix_years(db: DatabaseManager, db_path: str, apply: bool,
+                  no_backup: bool = False) -> None:
+    """Clear release years that cannot be true, listing every row before touching one.
+
+    Prints by default and writes only under --apply, because the interesting part of
+    this repair is *which* rows it hits: a film from 2027 is a data bug, but a real
+    upcoming release would look the same at a glance.
+
+    The bad values are not typos in the source. The site prints "?" for a film whose
+    release year it does not know, and batch_scraper's Released pattern used to read
+    past that "?" into the Vendor ID cell, storing catalogue numbers as years
+    ("ZV-1003" -> 1003, "AK-7201" -> 7201). The live page was checked for 68 of the 69
+    rows (the 69th would not load): every one prints "?" or nothing at all, so the
+    source has no better year to offer and NULL — "unknown" — is the honest repair
+    rather than a re-scrape. The parser is fixed in the same change
+    (batch_scraper.parse_release_year), so this runs once on what is already stored.
+    """
+    conn = db.conn
+    this_year = datetime.now().year
+    rows = conn.execute(
+        "SELECT id, release_year, studio_name, title FROM movies "
+        "WHERE release_year IS NOT NULL AND (release_year > ? OR release_year < 1900) "
+        "ORDER BY release_year DESC",
+        (this_year,),
+    ).fetchall()
+
+    print("=" * 74)
+    print("🗓️  【发行年份除错】")
+    print("=" * 74)
+    if not rows:
+        print(f"\n✅ 没有需要清理的年份（库中不存在 >{this_year} 或 <1900 的年份）。")
+        return
+
+    print(f"\n发现 {len(rows):,} 条不可能成立的年份。已核对的页面 Released 栏均为 “?”，"
+          f"\n库中的数字实际来自同行的 Vendor ID（货号），并非年份：\n")
+    print(f"  {'ID':>7}  {'年份':>5}  {'片商':<22} 片名")
+    for mid, year, studio, title in rows:
+        print(f"  {mid:>7}  {year:>5}  {(studio or '—')[:22]:<22} {(title or '')[:38]}")
+
+    if not apply:
+        print(f"\nℹ️  以上仅为预览，未改动任何数据。执行修复请加 --apply：")
+        print(f"     python3 scraper_v2.py --mode fix-years --apply")
+        return
+
+    if not no_backup:
+        backup_database(db_path, db)
+    with conn:
+        cur = conn.execute(
+            "UPDATE movies SET release_year = NULL "
+            "WHERE release_year IS NOT NULL AND (release_year > ? OR release_year < 1900)",
+            (this_year,),
+        )
+    left = conn.execute(
+        "SELECT COUNT(*) FROM movies WHERE release_year IS NOT NULL "
+        "AND (release_year > ? OR release_year < 1900)", (this_year,)
+    ).fetchone()[0]
+    nulls = conn.execute("SELECT COUNT(*) FROM movies WHERE release_year IS NULL").fetchone()[0]
+    print(f"\n✅ 已清除 {cur.rowcount:,} 条错误年份，改为「未知」。")
+    print(f"   残留不可能年份: {left} (应为 0) | 库中无年份影片共 {nulls:,} 条")
+    print("   回滚办法：用本次生成的 backups/gevi.db.backup-* 覆盖 gevi.db。")
+
 
 def run_audit(db: DatabaseManager) -> None:
     """Report what the database actually contains, without touching the network."""
@@ -1018,7 +1094,7 @@ def main() -> None:
     )
     parser.add_argument("--mode", default="gaps",
                         choices=["gaps", "new", "failed", "failures", "recheck-404",
-                                 "performers", "episodes", "refresh", "audit"],
+                                 "performers", "episodes", "refresh", "fix-years", "audit"],
                         help="抓取模式 (默认 gaps: 只补齐缺失字段)")
     parser.add_argument("--db", default="gevi.db", help="SQLite 数据库路径")
     parser.add_argument("--gaps", help="--mode gaps 时检查哪些字段, 逗号分隔 "
@@ -1050,10 +1126,13 @@ def main() -> None:
     safe = parser.add_argument_group("安全")
     safe.add_argument("--dry-run", action="store_true", help="只抓取校验，不写数据库")
     safe.add_argument("--no-backup", action="store_true", help="运行前不自动备份数据库")
+    safe.add_argument("--apply", action="store_true",
+                      help="真正执行 --mode fix-years 的修复 (不加则只列出将要改动的行)")
 
     args = parser.parse_args()
 
-    db = DatabaseManager(str(Path(args.db).resolve()))
+    db_path = str(Path(args.db).resolve())
+    db = DatabaseManager(db_path)
 
     if args.forget_voids:
         n = db.clear_voids()
@@ -1062,6 +1141,10 @@ def main() -> None:
 
     if args.mode == "audit" or args.audit:
         run_audit(db)
+        return
+
+    if args.mode == "fix-years":
+        run_fix_years(db, db_path, apply=args.apply, no_backup=args.no_backup)
         return
 
     def on_sigint(signum, frame):

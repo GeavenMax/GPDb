@@ -33,6 +33,7 @@ import ssl
 import json
 import http.client
 import urllib.parse
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -86,6 +87,28 @@ class KeepAliveClient:
         except Exception:
             self.close()
             raise
+
+
+def parse_release_year(cell_html: str) -> int | None:
+    """The release year printed in the Released cell, or None when the site has none.
+
+    The site prints a bare "?" for a film it has no release year for, and that is the
+    case 69 stored films hit: the old pattern let `[^\\d]*` run past the "?" and into
+    the *next* cell, so the first four-digit run in the row won — which is the Vendor
+    ID ("ZV-1003" -> 1003, "AK-7201" -> 7201). Those films were stored with a
+    catalogue number as their year.
+
+    Called with that one cell's HTML, so the number cannot come from anywhere else in
+    the row, and bounded so a cell that says something impossible stores nothing:
+    a wrong year is worse than a missing one, because a missing one says "unknown"
+    while a wrong one sorts, filters and displays as fact.
+    """
+    text = re.sub(r'<[^>]+>', ' ', cell_html)
+    m = re.search(r'\b(1[89]\d{2}|20\d{2})\b', text)
+    if not m:
+        return None
+    year = int(m.group(1))
+    return year if 1900 <= year <= date.today().year else None
 
 
 def to_path(url: str) -> str:
@@ -212,11 +235,12 @@ class BatchScraper:
                 studio_id = int(std_m.group(1))
             studio_name = html.unescape(re.sub(r'<[^>]+>', '', std_m.group(2)).strip())
 
-        # Released Year
+        # Released Year. The capture stops at the cell's own </td> so the Vendor ID
+        # column next door can never be mistaken for a year — see parse_release_year.
         year = None
-        year_m = re.search(r'<th[^>]*>Released</th>.*?<tr>.*?<td[^>]*>.*?</td>\s*<td[^>]*>[^\d]*(\d{4})', html_text, re.DOTALL)
+        year_m = re.search(r'<th[^>]*>Released</th>.*?<tr>.*?<td[^>]*>.*?</td>\s*<td[^>]*>(.*?)</td>', html_text, re.DOTALL)
         if year_m:
-            year = int(year_m.group(1))
+            year = parse_release_year(year_m.group(1))
 
         # Duration
         duration = None
