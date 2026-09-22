@@ -146,6 +146,64 @@ pub fn get_favorites(conn: &Connection) -> Result<FavoritesResponse> {
         out.counts.insert("director".into(), out.director.len() as i64);
     }
 
+    // Wishlist: movies where status = 'wishlist' in user_movie_data
+    if let Ok(mut stmt) = conn.prepare(
+        "SELECT u.movie_id, u.updated_at, m.title, m.release_year, m.studio_name, \
+                m.cover_full, m.description_zh IS NOT NULL, m.title_zh, u.rating, u.status \
+         FROM user_movie_data u JOIN movies m ON m.id = u.movie_id \
+         WHERE u.status = 'wishlist' ORDER BY u.updated_at DESC",
+    ) {
+        if let Ok(rows) = stmt.query_map([], |r| {
+            let movie_id: i64 = r.get(0)?;
+            Ok(FavoriteItem {
+                key: movie_id.to_string(),
+                created_at: r.get(1)?,
+                title: r.get(2)?,
+                release_year: r.get(3)?,
+                studio_name: r.get(4)?,
+                cover_full: r.get(5)?,
+                has_zh: Some(r.get::<usize, i64>(6)? != 0),
+                title_zh: r.get(7)?,
+                movie_id: Some(movie_id),
+                rating: r.get(8)?,
+                status: r.get(9)?,
+                ..Default::default()
+            })
+        }) {
+            out.wishlist = rows.filter_map(|r| r.ok()).collect();
+        }
+    }
+    out.counts.insert("wishlist".into(), out.wishlist.len() as i64);
+
+    // Watched: movies where status = 'watched' in user_movie_data
+    if let Ok(mut stmt) = conn.prepare(
+        "SELECT u.movie_id, u.updated_at, m.title, m.release_year, m.studio_name, \
+                m.cover_full, m.description_zh IS NOT NULL, m.title_zh, u.rating, u.status \
+         FROM user_movie_data u JOIN movies m ON m.id = u.movie_id \
+         WHERE u.status = 'watched' ORDER BY u.updated_at DESC",
+    ) {
+        if let Ok(rows) = stmt.query_map([], |r| {
+            let movie_id: i64 = r.get(0)?;
+            Ok(FavoriteItem {
+                key: movie_id.to_string(),
+                created_at: r.get(1)?,
+                title: r.get(2)?,
+                release_year: r.get(3)?,
+                studio_name: r.get(4)?,
+                cover_full: r.get(5)?,
+                has_zh: Some(r.get::<usize, i64>(6)? != 0),
+                title_zh: r.get(7)?,
+                movie_id: Some(movie_id),
+                rating: r.get(8)?,
+                status: r.get(9)?,
+                ..Default::default()
+            })
+        }) {
+            out.watched = rows.filter_map(|r| r.ok()).collect();
+        }
+    }
+    out.counts.insert("watched".into(), out.watched.len() as i64);
+
     out.counts.insert("movie".into(), out.movie.len() as i64);
     out.counts.insert("performer".into(), out.performer.len() as i64);
     out.counts.insert("episode".into(), out.episode.len() as i64);

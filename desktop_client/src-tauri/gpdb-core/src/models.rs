@@ -319,6 +319,8 @@ pub struct FavoriteItem {
     pub movie_id: Option<i64>,
     pub movie_title: Option<String>,
     pub works_count: Option<i64>,
+    pub rating: Option<f64>,
+    pub status: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -328,6 +330,8 @@ pub struct FavoritesResponse {
     pub studio: Vec<FavoriteItem>,
     pub director: Vec<FavoriteItem>,
     pub episode: Vec<FavoriteItem>,
+    pub wishlist: Vec<FavoriteItem>,
+    pub watched: Vec<FavoriteItem>,
     pub counts: HashMap<String, i64>,
 }
 

@@ -1071,6 +1071,34 @@ class DatabaseManager:
             for r in cur.fetchall()
         ]
 
+        # Wishlist: movies marked as wishlist
+        cur.execute("""
+            SELECT u.movie_id, u.updated_at, m.title, m.release_year, m.studio_name,
+                   m.cover_full, m.description_zh IS NOT NULL, m.title_zh, u.rating, u.status
+            FROM user_movie_data u JOIN movies m ON m.id = u.movie_id
+            WHERE u.status = 'wishlist' ORDER BY u.updated_at DESC
+        """)
+        out["wishlist"] = [
+            {"key": str(r[0]), "created_at": r[1], "title": r[2], "release_year": r[3],
+             "studio_name": r[4], "cover_full": r[5], "has_zh": bool(r[6]),
+             "title_zh": r[7], "movie_id": r[0], "rating": r[8], "status": r[9]}
+            for r in cur.fetchall()
+        ]
+
+        # Watched: movies marked as watched
+        cur.execute("""
+            SELECT u.movie_id, u.updated_at, m.title, m.release_year, m.studio_name,
+                   m.cover_full, m.description_zh IS NOT NULL, m.title_zh, u.rating, u.status
+            FROM user_movie_data u JOIN movies m ON m.id = u.movie_id
+            WHERE u.status = 'watched' ORDER BY u.updated_at DESC
+        """)
+        out["watched"] = [
+            {"key": str(r[0]), "created_at": r[1], "title": r[2], "release_year": r[3],
+             "studio_name": r[4], "cover_full": r[5], "has_zh": bool(r[6]),
+             "title_zh": r[7], "movie_id": r[0], "rating": r[8], "status": r[9]}
+            for r in cur.fetchall()
+        ]
+
         return out
 
     def export_user_data(self) -> dict:

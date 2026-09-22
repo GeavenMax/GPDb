@@ -394,10 +394,14 @@ export interface FavoriteItem {
   movie_id?: number | null;
   movie_title?: string | null;
   works_count?: number;
+  rating?: number | null;
+  status?: string | null;
 }
 
 export interface FavoritesResponse extends Record<FavoriteType, FavoriteItem[]> {
-  counts: Record<FavoriteType, number>;
+  counts: Record<FavoriteType | 'wishlist' | 'watched', number>;
+  wishlist?: FavoriteItem[];
+  watched?: FavoriteItem[];
 }
 
 export interface DatabaseStats {

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { TROPHIES, trophyStats, type TrophyTier } from '../services/trophySystem';
+import { TROPHIES, trophyStats, resetUnlockedTrophies, type TrophyTier } from '../services/trophySystem';
+import { pluginsConfig, savePluginsConfig } from '../services/pluginManager';
 import FluidGlassTrophyIcon from '../components/FluidGlassTrophyIcon.vue';
 import { analytics } from '../services/analytics';
+import { t } from '../i18n';
 import {
   Trophy as TrophyIcon, Sparkles, ChevronLeft,
-  Lock, CheckCircle2
+  Lock, CheckCircle2, Volume2, VolumeX, RotateCcw
 } from '@lucide/vue';
 
 const emit = defineEmits<{
@@ -23,6 +25,16 @@ const filteredTrophies = computed(() => {
     return t.tier === selectedTier.value;
   });
 });
+
+function toggleSound() {
+  savePluginsConfig({ trophiesSoundEnabled: !pluginsConfig.value.trophiesSoundEnabled });
+}
+
+function confirmReset() {
+  if (window.confirm(t('plugins.resetTrophiesConfirm') || '确认清空所有已解锁的成就奖杯吗？所有成就记录将归零从头开始。')) {
+    resetUnlockedTrophies();
+  }
+}
 
 function formatDate(ts: number | null): string {
   if (!ts) return '';
@@ -64,28 +76,52 @@ function tierBadgeClass(tier: TrophyTier): string {
         <div>
           <h1 class="text-2xl md:text-3xl font-extrabold text-fg tracking-tight flex items-center gap-2.5">
             <TrophyIcon class="w-7 h-7 text-accent" />
-            <span>奖杯成就陈列馆 (77 奖杯)</span>
+            <span>{{ t('plugins.trophies') }}</span>
           </h1>
           <p class="text-xs text-fg-4 mt-0.5">
-            模仿 PSN 奖杯系统打造，每一座流体玻璃奖杯均由您的本地真实探索足迹铸就
+            {{ t('plugins.trophiesDesc') }}
           </p>
         </div>
       </div>
 
-      <!-- Tiers breakdown chips -->
-      <div class="flex items-center gap-2">
-        <span class="px-2.5 py-1 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
-          <span>白金:</span> <span>{{ trophyStats.platinum }} / 1</span>
-        </span>
-        <span class="px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-          <span>金:</span> <span>{{ trophyStats.gold }} / 6</span>
-        </span>
-        <span class="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-300/10 text-slate-200 border border-slate-300/30 flex items-center gap-1">
-          <span>银:</span> <span>{{ trophyStats.silver }} / 20</span>
-        </span>
-        <span class="px-2.5 py-1 rounded-xl text-xs font-bold bg-orange-500/10 text-orange-300 border border-orange-500/30 flex items-center gap-1">
-          <span>铜:</span> <span>{{ trophyStats.bronze }} / 50</span>
-        </span>
+      <!-- Actions & Tiers breakdown chips -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <!-- Sound switch -->
+        <button
+          @click="toggleSound"
+          class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 shadow-xs"
+          :class="pluginsConfig.trophiesSoundEnabled ? 'bg-surface-2 text-fg border-line hover:bg-surface-3' : 'bg-surface-2/40 text-fg-5 border-line/60'"
+          :title="pluginsConfig.trophiesSoundEnabled ? '解锁音效已开启' : '解锁音效已静音'"
+        >
+          <component :is="pluginsConfig.trophiesSoundEnabled ? Volume2 : VolumeX" class="w-3.5 h-3.5 text-accent" />
+          <span>{{ pluginsConfig.trophiesSoundEnabled ? '解锁音效: 开' : '解锁音效: 关' }}</span>
+        </button>
+
+        <!-- Reset trophies button -->
+        <button
+          @click="confirmReset"
+          class="px-3 py-1.5 rounded-xl text-xs font-semibold border border-danger-fill/30 bg-danger-fill/10 text-danger-soft hover:bg-danger-fill/20 transition flex items-center gap-1.5 shadow-xs"
+          title="清空当前已解锁奖杯记录，从头开始"
+        >
+          <RotateCcw class="w-3.5 h-3.5" />
+          <span>{{ t('plugins.resetTrophies') }}</span>
+        </button>
+
+        <!-- Tier badges -->
+        <div class="flex items-center gap-1.5">
+          <span class="px-2 py-1 rounded-xl text-xs font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
+            <span>白金:</span> <span>{{ trophyStats.platinum }} / 1</span>
+          </span>
+          <span class="px-2 py-1 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+            <span>金:</span> <span>{{ trophyStats.gold }} / 6</span>
+          </span>
+          <span class="px-2 py-1 rounded-xl text-xs font-bold bg-slate-300/10 text-slate-200 border border-slate-300/30 flex items-center gap-1">
+            <span>银:</span> <span>{{ trophyStats.silver }} / 20</span>
+          </span>
+          <span class="px-2 py-1 rounded-xl text-xs font-bold bg-orange-500/10 text-orange-300 border border-orange-500/30 flex items-center gap-1">
+            <span>铜:</span> <span>{{ trophyStats.bronze }} / 50</span>
+          </span>
+        </div>
       </div>
     </div>
 

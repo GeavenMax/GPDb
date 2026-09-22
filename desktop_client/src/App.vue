@@ -11,13 +11,12 @@ import EpisodeCard from './components/EpisodeCard.vue';
 import EpisodeDetailModal from './components/EpisodeDetailModal.vue';
 import ImageLightbox from './components/ImageLightbox.vue';
 import FilterDrawer from './components/FilterDrawer.vue';
-import FilterChip from './components/FilterChip.vue';
+import ActiveFilterBar from './components/ActiveFilterBar.vue';
 import SyncModal from './components/SyncModal.vue';
 import PaginationBar from './components/PaginationBar.vue';
 import {
   api, createMovieFilters, createPerformerFilters, countActivePerformerFilters,
-  createEpisodeFilters, countActiveEpisodeFilters, EPISODE_SORTS, FACET_KEYS,
-  FACET_LABELS, IS_TAURI,
+  createEpisodeFilters, countActiveEpisodeFilters, EPISODE_SORTS, IS_TAURI,
 } from './api';
 import { getImageUrl } from './utils/image';
 import { openLightbox, viewableImageFrom, zoomsOnClick, lightboxImage } from './utils/lightbox';
@@ -31,8 +30,6 @@ import type {
   PerformerFilterState,
   PerformerFacets,
   TranslationStats,
-  TranslationProfile,
-  TranslationPreset,
   FavoriteType,
   FavoriteItem,
   FavoritesResponse,
@@ -49,12 +46,13 @@ import type {
   DatabaseInfo,
 } from './types';
 import { FAVORITE_TYPES } from './types';
-import { loadGlossary, glossaryCount, trMeasure, trCategory } from './utils/glossary';
+import { loadGlossary, glossaryCount, trMeasure } from './utils/glossary';
 import { titlePrimary, titleSecondary, sceneFilm } from './utils/bilingual';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
-  Megaphone, FolderOpen, Search, Globe, Shield
+  Megaphone, FolderOpen, Search, Globe, Shield,
+  Bookmark, CheckCircle2, ChevronDown, ChevronRight, ChevronsUpDown, Star
 } from '@lucide/vue';
 import AnalyticsView from './views/AnalyticsView.vue';
 import PluginsView from './views/PluginsView.vue';
@@ -138,40 +136,6 @@ const activeEpisodeFilterCount = computed(() =>
 
 /**
  * The episode filters currently on, as chips — the same idea as `activeFacetChips`
- * below, built the same way rather than as three near-identical template blocks.
- *
- * Sort is deliberately absent: it is a segmented control sitting a few pixels away,
- * so a chip for it would be a second, worse way to change the same thing. The count
- * above does include it, which is why the navbar dot can light up with no chip shown.
- */
-const episodeChips = computed(() => {
-  const chips: { key: string; label: string; value: string; clear: () => void }[] = [];
-  if (episodeFilters.studio) {
-    chips.push({
-      key: 'studio',
-      label: '片商:',
-      value: episodeFilters.studio,
-      clear: () => (episodeFilters.studio = ''),
-    });
-  }
-  if (episodeFilters.hasZh) {
-    chips.push({
-      key: 'hasZh',
-      label: '',
-      value: '有中文简介',
-      clear: () => (episodeFilters.hasZh = false),
-    });
-  }
-  if (episodeFilters.hasPerformers) {
-    chips.push({
-      key: 'hasPerformers',
-      label: '',
-      value: '有演员',
-      clear: () => (episodeFilters.hasPerformers = false),
-    });
-  }
-  return chips;
-});
 
 /**
  * Favorited keys, grouped by type. Kept as plain string sets so a heart can be
@@ -298,55 +262,11 @@ const performerFilters = reactive<PerformerFilterState>(createPerformerFilters()
 const performerFacets = ref<PerformerFacets>({ facets: {}, total: 0, withImage: 0, enriched: 0 });
 const activePerformerFilterCount = computed(() => countActivePerformerFilters(performerFilters));
 
-/** Flat list of the currently selected facet values, for the chip row. */
-const activeFacetChips = computed(() =>
-  FACET_KEYS.flatMap(key =>
-    (performerFilters[key] as string[]).map(value => ({
-      key: key as string,
-      value,
-      label: FACET_LABELS[key] || key,
-    }))
-  )
-);
-
-// Machine translation progress (issue #4)
+// Machine translation state (auto-translate on film detail modal)
 const translationStats = ref<TranslationStats | null>(null);
-const isTranslating = ref(false);
-const translateMsg = ref('');
-
-/**
- * How new synopses get translated.
- *
- * 'single' translates one film at a time, when its detail view is opened, and
- * nothing else - the library stays mostly untranslated until browsed, which is
- * the point: a full library is ~3,500 API calls, a browsing session is a handful.
- * 'batch' leaves translation to the explicit buttons in Settings.
- */
 const translateMode = ref<'single' | 'batch'>(
   localStorage.getItem(PREFS.translateMode) === 'batch' ? 'batch' : 'single'
 );
-
-function setTranslateMode(mode: 'single' | 'batch') {
-  translateMode.value = mode;
-  localStorage.setItem(PREFS.translateMode, mode);
-}
-
-// Translation sources (multiple saved API providers, switchable by hand).
-const providerList = ref<TranslationProfile[]>([]);
-const providerPresets = ref<TranslationPreset[]>([]);
-const providerForm = reactive({
-  open: false,
-  editing: '',
-  name: '',
-  label: '',
-  type: 'openai',
-  model: '',
-  base_url: '',
-  api_key: '',
-});
-const providerBusy = ref(false);
-const providerMsg = ref('');
-const providerTest = ref<{ ok: boolean; text: string } | null>(null);
 
 // List loading state
 //
@@ -541,7 +461,6 @@ async function loadStats() {
   categories.value = await api.getCategories();
   loadCacheStats();
   loadTranslationStats();
-  loadProviders();
 }
 
 async function loadTranslationStats() {
@@ -578,123 +497,11 @@ async function handleRunGlossary(dryRun: boolean) {
   glossaryBusy.value = false;
 }
 
-async function handleRunTranslation(limit: number | null) {
-  isTranslating.value = true;
-  translateMsg.value = '';
-  const res = await api.runTranslation(limit);
-  if (res.success) {
-    translateMsg.value = res.message || '翻译任务已启动';
-    // Poll until the background job reports completion.
-    const poll = setInterval(async () => {
-      await loadTranslationStats();
-      if (!translationStats.value?.running) {
-        clearInterval(poll);
-        isTranslating.value = false;
-        translateMsg.value = '翻译完成';
-        fetchMovies(true);
-      }
-    }, 3000);
-  } else {
-    translateMsg.value = res.error || '启动失败';
-    isTranslating.value = false;
-  }
-}
-
-// --- Translation sources ---
-
-async function loadProviders() {
-  const data = await api.getTranslationProviders();
-  providerList.value = data.profiles;
-  providerPresets.value = data.presets;
-}
-
-/** Prefill the form from a vendor template. */
-function applyPreset(preset: TranslationPreset) {
-  providerForm.name = preset.id;
-  providerForm.label = preset.label;
-  providerForm.type = preset.type;
-  providerForm.model = preset.model;
-  providerForm.base_url = preset.base_url;
-  providerForm.api_key = '';
-}
-
-function openProviderForm(profile?: TranslationProfile) {
-  providerTest.value = null;
-  providerMsg.value = '';
-  providerForm.open = true;
-  if (profile) {
-    providerForm.editing = profile.name;
-    providerForm.name = profile.name;
-    providerForm.label = profile.label;
-    providerForm.type = profile.type;
-    providerForm.model = profile.model;
-    providerForm.base_url = profile.base_url;
-  } else {
-    providerForm.editing = '';
-    providerForm.name = '';
-    providerForm.label = '';
-    providerForm.type = 'openai';
-    providerForm.model = '';
-    providerForm.base_url = '';
-  }
-  // Never prefilled: the stored key is not sent to the client at all.
-  providerForm.api_key = '';
-}
-
-async function saveProvider() {
-  if (!providerForm.name.trim()) {
-    providerMsg.value = '请填写配置名称';
-    return;
-  }
-  providerBusy.value = true;
-  providerMsg.value = '';
-  const res = await api.saveTranslationProvider({
-    name: providerForm.name.trim(),
-    label: providerForm.label.trim() || providerForm.name.trim(),
-    type: providerForm.type,
-    model: providerForm.model.trim(),
-    base_url: providerForm.base_url.trim(),
-    api_key: providerForm.api_key.trim(),
-    active: !providerForm.editing && providerList.value.length === 0,
-  });
-  providerBusy.value = false;
-  if (res.success) {
-    if (res.profiles) providerList.value = res.profiles;
-    providerForm.open = false;
-    providerMsg.value = '已保存';
-    await loadTranslationStats();
-  } else {
-    providerMsg.value = res.error || '保存失败';
-  }
-}
-
-async function activateProvider(name: string) {
-  const res = await api.activateTranslationProvider(name);
-  if (res.success && res.profiles) providerList.value = res.profiles;
-  else providerMsg.value = res.error || '切换失败';
-  await loadTranslationStats();
-}
-
-async function removeProvider(name: string) {
-  const res = await api.deleteTranslationProvider(name);
-  if (res.success && res.profiles) providerList.value = res.profiles;
-  else providerMsg.value = res.error || '删除失败';
-  await loadTranslationStats();
-}
-
-async function testProvider(name: string | null) {
-  providerBusy.value = true;
-  providerTest.value = null;
-  providerMsg.value = '';
-  const res = await api.testTranslationProvider(name);
-  providerBusy.value = false;
-  if (res.success) {
-    providerTest.value = {
-      ok: true,
-      text: `${res.profile} · ${res.model} · ${res.elapsed}s\n原文: ${res.source}\n译文: ${res.result}`,
-    };
-  } else {
-    providerTest.value = { ok: false, text: res.error || '测试失败' };
+function clearMovieField(field: keyof FilterState) {
+  if (field === 'yearMin' || field === 'yearMax') {
+    filters[field] = null;
+  } else if (field === 'query' || field === 'studio' || field === 'director' || field === 'category') {
+    filters[field] = '';
   }
 }
 
@@ -1235,13 +1042,65 @@ const favPerformers = computed(() => favoriteItems.value?.performer || []);
 const favEpisodes = computed(() => favoriteItems.value?.episode || []);
 const favStudios = computed(() => favoriteItems.value?.studio || []);
 const favDirectors = computed(() => favoriteItems.value?.director || []);
+const favWishlist = computed(() => favoriteItems.value?.wishlist || []);
+const favWatched = computed(() => favoriteItems.value?.watched || []);
 
-/** Total across all five sections, for the page header. */
+/** Total across all sections, for the page header. */
 const favoriteTotal = computed(() => {
   const counts = favoriteItems.value?.counts;
   if (!counts) return 0;
-  return FAVORITE_TYPES.reduce((sum, t) => sum + (counts[t] || 0), 0);
+  return (
+    FAVORITE_TYPES.reduce((sum, t) => sum + (counts[t] || 0), 0) +
+    (counts.wishlist || 0) +
+    (counts.watched || 0)
+  );
 });
+
+type FavoriteSubTab = 'all' | 'wishlist' | 'watched' | 'movie' | 'performer' | 'studio' | 'director' | 'episode';
+const favSubTab = ref<FavoriteSubTab>('all');
+
+const FAV_COLLAPSED_KEY = 'gpdb_fav_collapsed_sections';
+function loadFavCollapsed(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(FAV_COLLAPSED_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+const favCollapsed = reactive<Record<string, boolean>>(loadFavCollapsed());
+
+function toggleFavSection(sectionKey: string) {
+  favCollapsed[sectionKey] = !favCollapsed[sectionKey];
+  try {
+    localStorage.setItem(FAV_COLLAPSED_KEY, JSON.stringify(favCollapsed));
+  } catch {}
+}
+
+const allSectionsCollapsed = computed(() => {
+  const activeSectionKeys = [
+    ...(favWishlist.value.length ? ['wishlist'] : []),
+    ...(favWatched.value.length ? ['watched'] : []),
+    ...(favMovies.value.length ? ['movie'] : []),
+    ...(favPerformers.value.length ? ['performer'] : []),
+    ...(favEpisodes.value.length ? ['episode'] : []),
+    ...(favStudios.value.length ? ['studio'] : []),
+    ...(favDirectors.value.length ? ['director'] : []),
+  ];
+  if (activeSectionKeys.length === 0) return false;
+  return activeSectionKeys.every(k => favCollapsed[k]);
+});
+
+function toggleCollapseAllFavs() {
+  const target = !allSectionsCollapsed.value;
+  const activeSectionKeys = ['wishlist', 'watched', 'movie', 'performer', 'episode', 'studio', 'director'];
+  for (const k of activeSectionKeys) {
+    favCollapsed[k] = target;
+  }
+  try {
+    localStorage.setItem(FAV_COLLAPSED_KEY, JSON.stringify(favCollapsed));
+  } catch {}
+}
 
 /**
  * Adapt a server favorites row into the minimal shape MovieCard renders.
@@ -1630,41 +1489,6 @@ onUnmounted(() => {
             </div>
 
             <div class="flex items-center gap-3">
-              <!-- Active filter chips -->
-              <div class="flex items-center gap-2 flex-wrap">
-                <FilterChip
-                  v-if="filters.studio"
-                  label="厂牌:"
-                  :value="filters.studio"
-                  @remove="filters.studio = ''"
-                />
-                <FilterChip
-                  v-if="filters.director"
-                  label="导演:"
-                  :value="filters.director"
-                  @remove="filters.director = ''"
-                />
-                <FilterChip
-                  v-if="filters.category"
-                  label="分类:"
-                  :value="trCategory(filters.category)"
-                  @remove="filters.category = ''"
-                />
-                <!--
-                  Same function the drawer's 重置 uses, so the two agree. It also
-                  clears the navbar search and resets the sort — "清除全部" clearing
-                  everything is the honest reading of the label; the guard above only
-                  decides when the button is worth showing.
-                -->
-                <button
-                  v-if="filters.studio || filters.director || filters.category"
-                  @click="resetMovieFilters"
-                  class="text-[11px] text-fg-4 hover:text-accent underline"
-                >
-                  清除全部
-                </button>
-              </div>
-
               <!-- Synopsis language toggle (issue #4) -->
               <div class="flex items-center gap-1 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <Languages class="w-3 h-3 text-fg-4 ml-1.5" />
@@ -1725,6 +1549,15 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+
+          <!-- Prominent Active Filter Banner -->
+          <ActiveFilterBar
+            tab="movies"
+            :movie-filters="filters"
+            @clear-movie-field="clearMovieField"
+            @clear-movie-years="() => { filters.yearMin = null; filters.yearMax = null; }"
+            @reset-movies="resetMovieFilters"
+          />
 
           <!-- Movie Grid / Multi-Column List -->
           <div
@@ -1808,37 +1641,6 @@ onUnmounted(() => {
                 </span>
               </button>
 
-              <!-- Active facet chips -->
-              <div class="flex items-center gap-1.5 flex-wrap max-w-lg">
-                <FilterChip
-                  v-for="chip in activeFacetChips"
-                  :key="`${chip.key}:${chip.value}`"
-                  variant="neutral"
-                  :label="chip.label"
-                  :value="chip.value"
-                  @remove="togglePerformerFacet(chip.key as any, chip.value)"
-                />
-                <FilterChip
-                  v-if="performerFilters.hasImage"
-                  variant="neutral"
-                  value="有照片"
-                  @remove="performerFilters.hasImage = false"
-                />
-                <FilterChip
-                  v-if="performerFilters.minMovies != null"
-                  variant="neutral"
-                  :value="`≥${performerFilters.minMovies} 部作品`"
-                  @remove="performerFilters.minMovies = null"
-                />
-                <button
-                  v-if="activePerformerFilterCount > 0"
-                  @click="resetPerformerFilters"
-                  class="text-[11px] text-fg-4 hover:text-accent underline"
-                >
-                  清除全部
-                </button>
-              </div>
-
               <!-- How the list pages in: auto-load on scroll, or explicit pages -->
               <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
@@ -1882,6 +1684,15 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+
+          <!-- Prominent Active Filter Banner -->
+          <ActiveFilterBar
+            tab="performers"
+            :performer-filters="performerFilters"
+            @clear-performer-facet="(key, val) => togglePerformerFacet(key, val)"
+            @clear-performer-field="(f) => { if (f === 'hasImage') performerFilters.hasImage = false; else if (f === 'minMovies') performerFilters.minMovies = null; }"
+            @reset-performers="resetPerformerFilters"
+          />
 
           <div
             v-if="performers.length > 0"
@@ -2027,6 +1838,13 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- Prominent Active Filter Banner -->
+          <ActiveFilterBar
+            tab="studios"
+            :studio-query="studioQuery"
+            @clear-studio-query="studioQuery = ''"
+          />
+
           <!-- Cards carry no artwork: the library has no studio logo, and picking one
                of the studio's film covers per card would cost a scan per group. -->
           <div
@@ -2154,6 +1972,13 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+
+          <!-- Prominent Active Filter Banner -->
+          <ActiveFilterBar
+            tab="directors"
+            :director-query="directorQuery"
+            @clear-director-query="directorQuery = ''"
+          />
 
           <!-- No portrait exists for a director, so the tile is the first letter,
                as on the studio cards. -->
@@ -2283,23 +2108,13 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Active filter chips -->
-          <div v-if="episodeChips.length > 0" class="flex items-center gap-2 flex-wrap">
-            <FilterChip
-              v-for="chip in episodeChips"
-              :key="chip.key"
-              variant="neutral"
-              :label="chip.label"
-              :value="chip.value"
-              @remove="chip.clear()"
-            />
-            <button
-              @click="resetEpisodeFilters"
-              class="text-[11px] text-fg-4 hover:text-accent underline"
-            >
-              清除全部
-            </button>
-          </div>
+          <!-- Prominent Active Filter Banner -->
+          <ActiveFilterBar
+            tab="episodes"
+            :episode-filters="episodeFilters"
+            @clear-episode-field="(f) => { if (f === 'studio') episodeFilters.studio = ''; else if (f === 'hasZh') episodeFilters.hasZh = false; else if (f === 'hasPerformers') episodeFilters.hasPerformers = false; }"
+            @reset-episodes="resetEpisodeFilters"
+          />
 
           <div
             v-if="episodeRows.length > 0"
@@ -2361,15 +2176,29 @@ onUnmounted(() => {
           />
         </div>
 
-        <!-- 5. Favorites Tab — five server-driven sections -->
-        <div v-else-if="currentTab === 'favorites'" class="space-y-8">
+        <!-- 5. Favorites Tab — categorized, collapsible accordion & sub-tab navigation -->
+        <div v-else-if="currentTab === 'favorites'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
-            <h1 class="text-xl font-bold text-fg tracking-tight">我的收藏</h1>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-bold text-fg tracking-tight">我的收藏与片单</h1>
               <span class="text-xs text-fg-4 font-mono">({{ favoriteTotal }} 项)</span>
-              <!-- Grid columns adjuster: only meaningful once there are movie cards -->
+            </div>
+
+            <div class="flex items-center gap-2.5">
+              <!-- Master Toggle Collapse All (only in overview mode) -->
+              <button
+                v-if="favSubTab === 'all' && favoriteTotal > 0"
+                @click="toggleCollapseAllFavs"
+                class="px-2.5 py-1 rounded-xl bg-surface border border-line hover:border-line-strong text-fg-3 hover:text-fg text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+                :title="allSectionsCollapsed ? '展开全部板块' : '折叠全部板块'"
+              >
+                <ChevronsUpDown class="w-3.5 h-3.5 text-accent" />
+                <span>{{ allSectionsCollapsed ? '全部展开' : '全部折叠' }}</span>
+              </button>
+
+              <!-- Grid columns adjuster -->
               <div
-                v-if="favMovies.length > 0"
+                v-if="favMovies.length > 0 || favWishlist.length > 0 || favWatched.length > 0 || favEpisodes.length > 0"
                 class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs"
               >
                 <span class="text-fg-4 text-[11px]">每行</span>
@@ -2395,20 +2224,174 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- Subcategory Filter Pills -->
+          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <button
+              v-for="sub in [
+                { id: 'all', label: '全部总览', count: favoriteTotal },
+                { id: 'wishlist', label: '想看', count: favWishlist.length },
+                { id: 'watched', label: '已看', count: favWatched.length },
+                { id: 'movie', label: '喜爱影片', count: favMovies.length },
+                { id: 'performer', label: '演员', count: favPerformers.length },
+                { id: 'studio', label: '片商', count: favStudios.length },
+                { id: 'director', label: '导演', count: favDirectors.length },
+                { id: 'episode', label: '分集', count: favEpisodes.length },
+              ]"
+              :key="sub.id"
+              @click="favSubTab = sub.id as any"
+              class="px-3 py-1.5 rounded-xl border font-medium transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer select-none"
+              :class="favSubTab === sub.id
+                ? 'bg-accent-fill text-on-fill border-accent-fill font-bold shadow-sm'
+                : 'bg-surface border-line hover:border-line-strong text-fg-3 hover:text-fg-2'"
+            >
+              <span>{{ sub.label }}</span>
+              <span
+                class="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold"
+                :class="favSubTab === sub.id ? 'bg-on-fill/20 text-on-fill' : 'bg-surface-2 text-fg-4'"
+              >
+                {{ sub.count }}
+              </span>
+            </button>
+          </div>
+
           <div v-if="favoritesLoading && favoriteTotal === 0" class="text-center py-24">
             <Loader2 class="w-8 h-8 text-accent-fill animate-spin mx-auto" />
           </div>
 
+          <!-- Favorites Body -->
           <template v-else-if="favoriteTotal > 0">
-            <!-- 1. Movies -->
-            <section v-if="favMovies.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-line">
-                <Film class="w-4 h-4 text-accent" />
-                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.movie }}</h2>
-                <span class="text-xs text-fg-4 font-mono">{{ favMovies.length }}</span>
+            <!-- 1. Wishlist Section (想看) -->
+            <section
+              v-if="(favSubTab === 'all' || favSubTab === 'wishlist') && favWishlist.length > 0"
+              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
+            >
+              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
+                <button
+                  @click="toggleFavSection('wishlist')"
+                  class="flex items-center gap-2 text-left group cursor-pointer"
+                >
+                  <component
+                    :is="favCollapsed.wishlist ? ChevronRight : ChevronDown"
+                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
+                  />
+                  <Bookmark class="w-4 h-4 text-amber-500" />
+                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">想看片单</h2>
+                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favWishlist.length }}</span>
+                </button>
+                <button
+                  v-if="favSubTab === 'all'"
+                  @click="favSubTab = 'wishlist'"
+                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>仅看此类</span>
+                  <span>→</span>
+                </button>
               </div>
               <div
-                class="grid transition-all duration-200"
+                v-show="!favCollapsed.wishlist || favSubTab === 'wishlist'"
+                class="grid transition-all duration-200 pt-1"
+                :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
+                :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
+              >
+                <MovieCard
+                  v-for="f in favWishlist"
+                  :key="`wishlist-${f.key}`"
+                  :movie="asMovie(f)"
+                  :translated="Boolean(f.has_zh)"
+                  :is-favorite="favorites.movie.has(f.key)"
+                  :view="viewMode"
+                  :lang="descLang"
+                  @select="openMovieDetail(asMovie(f))"
+                  @toggle-favorite="toggleFavoriteEntity('movie', f.key)"
+                />
+              </div>
+            </section>
+
+            <!-- 2. Watched Section (已看) -->
+            <section
+              v-if="(favSubTab === 'all' || favSubTab === 'watched') && favWatched.length > 0"
+              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
+            >
+              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
+                <button
+                  @click="toggleFavSection('watched')"
+                  class="flex items-center gap-2 text-left group cursor-pointer"
+                >
+                  <component
+                    :is="favCollapsed.watched ? ChevronRight : ChevronDown"
+                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
+                  />
+                  <CheckCircle2 class="w-4 h-4 text-emerald-500" />
+                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">已看记录</h2>
+                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favWatched.length }}</span>
+                </button>
+                <button
+                  v-if="favSubTab === 'all'"
+                  @click="favSubTab = 'watched'"
+                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>仅看此类</span>
+                  <span>→</span>
+                </button>
+              </div>
+              <div
+                v-show="!favCollapsed.watched || favSubTab === 'watched'"
+                class="grid transition-all duration-200 pt-1"
+                :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
+                :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
+              >
+                <div v-for="f in favWatched" :key="`watched-${f.key}`" class="relative group">
+                  <MovieCard
+                    :movie="asMovie(f)"
+                    :translated="Boolean(f.has_zh)"
+                    :is-favorite="favorites.movie.has(f.key)"
+                    :view="viewMode"
+                    :lang="descLang"
+                    @select="openMovieDetail(asMovie(f))"
+                    @toggle-favorite="toggleFavoriteEntity('movie', f.key)"
+                  />
+                  <!-- Rating badge overlay if rated -->
+                  <div
+                    v-if="f.rating != null && f.rating > 0"
+                    class="on-scrim absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-lg bg-scrim/85 backdrop-blur-md border border-amber-500/40 text-[11px] text-amber-400 font-bold flex items-center gap-1 pointer-events-none shadow-md z-10"
+                  >
+                    <Star class="w-3 h-3 fill-amber-400 text-amber-400" />
+                    <span>{{ f.rating }} 星</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- 3. Movies Section (喜爱影片) -->
+            <section
+              v-if="(favSubTab === 'all' || favSubTab === 'movie') && favMovies.length > 0"
+              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
+            >
+              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
+                <button
+                  @click="toggleFavSection('movie')"
+                  class="flex items-center gap-2 text-left group cursor-pointer"
+                >
+                  <component
+                    :is="favCollapsed.movie ? ChevronRight : ChevronDown"
+                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
+                  />
+                  <Film class="w-4 h-4 text-accent" />
+                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">{{ FAVORITE_LABELS.movie }}</h2>
+                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favMovies.length }}</span>
+                </button>
+                <button
+                  v-if="favSubTab === 'all'"
+                  @click="favSubTab = 'movie'"
+                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>仅看此类</span>
+                  <span>→</span>
+                </button>
+              </div>
+              <div
+                v-show="!favCollapsed.movie || favSubTab === 'movie'"
+                class="grid transition-all duration-200 pt-1"
                 :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
                 :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
               >
@@ -2426,14 +2409,37 @@ onUnmounted(() => {
               </div>
             </section>
 
-            <!-- 2. Performers -->
-            <section v-if="favPerformers.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-line">
-                <UserIcon class="w-4 h-4 text-accent" />
-                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.performer }}</h2>
-                <span class="text-xs text-fg-4 font-mono">{{ favPerformers.length }}</span>
+            <!-- 4. Performers Section (演员) -->
+            <section
+              v-if="(favSubTab === 'all' || favSubTab === 'performer') && favPerformers.length > 0"
+              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
+            >
+              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
+                <button
+                  @click="toggleFavSection('performer')"
+                  class="flex items-center gap-2 text-left group cursor-pointer"
+                >
+                  <component
+                    :is="favCollapsed.performer ? ChevronRight : ChevronDown"
+                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
+                  />
+                  <UserIcon class="w-4 h-4 text-accent" />
+                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">{{ FAVORITE_LABELS.performer }}</h2>
+                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favPerformers.length }}</span>
+                </button>
+                <button
+                  v-if="favSubTab === 'all'"
+                  @click="favSubTab = 'performer'"
+                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>仅看此类</span>
+                  <span>→</span>
+                </button>
               </div>
-              <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+              <div
+                v-show="!favCollapsed.performer || favSubTab === 'performer'"
+                class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 pt-1"
+              >
                 <div
                   v-for="f in favPerformers"
                   :key="f.key"
@@ -2468,14 +2474,37 @@ onUnmounted(() => {
               </div>
             </section>
 
-            <!-- 3. Episodes -->
-            <section v-if="favEpisodes.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-line">
-                <Layers class="w-4 h-4 text-accent" />
-                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.episode }}</h2>
-                <span class="text-xs text-fg-4 font-mono">{{ favEpisodes.length }}</span>
+            <!-- 5. Episodes Section (片段) -->
+            <section
+              v-if="(favSubTab === 'all' || favSubTab === 'episode') && favEpisodes.length > 0"
+              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
+            >
+              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
+                <button
+                  @click="toggleFavSection('episode')"
+                  class="flex items-center gap-2 text-left group cursor-pointer"
+                >
+                  <component
+                    :is="favCollapsed.episode ? ChevronRight : ChevronDown"
+                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
+                  />
+                  <Layers class="w-4 h-4 text-accent" />
+                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">{{ FAVORITE_LABELS.episode }}</h2>
+                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favEpisodes.length }}</span>
+                </button>
+                <button
+                  v-if="favSubTab === 'all'"
+                  @click="favSubTab = 'episode'"
+                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>仅看此类</span>
+                  <span>→</span>
+                </button>
               </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div
+                v-show="!favCollapsed.episode || favSubTab === 'episode'"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1"
+              >
                 <div
                   v-for="f in favEpisodes"
                   :key="f.key"
@@ -2523,14 +2552,37 @@ onUnmounted(() => {
               </div>
             </section>
 
-            <!-- 4. Studios — clicking opens the studio page, as a favorited performer does -->
-            <section v-if="favStudios.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-line">
-                <Building2 class="w-4 h-4 text-accent" />
-                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.studio }}</h2>
-                <span class="text-xs text-fg-4 font-mono">{{ favStudios.length }}</span>
+            <!-- 6. Studios Section (片商) -->
+            <section
+              v-if="(favSubTab === 'all' || favSubTab === 'studio') && favStudios.length > 0"
+              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
+            >
+              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
+                <button
+                  @click="toggleFavSection('studio')"
+                  class="flex items-center gap-2 text-left group cursor-pointer"
+                >
+                  <component
+                    :is="favCollapsed.studio ? ChevronRight : ChevronDown"
+                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
+                  />
+                  <Building2 class="w-4 h-4 text-accent" />
+                  <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.studio }}</h2>
+                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favStudios.length }}</span>
+                </button>
+                <button
+                  v-if="favSubTab === 'all'"
+                  @click="favSubTab = 'studio'"
+                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>仅看此类</span>
+                  <span>→</span>
+                </button>
               </div>
-              <div class="flex flex-wrap gap-2">
+              <div
+                v-show="!favCollapsed.studio || favSubTab === 'studio'"
+                class="flex flex-wrap gap-2 pt-1"
+              >
                 <div
                   v-for="f in favStudios"
                   :key="f.key"
@@ -2538,7 +2590,7 @@ onUnmounted(() => {
                 >
                   <button
                     @click="openStudioDetail({ name: f.key, works_count: f.works_count ?? undefined })"
-                    class="text-xs font-medium text-fg-2 hover:text-accent-soft transition"
+                    class="text-xs font-medium text-fg-2 hover:text-accent-soft transition cursor-pointer"
                     :title="`打开 ${f.key} 的片商档案`"
                   >
                     {{ f.key }}
@@ -2546,7 +2598,7 @@ onUnmounted(() => {
                   <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-fg-4 font-mono">{{ f.works_count || 0 }}</span>
                   <button
                     @click.stop="toggleFavoriteEntity('studio', f.key)"
-                    class="text-danger hover:text-danger-soft transition"
+                    class="text-danger hover:text-danger-soft transition cursor-pointer"
                     title="取消收藏该片商"
                   >
                     <Heart class="w-3 h-3" fill="currentColor" />
@@ -2555,14 +2607,37 @@ onUnmounted(() => {
               </div>
             </section>
 
-            <!-- 5. Directors -->
-            <section v-if="favDirectors.length > 0" class="space-y-3">
-              <div class="flex items-center gap-2 pb-2 border-b border-line">
-                <Clapperboard class="w-4 h-4 text-accent" />
-                <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.director }}</h2>
-                <span class="text-xs text-fg-4 font-mono">{{ favDirectors.length }}</span>
+            <!-- 7. Directors Section (导演) -->
+            <section
+              v-if="(favSubTab === 'all' || favSubTab === 'director') && favDirectors.length > 0"
+              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
+            >
+              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
+                <button
+                  @click="toggleFavSection('director')"
+                  class="flex items-center gap-2 text-left group cursor-pointer"
+                >
+                  <component
+                    :is="favCollapsed.director ? ChevronRight : ChevronDown"
+                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
+                  />
+                  <Clapperboard class="w-4 h-4 text-accent" />
+                  <h2 class="text-sm font-bold text-fg">{{ FAVORITE_LABELS.director }}</h2>
+                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favDirectors.length }}</span>
+                </button>
+                <button
+                  v-if="favSubTab === 'all'"
+                  @click="favSubTab = 'director'"
+                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>仅看此类</span>
+                  <span>→</span>
+                </button>
               </div>
-              <div class="flex flex-wrap gap-2">
+              <div
+                v-show="!favCollapsed.director || favSubTab === 'director'"
+                class="flex flex-wrap gap-2 pt-1"
+              >
                 <div
                   v-for="f in favDirectors"
                   :key="f.key"
@@ -2570,7 +2645,7 @@ onUnmounted(() => {
                 >
                   <button
                     @click="openDirectorDetail({ name: f.key })"
-                    class="text-xs font-medium text-fg-2 hover:text-accent-soft transition"
+                    class="text-xs font-medium text-fg-2 hover:text-accent-soft transition cursor-pointer"
                     :title="`打开 ${f.key} 的导演档案`"
                   >
                     {{ f.key }}
@@ -2578,7 +2653,7 @@ onUnmounted(() => {
                   <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-fg-4 font-mono">{{ f.works_count || 0 }}</span>
                   <button
                     @click.stop="toggleFavoriteEntity('director', f.key)"
-                    class="text-danger hover:text-danger-soft transition"
+                    class="text-danger hover:text-danger-soft transition cursor-pointer"
                     title="取消收藏该导演"
                   >
                     <Heart class="w-3 h-3" fill="currentColor" />
@@ -2590,8 +2665,8 @@ onUnmounted(() => {
 
           <div v-else class="text-center py-24 space-y-3">
             <Heart class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-fg-3">暂无收藏</div>
-            <div class="text-xs text-fg-5">影片、演员、片商、导演和分集片段都可以收藏，点击心形图标即可加入</div>
+            <div class="text-sm font-semibold text-fg-3">暂无收藏与标记条目</div>
+            <div class="text-xs text-fg-5">想看、已看、喜爱影片、演员、片商、导演和分集片段都会汇集在此，点击心形或详情页标记即可加入</div>
           </div>
         </div>
 
@@ -3016,329 +3091,23 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Section 3: Synopsis Machine Translation (EN -> ZH, issue #4) -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <Languages class="w-5 h-5 text-accent" />
-                <div>
-                  <div class="text-sm font-bold text-fg">剧情简介中文翻译</div>
-                  <div class="text-xs text-fg-3">
-                    调用大模型 API 把英文简介批量译成中文并写回本地库，之后完全离线可用
-                  </div>
+          <!-- Section 3 Notice: Merged into Plugins tab -->
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <Languages class="w-5 h-5 text-accent" />
+              <div>
+                <div class="text-sm font-bold text-fg">大模型 AI 翻译引擎与剧情简介翻译</div>
+                <div class="text-xs text-fg-3">
+                  已合并至「功能插件」专区，支持多模型 API 配置、目标语言切换、试跑与批量翻译
                 </div>
               </div>
-              <button
-                @click="loadTranslationStats"
-                class="p-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 hover:text-fg transition"
-                title="刷新翻译进度"
-              >
-                <RefreshCw class="w-3.5 h-3.5" />
-              </button>
             </div>
-
-            <!-- Progress metrics -->
-            <div v-if="translationStats" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
-              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">可翻译简介</span>
-                <div class="text-base font-bold text-fg mt-0.5">{{ translationStats.translation_total.toLocaleString() }}</div>
-              </div>
-              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">已翻译</span>
-                <div class="text-base font-bold text-success mt-0.5">{{ translationStats.translation_done.toLocaleString() }}</div>
-              </div>
-              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">待翻译</span>
-                <div class="text-base font-bold text-accent-soft mt-0.5">{{ translationStats.translation_pending.toLocaleString() }}</div>
-              </div>
-              <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">翻译失败</span>
-                <div class="text-base font-bold text-danger mt-0.5">{{ translationStats.translation_failed.toLocaleString() }}</div>
-              </div>
-            </div>
-
-            <!-- Progress bar -->
-            <div
-              v-if="translationStats && translationStats.translation_total > 0"
-              class="h-2 rounded-full bg-surface-2 overflow-hidden"
+            <button
+              @click="currentTab = 'plugins'"
+              class="px-3.5 py-2 rounded-xl bg-accent-fill/15 hover:bg-accent-fill text-accent-soft hover:text-on-fill font-medium text-xs border border-accent-fill/30 transition shrink-0 cursor-pointer"
             >
-              <div
-                class="h-full bg-gradient-to-r from-accent-fill to-success transition-all duration-500"
-                :style="{ width: `${(translationStats.translation_done / translationStats.translation_total) * 100}%` }"
-              ></div>
-            </div>
-
-            <!-- Translation mode: one film at a time vs. explicit batch runs -->
-            <div v-if="!IS_TAURI" class="p-4 rounded-xl bg-sunken/60 border border-line space-y-3">
-              <div class="text-xs font-semibold text-fg-2">翻译方式</div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  @click="setTranslateMode('single')"
-                  class="text-left p-3 rounded-xl border transition"
-                  :class="translateMode === 'single'
-                    ? 'bg-accent-fill/10 border-accent-fill/40'
-                    : 'bg-surface border-line-strong hover:border-line-strong'"
-                >
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold"
-                      :class="translateMode === 'single' ? 'text-accent-soft' : 'text-fg-2'">
-                      单部自动翻译
-                    </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-success-fill/20 text-success-soft border border-success-fill/30">省 token</span>
-                  </div>
-                  <div class="text-[11px] text-fg-4 mt-1 leading-relaxed">
-                    打开某部影片时才翻译那一部。适合边看边译，不会一次性消耗大量额度。
-                  </div>
-                </button>
-
-                <button
-                  @click="setTranslateMode('batch')"
-                  class="text-left p-3 rounded-xl border transition"
-                  :class="translateMode === 'batch'
-                    ? 'bg-accent-fill/10 border-accent-fill/40'
-                    : 'bg-surface border-line-strong hover:border-line-strong'"
-                >
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold"
-                      :class="translateMode === 'batch' ? 'text-accent-soft' : 'text-fg-2'">
-                      批量翻译
-                    </span>
-                  </div>
-                  <div class="text-[11px] text-fg-4 mt-1 leading-relaxed">
-                    打开影片时不翻译，改由下方按钮一次性批量处理。适合把整库译完。
-                  </div>
-                </button>
-              </div>
-              <div class="text-[11px] text-fg-4">
-                <template v-if="translateMode === 'single'">
-                  已开启单部自动翻译：之后每打开一部尚未翻译的影片会自动翻译它，同一部影片本次运行内只翻译一次。
-                </template>
-                <template v-else>
-                  当前为批量模式：打开影片不会触发翻译，请用下方按钮批量处理。
-                </template>
-              </div>
-            </div>
-
-            <!-- Translation sources: several saved API providers, one active.
-                 Shown in both modes. The desktop build edits the same
-                 translate_config.json natively (src-tauri/src/commands/translate.rs),
-                 so this is the one part of translation that does not need Python. -->
-            <div class="pt-1 space-y-3">
-              <div class="flex items-center justify-between">
-                <div class="text-xs font-semibold text-fg-2">翻译服务来源</div>
-                <button
-                  @click="openProviderForm()"
-                  class="px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong flex items-center gap-1.5 transition"
-                >
-                  <Sparkles class="w-3 h-3 text-accent" />
-                  <span>添加来源</span>
-                </button>
-              </div>
-
-              <div v-if="providerList.length === 0" class="text-xs text-accent-soft/90 p-3 rounded-xl bg-accent-fill/10 border border-accent-fill/20">
-                尚未配置任何来源。点「添加来源」选择服务商（DeepSeek / Claude / Gemini / 本地 Ollama 等）并填入 API Key。
-              </div>
-
-              <div v-else class="space-y-2">
-                <div
-                  v-for="p in providerList"
-                  :key="p.name"
-                  class="flex items-center justify-between gap-3 p-3 rounded-xl border transition"
-                  :class="p.active
-                    ? 'bg-accent-fill/10 border-accent-fill/30'
-                    : 'bg-sunken/60 border-line'"
-                >
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-xs font-semibold text-fg truncate">{{ p.label }}</span>
-                      <span v-if="p.active" class="text-[10px] px-1.5 py-0.5 rounded bg-accent-fill text-on-fill font-bold">使用中</span>
-                      <span v-if="!p.has_key" class="text-[10px] px-1.5 py-0.5 rounded bg-danger-fill/20 text-danger-soft border border-danger-fill/30">缺 API Key</span>
-                    </div>
-                    <div class="text-[11px] text-fg-4 font-mono truncate mt-0.5">
-                      {{ p.type }} · {{ p.model || '默认模型' }} · {{ p.base_url || '默认端点' }}
-                    </div>
-                    <div v-if="p.key_hint" class="text-[10px] text-fg-5 font-mono">Key: {{ p.key_hint }}</div>
-                  </div>
-                  <div class="flex items-center gap-1.5 shrink-0">
-                    <button
-                      v-if="!p.active"
-                      @click="activateProvider(p.name)"
-                      class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-accent-fill/20 text-fg-2 hover:text-accent-soft text-[11px] border border-line-strong transition"
-                    >设为当前</button>
-                    <!-- 试译 makes a real outbound call through translate.py's providers,
-                         which the desktop build does not carry. Hidden rather than
-                         disabled so it cannot look like a working button. -->
-                    <button
-                      v-if="!IS_TAURI"
-                      @click="testProvider(p.name)"
-                      :disabled="providerBusy"
-                      class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong transition disabled:opacity-40"
-                    >测试</button>
-                    <button
-                      @click="openProviderForm(p)"
-                      class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong transition"
-                    >编辑</button>
-                    <button
-                      @click="removeProvider(p.name)"
-                      class="p-1.5 rounded-lg bg-surface-2 hover:bg-danger-fill/20 text-fg-3 hover:text-danger-soft border border-line-strong transition"
-                      title="删除该来源"
-                    >
-                      <Trash2 class="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Add / edit form -->
-              <div v-if="providerForm.open" class="p-4 rounded-xl bg-sunken/80 border border-line-strong space-y-3">
-                <div class="text-xs font-semibold text-fg">
-                  {{ providerForm.editing ? `编辑来源：${providerForm.editing}` : '添加翻译来源' }}
-                </div>
-
-                <div v-if="!providerForm.editing" class="flex flex-wrap gap-1.5">
-                  <button
-                    v-for="preset in providerPresets"
-                    :key="preset.id"
-                    @click="applyPreset(preset)"
-                    :title="preset.hint"
-                    class="px-2.5 py-1 rounded-lg text-[11px] border transition"
-                    :class="providerForm.name === preset.id
-                      ? 'bg-accent-fill text-on-fill border-accent-fill font-bold'
-                      : 'bg-surface-2 text-fg-2 border-line-strong hover:bg-surface-3'"
-                  >{{ preset.label }}</button>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label class="space-y-1">
-                    <span class="text-[11px] text-fg-3">配置名称（唯一标识）</span>
-                    <input v-model="providerForm.name" :disabled="!!providerForm.editing"
-                      placeholder="deepseek"
-                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono disabled:opacity-60 focus:border-accent-fill/50 focus:outline-none" />
-                  </label>
-                  <label class="space-y-1">
-                    <span class="text-[11px] text-fg-3">显示名称</span>
-                    <input v-model="providerForm.label" placeholder="DeepSeek 深度求索"
-                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg focus:border-accent-fill/50 focus:outline-none" />
-                  </label>
-                  <label class="space-y-1">
-                    <span class="text-[11px] text-fg-3">接口类型</span>
-                    <select v-model="providerForm.type"
-                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg focus:border-accent-fill/50 focus:outline-none">
-                      <option value="openai">openai（OpenAI 兼容接口）</option>
-                      <option value="anthropic">anthropic（Claude 官方接口）</option>
-                      <option value="gemini">gemini（Google Gemini）</option>
-                    </select>
-                  </label>
-                  <label class="space-y-1">
-                    <span class="text-[11px] text-fg-3">模型名</span>
-                    <input v-model="providerForm.model" placeholder="deepseek-flash"
-                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono focus:border-accent-fill/50 focus:outline-none" />
-                  </label>
-                  <label class="space-y-1 sm:col-span-2">
-                    <span class="text-[11px] text-fg-3">API 端点 (Base URL)</span>
-                    <input v-model="providerForm.base_url" placeholder="https://api.deepseek.com"
-                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono focus:border-accent-fill/50 focus:outline-none" />
-                  </label>
-                  <label class="space-y-1 sm:col-span-2">
-                    <span class="text-[11px] text-fg-3">
-                      API Key
-                      <span v-if="providerForm.editing" class="text-fg-4">（留空则保持原 Key 不变）</span>
-                    </span>
-                    <input v-model="providerForm.api_key" type="password" autocomplete="off"
-                      :placeholder="providerForm.editing ? '••••••••（不修改）' : 'sk-...'"
-                      class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono focus:border-accent-fill/50 focus:outline-none" />
-                  </label>
-                </div>
-
-                <div class="text-[11px] text-fg-4 leading-relaxed">
-                  API Key 只写入本机 <code class="font-mono">translate_config.json</code>（权限 600），
-                  不会写入数据库，也<b class="text-fg-3">不会回传给前端</b>。
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <button
-                    @click="saveProvider"
-                    :disabled="providerBusy"
-                    class="px-4 py-2 rounded-lg bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs transition disabled:opacity-40"
-                  >保存</button>
-                  <button
-                    @click="providerForm.open = false"
-                    class="px-4 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-xs border border-line-strong transition"
-                  >取消</button>
-                </div>
-              </div>
-
-              <div
-                v-if="providerTest"
-                class="p-3 rounded-xl text-[11px] font-mono whitespace-pre-wrap leading-relaxed"
-                :class="providerTest.ok
-                  ? 'bg-success-fill/10 border border-success-fill/20 text-success-soft'
-                  : 'bg-danger-fill/10 border border-danger-fill/20 text-danger-soft'"
-              >{{ providerTest.text }}</div>
-
-              <div v-if="providerMsg" class="text-[11px] text-accent-soft">{{ providerMsg }}</div>
-            </div>
-
-            <div
-              v-if="IS_TAURI"
-              class="p-3 rounded-xl bg-surface-2/60 border border-line-strong text-xs text-fg-2 space-y-1.5"
-            >
-              <div class="font-semibold text-fg">桌面版：来源在这里管理，翻译请用命令行</div>
-              <div class="text-fg-3 leading-relaxed">
-                上面的「翻译服务来源」直接写入 <code class="font-mono">translate_config.json</code>，
-                与命令行读的是同一份文件，改完即可用。
-                但<b class="text-fg-2">发起翻译</b>仍走 Python（单部自动翻译、批量翻译、试译按钮都用它的接口实现），
-                所以这里只显示进度、不能直接开跑：
-              </div>
-              <code class="on-scrim block bg-scrim/60 rounded-lg p-2 font-mono text-[11px] text-fg-2 overflow-x-auto">
-                python3 translate.py --list-profiles
-              </code>
-              <code class="on-scrim block bg-scrim/60 rounded-lg p-2 font-mono text-[11px] text-fg-2 overflow-x-auto">
-                python3 translate.py --profile deepseek --limit 20 --dry-run
-              </code>
-              <div class="text-fg-3">
-                试跑无误后去掉 <code class="font-mono">--limit</code> 与 <code class="font-mono">--dry-run</code> 即可全量翻译。
-              </div>
-            </div>
-
-            <div
-              v-else-if="translationStats"
-              class="text-[11px] text-fg-4 font-mono bg-sunken p-2.5 rounded-xl border border-line"
-            >
-              当前使用: {{ translationStats.profile_label || translationStats.profile || translationStats.provider }}
-              / {{ translationStats.model || '默认模型' }}
-            </div>
-
-            <div v-if="translateMsg" class="p-3 rounded-xl bg-success-fill/10 border border-success-fill/20 text-xs text-success-soft">
-              {{ translateMsg }}
-            </div>
-
-            <!-- Actions -->
-            <div v-if="!IS_TAURI" class="flex items-center gap-3 pt-2 flex-wrap">
-              <button
-                @click="handleRunTranslation(50)"
-                :disabled="isTranslating || !translationStats?.configured"
-                class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg font-medium text-xs border border-line-strong flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Languages class="w-3.5 h-3.5" />
-                <span>试跑 50 条</span>
-              </button>
-
-              <button
-                @click="handleRunTranslation(null)"
-                :disabled="isTranslating || !translationStats?.configured || translationStats?.translation_pending === 0"
-                class="px-5 py-2.5 rounded-xl bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs shadow-lg shadow-accent-fill/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <Loader2 v-if="isTranslating" class="w-3.5 h-3.5 animate-spin" />
-                <Sparkles v-else class="w-3.5 h-3.5" />
-                <span v-if="isTranslating">翻译进行中…</span>
-                <span v-else-if="translationStats?.translation_pending === 0">没有待翻译的简介</span>
-                <span v-else>
-                  一键翻译全部待翻译简介
-                  ({{ translationStats?.translation_pending.toLocaleString() }} 条)
-                </span>
-              </button>
-            </div>
+              前往插件中心配置 →
+            </button>
           </div>
 
           <!--

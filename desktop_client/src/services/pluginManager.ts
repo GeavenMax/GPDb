@@ -17,6 +17,7 @@ export interface PluginsConfig {
   translationEnabled: boolean;
   translationConfig: TranslationPluginConfig;
   trophiesEnabled: boolean;
+  trophiesSoundEnabled: boolean;
 }
 
 const PLUGINS_KEY = 'gevi_plugins_config';
@@ -33,7 +34,8 @@ const DEFAULT_CONFIG: PluginsConfig = {
     targetLanguage: 'zh-CN',
     customPromptTemplate: '请将以下影视剧本、剧情简介与专有名词翻译为流畅自然的中文。保持专业影评基调，专有名词与演员艺名保留英文原名对照。',
   },
-  trophiesEnabled: true,
+  trophiesEnabled: false,
+  trophiesSoundEnabled: true,
 };
 
 function loadConfig(): PluginsConfig {

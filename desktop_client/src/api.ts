@@ -91,10 +91,12 @@ function emptyFavoriteKeys(): Record<FavoriteType, string[]> {
 }
 
 /** Add the per-type counts the server computes, for the groups Rust hands back. */
-function withCounts(groups: Partial<Record<FavoriteType, FavoriteItem[]>>): FavoritesResponse {
-  const merged = { ...emptyFavoriteGroups(), ...groups };
-  const counts = {} as Record<FavoriteType, number>;
+function withCounts(groups: Partial<Record<FavoriteType, FavoriteItem[]>> & { wishlist?: FavoriteItem[]; watched?: FavoriteItem[] }): FavoritesResponse {
+  const merged = { ...emptyFavoriteGroups(), wishlist: [], watched: [], ...groups };
+  const counts = {} as Record<FavoriteType | 'wishlist' | 'watched', number>;
   for (const t of FAVORITE_TYPES) counts[t] = merged[t].length;
+  counts.wishlist = (merged.wishlist || []).length;
+  counts.watched = (merged.watched || []).length;
   return { ...merged, counts };
 }
 
@@ -112,7 +114,8 @@ function keysFromGroups(groups: FavoritesResponse): Record<FavoriteType, string[
  */
 async function fetchFavorites(): Promise<FavoritesResponse> {
   if (isTauri) {
-    return withCounts(await tauriInvoke<Partial<Record<FavoriteType, FavoriteItem[]>>>('get_favorites'));
+    const res = await tauriInvoke<FavoritesResponse>('get_favorites');
+    return withCounts(res);
   }
   const res = await fetch('/api/user/favorites');
   if (!res.ok) throw new Error(`收藏列表加载失败 (HTTP ${res.status})`);
@@ -549,6 +552,14 @@ export const api = {
 
   // User Custom Tags
   async getUserTags(): Promise<Array<{ id: number; name: string; color: string }>> {
+    if (isTauri) {
+      try {
+        const tags = await tauriInvoke<Array<{ id: number; name: string; color?: string }>>('get_user_tags');
+        return tags.map(t => ({ id: t.id, name: t.name, color: t.color || '#6366f1' }));
+      } catch {
+        return [];
+      }
+    }
     try {
       const res = await fetch('/api/user/tags');
       if (res.ok) return await res.json();
@@ -557,6 +568,14 @@ export const api = {
   },
 
   async createUserTag(name: string, color: string = '#f59e0b'): Promise<{ id: number; name: string; color: string } | null> {
+    if (isTauri) {
+      try {
+        const tag = await tauriInvoke<{ id: number; name: string; color?: string }>('create_user_tag', { name, color });
+        return { id: tag.id, name: tag.name, color: tag.color || color };
+      } catch {
+        return null;
+      }
+    }
     try {
       const res = await fetch('/api/user/tags', {
         method: 'POST',
@@ -578,6 +597,13 @@ export const api = {
 
   // User Movie Annotations (Rating, Status, Notes, Tags)
   async getMovieUserData(movieId: number): Promise<any> {
+    if (isTauri) {
+      try {
+        return await tauriInvoke('get_movie_user_data', { movieId });
+      } catch {
+        return null;
+      }
+    }
     try {
       const res = await fetch(`/api/movies/${movieId}/user_data`);
       if (res.ok) return await res.json();
@@ -589,6 +615,13 @@ export const api = {
     movieId: number,
     data: { rating?: number | null; status?: string | null; notes?: string; tag_ids?: number[] }
   ): Promise<any> {
+    if (isTauri) {
+      try {
+        return await tauriInvoke('save_movie_user_data', { movieId, data });
+      } catch {
+        return null;
+      }
+    }
     try {
       const res = await fetch(`/api/movies/${movieId}/user_data`, {
         method: 'POST',
