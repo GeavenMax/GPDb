@@ -13,6 +13,10 @@ image_cache/
 
 # --- 刮削脚本的运行日志 ---
 logs/
+# 长任务是从项目根目录 nohup 起的，日志和 pid 就落在根目录，不在 logs/ 里。
+# 只锚定根目录，免得顺手挡掉别处的 .log。
+/*.log
+/*.pid
 
 # --- Python ---
 __pycache__/

@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """
 GEVI Incremental Sync & Auto-Integration Module
-- Scans /newm, /newp, /newe for recent updates.
+- Scans /newm and /newp for recent updates.
 - Probes auto-incrementing IDs above MAX(id).
+
+Episodes are deliberately not here. This module used to claim it scanned /newe, but
+that was never implemented and /newe has no pagination anyway — the newest 60 is all
+you can get. Episodes come from the `coep` DataTables endpoint instead, one company
+at a time: `scraper_v2.py --mode episode-sync`.
 - Automatically merges new records into local SQLite database.
 """
 
