@@ -63,7 +63,8 @@
 
 **账本**：`scrape_progress` — company 12,000 行（全部 200，即 id 1..12,000 全覆盖）；
 movie 76,000 行（53,944 完成）；performer 60,701 行（60,692 完成）。
-`scrape_voids` — movie 82,152 / performer 94,885。
+`scrape_voids` — movie 82,152 / performer 94,885 / **episode 2**（图片下载器记的，
+见 §5.2）。
 
 ---
 
@@ -118,6 +119,12 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 `(item_type, item_id)`。分集模式用的是**自己的命名空间**（company），
 和 movie / performer 完全隔开——否则公司 id 和影片 id 同为整数会撞车，
 污染「这部影片没有分集」的判定。这是本项目最容易伤数据的地方。
+
+现有三个命名空间：`movie`、`performer`、`episode`（`field='thumbnail'`，
+图片下载器写的，见 §5.2）。`episode` 里的 `item_id` 是**分集 id**，
+`movie` 里的 `episodes` 字段是**影片没有分集表**，两者名字像但不是一回事。
+`scraper_v2.py --forget-voids` 不带参数会**清空整张表**（含 episode 命名空间）；
+只想重试图片就用 `cache_images.py --forget-image-voids`，它只清 episode。
 
 ### 3.5 列是按 index 读的
 
@@ -397,19 +404,19 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 
 ### 5.1 提交状态：工作区干净
 
-- **最新提交（长任务收尾订正）**：`835fbac`（在 `gevi-plus` 分支）
+- **最新提交（图片下载接入 void 账本）**：`36c4a3f`（在 `gevi-plus` 分支）
+  - `cache_images.py` 把「源头没有这张图」记进 `scrape_voids`（新命名空间
+    `item_type='episode'`），并把 `#164539` 的假图当「没有图」处理。
+  - 数据侧结论见 §5.2；新增 flag 见 §6；踩坑见 §7.16 与 §7.18。
+  - ⚠️ 工作区里那 16 个 `desktop_client/**` 改动**不是本轮的**（另一个会话在动），
+    所以只提交了 `cache_images.py` / `schema.sql` 两个文件。
+- **上一提交（长任务收尾订正）**：`95359dc`
   - 空目标走 `_report_empty_work_list()` 讲清原因、`--revert-missing-hd` 的 `--apply` 前
     先警告「本地缺 ≠ 站点没有」、HANDOVER 按探针跑完后的真实数字重写。
-  - 本轮（分集高清图四遍下载 + 回滚 + 清孤儿）**只动数据和缓存，没有改代码**，
-    所以那之后不再有新提交；数据侧结论见 §5.2。
-- **上一提交（数据库路径自定义与智能识别系统）**：`3177a66`
-  - 包含全局 Spotlight/常见目录毫秒级识别、`db_config.json` 自动持久化、设置面板管理、原生文件选择器与错误条救砖。全套 68 项测试通过，`server.py` 同步对齐并已重启。
-- **侧栏新菜单插槽修复与重新打包**：`d538ca3`
-  - 修复了旧版 localStorage 顺序将 `directors` 追加到末尾的缺陷，按 `NAV_ITEMS` 智能插入片商库与分集库之间；重新打包 release 并覆盖更新至 `/Applications/GPDb.app`。
-- **更早一轮（导演库出库）**：`67676c3`
-  - 资源检索新增「导演库」，修好收藏夹导演计数。
+- **再上一提交（图片下载器维护模式）**：`835fbac`
+  - 四遍下载 + 回滚 + 清孤儿这一轮**只动数据和缓存，没有改代码**；
+    数据侧结论见 §5.2。
 
-下面 5.2 起才是真正待做的。
 
 ### 5.2 数据侧：两个长任务（**必须串行，别开两个终端同时跑**）
 
@@ -434,7 +441,7 @@ cd "/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/
 python3 -u cache_images.py --mode episodes --concurrency 32 >> /tmp/img_dl.log 2>&1
 ```
 
-- **实测结果**：库里 134,489 条分集里 **119,246 条有图**（全部 `b.jpg` 高清 URL）。
+- **实测结果**：库里 134,489 条分集里 **119,245 条有图**（全部 `b.jpg` 高清 URL）。
   第一遍 118,717 条 → **成功 106,987 / 失败 11,730**；把同一命令**再跑三遍**后失败数一路收敛：
   | 遍 | 尝试 | 成功 | 失败 |
   |---|---|---|---|
@@ -442,15 +449,17 @@ python3 -u cache_images.py --mode episodes --concurrency 32 >> /tmp/img_dl.log 2
   | 2 | 11,449 | 10,258 | 1,191 |
   | 3 | 1,191 | 1,069 | 122 |
   | 4 | 122 | 118 | **4** |
-- **最终占用**：`image_cache/Episodes` **119,244 个文件 / 6.5 GB**（整个 `image_cache` 15 GB）。
-- **不变式现在是精确的**：盘上 119,244 = DB 引用 119,246 − **2 条站点侧死条目**；
+- **最终占用**：`image_cache/Episodes` **119,243 个文件 / 6.5 GB**（整个 `image_cache` 15 GB）。
+- **不变式现在是精确的**：盘上 119,243 = DB 引用 119,245 − **2 条站点侧死条目**；
   盘上有但没人引用的 = **0**。
 - **并发用 32，不要用 6。** 2026-09-22 实测：6 并发 **1.0 张/s**（要 33 小时），
   32 并发 **6.4 张/s**（约 5.1 小时），吞吐正比于并发数 → 瓶颈是**每请求固定延迟**
   （~4.5s 握手+TTFB），不是单 IP 带宽。封面那轮也是 32 并发跑的（7.2 张/s，4 小时）。
 - 会跳过已缓存的（判断条件是本地文件存在且 >100 字节），**可反复重跑**，所以重试遍是白捡的。
-- ⚠️ **现在再跑 `--mode episodes` 会打印 `Remaining to fetch: 2` 并以 `Failed: 2` 收尾**——
-  就是下面那 2 条站点侧死条目，**不是坏了**。
+- ✅ **现在再跑 `--mode episodes` 是干净的**：磁盘扫描约 5 秒，**零请求**，
+  打印 `Voided at the source: 2 / Already on disk: 119243 / Remaining to fetch: 0`
+  然后 `All images are already cached offline! Done.`——那 2 条站点侧死条目已被
+  账本收走（见下），所以 **`Failed: 0` / `Remaining: 0` 重新是可信的完成信号**。
 
 **收尾四步（2026-09-22 已全部执行完，顺序不能变，第 2 步别跳）**：
 
@@ -472,14 +481,39 @@ python3 -u cache_images.py --mode episodes --concurrency 32 >> /tmp/img_dl.log 2
 
 | 分集 | 站点返回 | 处理 |
 |---|---|---|
-| #110529 | HD 与低清都 **200 但 0 字节**（重试 3 次一致） | 已回滚到低清 URL（两侧都空，白改） |
-| #202277 | HD **404**，低清 15 字节 | 已回滚到低清 URL（低清也是残file） |
-| **#164539** | HD 与低清都 **200 但返回 1,245 字节的 XHTML 错误页**（content-type 还标着 `image/jpeg`） | ⚠️ **尚未处理**，见下 |
+| #110529 | HD 与低清都 **200 但 0 字节**（重试 3 次一致） | 已回滚到低清 URL；账本已收走（attempts=2） |
+| #202277 | HD **404**，低清 15 字节 | 已回滚到低清 URL；账本已收走（attempts=2） |
+| **#164539** | HD 与低清都 **200 但返回 1,245 字节的 XHTML 错误页**（content-type 还标着 `image/jpeg`） | ✅ 已处理：删掉那个假文件，`thumbnail_url` 置 **NULL** |
 
-**#164539 是个新发现的坑**：它的「高清图」在盘上是一个 1,245 字节的 HTML 错误页，
-而且 **>100 字节 → 跳过规则认为它已下好，永远不会重下**。客户端拿它当图片会显示成破图。
-正确做法是把它当「没有图」处理（全库本来就有 15,243 条分集没有图，NULL 是正常状态），
+**#164539 是个新发现的坑，也是本轮修掉的那个**：它的「高清图」在盘上是一个
+1,245 字节的 HTML 错误页，而 **>100 字节 → 跳过规则认为它已下好，永远不会重下**。
+客户端拿它当图片会显示成破图。处理方式是把它当「没有图」：删文件 + `thumbnail_url = NULL`
+（全库现在 15,244 条分集没有图，NULL 是正常状态，客户端本来就处理这个状态），
 而不是像 #110529/#202277 那样回滚到同样死掉的低清 URL。
+
+备份 `gevi.db.backup-20260922-205629`（328,466,432 字节，`integrity_check` = ok），
+改动前的行存在 `/tmp/fix164539_before.txt`。
+
+**本轮新增：图片下载器接上 `scrape_voids` 账本（提交 `36c4a3f`）**
+
+在此之前，「拿不到的图」没有任何记录方式，于是每一遍重跑都在重问同一批死地址——
+这正是 `Failed:` 从有意义的信号退化成噪音的原因。现在：
+
+- 命名空间 `item_type='episode'`、`field='thumbnail'`，`item_id` 是**分集 id**。
+- **失败 `record_void`、成功 `clear_void`**，`attempts` 累加；
+  跑满 `--void-after` 次（默认 **2**，与 `scraper_v2.py` 同义）后该 URL 不再进入工作清单。
+  **计数而不是布尔**是关键：这一侧「连接被拒」和 404 长得一模一样（§7.14），
+  一次坏夜晚不能让一张活着的图退休。
+- **盘上有文件 → 清掉判决**，且这一步排在 void 过滤**之前**：一条已到阈值的记录
+  否则会活过 `--clear`，此后永久把这张图挡在下载之外。
+- **`hd-upgrade` / `revert` 改写地址时清掉该行判决**。判决是按**分集**记的、不是按 URL
+  记的，换了地址就必须重新判断，否则刚改过去的高清地址会被旧判决挡掉。
+- 退路：`--forget-image-voids`（只清 episode 命名空间；`scraper_v2.py --forget-voids`
+  不带参数会清空整张表，**别用它来重试图**）。
+
+**真库三遍实测**（2026-09-22 夜）：第 1、2 遍各发 **2 个请求**、各记到 1 次 / 2 次；
+第 3 遍 **零请求**，打印 `Voided at the source: 2 / Remaining to fetch: 0`。
+这两条正是上表里站点侧已死的 #110529 / #202277，**它们现在由账本自己退出清单**。
 
 **顺手做的图片完整性体检（结论：图没坏）**：全量扫了 119,242 个 `b.jpg`，
 **截断/损坏 0 个**（每个 JPEG 都以 `FFD9` 收尾）。但有 **522 个不是 JPEG**：
@@ -523,6 +557,24 @@ PNG 368、WebP 151、GIF 3——站点在 `.jpg` 这个 URL 下会回别的格�
 
 ### 5.7 悬而未决（本轮提出、没做、也没决定不做）
 
+- **图片缓存的账目对不齐 282 个文件（占 0.24%，无数据后果，但没查清）**：
+  四遍日志记录的成功数 + 首遍报的「已缓存 529」= 118,961，而盘上 119,243，差 **282**。
+  查过且排除：文件截断（0 个）、basename 撞车（119,245 个 URL ↔ 119,245 个文件名，
+  0 组冲突）、以及任何「失败却写文件」的代码路径。
+  **mtime 直方图反而给出第二个反常**：第一遍开跑是 13:45（日志创建于 13:46:45，
+  之后文件才连续不断地落盘），但**该时刻之前只有 96 个文件的 mtime 早于 13:45**，
+  而第一遍自己报的是「Already on disk: 529」。也就是说那次 119k 路径的 `exists()`
+  扫描**多算了约 433 个**，而跨遍对账又**少了 282 个**——两个方向都偏，指向同一个嫌疑：
+  缓存目录在 iCloud Drive 里，文件提供者在高负载下会间歇性报 ENOENT（见 §7.19）。
+  **没有证明，只是最像的解释。** 数据后果为零：不变式精确（119,243 = 119,245 − 2）、
+  完整性体检 0 损坏、孤儿 0。要根治就把 `image_cache` 挪出 iCloud。
+- **`get_voids(min_attempts=0)` 与文档相反（本轮发现，没改）**：`get_incomplete_movies`
+  的 docstring 写着「Pass 0 to ignore voids and see every gap」，但
+  `get_voids` 的 SQL 是 `attempts >= ?`，传 0 会把**所有** void 都取回来，
+  于是「空字段」全被过滤掉——语义正好相反。今天没有任何调用方传 0（一律用
+  `--void-after`，默认 2），所以是个**潜伏的**坑而不是活 bug。
+  `cache_images.py` 自己在调用前挡了 `void_after > 0`，所以图片侧的 `--void-after 0`
+  是正常的。修它要动 `db_manager.py`（改完必须重启 8787 服务），所以留给你决定。
 - **`migrate.rs` 不建 `directors` / `movie_directors`。** 该文件的 `TABLES` 只建
   `category_glossary`，其余表都靠 Python 的 `schema.sql`。这不是本轮引入的假设——
   `sql.rs:231` 的 `DIRECTOR_MATCH_SQL`（影片库按导演筛选/搜索）**今天就已经** JOIN
@@ -572,9 +624,12 @@ sqlite3 gevi.db ".backup '/tmp/gevi-backup.db'"
 # 图片缓存
 python3 cache_images.py --stats
 python3 cache_images.py --mode episodes --concurrency 32   # 6 会慢 6 倍，见 §5.2
-# 现在跑会以「Remaining to fetch: 2 / Failed: 2」收尾，那 2 条是站点侧死条目，不是坏了
+# 现在跑约 5 秒、零请求，以「Voided at the source: 2 / Remaining to fetch: 0」收尾
 python3 cache_images.py --revert-missing-hd                # 先干跑看数量，加 --apply 才写库
 python3 cache_images.py --prune-orphans                    # 同上
+python3 cache_images.py --void-after 3 --mode episodes     # 改「失败几次才退休」(默认 2)
+python3 cache_images.py --void-after 0 --mode episodes     # 忽略账本，重试全部(含已退休的)
+python3 cache_images.py --forget-image-voids               # 清掉图片判决(只管 episode 命名空间)
 
 # 桌面端
 cd desktop_client && cargo test --workspace -- --nocapture
@@ -628,13 +683,33 @@ cd desktop_client && npx vue-tsc --noEmit
     （错误页、半张图）此后都会被认为「已下好」，**再也不会重试**。
     本轮实锤：`episode164539b.jpg` 是 1,245 字节的 XHTML 错误页，但 1,245 > 100，
     于是一路「成功」到最后。**图片缓存要定期做完整性体检，不能只看文件数。**
+    （该文件已删、该行 `thumbnail_url` 已置 NULL，见 §5.2。）
 15. **扩展名不等于真实格式**：站点在 `.jpg` 的 URL 下会回 PNG/WebP/GIF。
     全量扫 119,242 个 `b.jpg`：结构完整 119,242、损坏 **0**，但其中
     **PNG 368 / WebP 151 / GIF 3** 根本不是 JPEG。浏览器按字节嗅探，显示无问题；
     但**任何依赖「后缀 = 格式」的代码（或把 content-type 直接当真的判断）都会翻车**。
-16. **`scrape_voids` 管不了图片下载**：那张表 `item_type` 只有 `'movie'`/`'performer'`，
-    读它的只有 `scraper_v2.py`；`cache_images.py` 完全不碰。所以想把某条拿不到的图
-    「记进 void 表让它别再试」是**没用的**——要根治得让下载器接上账本（本轮没做）。
+16. **`scrape_voids` 可以给图片下载当闸门，但要先给它一个命名空间**：那张表本身是通用的
+    （`item_type` 只是 TEXT，没有 CHECK 约束），所以下载器现在用 `item_type='episode'`
+    + `field='thumbnail'` 记账（提交 `36c4a3f`）。两件必须记住的事：
+    **判决是按分集记的、不是按 URL 记的**，所以任何改写 `thumbnail_url` 的地方
+    （hd-upgrade / revert）都得顺手清掉判决，否则刚改过去的新地址会被旧判决挡掉；
+    **`scraper_v2.py --forget-voids` 不带参数清空整张表**，重试图片要用
+    `cache_images.py --forget-image-voids`。
 17. **体检脚本别用逐文件 spawn 的 shell 循环**：`for f in ...; do stat ...; done` 对
     12 万个文件要跑十几分钟（每个文件一个进程）。同样的活 `find -size` 或一个 Python
     脚本遍历，几秒到几十秒。**这次就是因为逐文件 `stat` 超时才发现改走 Python 的。**
+18. **同一个账本，两个问题，两个阈值——共用一张表就会答错**：写 `36c4a3f` 时，
+    「该不该发这个请求」和「这次成功要不要写下来」都读同一张
+    `get_voids(item_type, void_after)` 的结果。但前者的阈值是 N（退休线），
+    后者的阈值必须是 1（**只要有记录就该被这次成功清掉**）。用 N 过滤掉的表里，
+    `attempts=1` 的记录**不存在**，于是成功不被记为恢复、次数继续涨，再跑一遍
+    那张刚下好的图就被退休了。已拆成两张视图（阈值 1 / 阈值 N）。
+    **测试抓出来的**（`/tmp/voidtest/test_void_ledger.py` 的用例 2），跑真库是看不见的
+    ——真库当时 `attempts>=2` 的记录只有 2 条，正好都是真死的。
+19. **别拿「逐路径 `exists()` 扫描」当 iCloud 目录的权威计数**：`image_cache` 有
+    11.9 万个文件且**在 iCloud Drive 里**。本轮实测两个方向都偏：一次 119k 路径的
+    预扫描报「已缓存 529」，而按 mtime 数，那一刻真正早于该次运行的只有 **96** 个文件；
+    四遍下载的成功数加起来又比盘上少 **282** 个（详见 §5.7）。同一份数据用
+    `ls | wc -l`、`find -size`、Python `os.listdir` 三种方式数都是 119,243，彼此一致
+    ——**所以要核对缓存数量，就用列目录的方式数，别信 per-path 的 `exists()`**。
+    真要根治，把 `image_cache` 挪出 iCloud（6.5 GB，本来也不该让 iCloud 同步）。
