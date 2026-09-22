@@ -29,6 +29,47 @@ USER_AGENTS = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.3
 # store on every call, which costs more than fetching a 7KB cover.
 SSL_CTX = ssl.create_default_context()
 
+# ------------------------------------------------------------------ void ledger
+#
+# Not every URL in the database still has a file at the site: some episodes have no
+# thumbnail any more (the address 404s, or the server answers with an HTML error page
+# and labels it image/jpeg), and a few covers are dead the same way. Re-requesting
+# those on every run is what makes `Failed:` meaningless as a completion signal --
+# the first full pass ended with 11,730 "failures", nearly all of them refused
+# connections that a plain rerun then collected, but the genuinely dead ones came
+# back as failures forever.
+#
+# So a failed fetch is written into `scrape_voids`, the ledger the scraper already
+# keeps for fields the source does not have, and URLs whose entry has reached
+# `--void-after` attempts drop out of the work list.
+#
+# The counting is what makes it safe. From this side a refused connection is
+# indistinguishable from a 404 (§7.14), but it is a one-off: a file is only retired
+# after failing `--void-after` separate runs, so one bad night does not lose it. A
+# success clears the entry, so a file that reappears comes back on its own, and
+# `--forget-image-voids` retires every verdict at once.
+VOID_ITEM_TYPE = "episode"
+VOID_FIELD = "thumbnail"
+DEFAULT_VOID_AFTER = 2
+
+
+def open_db():
+    """The project's DatabaseManager rather than a bare sqlite3 connection.
+
+    The ledger's rules -- counted attempts, ON CONFLICT bump, clear-on-recovery --
+    live in db_manager.py and are shared with the scraper. A second copy of that SQL
+    here would be a second definition of "the source does not have this", and the two
+    would drift."""
+    import db_manager
+    return db_manager.DatabaseManager(str(DB_PATH))
+
+
+def print_void_summary(db) -> None:
+    n = db.void_summary(VOID_ITEM_TYPE).get(VOID_FIELD, 0)
+    if n:
+        print(f"Void ledger: {n:,} episodes have no thumbnail at the source and are now "
+              f"skipped. `--forget-image-voids` retries them all.")
+
 def get_cache_path(url: str, cache_dir: Path = DEFAULT_CACHE_DIR) -> Path:
     """Map an image URL to a clean local file path."""
     if not url:
@@ -131,12 +172,18 @@ def clear_cache(cache_dir: Path = DEFAULT_CACHE_DIR) -> int:
                 pass
     return count
 
-def run_batch_download(mode: str = "all", limit: int | None = None, concurrency: int = 6):
+def run_batch_download(mode: str = "all", limit: int | None = None, concurrency: int = 6,
+                       void_after: int = DEFAULT_VOID_AFTER):
     """Batch download all covers and episode thumbnails in gevi.db."""
     conn = sqlite3.connect(str(DB_PATH))
     cur = conn.cursor()
 
     urls_to_download: list[str] = []
+    # Which episodes each thumbnail URL stands for. The ledger is keyed by episode id
+    # (that is what the scraper records against), but the work is keyed by URL, so the
+    # two have to be carried side by side: the cache path is derived from the URL, and
+    # one URL never becomes two files.
+    episodes_by_url: dict[str, list[int]] = {}
 
     if mode in ("all", "covers"):
         cur.execute("SELECT cover_full, covers_json FROM movies WHERE cover_full IS NOT NULL")
@@ -153,10 +200,12 @@ def run_batch_download(mode: str = "all", limit: int | None = None, concurrency:
                     pass
 
     if mode in ("all", "episodes"):
-        cur.execute("SELECT thumbnail_url FROM episodes WHERE thumbnail_url IS NOT NULL AND thumbnail_url != ''")
-        for (thumb,) in cur.fetchall():
+        cur.execute("SELECT id, thumbnail_url FROM episodes "
+                    "WHERE thumbnail_url IS NOT NULL AND thumbnail_url != ''")
+        for ep_id, thumb in cur.fetchall():
             if thumb:
                 urls_to_download.append(thumb)
+                episodes_by_url.setdefault(thumb, []).append(ep_id)
 
     if mode in ("all", "performers"):
         cur.execute("SELECT image_url FROM performers WHERE image_url IS NOT NULL AND image_url != ''")
@@ -177,18 +226,66 @@ def run_batch_download(mode: str = "all", limit: int | None = None, concurrency:
     print(f"Discovered Unique Images: {total} items (Mode: {mode})")
     print(f"Worker Concurrency: {concurrency}")
 
+    # Only the episode modes have anything to record against: covers and performer
+    # images are not in the ledger, so a run over those pays nothing for this.
+    #
+    # Two views of the same ledger, because the two questions have different thresholds:
+    # "is this worth requesting?" asks whether an entry reached `--void-after`, while
+    # "should this success be written down?" asks whether any entry exists at all. One
+    # threshold-filtered map answers the second one wrongly -- an entry of 1 is invisible
+    # to it, so the success is not recorded as a recovery, the count keeps climbing, and
+    # the run after next retires a file that in fact downloaded fine.
+    db = open_db() if episodes_by_url else None
+    recorded = db.get_voids(VOID_ITEM_TYPE, 1) if db else {}
+    retired = db.get_voids(VOID_ITEM_TYPE, void_after) if (db and void_after > 0) else {}
+
+    def has_void(ep_id: int) -> bool:
+        return VOID_FIELD in recorded.get(ep_id, ())
+
+    def forget(ep_id: int) -> None:
+        for view in (recorded, retired):
+            if ep_id in view:
+                view[ep_id].discard(VOID_FIELD)
+
+    def is_voided(url: str) -> bool:
+        """True when every episode using this URL is on record as having no thumbnail
+        at the source. `every`, not `any`: a URL shared by two episodes is still worth
+        one request while either of them is unaccounted for."""
+        ids = episodes_by_url.get(url)
+        return bool(ids) and all(VOID_FIELD in retired.get(i, ()) for i in ids)
+
+    active_urls = [u for u in unique_urls if not is_voided(u)]
+    voided = total - len(active_urls)
+    if voided:
+        print(f"Voided at the source: {voided} (kept out of the work list; "
+              f"`--forget-image-voids` retries them)")
+
     already_cached = 0
     needed_urls = []
+    stale_voids: list[int] = []
     for u in unique_urls:
         lp = get_cache_path(u, DEFAULT_CACHE_DIR)
         if lp.exists() and lp.stat().st_size > 100:
             already_cached += 1
-        else:
+            # A file on disk refutes "the source has no thumbnail" whatever the ledger
+            # says, and this scan deliberately runs before the void filter so an entry
+            # that has already reached the threshold is still reachable here. Left
+            # standing, it would survive a `--clear` and then keep the file out of the
+            # next download for good.
+            stale_voids.extend(i for i in episodes_by_url.get(u, ()) if has_void(i))
+        elif not is_voided(u):
             needed_urls.append(u)
 
     print(f"Already on disk: {already_cached} | Remaining to fetch: {len(needed_urls)}")
+    if stale_voids:
+        for ep_id in stale_voids:
+            db.clear_void(VOID_ITEM_TYPE, ep_id, VOID_FIELD)
+            forget(ep_id)
+        print(f"Cleared {len(stale_voids)} stale void(s) whose file is already on disk.")
     if not needed_urls:
         print("All images are already cached offline! Done.")
+        if db:
+            print_void_summary(db)
         return
 
     success = 0
@@ -201,12 +298,24 @@ def run_batch_download(mode: str = "all", limit: int | None = None, concurrency:
             url = futures[fut]
             try:
                 ok = fut.result()
-                if ok:
-                    success += 1
-                else:
-                    failed += 1
             except Exception:
+                ok = False
+            if ok:
+                success += 1
+            else:
                 failed += 1
+            if db:
+                # Only the two transitions that change the ledger, and only for the
+                # episodes this URL belongs to: a failure is always worth counting, a
+                # success is only worth writing when it contradicts a standing verdict.
+                # Writing unconditionally would mean 119k DELETEs a run to remove rows
+                # that were never there.
+                for ep_id in episodes_by_url.get(url, ()):
+                    if not ok:
+                        db.record_void(VOID_ITEM_TYPE, ep_id, VOID_FIELD)
+                    elif has_void(ep_id):
+                        db.clear_void(VOID_ITEM_TYPE, ep_id, VOID_FIELD)
+                        forget(ep_id)
 
             if i % 10 == 0 or i == len(needed_urls):
                 elapsed = time.time() - start_time
@@ -218,6 +327,8 @@ def run_batch_download(mode: str = "all", limit: int | None = None, concurrency:
     print("\n\nBatch cache download complete!")
     stats = get_cache_stats(DEFAULT_CACHE_DIR)
     print(f"Total Local Images: {stats['count']} files ({stats['size_mb']} MB)")
+    if db:
+        print_void_summary(db)
 
 # ------------------------------------------------------------------ HD upgrade
 #
@@ -299,6 +410,7 @@ def run_hd_upgrade(apply: bool = False, limit: int | None = None, concurrency: i
         "SELECT id, thumbnail_url FROM episodes "
         "WHERE thumbnail_url IS NOT NULL AND thumbnail_url != '' ORDER BY id"
     ).fetchall()
+    db = open_db() if apply else None
 
     all_todo = [(ep_id, hd) for ep_id, url in rows if (hd := hd_url_for(url))]
     # Counted before the limit is applied: `len(rows) - len(todo)` after a truncation
@@ -359,6 +471,12 @@ def run_hd_upgrade(apply: bool = False, limit: int | None = None, concurrency: i
                 print(f"⚠️  本批预期更新 {len(have)} 行，实际 {changed} 行 —— "
                       f"WHERE 没匹配上，这批没写进去。", flush=True)
             written_total += changed
+            # Each rewritten row now points at a different address, and a void recorded
+            # against the low-res file says nothing about whether the `b` twin is there.
+            # Leaving it standing would keep the file we just repointed at out of every
+            # future download -- the ledger is keyed by episode, not by URL.
+            for ep_id, _ in have:
+                db.clear_void(VOID_ITEM_TYPE, ep_id, VOID_FIELD)
         confirmed_total += len(have)
         missing_total += missing
         unknown_total += unknown
@@ -447,6 +565,11 @@ def run_revert_missing_hd(apply: bool = False):
             [(low_res, ep_id) for ep_id, low_res in missing],
         )
     print(f"Reverted {conn.total_changes - before:,} rows to their low-res thumbnail.")
+    # Same reasoning as the upgrade: the row points somewhere new now, so a verdict
+    # recorded against the `b` address must not follow it.
+    db = open_db()
+    for ep_id, _ in missing:
+        db.clear_void(VOID_ITEM_TYPE, ep_id, VOID_FIELD)
     conn.close()
 
 
@@ -509,11 +632,21 @@ if __name__ == "__main__":
                         help="Restore the low-res URL where the HD file never downloaded")
     parser.add_argument("--prune-orphans", action="store_true",
                         help="Delete cached episode thumbnails the database no longer references")
+    parser.add_argument("--void-after", type=int, default=DEFAULT_VOID_AFTER,
+                        help="Skip episode thumbnails recorded as dead at the source after N "
+                             "failed fetches (default 2; 0 ignores the ledger)")
+    parser.add_argument("--forget-image-voids", action="store_true",
+                        help="Forget every image void so all of them are retried. Scoped to "
+                             "episode thumbnails -- it cannot touch the scraper's movie or "
+                             "performer verdicts")
     parser.add_argument("--apply", action="store_true",
                         help="Actually write/delete; without it the maintenance modes are dry runs")
     args = parser.parse_args()
 
-    if args.stats:
+    if args.forget_image_voids:
+        n = open_db().clear_voids(VOID_ITEM_TYPE)
+        print(f"Forgot {n:,} episode-thumbnail voids. The next download will retry them.")
+    elif args.stats:
         s = get_cache_stats()
         print(f"Cached images: {s['count']} | Size: {s['size_mb']} MB | Path: {s['path']}")
     elif args.clear:
@@ -527,4 +660,5 @@ if __name__ == "__main__":
     elif args.prune_orphans:
         run_prune_orphans(apply=args.apply)
     else:
-        run_batch_download(mode=args.mode, limit=args.limit, concurrency=args.concurrency)
+        run_batch_download(mode=args.mode, limit=args.limit, concurrency=args.concurrency,
+                           void_after=args.void_after)

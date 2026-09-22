@@ -125,9 +125,9 @@ CREATE INDEX IF NOT EXISTS idx_progress_type_status ON scrape_progress(item_type
 -- year", so 缺字段 mode would re-fetch the same films forever and never improve
 -- anything. One row means: we fetched this item and the field did not come back.
 CREATE TABLE IF NOT EXISTS scrape_voids (
-    item_type TEXT NOT NULL,        -- 'movie' 或 'performer'
+    item_type TEXT NOT NULL,        -- 'movie' / 'performer' / 'episode'（分集缩略图）
     item_id INTEGER NOT NULL,
-    field TEXT NOT NULL,            -- description / year / duration / cover / cast / ...
+    field TEXT NOT NULL,            -- description / year / duration / cover / cast / thumbnail / ...
     attempts INTEGER NOT NULL DEFAULT 1,   -- 多少次抓取后该字段仍然为空
     noted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (item_type, item_id, field)
