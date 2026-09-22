@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import html
 import http.client
 import json
 import os
@@ -67,6 +68,7 @@ from pathlib import Path
 from typing import Any
 
 from batch_scraper import HOST, NOT_FOUND_MARKER, BatchScraper
+from cache_images import hd_url_for
 from db_manager import DatabaseManager
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -460,6 +462,97 @@ def to_path(url: str) -> str:
     return path
 
 
+# --- company episode tables (`coep`) -------------------------------------
+#
+# A company page's episode grid is a DataTables server-side table; `company2.js`
+# points its ajax at `coep` with `CompanyID`. It answers with plain JSON, so this
+# is the one place where episodes can be enumerated without visiting a page each.
+# The server clamps `length` to 100 — asking for more silently returns 100, which
+# would make a page count computed from the requested size loop forever.
+COEP_PAGE_SIZE = 100
+
+_EPISODE_LINK_RE = re.compile(r"episode/(\d+)['\"]\s*>(.*?)</a>", re.DOTALL)
+_IMG_SRC_RE = re.compile(r"<img[^>]+src=['\"]([^'\"]+)['\"]", re.IGNORECASE)
+_PERFORMER_RE = re.compile(
+    r"performer/(\d+)['\"][^>]*>(?:<span[^>]*>)?(.*?)(?:</span>)?</a>", re.DOTALL
+)
+
+
+def _text_of(fragment: object) -> str:
+    """Strip tags, collapse whitespace, then unescape.
+
+    Unescaping last is deliberate: doing it first would turn a title containing a
+    literal `&lt;b&gt;` into a tag for the stripper to eat."""
+    if not fragment:
+        return ""
+    stripped = re.sub(r"<[^>]+>", " ", str(fragment))
+    return html.unescape(re.sub(r"\s+", " ", stripped)).strip()
+
+
+def parse_coep_rows(payload: dict, company_id: int, company_name: str | None) -> list[dict]:
+    """Turn one `coep` JSON page into rows for `save_standalone_episodes`.
+
+    Cell layout, measured against the live endpoint:
+    `[0]` a constant "0", `[1]` the release date, `[2]` `<a href='episode/N'>Real
+    Title</a>`, `[3]` the cast, `[4]` the thumbnail `<img>`, `[5]` the description.
+
+    Read positionally with a length guard, and skip any row without an episode link:
+    a short or reshaped row must drop out rather than have its date read as a title.
+    """
+    rows: list[dict] = []
+    for cell in payload.get("data") or []:
+        if not isinstance(cell, list) or len(cell) < 5:
+            continue
+        m = _EPISODE_LINK_RE.search(str(cell[2] or ""))
+        if not m:
+            continue
+
+        img = _IMG_SRC_RE.search(str(cell[4] or ""))
+        thumb = ""
+        if img:
+            src = img.group(1)
+            low_res = src if src.startswith("http") else f"{BASE_URL}/{src.lstrip('/')}"
+            # The grid hands back the low-res preview; the episode page opens the HD
+            # twin. Storing HD here matches what the movie-page parser now writes.
+            thumb = hd_url_for(low_res) or low_res
+
+        performers: list[tuple[int, str]] = []
+        for pid, pname in _PERFORMER_RE.findall(str(cell[3] or "")):
+            name = _text_of(pname)
+            if name:
+                performers.append((int(pid), name))
+
+        rows.append({
+            "id": int(m.group(1)),
+            "title": _text_of(m.group(2)),
+            "thumbnail_url": thumb,
+            "description": _text_of(cell[5]) if len(cell) > 5 else "",
+            "release_date": str(cell[1] or "").strip(),
+            "studio_id": company_id,
+            "studio_name": company_name,
+            "performers": performers,
+        })
+    return rows
+
+
+def coep_url(company_id: int, start: int, length: int = COEP_PAGE_SIZE) -> str:
+    """One page of a company's episode table, newest first.
+
+    `order[0][dir]=desc` on the date column is what makes an incremental sync
+    possible: paging stops as soon as a page contains only episodes already stored.
+    """
+    query = urllib.parse.urlencode({
+        "CompanyID": company_id,
+        "draw": 1,
+        "start": start,
+        "length": length,
+        "order[0][column]": 1,
+        "order[0][dir]": "desc",
+        "search[value]": "",
+    })
+    return f"{BASE_URL}/coep?{query}"
+
+
 class ScraperV2:
     def __init__(self, args: argparse.Namespace):
         self.args = args
@@ -489,7 +582,14 @@ class ScraperV2:
             movie_fields = [g.strip() for g in
                             (args.gaps or ",".join(DatabaseManager.DEFAULT_MOVIE_GAPS)).split(",")
                             if g.strip()]
-        self.checked_fields = {"movie": movie_fields, "performer": ["attributes", "image"]}
+        # `company` is empty on purpose. Void bookkeeping means "the source has no value
+        # for this field", and a company target has no movie/performer field to be
+        # absent - recording one would put rows in the ledger that no other mode can
+        # interpret. Its progress rows also live under item_type "company", which keeps
+        # this mode's ids out of the movie id space they would otherwise collide with
+        # (both are plain INTEGERs, so `get_incomplete_movies` would read them as films).
+        self.checked_fields = {"movie": movie_fields, "performer": ["attributes", "image"],
+                              "company": []}
 
     # --- networking -------------------------------------------------------
 
@@ -673,6 +773,43 @@ class ScraperV2:
             ]
 
 
+        elif mode == "episode-sync":
+            # Standalone episodes - ones the site publishes with no parent film - are
+            # unreachable from the film side: no film page lists them and `/newe` has no
+            # pagination. Their companies' episode tables do list them, so the company is
+            # the unit of work.
+            known = self.db.get_completed_ids("company")
+            rows = self.db.conn.execute(
+                "SELECT studio_id, COUNT(*) FROM movies "
+                "WHERE studio_id IS NOT NULL GROUP BY studio_id ORDER BY studio_id"
+            ).fetchall()
+            names = dict(self.db.conn.execute(
+                "SELECT studio_id, MAX(studio_name) FROM movies "
+                "WHERE studio_id IS NOT NULL GROUP BY studio_id"
+            ).fetchall())
+            targets = [
+                {"type": "company", "id": sid, "url": coep_url(sid, 0),
+                 "why": "有影片的公司", "title": names.get(sid)}
+                for sid, _ in rows if sid not in known
+            ]
+            if self.args.sweep_companies:
+                # A company can publish scenes with no film of its own, so the film side
+                # alone cannot enumerate them. `_process_company` always fetches page 0, so
+                # that first request doubles as the probe: its `recordsTotal` says whether
+                # the company has anything, and a company with none returns an empty page
+                # at any `length`. `url` here is for the log line only.
+                # One-time backfill, not part of a routine sync - it is ~6k requests.
+                have = {sid for sid, _ in rows}
+                extra = [
+                    cid for cid in range(1, self.args.sweep_companies + 1)
+                    if cid not in have and cid not in known
+                ]
+                targets += [
+                    {"type": "company", "id": cid, "url": coep_url(cid, 0),
+                     "why": "公司 id 探针", "title": None}
+                    for cid in extra
+                ]
+
         elif mode == "refresh":
             cutoff = (datetime.now() - timedelta(days=self.args.min_age_days)).strftime("%Y-%m-%d %H:%M:%S")
             rows = self.db.conn.execute(
@@ -768,7 +905,82 @@ class ScraperV2:
             self.progress.finish()
         self._report()
 
+    def _abort_company(self, item: dict, res: FetchResult, why: str) -> None:
+        """Record a company fetch that did not produce a trustworthy answer.
+
+        Never 404: a company whose listing we failed to read must stay eligible, or the
+        episodes behind it would be written off permanently on the strength of one bad
+        response.
+        """
+        if res.status == 0:
+            self.results.put({"kind": "aborted", "item": item, "reason": res.reason})
+            if self.progress:
+                self.progress.tick(skipped=1)
+        elif res.status == 404:
+            self.results.put({"kind": "gone", "item": item, "reason": res.reason})
+            if self.progress:
+                self.progress.tick(gone=1)
+        else:
+            self.results.put({"kind": "failed", "item": item,
+                              "reason": f"{why}: {res.reason}"})
+            if self.progress:
+                self.progress.tick(failed=1)
+
+    def _process_company(self, item: dict) -> None:
+        """Page through one company's episode table and hand back every row it lists.
+
+        All-or-nothing per company. A big company is dozens of requests, and treating a
+        run that read only some of its pages as done would mark it complete and leave the
+        rest of its episodes unreachable forever, since nothing would come back for them.
+        """
+        company_id = item["id"]
+        first = self.fetch(coep_url(company_id, 0))
+        if first.status != 200:
+            self._abort_company(item, first, "首页失败")
+            return
+        try:
+            payload = json.loads(first.body)
+        except ValueError as e:
+            # A parse failure is a layout change, not an absent company.
+            self.results.put({"kind": "rejected", "item": item,
+                              "reason": f"coep 不是 JSON: {e}"})
+            if self.progress:
+                self.progress.tick(failed=1)
+            return
+
+        rows = parse_coep_rows(payload, company_id, item.get("title"))
+        total = int(payload.get("recordsTotal") or 0)
+        pages = (total + COEP_PAGE_SIZE - 1) // COEP_PAGE_SIZE
+
+        for page in range(1, pages):
+            if STOP.is_set():
+                self.results.put({"kind": "aborted", "item": item, "reason": "已中断"})
+                if self.progress:
+                    self.progress.tick(skipped=1)
+                return
+            res = self.fetch(coep_url(company_id, page * COEP_PAGE_SIZE))
+            if res.status != 200:
+                self._abort_company(item, res, f"第 {page + 1}/{pages} 页失败")
+                return
+            try:
+                rows += parse_coep_rows(json.loads(res.body), company_id, item.get("title"))
+            except ValueError as e:
+                self.results.put({"kind": "rejected", "item": item,
+                                  "reason": f"第 {page + 1} 页不是 JSON: {e}"})
+                if self.progress:
+                    self.progress.tick(failed=1)
+                return
+
+        self.results.put({"kind": "ok", "item": item,
+                          "data": {"episodes": rows}, "records_total": total,
+                          "episodes_found": len(rows)})
+        if self.progress:
+            self.progress.tick(ok=1)
+
     def _process(self, item: dict) -> None:
+        if item["type"] == "company":
+            self._process_company(item)
+            return
         res = self.fetch(item["url"])
         if res.status == 0:
             self.results.put({"kind": "aborted", "item": item, "reason": res.reason})
@@ -834,7 +1046,16 @@ class ScraperV2:
                         self.write_counts[key] += 1
                     continue
                 if kind == "ok":
-                    if self.args.mode == "episodes":
+                    if item["type"] == "company":
+                        # Never writes movie_id: these are standalone episodes, and a row
+                        # already attached to a film must keep that attachment.
+                        self.db.save_standalone_episodes(msg["data"].get("episodes") or [])
+                        # save_movie records progress for a film; nothing does it for a
+                        # company, so without this line no company is ever marked done and
+                        # every run re-fetches all 2,411 of them from scratch.
+                        self.db.record_progress("company", item["id"], 200)
+                        self.write_counts["episodes"] += msg.get("episodes_found", 0)
+                    elif self.args.mode == "episodes":
                         # Writes the episode rows only: this mode re-reads pages of
                         # films whose own columns are already complete, so save_movie
                         # would rewrite fields nobody asked it to touch.
@@ -865,6 +1086,11 @@ class ScraperV2:
         source lacks it. Fields that did come back have any old void cleared.
         """
         item_type = item["type"]
+        if item_type == "company":
+            # A company target has no watched field, so there is no absence to record.
+            # Writing one would put "the source lacks X" rows in the ledger for an item
+            # whose type nothing else in the codebase knows how to interpret.
+            return
         try:
             if item_type == "movie":
                 state = self.db.movie_field_state(item["id"], self.checked_fields["movie"])
@@ -1453,9 +1679,10 @@ def main() -> None:
     )
     parser.add_argument("--mode", default="gaps",
                         choices=["gaps", "new", "failed", "failures", "recheck-404",
-                                 "performers", "episodes", "refresh", "fix-years", "audit",
-                                 "directors"],
-                        help="抓取模式 (默认 gaps: 只补齐缺失字段；directors: 离线拆分粘连的导演名)")
+                                 "performers", "episodes", "episode-sync", "refresh",
+                                 "fix-years", "audit", "directors"],
+                        help="抓取模式 (默认 gaps: 只补齐缺失字段；episode-sync: 抓片商分集表里的"
+                             "独立分集；directors: 离线拆分粘连的导演名)")
     parser.add_argument("--db", default="gevi.db", help="SQLite 数据库路径")
     parser.add_argument("--gaps", help="--mode gaps 时检查哪些字段, 逗号分隔 "
                                       "(description,year,duration,cover,cover_variants,cast,studio,director)。"
@@ -1465,6 +1692,9 @@ def main() -> None:
     parser.add_argument("--only", help="只处理这些 ID (逗号分隔)，用于小范围试跑")
     parser.add_argument("--limit", type=int, default=0, help="本次最多处理多少条 (0=不限)")
     parser.add_argument("--min-age-days", type=int, default=180, help="--mode refresh 的过期天数")
+    parser.add_argument("--sweep-companies", type=int, default=0, metavar="MAX_ID",
+                        help="--mode episode-sync 时额外探测 1..MAX_ID 里没有影片的公司 id。"
+                             "一次性回填用（约 6k 请求）；日常增量同步不要带")
     parser.add_argument("--audit", action="store_true", help="等于 --mode audit：离线体检，不联网")
     parser.add_argument("--void-after", type=int, default=2,
                         help="某字段连续多少次抓取仍为空后，认定源头确实没有该数据 (默认 2)")

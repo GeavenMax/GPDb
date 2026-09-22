@@ -95,6 +95,12 @@ CREATE TABLE IF NOT EXISTS episodes (
     description TEXT,
     description_zh TEXT,            -- 机器翻译后的中文片段简介 (NULL = 尚未翻译)
     action_notes TEXT,
+    -- 以下三列来自分集自身的页面/`coep` 端点。movie_id 为 NULL 的「独立分集」
+    -- 没有影片可借片商与年份，只能靠这三列；隶属影片的分集留空，显示端用
+    -- COALESCE(父影片, 自身) 回退。
+    release_date TEXT,
+    studio_id INTEGER,
+    studio_name TEXT,
     FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE
 );
 

@@ -45,6 +45,13 @@ class DatabaseManager:
         ],
         "episodes": [
             ("description_zh", "TEXT"),
+            # 分集自身的数据，来自站点的 `coep` 端点（company 页的分集表格 AJAX）。
+            # 只有「独立分集」用得上 —— 隶属影片的分集这几列留空，显示端优先取
+            # 父影片的片商与年份（见 queries/episodes.rs 的 COALESCE），
+            # 独立分集没有父影片，只能靠自己。
+            ("release_date", "TEXT"),
+            ("studio_id", "INTEGER"),
+            ("studio_name", "TEXT"),
         ],
     }
 
@@ -780,6 +787,63 @@ class DatabaseManager:
                     )
         return len(episodes)
 
+    def save_standalone_episodes(self, rows: list[dict] | None) -> int:
+        """Write episodes discovered through a company's episode table (`coep`).
+
+        The one difference from `_write_episodes` is the entire point of this method.
+        That one forces a single `movie_id` onto every row, because it is fed by a
+        film's own scene list and every row on it belongs to that film. These rows come
+        from a company's episode table, which lists scenes belonging to no film at all.
+
+        So `movie_id` is never written here: the INSERT leaves it NULL, and the UPDATE
+        on conflict omits the column entirely, so a scene that already belongs to a film
+        keeps that attachment no matter what this mode finds. Writing it would let a
+        company's listing silently re-parent - or orphan - scenes we already have.
+
+        Returns the row count, not an insert count: the UPSERT makes "another company
+        already listed this episode" a normal and harmless case, so a caller wanting the
+        number of genuinely new episodes has to compare before and after.
+        """
+        rows = rows or []
+        with self._write_lock, self.conn:
+            for ep in rows:
+                self.conn.execute("""
+                    INSERT INTO episodes
+                        (id, movie_id, title, thumbnail_url, description, action_notes,
+                         release_date, studio_id, studio_name)
+                    VALUES (?, NULL, ?, ?, ?, '', ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        title = COALESCE(NULLIF(excluded.title, ''), episodes.title),
+                        thumbnail_url = COALESCE(NULLIF(excluded.thumbnail_url, ''), episodes.thumbnail_url),
+                        description = COALESCE(NULLIF(excluded.description, ''), episodes.description),
+                        description_zh = CASE
+                            WHEN COALESCE(excluded.description, '') = '' THEN episodes.description_zh
+                            WHEN excluded.description = episodes.description THEN episodes.description_zh
+                            ELSE NULL
+                        END,
+                        -- `or None` at the call site turns an empty string into NULL:
+                        -- these three have no NULLIF, so '' would overwrite a real value.
+                        release_date = COALESCE(excluded.release_date, episodes.release_date),
+                        studio_id = COALESCE(excluded.studio_id, episodes.studio_id),
+                        studio_name = COALESCE(excluded.studio_name, episodes.studio_name)
+                """, (
+                    ep["id"], ep.get("title") or None, ep.get("thumbnail_url") or None,
+                    ep.get("description") or None, ep.get("release_date") or None,
+                    ep.get("studio_id"), ep.get("studio_name") or None,
+                ))
+                # Same rule as a film's cast: an empty list means the parse found none,
+                # not that the scene has none, so the existing links are left alone.
+                new_performers = ep.get("performers") or []
+                if new_performers:
+                    self.conn.execute("DELETE FROM episode_performers WHERE episode_id = ?", (ep["id"],))
+                    for epid, epname in new_performers:
+                        self.conn.execute("INSERT OR IGNORE INTO performers (id, name) VALUES (?, ?)", (epid, epname))
+                        self.conn.execute(
+                            "INSERT OR REPLACE INTO episode_performers (episode_id, performer_id, performer_name) VALUES (?, ?, ?)",
+                            (ep["id"], epid, epname)
+                        )
+        return len(rows)
+
     def save_performer(self, p: dict, status: int = 200):
         """Save a single performer record and update FTS5."""
         with self._write_lock, self.conn:
@@ -1116,14 +1180,20 @@ class DatabaseManager:
 
     def get_studio_episodes(self, studio_name: str) -> list[dict]:
         cur = self.conn.cursor()
+        # LEFT JOIN + COALESCE, not INNER JOIN on `m.studio_name`: a standalone episode
+        # (`movie_id IS NULL`) has no film row at all, so an INNER JOIN would hide it from
+        # its own studio's list. It carries its studio in `e.studio_name` instead.
         cur.execute("""
             SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh,
-                   e.action_notes, m.title as movie_title, m.studio_name, m.release_year,
+                   e.action_notes, m.title as movie_title,
+                   COALESCE(m.studio_name, e.studio_name),
+                   COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)),
                    m.title_zh
             FROM episodes e
-            JOIN movies m ON e.movie_id = m.id
-            WHERE m.studio_name = ?
-            ORDER BY m.release_year DESC, e.id DESC
+            LEFT JOIN movies m ON e.movie_id = m.id
+            WHERE COALESCE(m.studio_name, e.studio_name) = ?
+            ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC,
+                     e.id DESC
         """, (studio_name,))
         eps = []
         for r in cur.fetchall():
@@ -1202,13 +1272,16 @@ class DatabaseManager:
             # The search box is free text, so % and _ must reach LIKE as literals.
             escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             like = f"%{escaped}%"
-            # e.title is deliberately not searched: the site names every single episode
-            # "Episode #N" (15,107 of 15,107), so it can never match what someone types.
+            # e.title is not searched: for a film's scene it only ever holds "" or the
+            # old "Episode #N" placeholder. Standalone episodes do carry a real title,
+            # but adding `e.title` here is a deliberate follow-up, not an oversight.
             conds.append("(m.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\'"
                          " OR e.description_zh LIKE ? ESCAPE '\\')")
             args += [like, like, like]
         if studio:
-            conds.append("m.studio_name = ?")
+            # COALESCE, not `m.studio_name`: a standalone episode has no film row, so
+            # filtering on the film alone would drop it from its own studio's list.
+            conds.append("COALESCE(m.studio_name, e.studio_name) = ?")
             args.append(studio)
         if has_zh:
             conds.append("e.description_zh IS NOT NULL AND trim(e.description_zh) != ''")
@@ -1216,8 +1289,11 @@ class DatabaseManager:
             conds.append("EXISTS (SELECT 1 FROM episode_performers ep WHERE ep.episode_id = e.id)")
         where = f"WHERE {' AND '.join(conds)}" if conds else ""
 
+        # The year sort falls back the same way the SELECT does; a bare `m.release_year`
+        # would leave every standalone episode unsorted (NULL) at one end.
+        year_expr = "COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER))"
         order = {
-            "year_desc": "m.release_year DESC, e.id DESC",
+            "year_desc": f"{year_expr} DESC, e.id DESC",
             "movie_asc": "m.title COLLATE NOCASE ASC, e.id ASC",
         }.get(sort, "e.id DESC")
 
@@ -1227,11 +1303,18 @@ class DatabaseManager:
 
         cur = self.conn.execute(f"""
             SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description,
-                   e.description_zh, e.action_notes, m.title, m.studio_name, m.release_year,
-                   -- The site names every episode "Episode #<its own row id>", so the
-                   -- title carries no position. The scene's rank inside its own film is
-                   -- what a card can actually show ("第 3 集 / 共 5 集"), and reading it
-                   -- off the id order matches how the film's own page lists them.
+                   e.description_zh, e.action_notes, m.title,
+                   COALESCE(m.studio_name, e.studio_name),
+                   COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)),
+                   -- A film's scene list carries no per-scene title, so the title holds
+                   -- no position. The scene's rank inside its own film is what a card can
+                   -- show ("第 3 集 / 共 5 集"), read off id order to match how the film's
+                   -- own page lists them.
+                   --
+                   -- A standalone episode gets 0/0 here: `e2.movie_id = e.movie_id` is
+                   -- never true when both sides are NULL. That is the wanted result —
+                   -- such an episode has no position in any film — and the client already
+                   -- reads a falsy ordinal as "show no position label" (utils/episode.ts).
                    (SELECT count(*) FROM episodes e2
                      WHERE e2.movie_id = e.movie_id AND e2.id <= e.id) AS episode_ordinal,
                    (SELECT count(*) FROM episodes e2 WHERE e2.movie_id = e.movie_id) AS episode_count,
