@@ -497,6 +497,17 @@ export const api = {
 
   // Image Disk Cache Management
   async getCacheStats(): Promise<{ count: number; size_mb: number; path: string }> {
+    if (isTauri) {
+      try {
+        return await tauriInvoke<{ count: number; size_mb: number; path: string }>('get_cache_stats');
+      } catch (err) {
+        console.warn('Tauri get_cache_stats error, falling back to HTTP:', err);
+      }
+    }
+    try {
+      const res = await fetch('http://127.0.0.1:8787/api/cache/stats');
+      if (res.ok) return await res.json();
+    } catch {}
     try {
       const res = await fetch('/api/cache/stats');
       if (res.ok) return await res.json();
@@ -505,6 +516,18 @@ export const api = {
   },
 
   async clearCache(): Promise<{ success: boolean; cleared_files: number }> {
+    if (isTauri) {
+      try {
+        const cleared = await tauriInvoke<number>('clear_cache');
+        return { success: true, cleared_files: cleared };
+      } catch (err) {
+        console.warn('Tauri clear_cache error, falling back to HTTP:', err);
+      }
+    }
+    try {
+      const res = await fetch('http://127.0.0.1:8787/api/cache/clear', { method: 'POST' });
+      if (res.ok) return await res.json();
+    } catch {}
     try {
       const res = await fetch('/api/cache/clear', { method: 'POST' });
       if (res.ok) return await res.json();
@@ -513,6 +536,10 @@ export const api = {
   },
 
   async downloadAllCache(): Promise<{ success: boolean; message: string }> {
+    try {
+      const res = await fetch('http://127.0.0.1:8787/api/cache/download_all', { method: 'POST' });
+      if (res.ok) return await res.json();
+    } catch {}
     try {
       const res = await fetch('/api/cache/download_all', { method: 'POST' });
       if (res.ok) return await res.json();

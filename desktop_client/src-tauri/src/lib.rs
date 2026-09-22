@@ -40,6 +40,8 @@ pub fn run() {
             commands::database::set_custom_database_path,
             commands::database::scan_databases,
             commands::database::pick_database_file,
+            commands::cache::get_cache_stats,
+            commands::cache::clear_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

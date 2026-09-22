@@ -88,6 +88,8 @@ export interface Performer {
   works_count?: number;
   episodes?: Episode[];
   episodes_count?: number;
+  /** Credited aliases / alternative stage names across movies and episodes */
+  aliases?: string[];
 }
 
 /** Sort keys accepted by the studio library, on both the HTTP and Tauri paths. */
@@ -360,6 +362,9 @@ export type AppTab =
   | 'directors'
   | 'episodes'
   | 'favorites'
+  | 'analytics'
+  | 'plugins'
+  | 'trophies'
   | 'settings';
 
 export const FAVORITE_TYPES: FavoriteType[] = ['movie', 'performer', 'studio', 'director', 'episode'];

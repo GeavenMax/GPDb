@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Film, Users, Heart, HardDrive, Building2, Clapperboard, Megaphone } from '@lucide/vue';
+import { Film, Users, Heart, HardDrive, Building2, Clapperboard, Megaphone, BarChart2, Puzzle } from '@lucide/vue';
 import type { AppTab } from '../types';
 import { PREFS } from '../utils/prefs';
+import { t } from '../i18n';
 
 defineProps<{ currentTab: AppTab }>();
 
@@ -16,12 +17,12 @@ const emit = defineEmits<{
  * bottom instead of competing for a slot in the order.
  */
 const NAV_ITEMS = [
-  { id: 'movies', label: '影片库', icon: Film },
-  { id: 'performers', label: '演员库', icon: Users },
-  { id: 'studios', label: '片商库', icon: Building2 },
-  { id: 'directors', label: '导演库', icon: Megaphone },
-  { id: 'episodes', label: '分集库', icon: Clapperboard },
-  { id: 'favorites', label: '我的收藏', icon: Heart },
+  { id: 'movies', labelKey: 'nav.movies', label: '影片库', icon: Film },
+  { id: 'performers', labelKey: 'nav.performers', label: '演员库', icon: Users },
+  { id: 'studios', labelKey: 'nav.studios', label: '片商库', icon: Building2 },
+  { id: 'directors', labelKey: 'nav.directors', label: '导演库', icon: Megaphone },
+  { id: 'episodes', labelKey: 'nav.episodes', label: '分集库', icon: Clapperboard },
+  { id: 'favorites', labelKey: 'nav.favorites', label: '我的收藏', icon: Heart },
 ] as const;
 
 type NavId = (typeof NAV_ITEMS)[number]['id'];
@@ -112,14 +113,15 @@ function onDragEnd() {
   dropBelow.value = false;
 }
 
-/** Classes shared by the reorderable rows and the pinned settings entry. */
+/** Classes shared by the reorderable rows and the pinned bottom entries. */
 function tabClass(id: AppTab, active: boolean) {
+  const isBottom = id === 'settings' || id === 'analytics' || id === 'plugins' || id === 'trophies';
   return [
     'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition border',
     active
       ? 'bg-accent-fill/10 text-accent border-accent-fill/20 font-semibold'
       : 'text-fg-3 hover:text-fg-2 hover:bg-surface/80 border-transparent',
-    id === 'settings' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
+    isBottom ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
   ];
 }
 </script>
@@ -138,7 +140,7 @@ function tabClass(id: AppTab, active: boolean) {
           role="button"
           tabindex="0"
           :aria-current="currentTab === item.id ? 'page' : undefined"
-          :title="`${item.label}（拖动可调整顺序）`"
+          :title="`${t(item.labelKey, item.label)}（拖动可调整顺序）`"
           @click="emit('change-tab', item.id)"
           @keydown.enter.prevent="emit('change-tab', item.id)"
           @keydown.space.prevent="emit('change-tab', item.id)"
@@ -153,7 +155,7 @@ function tabClass(id: AppTab, active: boolean) {
           ]"
         >
           <component :is="item.icon" class="w-4 h-4 shrink-0" />
-          <span>{{ item.label }}</span>
+          <span>{{ t(item.labelKey, item.label) }}</span>
           <!-- Where the row would land: a bar above or below the hovered entry. -->
           <span
             v-if="dropTargetId === item.id"
@@ -164,21 +166,41 @@ function tabClass(id: AppTab, active: boolean) {
           ></span>
         </div>
       </nav>
-      <div class="px-2 text-[10px] text-fg-5">拖动条目可调整顺序</div>
+      <div class="px-2 text-[10px] text-fg-5">{{ t('nav.reorderTip', '拖动条目可调整顺序') }}</div>
     </div>
 
-    <!-- Pinned: settings, then the offline notice -->
-    <div class="space-y-3">
+    <!-- Pinned: analytics, plugins, settings, then offline notice -->
+    <div class="space-y-1.5 border-t border-line/60 pt-3">
+      <button
+        @click="emit('change-tab', 'analytics')"
+        :class="tabClass('analytics', currentTab === 'analytics')"
+        :title="t('nav.analytics')"
+      >
+        <BarChart2 class="w-4 h-4 shrink-0" />
+        <span>{{ t('nav.analytics') }}</span>
+      </button>
+
+      <button
+        @click="emit('change-tab', 'plugins')"
+        :class="tabClass('plugins', currentTab === 'plugins')"
+        :title="t('nav.plugins')"
+      >
+        <Puzzle class="w-4 h-4 shrink-0" />
+        <span>{{ t('nav.plugins') }}</span>
+      </button>
+
       <button
         @click="emit('change-tab', 'settings')"
         :class="tabClass('settings', currentTab === 'settings')"
+        :title="t('nav.settings')"
       >
-        <HardDrive class="w-4 h-4" />
-        <span>缓存与设置</span>
+        <HardDrive class="w-4 h-4 shrink-0" />
+        <span>{{ t('nav.settings') }}</span>
       </button>
-      <div class="p-3 rounded-xl bg-surface/60 border border-line/80 text-[11px] text-fg-3 space-y-1">
-        <div class="font-medium text-fg-2">本地离线模式</div>
-        <div class="text-[10px] text-fg-4">SQLite FTS5 引擎驱动</div>
+
+      <div class="p-3 rounded-xl bg-surface/60 border border-line/80 text-[11px] text-fg-3 space-y-1 mt-2">
+        <div class="font-medium text-fg-2">{{ t('nav.offlineMode') }}</div>
+        <div class="text-[10px] text-fg-4">{{ t('nav.engine') }}</div>
       </div>
     </div>
   </aside>

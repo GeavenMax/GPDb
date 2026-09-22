@@ -266,5 +266,6 @@ pub fn map_performer_row(r: &rusqlite::Row) -> rusqlite::Result<Performer> {
         movies: None,
         episodes: None,
         episodes_count: None,
+        aliases: None,
     })
 }

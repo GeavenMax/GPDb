@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown } from '@lucide/vue';
+import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown, ExternalLink } from '@lucide/vue';
 import type { Movie, UserTag, FavoriteType } from '../types';
 import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
@@ -8,6 +8,7 @@ import { claimEscape } from '../utils/escape';
 import { titlePrimary, titleSecondary } from '../utils/bilingual';
 import { trCategory } from '../utils/glossary';
 import { api, IS_TAURI } from '../api';
+import { pluginsConfig, openBtSearch } from '../services/pluginManager';
 
 const props = defineProps<{
   movie: Movie | null;
@@ -66,12 +67,8 @@ const autoAttempted = new Set<number>();
 
 const activeCoverIndex = ref(0);
 
-/**
- * The private star rating / tags / notes block is an aside, not part of the
- * film's own data, so it stays collapsed behind a button in the header instead
- * of pushing the synopsis and cast off the first screenful.
- */
-const showPrivate = ref(false);
+const showRatingCard = ref(false);
+const showPrivateNotes = ref(false);
 
 // Synopses carry both the original English and (once translated) the Chinese text.
 const zhDescription = ref<string | null>(null);
@@ -99,7 +96,8 @@ watch(() => props.movie, (m) => {
   zhDescription.value = m?.description_zh || null;
   showOriginalOverride.value = null;
   translateError.value = '';
-  showPrivate.value = false;
+  showRatingCard.value = false;
+  showPrivateNotes.value = false;
 
   // Single-translation mode: fill in this one film's synopsis as it is opened,
   // together with any episode synopses that came back with it.
@@ -199,7 +197,7 @@ function onDescriptionScroll() {
 
 // Re-measure when the text or its language changes, and when the window resizes
 // (the modal reflows, so a synopsis can start or stop overflowing).
-watch([displayedDescription, showPrivate], async () => {
+watch([displayedDescription, showPrivateNotes], async () => {
   await nextTick();
   measureDescription();
 });
@@ -317,6 +315,24 @@ function setStatus(st: string) {
   persistUserData();
 }
 
+function handleStatusClick(stId: string) {
+  if (stId === 'watched') {
+    if (userStatus.value === 'watched') {
+      userStatus.value = null;
+      showRatingCard.value = false;
+    } else {
+      userStatus.value = 'watched';
+      showRatingCard.value = true;
+    }
+    persistUserData();
+  } else {
+    setStatus(stId);
+    if (showRatingCard.value && userStatus.value !== 'watched') {
+      showRatingCard.value = false;
+    }
+  }
+}
+
 function toggleTag(tagId: number) {
   if (selectedTagIds.value.includes(tagId)) {
     selectedTagIds.value = selectedTagIds.value.filter(id => id !== tagId);
@@ -355,9 +371,12 @@ const currentCover = computed(() => {
 function onKeydown(e: KeyboardEvent) {
   if (e.key !== 'Escape' || props.isTop === false) return;
   if (!claimEscape(e)) return;
-  // While the private-annotation panel is open it owns Escape.
-  if (showPrivate.value) {
-    showPrivate.value = false;
+  if (showRatingCard.value) {
+    showRatingCard.value = false;
+    return;
+  }
+  if (showPrivateNotes.value) {
+    showPrivateNotes.value = false;
     return;
   }
   emit('close');
@@ -461,30 +480,10 @@ onUnmounted(() => {
               <span v-if="movie.category" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong">
                 {{ categoryLabel }}
               </span>
-              <!-- Private annotations live behind this button (aside, not film data) -->
-              <button
-                @click="showPrivate = !showPrivate"
-                :class="[
-                  'ml-auto px-3 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
-                  showPrivate
-                    ? 'bg-accent-fill/20 text-accent-soft border-accent-fill/40'
-                    : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-accent'
-                ]"
-                :title="showPrivate ? '收起我的私密评星与标记' : '展开我的私密评星、标签与笔记（仅本地可见）'"
-              >
-                <Sparkles class="w-3.5 h-3.5" />
-                <span>我的标记</span>
-                <span
-                  v-if="hasPrivateData"
-                  class="w-1.5 h-1.5 rounded-full bg-accent"
-                  title="已有私密记录"
-                ></span>
-              </button>
-
               <button
                 @click="emit('toggle-favorite', movie)"
                 :class="[
-                  'px-3 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
+                  'ml-auto px-3 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
                   isFavorite
                     ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
                     : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
@@ -631,23 +630,137 @@ onUnmounted(() => {
                 {{ translateError }}
               </div>
             </div>
+
+            <!-- Watchlist Status & Rating Row (directly below synopsis) -->
+            <div class="pt-1 flex flex-col gap-2.5">
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- Status Pills -->
+                <button
+                  v-for="st in [
+                    { id: 'wishlist', label: '想看', icon: Bookmark },
+                    { id: 'watched', label: '已看', icon: CheckCircle2 },
+                    { id: 'favorite', label: '喜爱', icon: Heart }
+                  ]"
+                  :key="st.id"
+                  @click="handleStatusClick(st.id)"
+                  :class="[
+                    'py-1.5 px-3 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition',
+                    userStatus === st.id
+                      ? 'bg-accent-fill text-on-fill border-accent font-bold shadow-md shadow-accent-fill/20'
+                      : 'bg-surface-2/80 text-fg-3 border-line-strong/60 hover:text-fg-2 hover:bg-surface-2'
+                  ]"
+                >
+                  <component :is="st.icon" class="w-3.5 h-3.5" :fill="userStatus === st.id ? 'currentColor' : 'none'" />
+                  <span>{{ st.label }}</span>
+                </button>
+
+                <!-- Current Rating Pill if user has rated (click to open rating popover) -->
+                <button
+                  v-if="userRating"
+                  @click="showRatingCard = !showRatingCard"
+                  class="py-1 px-2.5 rounded-xl text-xs font-bold border border-accent/40 bg-accent/10 text-accent flex items-center gap-1 hover:bg-accent/20 transition"
+                  title="点击调整评分"
+                >
+                  <Star class="w-3.5 h-3.5 fill-accent text-accent" />
+                  <span>{{ userRating.toFixed(1) }} 星</span>
+                </button>
+
+                <!-- BT Search Plugin Button -->
+                <button
+                  v-if="pluginsConfig.btSearchEnabled"
+                  @click="openBtSearch(movie.title)"
+                  class="ml-auto py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
+                  :title="`在 BT 站检索「${movie.title}」资源`"
+                >
+                  <ExternalLink class="w-3.5 h-3.5" />
+                  <span>BT 搜索</span>
+                </button>
+
+                <!-- Subordinate feature: Tags & Notes toggle button -->
+                <button
+                  @click="showPrivateNotes = !showPrivateNotes"
+                  :class="[
+                    pluginsConfig.btSearchEnabled ? '' : 'ml-auto',
+                    'py-1.5 px-2.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition',
+                    showPrivateNotes
+                      ? 'bg-accent-fill/20 text-accent-soft border-accent-fill/40'
+                      : 'bg-surface-2/60 hover:bg-surface-3 border-line text-fg-4 hover:text-fg-2'
+                  ]"
+                  title="展开自定义标签与私密便签"
+                >
+                  <Sparkles class="w-3.5 h-3.5" />
+                  <span>便签与标签</span>
+                  <span
+                    v-if="hasPrivateData"
+                    class="w-1.5 h-1.5 rounded-full bg-accent"
+                    title="已有私密记录"
+                  ></span>
+                </button>
+              </div>
+
+              <!-- Rating Card: only pops up when '已看' is clicked or user clicks the rating badge -->
+              <div
+                v-if="showRatingCard"
+                class="p-3 rounded-2xl bg-surface/95 border border-line shadow-xl flex items-center justify-between gap-3 flex-wrap animate-fade-in"
+              >
+                <div class="flex items-center gap-3">
+                  <span class="text-xs font-semibold text-fg-2">评星打分：</span>
+                  <div class="flex items-center gap-1">
+                    <button
+                      v-for="star in 5"
+                      :key="star"
+                      @click="setRating(star)"
+                      class="p-1 hover:scale-125 transition-transform"
+                      :title="`评分 ${star} 星`"
+                    >
+                      <Star
+                        class="w-5 h-5 transition-colors"
+                        :class="userRating && userRating >= star ? 'text-accent fill-accent' : 'text-fg-5 hover:text-accent-soft'"
+                      />
+                    </button>
+                  </div>
+                  <span class="text-xs font-bold text-accent font-mono ml-1">
+                    {{ userRating ? `${userRating.toFixed(1)} 星` : '未评' }}
+                  </span>
+                  <button
+                    v-if="userRating"
+                    @click="setRating(userRating)"
+                    class="text-[11px] text-fg-5 hover:text-danger ml-2 transition"
+                  >
+                    清除
+                  </button>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs">
+                  <span v-if="saveSuccess" class="text-success flex items-center gap-1 font-medium text-[11px]">
+                    <CheckCircle2 class="w-3.5 h-3.5" /> 已保存
+                  </span>
+                  <button
+                    @click="showRatingCard = false"
+                    class="text-fg-4 hover:text-fg-2 px-2 py-0.5 rounded-md hover:bg-surface-2 transition text-[11px]"
+                  >
+                    完成
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- User Private Annotations & Custom Tags Section (toggled from the header) -->
-      <div v-if="showPrivate" class="p-6 md:p-8 border-b border-line bg-sunken/40 space-y-4">
+      <!-- Private Tags & Notes Drawer/Card (Subordinate feature) -->
+      <div v-if="showPrivateNotes" class="p-6 md:p-8 border-b border-line bg-sunken/40 space-y-4 animate-fade-in">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2 text-sm font-bold text-fg-2">
             <Sparkles class="w-4 h-4 text-accent" />
-            <span>我的私密评星与标记 (仅本地可见)</span>
+            <span>私密便签与标签 (仅本地可见)</span>
           </div>
           <div class="flex items-center gap-3">
             <span v-if="saveSuccess" class="text-xs text-success font-medium animate-fade-in flex items-center gap-1">
               <CheckCircle2 class="w-3.5 h-3.5" /> 已自动保存
             </span>
             <button
-              @click="showPrivate = false"
+              @click="showPrivateNotes = false"
               class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line-strong flex items-center justify-center text-fg-3 hover:text-fg transition"
               title="收起"
             >
@@ -657,137 +770,75 @@ onUnmounted(() => {
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Left: Rating & Status -->
+          <!-- Custom Tags -->
           <div class="p-4 rounded-2xl bg-surface/80 border border-line space-y-3">
-            <!-- 5-Star interactive rater -->
-            <div>
-              <div class="text-[11px] text-fg-3 font-medium mb-1.5 flex items-center justify-between">
-                <span>私密星级评分</span>
-                <span class="text-accent font-bold font-mono">{{ userRating ? `${userRating.toFixed(1)} 星` : '未评' }}</span>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <button
-                  v-for="star in 5"
-                  :key="star"
-                  @click="setRating(star)"
-                  class="p-1 hover:scale-125 transition-transform"
-                  :title="`评分 ${star} 星`"
-                >
-                  <Star
-                    class="w-6 h-6 transition-colors"
-                    :class="userRating && userRating >= star ? 'text-accent fill-accent' : 'text-fg-5 hover:text-accent-soft'"
-                  />
-                </button>
-                <button
-                  v-if="userRating"
-                  @click="setRating(userRating)"
-                  class="ml-2 text-[10px] text-fg-4 hover:text-fg-2 transition"
-                >
-                  清除
-                </button>
-              </div>
+            <div class="text-[11px] text-fg-3 font-medium flex items-center justify-between">
+              <span>自定义分类标签</span>
+              <button
+                @click="isCreatingTag = !isCreatingTag"
+                class="text-[10px] text-accent hover:text-accent-soft flex items-center gap-0.5"
+              >
+                <Plus class="w-3 h-3" /> 新建标签
+              </button>
             </div>
 
-            <!-- Status selector -->
-            <div class="pt-2 border-t border-line">
-              <div class="text-[11px] text-fg-3 font-medium mb-1.5">片单状态</div>
-              <div class="flex gap-2">
-                <button
-                  v-for="st in [
-                    { id: 'wishlist', label: '想看', icon: Bookmark },
-                    { id: 'watched', label: '已看', icon: CheckCircle2 },
-                    { id: 'favorite', label: '喜爱', icon: Heart }
-                  ]"
-                  :key="st.id"
-                  @click="setStatus(st.id)"
-                  :class="[
-                    'flex-1 py-1.5 px-2 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition',
-                    userStatus === st.id
-                      ? 'bg-accent-fill text-on-fill border-accent font-bold shadow'
-                      : 'bg-surface-2/80 text-fg-3 border-line-strong/60 hover:text-fg-2 hover:bg-surface-2'
-                  ]"
-                >
-                  <component :is="st.icon" class="w-3.5 h-3.5" :fill="userStatus === st.id ? 'currentColor' : 'none'" />
-                  <span>{{ st.label }}</span>
-                </button>
+            <!-- Create new tag inline form -->
+            <div v-if="isCreatingTag" class="flex items-center gap-2 mb-2 p-2 rounded-lg bg-sunken border border-line">
+              <input
+                v-model="newTagName"
+                type="text"
+                placeholder="标签名称"
+                @keyup.enter="handleCreateTag"
+                class="flex-1 bg-transparent text-xs text-fg-2 outline-none placeholder-fg-5"
+              />
+              <input
+                v-model="newTagColor"
+                type="color"
+                class="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
+              />
+              <button
+                @click="handleCreateTag"
+                class="px-2 py-0.5 rounded bg-accent-fill text-on-fill text-[11px] font-bold"
+              >
+                添加
+              </button>
+            </div>
+
+            <!-- Tag pills list -->
+            <div class="flex flex-wrap gap-1.5 min-h-[28px]">
+              <button
+                v-for="t in availableTags"
+                :key="t.id"
+                @click="toggleTag(t.id)"
+                :class="[
+                  'px-2 py-0.5 rounded-lg text-xs font-medium border transition flex items-center gap-1',
+                  selectedTagIds.includes(t.id) ? 'shadow' : 'opacity-50 hover:opacity-100'
+                ]"
+                :style="{
+                  color: t.color,
+                  borderColor: `${t.color}60`,
+                  backgroundColor: selectedTagIds.includes(t.id) ? `${t.color}25` : 'transparent'
+                }"
+              >
+                <span>{{ t.name }}</span>
+                <span v-if="selectedTagIds.includes(t.id)">✓</span>
+              </button>
+              <div v-if="availableTags.length === 0 && !isCreatingTag" class="text-xs text-fg-5 italic">
+                点击右上角「新建标签」添加个人分类
               </div>
             </div>
           </div>
 
-          <!-- Right: Custom Tags & Personal Note -->
-          <div class="p-4 rounded-2xl bg-surface/80 border border-line space-y-3">
-            <!-- Custom Tags -->
-            <div>
-              <div class="text-[11px] text-fg-3 font-medium mb-1.5 flex items-center justify-between">
-                <span>自定义标签</span>
-                <button
-                  @click="isCreatingTag = !isCreatingTag"
-                  class="text-[10px] text-accent hover:text-accent-soft flex items-center gap-0.5"
-                >
-                  <Plus class="w-3 h-3" /> 新建标签
-                </button>
-              </div>
-
-              <!-- Create new tag inline form -->
-              <div v-if="isCreatingTag" class="flex items-center gap-2 mb-2 p-2 rounded-lg bg-sunken border border-line">
-                <input
-                  v-model="newTagName"
-                  type="text"
-                  placeholder="标签名称"
-                  @keyup.enter="handleCreateTag"
-                  class="flex-1 bg-transparent text-xs text-fg-2 outline-none placeholder-fg-5"
-                />
-                <input
-                  v-model="newTagColor"
-                  type="color"
-                  class="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
-                />
-                <button
-                  @click="handleCreateTag"
-                  class="px-2 py-0.5 rounded bg-accent-fill text-on-fill text-[11px] font-bold"
-                >
-                  添加
-                </button>
-              </div>
-
-              <!-- Tag pills list -->
-              <div class="flex flex-wrap gap-1.5 min-h-[28px]">
-                <button
-                  v-for="t in availableTags"
-                  :key="t.id"
-                  @click="toggleTag(t.id)"
-                  :class="[
-                    'px-2 py-0.5 rounded-lg text-xs font-medium border transition flex items-center gap-1',
-                    selectedTagIds.includes(t.id)
-                      ? 'shadow'
-                      : 'opacity-50 hover:opacity-100'
-                  ]"
-                  :style="{
-                    color: t.color,
-                    borderColor: `${t.color}60`,
-                    backgroundColor: selectedTagIds.includes(t.id) ? `${t.color}25` : 'transparent'
-                  }"
-                >
-                  <span>{{ t.name }}</span>
-                  <span v-if="selectedTagIds.includes(t.id)">✓</span>
-                </button>
-                <div v-if="availableTags.length === 0 && !isCreatingTag" class="text-xs text-fg-5 italic">
-                  点击右上角「新建标签」添加个人分类
-                </div>
-              </div>
-            </div>
-
-            <!-- Notes textarea -->
-            <div class="pt-2 border-t border-line">
-              <div class="text-[11px] text-fg-3 font-medium mb-1">私密笔记 / 简评</div>
-              <textarea
-                v-model="userNotes"
-                @blur="persistUserData"
-                rows="2"
-                placeholder="记录观后感、精彩节点或备忘..."
-                class="w-full bg-sunken/80 border border-line-strong/80 rounded-xl p-2.5 text-xs text-fg-2 placeholder-fg-5 outline-none focus:border-accent-fill transition resize-none"
-              ></textarea>
-            </div>
+          <!-- Notes textarea -->
+          <div class="p-4 rounded-2xl bg-surface/80 border border-line space-y-2">
+            <div class="text-[11px] text-fg-3 font-medium">私密备忘 / 观后感</div>
+            <textarea
+              v-model="userNotes"
+              @blur="persistUserData"
+              rows="3"
+              placeholder="记录观后感、精彩场景节点或备忘..."
+              class="w-full bg-sunken/80 border border-line-strong/80 rounded-xl p-2.5 text-xs text-fg-2 placeholder-fg-5 outline-none focus:border-accent-fill transition resize-none"
+            ></textarea>
           </div>
         </div>
       </div>

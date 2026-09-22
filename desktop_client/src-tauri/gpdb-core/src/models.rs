@@ -225,6 +225,8 @@ pub struct Performer {
     /// Scene/episode appearances, which the performer page lists in their own tab.
     pub episodes: Option<Vec<Episode>>,
     pub episodes_count: Option<i64>,
+    /// Known aliases / credited alternative stage names across movies and episodes.
+    pub aliases: Option<Vec<String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

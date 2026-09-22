@@ -13,11 +13,12 @@
  * which is why the thumbnails looked soft at full width to begin with.
  */
 import { computed, ref } from 'vue';
-import { Film, Heart, Calendar, Clapperboard } from '@lucide/vue';
+import { Film, Heart, Calendar, Clapperboard, ExternalLink } from '@lucide/vue';
 import type { Episode } from '../types';
 import { getImageUrl } from '../utils/image';
 import { episodeOrdinalLabel } from '../utils/episode';
 import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
+import { pluginsConfig, openBtSearch } from '../services/pluginManager';
 
 const props = withDefaults(defineProps<{
   episode: Episode;
@@ -137,6 +138,14 @@ function onRowClick() {
           >
             <Calendar class="w-2.5 h-2.5" /> {{ episode.release_year }}
           </span>
+          <button
+            v-if="pluginsConfig.btSearchEnabled && (episode.movie_title || episode.title)"
+            @click.stop="openBtSearch(episode.movie_title || episode.title)"
+            :title="`在 BT 站检索「${episode.movie_title || episode.title}」`"
+            class="text-fg-5 hover:text-accent p-0.5 rounded transition"
+          >
+            <ExternalLink class="w-3.5 h-3.5" />
+          </button>
           <button
             @click.stop="emit('toggle-favorite')"
             :title="isFavorite ? '取消收藏该片段' : '收藏该片段'"

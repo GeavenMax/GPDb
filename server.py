@@ -969,6 +969,16 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             # and the number on the page it opens agree.
             perf["works_count"] = perf["movies_count"] + perf["episodes_count"]
 
+            # Credited aliases / alternative stage names across movies and episodes
+            a_rows = conn.execute("""
+                SELECT DISTINCT performer_name FROM (
+                    SELECT performer_name FROM movie_performers WHERE performer_id = ? AND performer_name != '' AND performer_name IS NOT NULL
+                    UNION
+                    SELECT performer_name FROM episode_performers WHERE performer_id = ? AND performer_name != '' AND performer_name IS NOT NULL
+                ) WHERE performer_name != ? ORDER BY performer_name COLLATE NOCASE
+            """, (perf_id, perf_id, perf.get("name", ""))).fetchall()
+            perf["aliases"] = [r[0] for r in a_rows]
+
             self.send_json(perf)
 
     def handle_studio_works(self, studio_name: str):

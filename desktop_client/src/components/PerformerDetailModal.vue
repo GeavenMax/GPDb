@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { X, Film, Layers, Heart } from '@lucide/vue';
+import { X, Film, Layers, Heart, ExternalLink } from '@lucide/vue';
 import type { Performer, Movie, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
+import { pluginsConfig, openBtSearch } from '../services/pluginManager';
 
 const props = defineProps<{
   performer: Performer | null;
@@ -225,6 +226,21 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             >{{ performer.works_count ?? performer.movies_count }} 部作品</span>
             <span v-if="!performer.image_url" class="text-fg-5">暂无照片</span>
           </div>
+
+          <!-- Aliases / AKA and Notes -->
+          <div
+            v-if="performer.aliases && performer.aliases.length > 0"
+            class="mt-2 text-[11px] text-fg-4 leading-relaxed max-w-xl"
+          >
+            <span class="text-fg-5 font-medium">曾用艺名 / 别名 (AKA)：</span>
+            <span class="text-fg-3">{{ performer.aliases.join('、') }}</span>
+          </div>
+          <div
+            v-if="performer.notes"
+            class="mt-1.5 text-[11px] text-fg-4/80 leading-relaxed italic max-w-xl"
+          >
+            {{ performer.notes }}
+          </div>
         </div>
 
         <!-- Attribute profile as chips, to the right of the name: one chip per
@@ -276,19 +292,31 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           该演员的详情页尚未抓取，暂无声色属性档案。
         </div>
 
-        <!-- Fav button leaves room for the absolutely-positioned close button -->
-        <button
-          @click="emit('toggle-favorite', performer)"
-          :class="[
-            'mr-10 shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
-            isFavorite
-              ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
-              : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
-          ]"
-        >
-          <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-          <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
-        </button>
+        <!-- Action buttons (BT Search + Fav) -->
+        <div class="mr-10 shrink-0 flex items-center gap-2">
+          <button
+            v-if="pluginsConfig.btSearchEnabled"
+            @click="openBtSearch(performer.name)"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
+            :title="`在 BT 站检索「${performer.name}」作品`"
+          >
+            <ExternalLink class="w-3.5 h-3.5" />
+            <span>BT 搜索</span>
+          </button>
+
+          <button
+            @click="emit('toggle-favorite', performer)"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
+              isFavorite
+                ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
+                : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
+            ]"
+          >
+            <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
+            <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Works Section (Divided into Movies vs Episodes) -->

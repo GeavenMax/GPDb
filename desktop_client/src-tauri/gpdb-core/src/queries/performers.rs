@@ -220,6 +220,19 @@ pub fn get_performer_detail(conn: &Connection,
             // and the number on the page it opens agree.
             p.works_count = Some(p.movies_count.unwrap_or(0) + p.episodes_count.unwrap_or(0));
 
+            // Credited aliases / alternative stage names across movies and episodes
+            let mut a_stmt = conn.prepare(
+                "SELECT DISTINCT performer_name FROM (
+                    SELECT performer_name FROM movie_performers WHERE performer_id = ?1 AND performer_name != '' AND performer_name IS NOT NULL
+                    UNION
+                    SELECT performer_name FROM episode_performers WHERE performer_id = ?1 AND performer_name != '' AND performer_name IS NOT NULL
+                ) WHERE performer_name != ?2 ORDER BY performer_name COLLATE NOCASE"
+            ).map_err(|e| e.to_string())?;
+            let a_iter = a_stmt.query_map(params![id, p.name], |r| r.get::<_, String>(0))
+                .map_err(|e| e.to_string())?;
+            let aliases: Vec<String> = a_iter.filter_map(|r| r.ok()).collect();
+            p.aliases = Some(aliases);
+
             Ok(Some(p))
         }
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),

@@ -54,8 +54,21 @@ import { titlePrimary, titleSecondary, sceneFilm } from './utils/bilingual';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
-  Megaphone, FolderOpen, Search,
+  Megaphone, FolderOpen, Search, Globe, Shield
 } from '@lucide/vue';
+import AnalyticsView from './views/AnalyticsView.vue';
+import PluginsView from './views/PluginsView.vue';
+import TrophiesView from './views/TrophiesView.vue';
+import TrophyToast from './components/TrophyToast.vue';
+import { SUPPORTED_LANGUAGES, TARGET_TRANSLATION_LANGUAGES, currentLocale, setLocale } from './i18n';
+import { privacySettings, savePrivacySettings } from './services/privacy';
+import {
+  startFocusTracker, recordMovieView, recordPerformerView,
+  recordEpisodeView, recordDirectorView, recordStudioView,
+  clearSearchHistory, clearBrowseHistory, resetAllAnalytics,
+  recordFavoriteToggle, recordRating
+} from './services/analytics';
+import { pluginsConfig, savePluginsConfig } from './services/pluginManager';
 
 /** Labels for the five favorites sections and the type pickers. */
 const FAVORITE_LABELS: Record<FavoriteType, string> = {
@@ -795,6 +808,7 @@ function onMovieTranslated(movieId: number, zh: string) {
 }
 
 async function onUserDataChanged(movieId: number) {
+  recordRating();
   const updated = await api.getMovieDetail(movieId);
   if (updated) {
     const idx = movies.value.findIndex(m => m.id === movieId);
@@ -1160,8 +1174,12 @@ async function toggleFavoriteEntity(type: FavoriteType, key: string) {
   const wasFavorite = set.has(key);
 
   // Optimistic flip so the heart responds immediately; the round trip is a DB write.
-  if (wasFavorite) set.delete(key);
-  else set.add(key);
+  if (wasFavorite) {
+    set.delete(key);
+  } else {
+    set.add(key);
+    recordFavoriteToggle();
+  }
 
   try {
     const nowFavorite = await api.toggleFavorite(type, key);
@@ -1330,6 +1348,7 @@ function handleNavClick(tab: AppTab) {
 
 async function openMovieDetail(m: Movie) {
   pushModal('movie');
+  recordMovieView(m.id, m.title);
   const detail = await api.getMovieDetail(m.id);
   selectedMovie.value = detail || m;
 }
@@ -1337,13 +1356,17 @@ async function openMovieDetail(m: Movie) {
 async function openMovieDetailById(id: number) {
   pushModal('movie');
   const detail = await api.getMovieDetail(id);
-  if (detail) selectedMovie.value = detail;
+  if (detail) {
+    selectedMovie.value = detail;
+    recordMovieView(detail.id, detail.title);
+  }
 }
 
 async function openPerformerDetail(id: number) {
   pushModal('performer');
   const detail = await api.getPerformerDetail(id);
   selectedPerformer.value = detail || { id, name: `Performer #${id}` };
+  recordPerformerView(id, selectedPerformer.value.name);
 }
 
 /**
@@ -1355,6 +1378,7 @@ async function openPerformerDetail(id: number) {
  */
 async function openStudioDetail(studio: { name: string; works_count?: number; episodes_count?: number }) {
   pushModal('studio');
+  recordStudioView(studio.name);
   selectedStudio.value = studio;
   studioWorks.value = null;
   studioWorksLoading.value = true;
@@ -1392,6 +1416,7 @@ function closeStudioDetail() {
  */
 async function openDirectorDetail(director: { id?: number; name: string }) {
   pushModal('director');
+  recordDirectorView(director.name);
   selectedDirector.value = director;
   directorWorks.value = null;
   directorWorksLoading.value = true;
@@ -1433,8 +1458,9 @@ function openStudioLibrary(studioName: string) {
  * `rows` is the grid the card was clicked in, so ‹ / › can walk the loaded pages
  * without a request — the modal is a viewer, not a second browser.
  */
-function openEpisodeDetail(ep: EpisodeSummary, rows: EpisodeSummary[]) {
+async function openEpisodeDetail(ep: EpisodeSummary, rows: EpisodeSummary[]) {
   pushModal('episode');
+  recordEpisodeView(ep.id, ep.title || `Episode #${ep.id}`);
   episodeList.value = rows;
   selectedEpisode.value = ep;
 }
@@ -1490,6 +1516,7 @@ function onGlobalDblClick(e: MouseEvent) {
 }
 
 onMounted(async () => {
+  startFocusTracker();
   // index.html's inline script already put the stored theme on <html> before the first
   // paint; this starts the OS listener that keeps 跟随系统 current.
   initTheme();
@@ -2616,6 +2643,163 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- Section 0.5: Language & Localization -->
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5">
+            <div class="flex items-center gap-3">
+              <Globe class="w-5 h-5 text-accent" />
+              <div>
+                <div class="text-sm font-bold text-fg">语言与本地化</div>
+                <div class="text-xs text-fg-3">支持 7 种界面菜单语言，以及大模型自动翻译目标语言配置</div>
+              </div>
+            </div>
+
+            <!-- UI Menu Language -->
+            <div class="space-y-2.5">
+              <div class="text-xs font-semibold text-fg-2">菜单与界面语言</div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  v-for="lang in SUPPORTED_LANGUAGES"
+                  :key="lang.code"
+                  @click="setLocale(lang.code)"
+                  class="p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer"
+                  :class="currentLocale === lang.code
+                    ? 'bg-accent-fill/15 border-accent-fill/50 text-accent font-bold shadow-sm'
+                    : 'bg-surface border-line hover:border-line-strong text-fg-3 hover:text-fg-2'"
+                >
+                  <div class="flex flex-col text-left">
+                    <span class="text-[11px]">{{ lang.label }}</span>
+                    <span class="text-[10px] text-fg-4">{{ lang.native }}</span>
+                  </div>
+                  <Check v-if="currentLocale === lang.code" class="w-3.5 h-3.5 text-accent" />
+                </button>
+              </div>
+            </div>
+
+            <!-- LLM Translation Target Language -->
+            <div class="space-y-2 pt-2 border-t border-line/60">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-xs font-semibold text-fg-2">大模型自动翻译目标语言</div>
+                  <div class="text-[11px] text-fg-4">在使用大模型翻译剧情简介与分集信息时的输出目标语种</div>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  v-for="target in TARGET_TRANSLATION_LANGUAGES"
+                  :key="target.code"
+                  @click="savePluginsConfig({
+                    translationConfig: {
+                      ...pluginsConfig.translationConfig,
+                      targetLanguage: target.code
+                    }
+                  })"
+                  class="p-2 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer"
+                  :class="pluginsConfig.translationConfig.targetLanguage === target.code
+                    ? 'bg-accent-fill/15 border-accent-fill/50 text-accent font-bold shadow-sm'
+                    : 'bg-surface border-line hover:border-line-strong text-fg-3 hover:text-fg-2'"
+                >
+                  <span>{{ target.label }}</span>
+                  <Check v-if="pluginsConfig.translationConfig.targetLanguage === target.code" class="w-3.5 h-3.5 text-accent" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 0.6: Privacy & History -->
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5">
+            <div class="flex items-center gap-3">
+              <Shield class="w-5 h-5 text-accent" />
+              <div>
+                <div class="text-sm font-bold text-fg">隐私与数据安全</div>
+                <div class="text-xs text-fg-3">所有使用统计和历史记录均保存在本地设备，永不上报任何云端服务器</div>
+              </div>
+            </div>
+
+            <!-- Toggles -->
+            <div class="space-y-3">
+              <!-- Collect Analytics Toggle -->
+              <div class="flex items-center justify-between p-3 rounded-xl bg-surface border border-line">
+                <div>
+                  <div class="text-xs font-semibold text-fg-2">收集本地使用统计数据</div>
+                  <div class="text-[11px] text-fg-4">记录停留时间、浏览次数、评星分布等维度，用于生成个人统计看板与解锁成就奖杯</div>
+                </div>
+                <button
+                  @click="savePrivacySettings({ collectAnalytics: !privacySettings.collectAnalytics })"
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                  :class="privacySettings.collectAnalytics ? 'bg-accent-fill' : 'bg-surface-3'"
+                >
+                  <span
+                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"
+                    :class="privacySettings.collectAnalytics ? 'translate-x-5' : 'translate-x-0'"
+                  />
+                </button>
+              </div>
+
+              <!-- Keep Search History Toggle -->
+              <div class="flex items-center justify-between p-3 rounded-xl bg-surface border border-line">
+                <div>
+                  <div class="text-xs font-semibold text-fg-2">保留搜索历史记录</div>
+                  <div class="text-[11px] text-fg-4">在搜索框聚焦时在下拉菜单展示最近搜索词，支持一键快捷回填</div>
+                </div>
+                <button
+                  @click="savePrivacySettings({ keepSearchHistory: !privacySettings.keepSearchHistory })"
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                  :class="privacySettings.keepSearchHistory ? 'bg-accent-fill' : 'bg-surface-3'"
+                >
+                  <span
+                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"
+                    :class="privacySettings.keepSearchHistory ? 'translate-x-5' : 'translate-x-0'"
+                  />
+                </button>
+              </div>
+
+              <!-- Keep Browse History Toggle -->
+              <div class="flex items-center justify-between p-3 rounded-xl bg-surface border border-line">
+                <div>
+                  <div class="text-xs font-semibold text-fg-2">保留浏览足迹历史</div>
+                  <div class="text-[11px] text-fg-4">记录最近探索的影片、演员、片商和导演</div>
+                </div>
+                <button
+                  @click="savePrivacySettings({ keepBrowseHistory: !privacySettings.keepBrowseHistory })"
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                  :class="privacySettings.keepBrowseHistory ? 'bg-accent-fill' : 'bg-surface-3'"
+                >
+                  <span
+                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"
+                    :class="privacySettings.keepBrowseHistory ? 'translate-x-5' : 'translate-x-0'"
+                  />
+                </button>
+              </div>
+            </div>
+
+            <!-- Clear Buttons -->
+            <div class="flex items-center gap-3 pt-2 border-t border-line/60 flex-wrap">
+              <button
+                @click="clearSearchHistory"
+                class="px-3.5 py-1.5 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs font-medium text-fg-3 hover:text-fg transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+                <span>清空搜索历史</span>
+              </button>
+
+              <button
+                @click="clearBrowseHistory"
+                class="px-3.5 py-1.5 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs font-medium text-fg-3 hover:text-fg transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+                <span>清空浏览历史</span>
+              </button>
+
+              <button
+                @click="resetAllAnalytics"
+                class="px-3.5 py-1.5 rounded-xl bg-danger-fill/10 hover:bg-danger-fill/20 border border-danger-fill/30 text-xs font-semibold text-danger flex items-center gap-1.5 transition ml-auto cursor-pointer"
+              >
+                <Trash2 class="w-3.5 h-3.5" />
+                <span>重置所有使用统计数据</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Section 1: SQLite Engine & Stats -->
           <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5">
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -3251,6 +3435,21 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+
+        <!-- 7. Local Analytics Tab -->
+        <div v-else-if="currentTab === 'analytics'" class="space-y-6">
+          <AnalyticsView />
+        </div>
+
+        <!-- 8. Plugins Center Tab -->
+        <div v-else-if="currentTab === 'plugins'" class="space-y-6">
+          <PluginsView @open-trophies="currentTab = 'trophies'" />
+        </div>
+
+        <!-- 9. PSN 77 Trophies Hall Tab -->
+        <div v-else-if="currentTab === 'trophies'" class="space-y-6">
+          <TrophiesView @back="currentTab = 'plugins'" />
+        </div>
       </main>
     </div>
 
@@ -3372,5 +3571,8 @@ onUnmounted(() => {
 
     <!-- Above the whole modal stack: it is opened from inside those modals. -->
     <ImageLightbox />
+
+    <!-- PSN Fluid Glass Trophy Unlock Toast Notification -->
+    <TrophyToast />
   </div>
 </template>
