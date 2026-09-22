@@ -46,6 +46,7 @@ import type {
   EpisodeSummary,
   EpisodeSortBy,
   EpisodeFilterState,
+  DatabaseInfo,
 } from './types';
 import { FAVORITE_TYPES } from './types';
 import { loadGlossary, glossaryCount, trMeasure, trCategory } from './utils/glossary';
@@ -53,7 +54,7 @@ import { titlePrimary, titleSecondary, sceneFilm } from './utils/bilingual';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
-  Megaphone,
+  Megaphone, FolderOpen, Search,
 } from '@lucide/vue';
 
 /** Labels for the five favorites sections and the type pickers. */
@@ -424,8 +425,104 @@ function reportLoadError(err: unknown) {
   loadError.value = err instanceof Error ? err.message : String(err);
 }
 
+// --- Database Path Management & Smart Detection -----------------------------
+const dbInfo = ref<DatabaseInfo | null>(null);
+const customDbInput = ref('');
+const dbScanning = ref(false);
+const dbSwitching = ref(false);
+const dbCandidates = ref<string[]>([]);
+const dbMessage = ref<{ ok: boolean; text: string } | null>(null);
+
+async function loadDatabaseInfo() {
+  try {
+    const info = await api.getDatabaseInfo();
+    dbInfo.value = info;
+    if (info.custom_path) {
+      customDbInput.value = info.custom_path;
+    }
+    if (info.candidates && info.candidates.length > 0) {
+      dbCandidates.value = info.candidates;
+    }
+  } catch (e) {
+    console.error('Failed to load database info', e);
+  }
+}
+
+async function applyCustomDbPath(targetPath?: string) {
+  const p = (targetPath !== undefined ? targetPath : customDbInput.value).trim();
+  dbSwitching.value = true;
+  dbMessage.value = null;
+  try {
+    const updated = await api.setCustomDatabasePath(p);
+    dbInfo.value = updated;
+    customDbInput.value = updated.custom_path || '';
+    if (updated.candidates) dbCandidates.value = updated.candidates;
+    loadError.value = '';
+    dbMessage.value = { ok: true, text: `已成功连接数据库：${updated.path || '默认路径'}` };
+    await loadStats();
+    await reloadCurrentTab();
+  } catch (e: any) {
+    dbMessage.value = { ok: false, text: e?.message || String(e) };
+  } finally {
+    dbSwitching.value = false;
+  }
+}
+
+async function resetToAutoDbPath() {
+  await applyCustomDbPath('');
+}
+
+async function handlePickDbFile() {
+  try {
+    const picked = await api.pickDatabaseFile();
+    if (picked) {
+      customDbInput.value = picked;
+      await applyCustomDbPath(picked);
+    }
+  } catch (e: any) {
+    dbMessage.value = { ok: false, text: e?.message || String(e) };
+  }
+}
+
+async function handleScanDatabases() {
+  dbScanning.value = true;
+  dbMessage.value = null;
+  try {
+    const cands = await api.scanDatabases();
+    dbCandidates.value = cands;
+    if (cands.length === 0) {
+      dbMessage.value = { ok: false, text: '未能自动检测到 gevi.db，请手动浏览选择或输入路径。' };
+    } else {
+      dbMessage.value = { ok: true, text: `扫描完成，发现 ${cands.length} 个候选数据库。` };
+    }
+  } catch (e: any) {
+    dbMessage.value = { ok: false, text: e?.message || String(e) };
+  } finally {
+    dbScanning.value = false;
+  }
+}
+
+async function handleSmartAutoRescue() {
+  dbScanning.value = true;
+  try {
+    const cands = await api.scanDatabases();
+    dbCandidates.value = cands;
+    if (cands.length > 0) {
+      await applyCustomDbPath(cands[0]);
+    } else {
+      currentTab.value = 'settings';
+      dbMessage.value = { ok: false, text: '未能在常规目录检测到数据库，请通过「浏览…」手动选择。' };
+    }
+  } catch (e: any) {
+    reportLoadError(e);
+  } finally {
+    dbScanning.value = false;
+  }
+}
+
 // Load data
 async function loadStats() {
+  loadDatabaseInfo();
   stats.value = await api.getStats();
   studios.value = await api.getStudios();
   categories.value = await api.getCategories();
@@ -1452,9 +1549,35 @@ onUnmounted(() => {
     -->
     <div
       v-if="loadError"
-      class="shrink-0 px-6 py-3 bg-danger-fill/10 border-b border-danger-fill/20 text-xs text-danger-soft whitespace-pre-line"
+      class="shrink-0 px-6 py-3 bg-danger-fill/10 border-b border-danger-fill/20 text-xs text-danger-soft flex flex-wrap items-center justify-between gap-3"
     >
-      {{ loadError }}
+      <div class="whitespace-pre-line flex-1 min-w-[280px]">
+        {{ loadError }}
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button
+          @click="handleSmartAutoRescue"
+          :disabled="dbScanning || dbSwitching"
+          class="px-3 py-1.5 rounded-lg bg-accent-fill text-on-fill font-bold text-xs hover:bg-accent transition flex items-center gap-1.5 disabled:opacity-50"
+        >
+          <Search class="w-3.5 h-3.5" />
+          <span>{{ dbScanning ? '智能识别中…' : '智能识别数据库' }}</span>
+        </button>
+        <button
+          @click="handlePickDbFile"
+          :disabled="dbSwitching"
+          class="px-3 py-1.5 rounded-lg bg-surface border border-line-strong hover:bg-surface-2 text-fg-2 text-xs font-medium transition flex items-center gap-1.5"
+        >
+          <FolderOpen class="w-3.5 h-3.5" />
+          <span>浏览选择文件</span>
+        </button>
+        <button
+          @click="currentTab = 'settings'"
+          class="px-3 py-1.5 rounded-lg bg-surface border border-line-strong hover:bg-surface-2 text-fg-2 text-xs font-medium transition"
+        >
+          前往设置
+        </button>
+      </div>
     </div>
 
     <!-- Main App Body -->
@@ -2494,15 +2617,140 @@ onUnmounted(() => {
           </div>
 
           <!-- Section 1: SQLite Engine & Stats -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
-            <div class="flex items-center gap-3">
-              <HardDrive class="w-5 h-5 text-accent" />
-              <div>
-                <div class="text-sm font-bold text-fg">本地离线数据中心</div>
-                <div class="text-xs text-fg-3">SQLite3 WAL 极速引擎 + FTS5 全文搜索</div>
+          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <HardDrive class="w-5 h-5 text-accent" />
+                <div>
+                  <div class="text-sm font-bold text-fg">本地离线数据中心</div>
+                  <div class="text-xs text-fg-3">SQLite3 WAL 极速引擎 + FTS5 全文搜索</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  v-if="dbInfo?.valid"
+                  class="px-2.5 py-1 rounded-full bg-success-fill/20 border border-success-fill/30 text-success-soft text-[11px] font-medium flex items-center gap-1.5"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
+                  已连接数据库 ({{ dbInfo.file_size_mb }} MB)
+                </span>
+                <span
+                  v-else
+                  class="px-2.5 py-1 rounded-full bg-danger-fill/20 border border-danger-fill/30 text-danger-soft text-[11px] font-medium flex items-center gap-1.5"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-danger"></span>
+                  未找到有效数据库
+                </span>
               </div>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-2">
+
+            <!-- Database Path Configuration & Intelligent Detection -->
+            <div class="p-4 rounded-xl bg-surface/80 border border-line-strong/60 space-y-3 text-xs">
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-semibold text-fg-2">数据库存储路径</span>
+                <span v-if="dbInfo?.custom_path" class="text-[10px] px-1.5 py-0.5 rounded bg-accent-fill/15 text-accent-soft border border-accent-fill/25">
+                  自定义路径
+                </span>
+                <span v-else class="text-[10px] text-fg-4">智能默认 / 自动解析</span>
+              </div>
+
+              <!-- Current resolved path display -->
+              <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-sunken font-mono text-[11px] text-fg-3 break-all border border-line select-all">
+                <span class="text-fg-4 shrink-0">当前路径:</span>
+                <span class="flex-1 text-fg">{{ dbInfo?.path || '未关联数据库文件' }}</span>
+              </div>
+
+              <!-- Custom path input and buttons -->
+              <div class="flex flex-col sm:flex-row gap-2 pt-1">
+                <div class="flex-1 relative">
+                  <input
+                    v-model="customDbInput"
+                    type="text"
+                    placeholder="输入或粘贴 gevi.db 绝对路径，如 ~/Documents/.../gevi.db"
+                    class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono focus:border-accent-fill/50 focus:outline-none"
+                    @keydown.enter="applyCustomDbPath()"
+                  />
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <button
+                    @click="handlePickDbFile"
+                    :disabled="dbSwitching"
+                    class="px-3 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-xs border border-line-strong flex items-center gap-1.5 transition disabled:opacity-50"
+                    title="在 Finder 中选取文件"
+                  >
+                    <FolderOpen class="w-3.5 h-3.5 text-accent" />
+                    <span>浏览…</span>
+                  </button>
+                  <button
+                    @click="applyCustomDbPath()"
+                    :disabled="dbSwitching || !customDbInput.trim()"
+                    class="px-4 py-2 rounded-lg bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs shadow-sm flex items-center gap-1.5 transition disabled:opacity-40"
+                  >
+                    <span>{{ dbSwitching ? '连接中…' : '保存并连接' }}</span>
+                  </button>
+                  <button
+                    v-if="dbInfo?.custom_path"
+                    @click="resetToAutoDbPath"
+                    :disabled="dbSwitching"
+                    class="px-3 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg-2 text-xs border border-line-strong transition"
+                    title="清除自定义路径，改由智能识别"
+                  >
+                    恢复自动
+                  </button>
+                </div>
+              </div>
+
+              <!-- Intelligent detection scanner -->
+              <div class="pt-2 border-t border-line/60 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                  <div class="text-[11px] text-fg-4">
+                    找不到文件？点击进行全盘毫秒级 Spotlight 扫描：
+                  </div>
+                  <button
+                    @click="handleScanDatabases"
+                    :disabled="dbScanning"
+                    class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong flex items-center gap-1.5 transition disabled:opacity-50"
+                  >
+                    <RefreshCw class="w-3 h-3 text-accent" :class="dbScanning ? 'animate-spin' : ''" />
+                    <span>{{ dbScanning ? '正在扫描全盘…' : '智能扫描系统中的数据库' }}</span>
+                  </button>
+                </div>
+
+                <!-- Detected candidates -->
+                <div v-if="dbCandidates.length > 0" class="space-y-1.5 pt-1">
+                  <div class="text-[10px] text-fg-4 font-semibold uppercase tracking-wider">智能识别到的候选数据库：</div>
+                  <div
+                    v-for="cand in dbCandidates"
+                    :key="cand"
+                    class="flex items-center justify-between gap-2 p-2 rounded-lg bg-surface border border-line hover:border-accent-fill/30 transition text-[11px]"
+                  >
+                    <span class="font-mono text-fg-2 truncate flex-1" :title="cand">{{ cand }}</span>
+                    <button
+                      v-if="cand !== dbInfo?.path"
+                      @click="applyCustomDbPath(cand)"
+                      :disabled="dbSwitching"
+                      class="px-2.5 py-1 rounded bg-accent-fill/15 hover:bg-accent-fill text-accent-soft hover:text-on-fill font-medium text-[11px] border border-accent-fill/30 transition shrink-0"
+                    >
+                      切换至此库
+                    </button>
+                    <span v-else class="text-[10px] text-success-soft px-2 py-0.5 rounded bg-success-fill/10 border border-success-fill/20 shrink-0">
+                      当前使用中
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Feedback message -->
+              <div
+                v-if="dbMessage"
+                class="p-2.5 rounded-lg text-[11px] font-medium"
+                :class="dbMessage.ok ? 'bg-success-fill/10 text-success-soft border border-success-fill/20' : 'bg-danger-fill/10 text-danger-soft border border-danger-fill/20'"
+              >
+                {{ dbMessage.text }}
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
               <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
                 <span class="text-fg-4">影片总收录</span>
                 <div class="text-base font-bold text-fg mt-0.5">{{ stats ? stats.movies.toLocaleString() : 0 }}</div>

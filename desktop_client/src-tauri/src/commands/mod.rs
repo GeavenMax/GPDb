@@ -7,6 +7,7 @@
 //! Argument names are the frontend's contract: Tauri maps the JS `pageSize` onto the
 //! Rust `page_size`, so renaming a parameter here silently changes what the UI sends.
 
+pub mod database;
 pub mod detail;
 pub mod library;
 pub mod sync;

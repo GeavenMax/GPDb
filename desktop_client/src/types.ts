@@ -413,3 +413,12 @@ export interface DatabaseStats {
   translation_configured?: boolean;
 }
 
+export interface DatabaseInfo {
+  path: string | null;
+  exists: boolean;
+  valid: boolean;
+  file_size_mb: number;
+  custom_path: string | null;
+  candidates: string[];
+}
+

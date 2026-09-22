@@ -21,6 +21,7 @@ import type {
   EpisodeFilterState,
   EpisodeLibraryResponse,
   EpisodeSortBy,
+  DatabaseInfo,
 } from './types';
 import { FAVORITE_TYPES } from './types';
 
@@ -895,6 +896,58 @@ export const api = {
       if (res.ok) return await res.json();
     } catch {}
     return { name: directorName, movies: [], movies_count: 0 };
+  },
+
+  async getDatabaseInfo(): Promise<DatabaseInfo> {
+    if (isTauri) {
+      return tauriInvoke<DatabaseInfo>('get_database_info');
+    }
+    try {
+      const res = await fetch('/api/database/info');
+      if (res.ok) return await res.json();
+    } catch {}
+    return {
+      path: null,
+      exists: false,
+      valid: false,
+      file_size_mb: 0,
+      custom_path: null,
+      candidates: [],
+    };
+  },
+
+  async setCustomDatabasePath(path: string): Promise<DatabaseInfo> {
+    if (isTauri) {
+      return tauriInvoke<DatabaseInfo>('set_custom_database_path', { path });
+    }
+    const res = await fetch('/api/database/set-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || '设置数据库路径失败');
+    }
+    return await res.json();
+  },
+
+  async scanDatabases(): Promise<string[]> {
+    if (isTauri) {
+      return tauriInvoke<string[]>('scan_databases');
+    }
+    try {
+      const res = await fetch('/api/database/scan');
+      if (res.ok) return await res.json();
+    } catch {}
+    return [];
+  },
+
+  async pickDatabaseFile(): Promise<string | null> {
+    if (isTauri) {
+      return tauriInvoke<string | null>('pick_database_file');
+    }
+    return null;
   },
 };
 

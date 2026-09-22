@@ -10,6 +10,7 @@ import json
 import os
 import re
 import sqlite3
+import subprocess
 import threading
 import time
 import urllib.parse
@@ -20,7 +21,27 @@ import cache_images
 from db_manager import DatabaseManager
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "gevi.db"
+
+def resolve_initial_db_path() -> Path:
+    if "GEVI_DB" in os.environ and os.environ["GEVI_DB"].strip():
+        p = Path(os.path.expanduser(os.environ["GEVI_DB"].strip()))
+        if p.is_file():
+            return p
+    cfg_file = Path.home() / "Library" / "Application Support" / "com.gpdb.app" / "db_config.json"
+    if cfg_file.is_file():
+        try:
+            with open(cfg_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                custom = data.get("custom_db_path")
+                if custom:
+                    p = Path(os.path.expanduser(custom))
+                    if p.is_file():
+                        return p
+        except Exception:
+            pass
+    return BASE_DIR / "gevi.db"
+
+DB_PATH = resolve_initial_db_path()
 
 # Performer attribute columns exposed as filter facets, mapped to their API names.
 # The site writes multi-value attributes with an inline <br /> separator
@@ -229,6 +250,14 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/stats":
                 return self.handle_stats()
 
+            # 1b. /api/database/info
+            if path == "/api/database/info":
+                return self.handle_get_database_info()
+
+            # 1c. /api/database/scan
+            if path == "/api/database/scan":
+                return self.handle_scan_databases()
+
             # 2. /api/user/tags
             if path == "/api/user/tags":
                 return self.handle_get_user_tags()
@@ -336,6 +365,9 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
         path = parsed.path.rstrip("/")
 
         try:
+            if path == "/api/database/set-path":
+                return self.handle_set_database_path()
+
             if path == "/api/sync":
                 return self.handle_sync()
 
@@ -391,6 +423,71 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
     # -------------------------------------------------------------
     # Handlers
     # -------------------------------------------------------------
+    def handle_get_database_info(self):
+        global DB_PATH
+        exists = DB_PATH.is_file()
+        size_mb = round(DB_PATH.stat().st_size / (1024 * 1024), 1) if exists else 0.0
+        cfg_file = Path.home() / "Library" / "Application Support" / "com.gpdb.app" / "db_config.json"
+        custom = None
+        if cfg_file.is_file():
+            try:
+                with open(cfg_file, "r", encoding="utf-8") as f:
+                    custom = json.load(f).get("custom_db_path")
+            except Exception:
+                pass
+        self.send_json({
+            "path": str(DB_PATH) if exists else None,
+            "exists": exists,
+            "valid": exists,
+            "file_size_mb": size_mb,
+            "custom_path": custom,
+            "candidates": [str(DB_PATH)] if exists else [],
+        })
+
+    def handle_scan_databases(self):
+        global DB_PATH
+        candidates = []
+        if DB_PATH.is_file():
+            candidates.append(str(DB_PATH))
+        try:
+            res = subprocess.run(["mdfind", "kMDItemFSName == 'gevi.db'"], capture_output=True, text=True)
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    lp = Path(line.strip())
+                    if lp.is_file() and str(lp) not in candidates:
+                        candidates.append(str(lp))
+        except Exception:
+            pass
+        self.send_json(candidates)
+
+    def handle_set_database_path(self):
+        global DB_PATH
+        body = self.read_json_body()
+        raw_path = (body.get("path") or "").strip()
+        cfg_file = Path.home() / "Library" / "Application Support" / "com.gpdb.app" / "db_config.json"
+        cfg_file.parent.mkdir(parents=True, exist_ok=True)
+        if not raw_path:
+            # reset to default
+            if cfg_file.is_file():
+                try:
+                    with open(cfg_file, "w", encoding="utf-8") as f:
+                        json.dump({"custom_db_path": None}, f)
+                except Exception:
+                    pass
+            DB_PATH = BASE_DIR / "gevi.db"
+            return self.handle_get_database_info()
+
+        p = Path(os.path.expanduser(raw_path))
+        if not p.is_file():
+            return self.send_error_json(400, f"文件不存在: {p}")
+        try:
+            with open(cfg_file, "w", encoding="utf-8") as f:
+                json.dump({"custom_db_path": str(p)}, f)
+            DB_PATH = p
+        except Exception as e:
+            return self.send_error_json(500, f"保存配置失败: {e}")
+        return self.handle_get_database_info()
+
     def handle_stats(self):
         with get_db_connection() as conn:
             def count(tbl: str) -> int:

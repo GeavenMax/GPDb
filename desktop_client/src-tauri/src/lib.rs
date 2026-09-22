@@ -36,6 +36,10 @@ pub fn run() {
             commands::translate::activate_translation_provider,
             commands::translate::delete_translation_provider,
             commands::sync::run_sync,
+            commands::database::get_database_info,
+            commands::database::set_custom_database_path,
+            commands::database::scan_databases,
+            commands::database::pick_database_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
