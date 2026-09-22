@@ -834,6 +834,29 @@ class ScraperV2:
 
     # --- execution --------------------------------------------------------
 
+    def _report_empty_work_list(self) -> None:
+        """Say why the work list came back empty, in the terms of this mode.
+
+        A bare "nothing to do" is indistinguishable from a crash. `episode-sync` needs
+        the longer answer more than any other mode: its `--sweep-companies` probes are a
+        one-time backfill over the company id space, so the run that finishes them makes
+        every later run print an identical, unexplained no-op — which reads as "the
+        command died and scraped nothing" to whoever was told there were thousands left.
+        """
+        if self.args.mode != "episode-sync":
+            print("🎉 没有需要抓取的目标：数据库中已有的内容都是完整的。")
+            return
+
+        known = self.db.get_completed_ids("company")
+        print(f"🎉 没有需要抓取的目标：company 账本已有 {len(known):,} 家，全部完成。")
+        if not self.args.sweep_companies:
+            print("   公司表里查得到的片商都同步过了。要探片商 id 空间，加 --sweep-companies。")
+            return
+        print(f"   探针 1..{self.args.sweep_companies:,} 已经全部扫完（含其中不存在的 id）。"
+              "这是一次性补齐，重跑不会再有第二轮。")
+        print("   要继续只能往更高 id 探：先确认站点上确实还有更高的公司 id，"
+              "再调大 --sweep-companies（每个 id = 1 次请求）。")
+
     def run(self) -> None:
         targets = self.select_targets()
         total = len(targets)
@@ -845,7 +868,7 @@ class ScraperV2:
         print("=" * 74)
 
         if total == 0:
-            print("🎉 没有需要抓取的目标：数据库中已有的内容都是完整的。")
+            self._report_empty_work_list()
             return
 
         self.warmup()

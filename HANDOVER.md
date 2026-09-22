@@ -2,6 +2,8 @@
 
 > 最后更新：2026-09-22。写给接手的人或模型：先读这一份，再动代码。
 > 文中所有数字都是当时实测值，不是估计值。
+> 最初一版是在公司探针**跑到一半**时写的（§2 的 121,117 / 5,418 就是 12:44 的快照），
+> 探针 13:09 跑完后已按最终状态重测一遍；长任务在跑的时候不要照当时的数字写文档。
 
 ---
 
@@ -48,20 +50,21 @@
 | 表 | 行数 |
 |---|---|
 | movies | 63,238 |
-| performers | 105,726 |
-| episodes | **121,117** |
-| └ 独立分集（`movie_id IS NULL`） | **88,992** |
+| performers | 108,231 |
+| episodes | **134,489** |
+| └ 独立分集（`movie_id IS NULL`） | **102,364** |
 | └ 隶属影片的分集 | 32,125 |
 | movie_performers | 450,697 |
-| episode_performers | 247,074 |
+| episode_performers | 272,462 |
 | directors / movie_directors | 3,077 / 37,502 |
-| 片商（distinct `movies.studio_id`） | 2,411（最大 id 8,175） |
+| 片商（distinct `movies.studio_id`） | 2,411（最大 id 8,175 = **站点公司 id 的上限**，见 §4.3） |
 
 **翻译进度（几乎没做）**：`movies.description_zh` 2,367 / 63,238；
 `movies.title_zh` **0**；`episodes.description_zh` 77。
 
-**账本**：`scrape_progress` — company 5,418 行（全部 200）；movie 76,000 行（53,944 完成）；
-performer 60,701 行（60,692 完成）。`scrape_voids` — movie 82,152 / performer 94,885。
+**账本**：`scrape_progress` — company 12,000 行（全部 200，即 id 1..12,000 全覆盖）；
+movie 76,000 行（53,944 完成）；performer 60,701 行（60,692 完成）。
+`scrape_voids` — movie 82,152 / performer 94,885。
 
 ---
 
@@ -138,11 +141,16 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 
 **成果**
 
-- 分集 **32,125 → 121,117**；新增 **88,992 条独立分集**，全部 `movie_id IS NULL`。
+- 分集 **32,125 → 134,489**；新增 **102,364 条独立分集**，全部 `movie_id IS NULL`。
+  其中 88,992 条来自 2,411 家已知片商，另 **13,372 条来自 66 家「有分集、但库里没有
+  它的影片」的公司**——是公司 id 探针找出来的（见下条）。
+- 公司 id 探针 1..12,000 已**全部扫完**（12:26–13:09，`scrape_progress` 里 company
+  12,000 行全 200）。**这一步是一次性补齐，已经结束**：站点公司 id 上限就是 8,175
+  （证据见 §4.3），探到 12,000 纯属余量，再跑不会有新目标。
 - 已有 32,125 条的 `movie_id` **一条没变**（拿开工前快照逐行对拍，差异 0）。
-- 缩略图：**107,234 条高清（`b.jpg`），剩余低清 0 条**（剩下 13,883 条站点本身就没图，
+- 缩略图：**119,246 条高清（`b.jpg`），剩余低清 0 条**（剩下 15,243 条站点本身就没图，
   已用探针确认低清高清都 404）。
-- 全公司 2,411 家跑完，**零失败**，8.0 req/s 无节流。
+- 全公司 2,411 家跑完，**零失败**，8.0 req/s 无节流；探针 12,000 条同样零失败。
 - `scrape_voids` 未被污染（数字与开工前一致）。
 - `cargo test --workspace`：**39 passed / 0 failed**，`--nocapture` 下 0 条 `skipping:`
   （对拍 30 + 翻译配置 3 + 翻译协议 6）。
@@ -212,6 +220,13 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 - **1,108 条字段残缺的影片不要再重抓**——源头站点本身就是空的。已验证。
 - **导演分词已落库**，回滚语句在当时的计划里；启发式方案已被否决。
 - **`/newe` 没有分页**，`?page=2` / `?start=100` 都返回同样 60 条，`/newe/1` 是 404。
+- **站点公司 id 空间已探尽，上限是 8,175。** 两条独立证据：① `/company/8175` 返回 200，
+  而 8176 以上抽测的 12 个 id（8176/8177/8180/8190/8250/9000/12000/12001/12500/13000/
+  14000/15000/20000）全部 301 → `/404.shtml`；② coep 探针把 id 1..12,000 逐条扫过，
+  8,175 以上一条分集都没有。**别再跑 `--sweep-companies`**，调多大都不会有新公司。
+- **探针把不存在的公司记成「完成」是对的**：`coep` 对不存在的 id 返回 200 +
+  `recordsTotal: 0`（不是 404），所以 `_process_company` 走 `ok` 分支、记 progress 200。
+  这正是探针的设计，「12,000 行全 200」不等于「站点有 12,000 家公司」。
 - **对拍测试会静默跳过**：报 `ok` 可能什么都没比。跑 `cargo test -- --nocapture`
   确认没有 `skipping:` 输出（真跑约 1.5s，跳过约 0.1s）。改对拍逻辑后**必须做变异验证**。
 
@@ -222,44 +237,73 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 ### 5.1 提交状态：已完成
 
 本轮 10 个代码文件的改动已全部提交，拆成 5 个提交（见 §4.1 的表）；
-这份交接文档与 `.gitignore` 是第 6 个。工作区干净。
+这份交接文档与 `.gitignore` 是第 6 个。
 `cover_dl.log` / `cover_dl.pid` / `translate.log` / `translate.pid` 已在 `.gitignore`
 里挡掉（两个 `.pid` 是死进程留下的，已删）。
+
+后面又加了一次未提交的改动（探针跑完后做的订正，别当成数据被谁动过）：
+`HANDOVER.md` 的数字刷新 + `scraper_v2.py` 的 `_report_empty_work_list()`
+（空目标时把「为什么空」讲清楚，见 §7.11）。
 
 下面 5.2 起才是真正待做的。
 
 ### 5.2 数据侧：两个长任务（**必须串行，别开两个终端同时跑**）
 
-**第一步 — 公司补齐探针（数据）**，还剩约 6,582 家：
+**第一步 — 公司补齐探针：✅ 已完成，不要再跑。**
+
+`scrape_progress` 里 company 12,000 行全部 200，即 id 1..12,000 全覆盖（2,411 家已知
+片商 + 9,589 个探针）。结果是 66 家新公司、13,372 条独立分集（见 §4.1）。
+
+**再跑这个命令只会打印「目标: 0 条」然后立刻退出**——这不是坏了，是真的没活了。
+站点公司 id 上限就是 8,175（证据见 §4.3），**把 `--sweep-companies`
+调多大都没用**，探针这个方向已经走到底。
+
+```bash
+# 只用来确认「确实没有目标」，不会再抓任何东西：
+python3 -u scraper_v2.py --mode episode-sync --concurrency 3 --sweep-companies 12000
+```
+
+**第二步 — 高清图全量预下载（← 现在从这一步开始）**：
 
 ```bash
 cd "/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database"
-python3 -u scraper_v2.py --mode episode-sync --apply --concurrency 3 --sweep-companies 12000 \
-  > /tmp/epsync_sweep.log 2>&1
+python3 -u cache_images.py --mode episodes --concurrency 32 > /tmp/img_dl.log 2>&1
 ```
 
-进展：9,589 个探针里已完成 3,007（进度存在库里，**重跑自动跳过**）。
-目的：找「有分集、但我们库里没有它的影片」的公司。我方 `studio_id` 最大 8,175，
-探到 12,000 是留了余量；若要更保险可以调大这个数字，代价是线性增加的请求数。
-
-**第二步 — 高清图全量预下载**（**必须等第一步跑完**，否则第一步新发现的分集没有图）：
-
-```bash
-python3 -u cache_images.py --mode episodes --concurrency 6 > /tmp/img_dl.log 2>&1
-```
-
+- **并发用 32，不要用 6。** 2026-09-22 实测：6 并发 **1.0 张/s**（要 33 小时），
+  32 并发 **6.4 张/s**（约 5.1 小时），吞吐正比于并发数 → 瓶颈是**每请求固定延迟**
+  （~4.5s 握手+TTFB），不是单 IP 带宽。封面那轮也是 32 并发跑的（7.2 张/s，4 小时）。
 - 会跳过已缓存的（判断条件是本地文件存在且 >100 字节），**可反复重跑**。
-- 预计 **7–8 GB**（121k 张高清图）。磁盘当时可用 135 GB，够。
-- 下载完再跑一次回滚兜底（万一有 `b` 图 404）：`python3 cache_images.py --revert-missing-hd --apply`
-- 最后清孤儿（旧的 `episodeN.jpg`）：`python3 cache_images.py --prune-orphans --apply`
+- 要下的量：库里 134,489 条分集里 **119,246 条有图**（全部是 `b.jpg` 高清 URL），
+  而 `image_cache/Episodes/` 里跟这些 URL **对得上的只有 96 个文件**——约 **11.9 万张没下**。
+  （目录里现有那 1,831 个文件是旧的低清 `episodeN.jpg`：URL 改成高清后它们已成孤儿，
+  `--prune-orphans` 清的就是这批。）
+- 预计 **7–8 GB**（实测平均 ~64 KB/张）。磁盘可用 133 GB，够。
+- 跑完后**先原样再跑一遍**（同一行命令）。它会跳过已下好的、只重试缺的，约 20 分钟。
+  这一步不是可选的，原因见下面那条。
+
+**收尾（顺序不能变，中间那步别跳）**：
+
+1. 下载跑完 → 2. **同一命令再跑一遍**（只重试缺的）→ 3. `python3 cache_images.py --revert-missing-hd --apply`
+   → 4. `python3 cache_images.py --prune-orphans --apply`
+
+**为什么必须重跑一遍再回滚**：`run_revert_missing_hd()` 是**纯本地**判断——文件不在盘上就把
+`thumbnail_url` 改回低清 URL，不去问站点（`cache_images.py:396` 的 docstring 自己写了
+"judged locally, so this costs no requests"）。而下载把**连接被拒**也记成失败：
+实测失败里混着 `ssl.SSLEOFError: UNEXPECTED_EOF_WHILE_READING`（就是铁律 8 记的那个签名），
+我挑了几张被判「缺」的手工去拿，**返回 HTTP 200 + 47–92 KB 的真图**。所以第一遍的
+7% 失败里有一部分是「图在、我们没拿到」，直接回滚会把它们**永久降级成低清**。
+重跑一遍（幂等、只碰缺的）之后仍然缺的，才基本是站点真的没有。
+`run_revert_missing_hd` 现在也会先把这个警告打出来再让你 `--apply`。
 
 **顺序为什么不能反**：图是照数据库里的 `thumbnail_url` 下的。先下图、后补数据，
-新分集的图就漏了，得再下一遍（虽然可续跑，但白费一轮带宽和时间）。
+新分集的图就漏了，得再下一遍（虽然可续跑，但白费一轮带宽和时间）。第一步已经跑完，
+所以现在这个顺序是安全的。
 
 ### 5.3 代码侧
 
 - **分集搜索不搜 `e.title`**（`queries/episodes.rs:31-37` 和 `db_manager.list_episodes` 都是）。
-  用户已明确列为**后续项**，本轮不做。但要知道：刚抓来的 8.8 万条真实标题**目前搜不到**。
+  用户已明确列为**后续项**，本轮不做。但要知道：刚抓来的 10.2 万条真实标题**目前搜不到**。
 - `server.py` / 桌面端的人工验证：分集库页面、片商页、演员详情页的分集页签
   （这轮改了 SQL 和 LEFT JOIN，值得实际点一遍）。
 
@@ -288,15 +332,16 @@ cd "/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/
 # 起后端（改完 server.py / db_manager.py 必须重启）
 python3 server.py                     # 8787
 
-# 分集同步（按公司，可续跑）
-python3 scraper_v2.py --mode episode-sync --apply --concurrency 3
+# 分集同步（按公司；12,000 家公司已全部完成，现在跑只会打印「目标: 0 条」）
+python3 scraper_v2.py --mode episode-sync --concurrency 3
+# 探针也一样扫完了，加 --sweep-companies 不会有新目标（见 §5.2）
 
 # 备份（库很大，别用 cp）
 sqlite3 gevi.db ".backup '/tmp/gevi-backup.db'"
 
 # 图片缓存
 python3 cache_images.py --stats
-python3 cache_images.py --mode episodes --concurrency 6
+python3 cache_images.py --mode episodes --concurrency 32   # 6 会慢 6 倍，见 §5.2
 
 # 桌面端
 cd desktop_client && cargo test --workspace -- --nocapture
@@ -332,3 +377,16 @@ cd desktop_client && npx vue-tsc --noEmit
 9. **`iCloud Drive` 路径带空格和括号**，命令里务必加引号。
 10. **改文件不影响正在跑的进程**：Python 已把模块载入内存，
     可以趁长任务在跑时改代码，但要记得**下次启动才生效**。
+11. **「目标: 0 条」然后秒退 ≠ 崩了**，但也确实什么都没干。`episode-sync` 尤其容易
+    误解：它的探针是一次性补齐，跑完就没有第二轮。曾经因此被当成「命令坏了、一条
+    新分集都没刮到」——实际是上一轮已经跑完了，而当时的交接文档写的是跑到一半的数字。
+    现在空目标会走 `_report_empty_work_list()`，把账本状态和「重跑没有第二轮」讲出来。
+    **教训：长任务还在跑的时候，别照当时的读数写文档。**
+12. **`--revert-missing-hd` 会把「下载被拒」当成「站点没有」**：它只看本地有没有文件，
+    而 `download_image` 把 `ssl.SSLEOFError: UNEXPECTED_EOF_WHILE_READING`（连接被拒，
+    铁律 8 那个签名）也记成失败——两种失败在本地看起来一模一样。实测：判「缺」的图
+    手工去拿，HTTP 200 + 47–92 KB 的真图。**所以回滚前必须原样重跑一遍下载**
+    （幂等、只重试缺的），否则会把真实存在的高清图永久降级成低清。见 §5.2。
+13. **图片下载的瓶颈是每请求延迟，不是带宽**：6 并发 1.0 张/s、32 并发 6.4 张/s，
+    吞吐正比于并发数（~4.5s/请求）。别照搬刮 HTML 的并发纪律（那是 1.4–1.7 req/s、
+    拉高会被拒），图片端点是静态文件，封面那轮 32 并发跑了 4 小时没事。

@@ -427,6 +427,15 @@ def run_revert_missing_hd(apply: bool = False):
         print(f"   e.g. #{ep_id} -> {low_res.rsplit('/', 1)[-1]}")
     if len(missing) > 5:
         print(f"   ... 另外 {len(missing) - 5:,} 条")
+    # A file that is missing locally is not the same as one the site does not have:
+    # the download counts a refused connection (`ssl.SSLEOFError:
+    # UNEXPECTED_EOF_WHILE_READING`) as a failure too, and that failure looks exactly
+    # like a 404 from here. Reverting those downgrades episodes whose HD twin is alive
+    # and well — measured, not hypothetical: probing a handful of "missing" ones by
+    # hand returned HTTP 200 with 47-92 KB of image. So say this before `--apply`.
+    print("⚠️  先别急着 --apply：本地缺文件 ≠ 站点没有。下载把「连接被拒」也算作失败，")
+    print("    那和 404 在这里长得一模一样。原样重跑一次下载（跳过已下好的、只重试缺的，")
+    print("    约 20 分钟），仍然缺的那些才值得回滚。")
     if not apply:
         print("Dry run: nothing changed. Re-run with --apply.")
         conn.close()
