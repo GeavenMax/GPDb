@@ -219,6 +219,270 @@ def run_batch_download(mode: str = "all", limit: int | None = None, concurrency:
     stats = get_cache_stats(DEFAULT_CACHE_DIR)
     print(f"Total Local Images: {stats['count']} files ({stats['size_mb']} MB)")
 
+# ------------------------------------------------------------------ HD upgrade
+#
+# The site publishes every episode still twice: `episodeNNN.jpg` (the ~7 KB grid
+# preview the movie page embeds) and `episodeNNNb.jpg` (the ~60 KB full-size
+# still the episode's own page opens). The `b` is the entire difference, so the
+# HD address is derivable from the URL we already store -- no page fetch needed
+# to discover it. Measured across the whole id range: 24/24 sampled episodes had
+# one, at 6.0x-12.6x the bytes.
+
+_EPISODE_THUMB_RE = re.compile(r"^(.*/images/Episodes/episode\d+)\.jpg$", re.IGNORECASE)
+
+
+def hd_url_for(url: str) -> str | None:
+    """`.../episode123.jpg` -> `.../episode123b.jpg`; None if `url` is not a plain
+    episode thumbnail. An already-HD URL does not match, so this is idempotent."""
+    if not url:
+        return None
+    m = _EPISODE_THUMB_RE.match(url)
+    return f"{m.group(1)}b.jpg" if m else None
+
+
+def probe_url(url: str, timeout: int = 15) -> bool | None:
+    """True if the file exists, False if the site says it does not, None if we
+    never got a trustworthy answer.
+
+    The three-way result is the point: a timeout must not be written down as
+    "this episode has no HD version", for the same reason the scrapers refuse to
+    record a 404 they did not actually see."""
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENTS}, method="HEAD")
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX) as resp:
+                return 200 <= resp.status < 300
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 429, 503):
+                time.sleep(2.0 * (attempt + 1))
+                continue
+            return False
+        except Exception:
+            time.sleep(1.0 * (attempt + 1))
+    return None
+
+
+def format_eta(seconds: float) -> str:
+    if seconds < 0 or seconds != seconds or seconds == float("inf"):
+        return "--:--"
+    seconds = int(seconds)
+    if seconds >= 3600:
+        return f"{seconds // 3600}h{seconds % 3600 // 60:02d}m"
+    return f"{seconds // 60}m{seconds % 60:02d}s"
+
+
+def run_hd_upgrade(apply: bool = False, limit: int | None = None, concurrency: int = 6,
+                   batch: int = 250, abort_unresolved: float = 0.5, probe: bool = True):
+    """Repoint episode thumbnails at their high-resolution twin.
+
+    Only rows whose HD file is *confirmed present* are rewritten; every other row keeps
+    the low-res URL it already had, so running this can never leave an episode pointing
+    at a missing image.
+
+    Written in batches, one commit each. That is what makes this resumable: a row already
+    rewritten to `...b.jpg` no longer matches `hd_url_for`, so a second run skips it and
+    picks up exactly where the last one stopped. It also means an interrupted run keeps
+    everything it had confirmed rather than losing the lot.
+
+    Concurrency defaults low. Probing 32k URLs at 24 workers held the site's attention
+    long enough that it began refusing new connections outright, and the run then spent
+    hours retrying instead of progressing; the block lifted as soon as it stopped.
+
+    `probe=False` rewrites every row without asking the site first. That is half the
+    requests, because the pre-download that follows fetches each HD file anyway and its
+    success or failure is the same answer the probe would have given - see
+    `run_revert_missing_hd`, which acts on it. Use probing when the download is not going
+    to follow immediately; use `probe=False` for the rewrite-then-download flow.
+    """
+    conn = sqlite3.connect(str(DB_PATH))
+    rows = conn.execute(
+        "SELECT id, thumbnail_url FROM episodes "
+        "WHERE thumbnail_url IS NOT NULL AND thumbnail_url != '' ORDER BY id"
+    ).fetchall()
+
+    all_todo = [(ep_id, hd) for ep_id, url in rows if (hd := hd_url_for(url))]
+    # Counted before the limit is applied: `len(rows) - len(todo)` after a truncation
+    # just reports the limit back, which is how a run that had written nothing still
+    # looked like it had skipped 31,825 rows.
+    already = len(rows) - len(all_todo)
+    todo = all_todo[:limit] if limit else all_todo
+
+    print("=== Episode Thumbnail HD Upgrade ===")
+    print(f"Database:    {DB_PATH}")
+    print(f"Rows:        {len(rows)} episodes | already HD: {already:,} | to probe: {len(todo):,}")
+    print(f"Mode:        {'APPLY (writes to gevi.db)' if apply else 'dry run (no writes)'}")
+    print(f"Batch:       {batch} | Concurrency: {concurrency}")
+    print(f"Method:      {'probe each URL, then rewrite' if probe else 'rewrite all, verify by download'}")
+    print("(interrupt freely — each batch is committed; rerun to continue)", flush=True)
+    if not todo:
+        print("Nothing to upgrade.")
+        conn.close()
+        return
+
+    confirmed_total = written_total = missing_total = unknown_total = 0
+    start = time.time()
+    for base in range(0, len(todo), batch):
+        chunk = todo[base:base + batch]
+        have: list[tuple[int, str]] = []
+        missing = unknown = 0
+        if not probe:
+            have = list(chunk)
+        else:
+            with ThreadPoolExecutor(max_workers=concurrency) as executor:
+                futures = {executor.submit(probe_url, hd): (ep_id, hd) for ep_id, hd in chunk}
+                for fut in as_completed(futures):
+                    ep_id, hd = futures[fut]
+                    try:
+                        res = fut.result()
+                    except Exception:
+                        res = None
+                    if res is True:
+                        have.append((ep_id, hd))
+                    elif res is False:
+                        missing += 1
+                    else:
+                        unknown += 1
+
+        if apply and have:
+            # The SQL's parameters are (thumbnail_url, id) in that order; `have` holds
+            # (id, url). Swapping them does not raise - SQLite compares an INTEGER id to a
+            # TEXT url, matches nothing, and reports success - so the swap is done here,
+            # next to the statement, and the result is then checked rather than assumed.
+            before = conn.total_changes
+            with conn:
+                conn.executemany(
+                    "UPDATE episodes SET thumbnail_url = ? WHERE id = ?",
+                    [(hd, ep_id) for ep_id, hd in have],
+                )
+            changed = conn.total_changes - before
+            if changed != len(have):
+                print(f"⚠️  本批预期更新 {len(have)} 行，实际 {changed} 行 —— "
+                      f"WHERE 没匹配上，这批没写进去。", flush=True)
+            written_total += changed
+        confirmed_total += len(have)
+        missing_total += missing
+        unknown_total += unknown
+
+        done = base + len(chunk)
+        elapsed = time.time() - start
+        rate = done / elapsed if elapsed else 0
+        eta = format_eta((len(todo) - done) / rate) if rate else "--:--"
+        # Rate and ETA are network numbers; without probing there is no network to pace
+        # against and they would print a meaningless six-figure requests-per-second.
+        pace = f"{rate:.1f}/s | ETA {eta}" if probe else "no network"
+        print(f"[{done:,}/{len(todo):,}] {done / len(todo) * 100:5.1f}% | HD {confirmed_total:,} | "
+              f"no-HD {missing_total:,} | unresolved {unknown_total:,} | {pace}", flush=True)
+
+        # A batch the site mostly refused means it is pushing back, and continuing only
+        # digs in deeper. Stop cleanly: everything confirmed so far is already committed.
+        if unknown > len(chunk) * abort_unresolved:
+            print(f"\n⚠️  {unknown}/{len(chunk)} 条无响应 —— 站点已在限流，先停下。"
+                  f"\n   已写入 {written_total:,} 条。等一段时间后重跑本命令即可续上。")
+            break
+
+    print(f"\nHD version present : {confirmed_total:,} | no HD: {missing_total:,} | "
+          f"unresolved: {unknown_total:,} | rows written: {written_total:,}")
+    if apply and written_total:
+        print("Next: `cache_images.py --mode episodes` to fetch them — the cache keys on the "
+              "filename, so these download as new files and the low-res ones become orphans "
+              "(`--prune-orphans --apply` after the download).")
+    elif confirmed_total:
+        print("Dry run: no rows changed. Re-run with --apply to write.")
+    elif confirmed_total == 0 and written_total == 0:
+        print("Nothing to upgrade.")
+    conn.close()
+
+
+def run_revert_missing_hd(apply: bool = False):
+    """Put back the low-res URL for any episode whose HD file never arrived.
+
+    The safety net for the `probe=False` rewrite. The cache is the honest judge here:
+    the desktop client serves from it, so a `...b.jpg` URL with no file on disk is a
+    broken image no matter what the site would say about it. Judged locally, so this
+    costs no requests.
+
+    Run it after the episode download, never before — a file missing because the
+    download has not run yet is not the same as one the site does not have."""
+    conn = sqlite3.connect(str(DB_PATH))
+    rows = conn.execute(
+        "SELECT id, thumbnail_url FROM episodes "
+        "WHERE thumbnail_url LIKE '%/Episodes/episode%b.jpg'"
+    ).fetchall()
+
+    missing: list[tuple[int, str]] = []
+    for ep_id, url in rows:
+        path = get_cache_path(url)
+        if not (path.exists() and path.stat().st_size > 100):
+            low_res = url[:-len("b.jpg")] + ".jpg"
+            missing.append((ep_id, low_res))
+
+    print("=== Revert Episodes With No Cached HD File ===")
+    print(f"HD URLs in database : {len(rows):,}")
+    print(f"No HD file on disk  : {len(missing):,}")
+    if not missing:
+        print("Every HD URL has its file. Nothing to revert.")
+        conn.close()
+        return
+    for ep_id, low_res in missing[:5]:
+        print(f"   e.g. #{ep_id} -> {low_res.rsplit('/', 1)[-1]}")
+    if len(missing) > 5:
+        print(f"   ... 另外 {len(missing) - 5:,} 条")
+    if not apply:
+        print("Dry run: nothing changed. Re-run with --apply.")
+        conn.close()
+        return
+    before = conn.total_changes
+    with conn:
+        conn.executemany(
+            "UPDATE episodes SET thumbnail_url = ? WHERE id = ?",
+            [(low_res, ep_id) for ep_id, low_res in missing],
+        )
+    print(f"Reverted {conn.total_changes - before:,} rows to their low-res thumbnail.")
+    conn.close()
+
+
+def run_prune_orphans(apply: bool = False):
+    """Delete cached episode thumbnails the database no longer points at.
+
+    Pointing an episode at `episodeNNNb.jpg` leaves the old `episodeNNN.jpg` on
+    disk: nothing deletes on change, and `--clear` would wipe the whole tree
+    including covers and performer images that are still live."""
+    conn = sqlite3.connect(str(DB_PATH))
+    live = {
+        get_cache_path(url).name
+        for (url,) in conn.execute("SELECT thumbnail_url FROM episodes WHERE thumbnail_url IS NOT NULL")
+        if url
+    }
+    conn.close()
+
+    ep_dir = DEFAULT_CACHE_DIR / "Episodes"
+    if not ep_dir.exists():
+        print(f"No episode thumbnail cache at {ep_dir}.")
+        return
+
+    files = [p for p in ep_dir.iterdir() if p.is_file() and not p.name.endswith(".tmp")]
+    orphans = [p for p in files if p.name not in live]
+    freed = sum(p.stat().st_size for p in orphans)
+    print("=== Orphaned Episode Thumbnails ===")
+    print(f"Cache dir:   {ep_dir}")
+    print(f"On disk:     {len(files)} files")
+    print(f"Unreferenced:{len(orphans)} files, {freed / (1024 * 1024):.1f} MB")
+    if not orphans:
+        print("Nothing to prune.")
+        return
+    if not apply:
+        print("Dry run: nothing deleted. Re-run with --apply.")
+        return
+    removed = 0
+    for p in orphans:
+        try:
+            p.unlink()
+            removed += 1
+        except OSError:
+            pass
+    print(f"Deleted {removed} files, freed {freed / (1024 * 1024):.1f} MB.")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GEVI Offline Image Disk Cache Downloader")
     parser.add_argument("--mode", choices=["all", "covers", "episodes", "performers"], default="all")
@@ -226,6 +490,18 @@ if __name__ == "__main__":
     parser.add_argument("--concurrency", type=int, default=6)
     parser.add_argument("--stats", action="store_true", help="Print cache stats and exit")
     parser.add_argument("--clear", action="store_true", help="Clear cache folder and exit")
+    parser.add_argument("--hd-upgrade", action="store_true",
+                        help="Repoint episode thumbnails at their high-resolution twin")
+    parser.add_argument("--batch", type=int, default=250,
+                        help="--hd-upgrade: probes committed per batch (default 250)")
+    parser.add_argument("--no-probe", action="store_true",
+                        help="--hd-upgrade: rewrite without probing; verify via the download")
+    parser.add_argument("--revert-missing-hd", action="store_true",
+                        help="Restore the low-res URL where the HD file never downloaded")
+    parser.add_argument("--prune-orphans", action="store_true",
+                        help="Delete cached episode thumbnails the database no longer references")
+    parser.add_argument("--apply", action="store_true",
+                        help="Actually write/delete; without it the maintenance modes are dry runs")
     args = parser.parse_args()
 
     if args.stats:
@@ -234,5 +510,12 @@ if __name__ == "__main__":
     elif args.clear:
         c = clear_cache()
         print(f"Cleared {c} cached files.")
+    elif args.hd_upgrade:
+        run_hd_upgrade(apply=args.apply, limit=args.limit, concurrency=args.concurrency,
+                       batch=args.batch, probe=not args.no_probe)
+    elif args.revert_missing_hd:
+        run_revert_missing_hd(apply=args.apply)
+    elif args.prune_orphans:
+        run_prune_orphans(apply=args.apply)
     else:
         run_batch_download(mode=args.mode, limit=args.limit, concurrency=args.concurrency)

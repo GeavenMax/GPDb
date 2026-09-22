@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any
 
 from db_manager import DatabaseManager
+from cache_images import hd_url_for
 
 BASE_URL = "https://gayeroticvideoindex.com"
 HOST = "gayeroticvideoindex.com"
@@ -354,7 +355,15 @@ class BatchScraper:
         for m in ep_matches:
             ep_id = int(m.group(1))
             thumb_path = m.group(2)
-            ep_thumb = f"{BASE_URL}/{thumb_path}" if thumb_path else ""
+            # The movie page embeds the low-res grid preview (~7KB); the episode's
+            # own page opens an HD twin at the same URL with a `b` before the
+            # extension (~60KB). Store the HD form: `_write_episodes` COALESCEs a
+            # non-empty thumbnail_url, so writing the low-res one here would
+            # silently downgrade any episode that already had HD.
+            ep_thumb = ""
+            if thumb_path:
+                low_res = f"{BASE_URL}/{thumb_path}"
+                ep_thumb = hd_url_for(low_res) or low_res
 
             # Description after the link
             sub = html_text[m.end():m.end() + 1500]
@@ -373,7 +382,12 @@ class BatchScraper:
 
             episodes.append({
                 "id": ep_id,
-                "title": f"Episode #{ep_id}",
+                # The movie page's scene list carries no per-episode title, only the
+                # id. Empty, NOT a synthesized "Episode #N": the UPSERT does
+                # title = COALESCE(NULLIF(excluded.title,''), episodes.title), so a
+                # non-empty placeholder overwrites the real title the episode's own
+                # page supplied. Display code falls back to "Episode #N" itself.
+                "title": "",
                 "thumbnail_url": ep_thumb,
                 "description": ep_desc,
                 "action_notes": "",
