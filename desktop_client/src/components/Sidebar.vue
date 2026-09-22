@@ -43,7 +43,22 @@ function loadOrder(): NavId[] {
     const raw = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
     if (!Array.isArray(raw)) return known;
     const kept = raw.filter((id): id is NavId => known.includes(id));
-    return [...kept, ...known.filter(id => !kept.includes(id))];
+    const missing = known.filter(id => !kept.includes(id));
+    if (missing.length === 0) return kept;
+
+    const result = [...kept];
+    for (const id of missing) {
+      const idxInKnown = known.indexOf(id);
+      // Find the first item after `id` in `known` that is present in `result`
+      const nextKnown = known.slice(idxInKnown + 1).find(k => result.includes(k));
+      if (nextKnown) {
+        const insertIdx = result.indexOf(nextKnown);
+        result.splice(insertIdx, 0, id);
+      } else {
+        result.push(id);
+      }
+    }
+    return result;
   } catch {
     return known;
   }
