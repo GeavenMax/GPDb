@@ -192,10 +192,16 @@ pub const PERFORMER_COLUMNS: &str = "p.id, p.name, p.hair, p.eyes, p.body_hair, 
 /// The LEFT JOIN is what lets the performer page list episodes from many films at
 /// once; the caller appends its own WHERE and ORDER BY.
 /// New columns go on the **end**; `map_episode_row` reads by index too. This is the
-/// parent film's `title_zh` (index 10), not the episode's own title — episodes are
-/// never translated, their `title` is a site-generated placeholder.
+/// parent film's `title_zh` (index 10), not the episode's own title.
+///
+/// Indexes 8 and 9 fall back to the episode's own studio and year. A standalone episode
+/// (`movie_id IS NULL`) has no parent film to borrow either from, so without the
+/// COALESCE it would render with a blank studio and no year at all.
 pub const EPISODE_SQL: &str = "SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, \
-     e.description_zh, e.action_notes, m.title, m.studio_name, m.release_year, m.title_zh \
+     e.description_zh, e.action_notes, m.title, \
+     COALESCE(m.studio_name, e.studio_name), \
+     COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)), \
+     m.title_zh \
      FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id";
 
 pub fn map_episode_row(r: &rusqlite::Row) -> rusqlite::Result<Episode> {

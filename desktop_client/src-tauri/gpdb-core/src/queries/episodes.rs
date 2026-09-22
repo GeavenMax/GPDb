@@ -28,8 +28,11 @@ pub fn get_episode_library(conn: &Connection,
     if let Some(q) = query {
         let q = q.trim().to_string();
         if !q.is_empty() {
-            // e.title is deliberately not searched: the site names every episode
-            // "Episode #<id>", so it can never match what someone types.
+            // e.title is not searched. It only ever holds a placeholder for a film's
+            // scene (the movie page's scene list carries no title, so we store "").
+            // Standalone episodes do get a real title from the `coep` endpoint, but they
+            // are reachable through `m.title`/description for now — adding `e.title` here
+            // is a deliberate follow-up, not an oversight.
             conditions.push(
                 "(m.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\' \
                  OR e.description_zh LIKE ? ESCAPE '\\')"
@@ -46,7 +49,9 @@ pub fn get_episode_library(conn: &Connection,
     if let Some(s) = studio {
         let s = s.trim().to_string();
         if !s.is_empty() {
-            conditions.push("m.studio_name = ?".to_string());
+            // Same fallback as the SELECT: a standalone episode has no parent film, so
+            // filtering on `m.studio_name` alone would drop it from its own studio's list.
+            conditions.push("COALESCE(m.studio_name, e.studio_name) = ?".to_string());
             params_vec.push(Box::new(s));
         }
     }
@@ -81,7 +86,9 @@ pub fn get_episode_library(conn: &Connection,
 
     let sql = format!(
         "SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh, \
-                e.action_notes, m.title, m.studio_name, m.release_year, \
+                e.action_notes, m.title, \
+                COALESCE(m.studio_name, e.studio_name), \
+                COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)), \
                 (SELECT count(*) FROM episodes e2 \
                   WHERE e2.movie_id = e.movie_id AND e2.id <= e.id), \
                 (SELECT count(*) FROM episodes e2 WHERE e2.movie_id = e.movie_id), \

@@ -45,7 +45,11 @@ pub struct DirectorRef {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Episode {
     pub id: i64,
-    pub movie_id: i64,
+    /// Null for a standalone episode — one the site publishes on its own page with
+    /// no parent film. Must stay `Option`: a bare `i64` makes `map_episode_row`
+    /// fail with `InvalidType` on those rows, and the callers' `filter_map(|r| r.ok())`
+    /// then drops them silently.
+    pub movie_id: Option<i64>,
     pub title: Option<String>,
     pub thumbnail_url: Option<String>,
     pub description: Option<String>,
@@ -56,9 +60,8 @@ pub struct Episode {
     /// Parent film context, so an episode can be shown outside its film (the
     /// performer detail page lists a performer's episodes across many films).
     pub movie_title: Option<String>,
-    /// The parent film's Chinese title. The episode itself is never translated —
-    /// its own `title` is a placeholder the site generates ("Episode #<row id>") —
-    /// so this is the only Chinese a scene card can show.
+    /// The parent film's Chinese title. The episode itself is never translated,
+    /// so this is the only Chinese a scene card can show for a film's scene.
     pub movie_title_zh: Option<String>,
     pub studio_name: Option<String>,
     pub release_year: Option<i64>,

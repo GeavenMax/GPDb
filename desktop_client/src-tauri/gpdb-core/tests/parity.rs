@@ -386,7 +386,7 @@ fn movie_detail_carries_episodes_directors_and_cast() {
         ids(&tx, "SELECT e.id FROM episodes e WHERE e.movie_id = 59743 ORDER BY e.id ASC")
     );
     for e in eps {
-        assert_eq!(e.movie_id, 59743);
+        assert_eq!(e.movie_id, Some(59743));
         assert_eq!(e.studio_name.as_deref(), m.studio_name.as_deref(), "分集的片商来自父影片");
     }
 
@@ -728,6 +728,68 @@ fn performer_facets_match_an_independent_recount() {
 
 // ---------------------------------------------------------------- 分集库
 
+/// 独立分集（`movie_id IS NULL`，站点的 `episode/{id}` 自成一个实体、没有父影片）
+/// 必须出现在分集库里 —— 而且**不能静默消失**。
+///
+/// 这条以前是静默丢的：`map_episode_row` 把 `movie_id` 读进裸 `i64`，遇到 NULL 整行
+/// 返回 `Err(InvalidType)`，调用点的 `filter_map(|r| r.ok())` 再把错误咽掉。
+/// 于是「不报错、不计数、只是少几行」—— 分集总数和列表都对不上，但没有任何迹象。
+/// 所以这里断言的是 total 和 id 同时正确：只断言「列表非空」抓不住这个 bug。
+///
+/// 用内存库而不是真库：真库里 8.8 万条独立分集的 id、片商、日期都是刮来的、随时会变，
+/// 断言不出确定的值。这里要钉死的是「没有父影片时行映射器不丢行，且每个字段各自降级」，
+/// 需要一个能把期望值写死的夹具。
+///
+/// 夹具故意让分集自己的片商/日期与父影片**不同**，这样才能验证 COALESCE 的优先方向：
+/// 有父影片时用影片的，没有时用自己的。两边写成一样的话，谁赢都看不出来。
+#[test]
+fn standalone_episodes_survive_the_row_mapper() {
+    let conn = Connection::open_in_memory().unwrap();
+    conn.execute_batch(
+        "CREATE TABLE movies (id INTEGER PRIMARY KEY, title TEXT, studio_name TEXT,
+             release_year INTEGER, title_zh TEXT);
+         CREATE TABLE episodes (id INTEGER PRIMARY KEY, movie_id INTEGER, title TEXT,
+             thumbnail_url TEXT, description TEXT, description_zh TEXT, action_notes TEXT,
+             release_date TEXT, studio_id INTEGER, studio_name TEXT);
+         CREATE TABLE episode_performers (episode_id INTEGER, performer_id INTEGER,
+             performer_name TEXT);
+         INSERT INTO movies (id, title, studio_name, release_year, title_zh)
+             VALUES (1, 'Attached Film', 'Falcon', 2005, '有归属的影片');
+         INSERT INTO episodes (id, movie_id, title, studio_name, release_date) VALUES
+             (10, 1,    'Attached Scene', 'Other Studio', '1999-01-01'),
+             (11, NULL, 'Pregame',        'Solo Studio',  '2011-04-02');",
+    )
+    .unwrap();
+
+    let lib = queries::episodes::get_episode_library(
+        &conn, None, None, None, None, None, Some(1), Some(50),
+    )
+    .unwrap();
+
+    let got: Vec<i64> = lib.items.iter().map(|e| e.id).collect();
+    assert_eq!(lib.total, 2, "total 少算了 —— 独立分集在 count 里就丢了");
+    assert!(got.contains(&11), "独立分集被行映射器静默丢弃了，实际拿到 {:?}", got);
+
+    let standalone = lib.items.iter().find(|e| e.id == 11).expect("id 11 应在结果里");
+    assert_eq!(standalone.movie_id, None, "没有父影片就该是 None");
+    assert_eq!(standalone.movie_title, None, "LEFT JOIN 落空应是 None，不是空串");
+    assert_eq!(standalone.title.as_deref(), Some("Pregame"), "独立分集该有自己的标题");
+    // 没有父影片可借，片商和年份只能走分集自己的列 —— 这正是 COALESCE 的兜底分支。
+    assert_eq!(standalone.studio_name.as_deref(), Some("Solo Studio"), "独立分集该用自己的片商");
+    assert_eq!(standalone.release_year, Some(2011), "独立分集该从自己的 release_date 取年份");
+    assert_eq!(standalone.episode_count, 0, "没有父影片就没有「共 N 集」");
+    assert_eq!(standalone.episode_ordinal, 0, "没有父影片就没有序号（前端对 0 判假，不显示位置）");
+
+    let attached = lib.items.iter().find(|e| e.id == 10).expect("id 10 应在结果里");
+    assert_eq!(attached.movie_id, Some(1));
+    assert_eq!(attached.movie_title.as_deref(), Some("Attached Film"));
+    // 有父影片时父影片赢，即使分集自己记了另一家片商和另一个日期。
+    assert_eq!(attached.studio_name.as_deref(), Some("Falcon"), "有父影片时该用影片的片商");
+    assert_eq!(attached.release_year, Some(2005), "有父影片时该用影片的年份");
+    assert_eq!(attached.episode_count, 1);
+    assert_eq!(attached.episode_ordinal, 1);
+}
+
 /// `get_episode_library` 有 (query, sort, studio) 三个相邻的 `Option<String>`。
 /// 调换任意两个都照样编译 —— 所以逐个参数验证它真的生效。
 #[test]
@@ -784,13 +846,17 @@ fn episode_library_parameters_are_not_swapped() {
         by_studio.total,
         count1(
             &tx,
-            "SELECT count(*) FROM episodes e JOIN movies m ON m.id = e.movie_id WHERE m.studio_name = ?1",
+            // COALESCE, not `m.studio_name`: a standalone episode (movie_id IS NULL) has no
+            // film to borrow a studio from, so filtering on the parent's column alone would
+            // drop it from its own studio's list. The Rust side does the same thing.
+            "SELECT count(*) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id \
+             WHERE COALESCE(m.studio_name, e.studio_name) = ?1",
             studio.clone()
         )
     );
     assert_eq!(
         by_studio.items.iter().map(|i| i.id).collect::<Vec<_>>(),
-        ids(&tx, &format!("SELECT e.id {} WHERE m.studio_name = '{}' ORDER BY e.id DESC LIMIT 25", from, sql_lit(&studio)))
+        ids(&tx, &format!("SELECT e.id {} WHERE COALESCE(m.studio_name, e.studio_name) = '{}' ORDER BY e.id DESC LIMIT 25", from, sql_lit(&studio)))
     );
     for i in &by_studio.items {
         assert_eq!(i.studio_name.as_deref(), Some(studio.as_str()));
@@ -894,7 +960,20 @@ fn episode_ordinal_and_count_match_sql() {
             "分集 {} 所属影片的总集数",
             i.id
         );
-        assert!(i.episode_ordinal >= 1 && i.episode_ordinal <= i.episode_count);
+        // 独立分集没有父影片，「第 N 集 / 共 M 集」无从谈起：子查询里
+        // `e2.movie_id = e.movie_id` 两边都是 NULL，永远不成立，于是落到 0/0。
+        // 这是设计好的降级（前端 episodeOrdinalLabel 对 0 判假 → 不显示位置标签），
+        // 不是算错，所以不能拿「序号必须 >= 1」去卡它。
+        if i.movie_id.is_none() {
+            assert_eq!(i.episode_ordinal, 0, "独立分集 {} 不该有序号", i.id);
+            assert_eq!(i.episode_count, 0, "独立分集 {} 不该有总集数", i.id);
+        } else {
+            assert!(
+                i.episode_ordinal >= 1 && i.episode_ordinal <= i.episode_count,
+                "分集 {} 的序号 {} 落在 1..={} 之外",
+                i.id, i.episode_ordinal, i.episode_count
+            );
+        }
     }
 }
 
