@@ -25,6 +25,10 @@ DEFAULT_CACHE_DIR = BASE_DIR / "image_cache"
 
 USER_AGENTS = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
+# Built once for the whole run: create_default_context() reloads the system trust
+# store on every call, which costs more than fetching a 7KB cover.
+SSL_CTX = ssl.create_default_context()
+
 def get_cache_path(url: str, cache_dir: Path = DEFAULT_CACHE_DIR) -> Path:
     """Map an image URL to a clean local file path."""
     if not url:
@@ -68,10 +72,9 @@ def download_image(url: str, cache_dir: Path = DEFAULT_CACHE_DIR, timeout: int =
         }
     )
 
-    ctx = ssl.create_default_context()
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+            with urllib.request.urlopen(req, timeout=timeout, context=SSL_CTX) as resp:
                 if resp.status == 200:
                     data = resp.read()
                     if len(data) > 100:
@@ -81,6 +84,11 @@ def download_image(url: str, cache_dir: Path = DEFAULT_CACHE_DIR, timeout: int =
                         tmp_path.replace(local_path)
                         return True
                 return False
+        except urllib.error.HTTPError:
+            # The site answered — 404/403 will answer the same way next time. Without
+            # this branch the generic handler below retries with 1+2+3s of backoff,
+            # so each dead cover (over 12k of them here) burned a worker for 6s.
+            return False
         except Exception:
             time.sleep(1.0 * (attempt + 1))
     return False
