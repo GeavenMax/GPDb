@@ -905,6 +905,9 @@ class ScraperV2:
 # Offline audit
 # --------------------------------------------------------------------------
 
+_BACKUP_STAMP_RE = re.compile(r"\d{8}-\d{6}$")
+
+
 def backup_database(db_path: str, db: DatabaseManager, keep: int = 5) -> None:
     """Copy the database aside before writing, so any run can be rolled back.
 
@@ -918,17 +921,41 @@ def backup_database(db_path: str, db: DatabaseManager, keep: int = 5) -> None:
     try:
         db.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         shutil.copy2(db_path, dest)
+        prune_backups(db_path, keep)
+        # After the prune, not before: the two lines used to be the other way round, so
+        # a prune that removed this very file still printed the success line for it.
+        if not dest.exists():
+            raise RuntimeError("备份在轮转中被删除")
         size_mb = dest.stat().st_size / 1024 / 1024
         print(f"💾 已备份数据库: {dest.name} ({size_mb:.1f} MB)")
-        prune_backups(db_path, keep)
     except Exception as e:
         print(f"⚠️  备份失败: {e}", file=sys.stderr)
         sys.exit("已中止：数据安全优先，请先手动备份。")
 
 
 def prune_backups(db_path: str, keep: int) -> None:
-    backups = sorted(Path(db_path).parent.glob(Path(db_path).name + ".backup-*"))
-    for old in backups[:-keep]:
+    """Rotate away this function's own old backups, keeping the newest `keep`.
+
+    Two things it must not do, both of which it used to:
+
+    - Sort by name. A stamp starts with a digit, a hand-named backup starts with a
+      letter, and digits sort first — so the file `backup_database` had just written
+      compared as the *oldest* of the set and was the first one deleted. The caller
+      prints "已备份数据库" before this runs, so the run announced a backup and then
+      destroyed it, leaving a batch write with no way back.
+    - Touch hand-named backups. `gevi.db.backup-before-titles` is a checkpoint someone
+      chose to keep, not a run artifact to rotate; under the old name sort it was one
+      of the files that outlived the real one.
+    """
+    prefix = Path(db_path).name + ".backup-"
+    stamped = [
+        p for p in Path(db_path).parent.glob(prefix + "*")
+        if _BACKUP_STAMP_RE.match(p.name[len(prefix):])
+    ]
+    # mtime, not name: the name is what the bug above misread, and a backup renamed or
+    # copied into place keeps the mtime that says when it was really taken.
+    stamped.sort(key=lambda p: p.stat().st_mtime)
+    for old in stamped[:-keep]:
         try:
             old.unlink()
         except OSError:
