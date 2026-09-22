@@ -277,6 +277,267 @@ fn search_also_matches_through_the_director_roster() {
     assert!(res.total > 0);
 }
 
+// ---------------------------------------------------------------- 导演库
+
+/// 独立于实现写一遍导演库那一页：列、排序、LIMIT/OFFSET 都由测试自己声明。
+///
+/// 故意写成 `count(md.movie_id)` 而不是 `ORDER BY works_count` —— 用别名排序的话，
+/// 实现和对照 SQL 共用同一个别名，列选错位也照样相等。
+///
+/// 末尾的 `d.id ASC` 也不能少：库里 1,304 位导演只有一部作品、另有 20 对只差大小写的
+/// 名字，两种排序都大量并列。并列而没有 tiebreak 时，同一个 LIMIT 换个 OFFSET 就可能
+/// 排出不同的顺序；实现带上 tiebreak 而对照不带，这里立刻会红 —— 这正是想要的效果。
+fn director_page(conn: &Connection, limit: i64, offset: i64) -> Vec<(String, i64, i64)> {
+    let mut stmt = conn.prepare(
+        "SELECT d.name, count(md.movie_id), \
+                count(DISTINCT NULLIF(trim(m.studio_name), '')) \
+         FROM directors d \
+         LEFT JOIN movie_directors md ON md.director_id = d.id \
+         LEFT JOIN movies m ON m.id = md.movie_id \
+         GROUP BY d.id \
+         ORDER BY count(md.movie_id) DESC, d.name COLLATE NOCASE ASC, d.id ASC \
+         LIMIT ?1 OFFSET ?2"
+    ).unwrap_or_else(|e| panic!("对照 SQL 编译失败: {}", e));
+    let rows = stmt
+        .query_map(params![limit, offset], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+        .unwrap_or_else(|e| panic!("对照 SQL 执行失败: {}", e));
+    rows.filter_map(|r| r.ok()).collect()
+}
+
+fn director_pairs(res: &gpdb_core::models::DirectorLibrary) -> Vec<(String, i64, i64)> {
+    res.items.iter().map(|d| (d.name.clone(), d.works_count, d.studios_count)).collect()
+}
+
+/// 带搜索条件的对照页，谓词由测试自己写（含 ESCAPE），与整表那支分开声明。
+fn director_search_page(conn: &Connection, q: &str, limit: i64, offset: i64) -> Vec<(String, i64, i64)> {
+    let mut stmt = conn.prepare(
+        "SELECT d.name, count(md.movie_id), \
+                count(DISTINCT NULLIF(trim(m.studio_name), '')) \
+         FROM directors d \
+         LEFT JOIN movie_directors md ON md.director_id = d.id \
+         LEFT JOIN movies m ON m.id = md.movie_id \
+         WHERE (d.name LIKE ?1 ESCAPE '\\' OR d.site_id = ?2) \
+         GROUP BY d.id \
+         ORDER BY count(md.movie_id) DESC, d.name COLLATE NOCASE ASC, d.id ASC \
+         LIMIT ?3 OFFSET ?4"
+    ).unwrap_or_else(|e| panic!("对照 SQL 编译失败: {}", e));
+    let escaped = q.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+    let rows = stmt
+        .query_map(params![format!("%{}%", escaped), -1i64, limit, offset], |r| {
+            Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+        })
+        .unwrap_or_else(|e| panic!("对照 SQL 执行失败: {}", e));
+    rows.filter_map(|r| r.ok()).collect()
+}
+
+/// 导演库列表：总数、整页序列（名字 + 作品数 + 合作片商家数）、排序、翻页。
+#[test]
+fn director_library_matches_control_sql() {
+    let conn = db();
+    let tx = snapshot(&conn);
+
+    let all = count(&tx, "SELECT count(*) FROM directors");
+    let res = queries::directors::get_director_library(&tx, None, None, Some(1), Some(10)).unwrap();
+    assert_eq!(res.total, all, "total 应当等于 directors 的行数");
+    assert!(
+        res.total > 1000,
+        "库里的导演只有 {} 位，这条测试会退化成没测（导演分词没跑过？）",
+        res.total
+    );
+
+    // 逐行比，而不是只比第一条：列选错位、排序反了、OFFSET 算错都会现形
+    assert_eq!(director_pairs(&res), director_page(&tx, 10, 0), "第 1 页");
+
+    // 中间页带 OFFSET —— page_size / offset 参数调换只有这里抓得住
+    let res3 = queries::directors::get_director_library(&tx, None, None, Some(3), Some(10)).unwrap();
+    assert_eq!(director_pairs(&res3), director_page(&tx, 10, 20), "第 3 页");
+
+    // 换排序：name_asc 必须真的按名字排，而且是 COLLATE NOCASE 那种排法。
+    //
+    // 必须比到第 2 页：两种排序第一次分歧在第 103 行（BINARY 第 103 位是 'Andre Adair'，
+    // NOCASE 排的是小写开头的 'and'），只比第 1 页的话把 COLLATE NOCASE 删掉这条测试
+    // 照样绿 —— 变异验证时确认过。
+    for (page, offset) in [(1i64, 0i64), (2, 100)] {
+        let by_name = queries::directors::get_director_library(
+            &tx, None, Some("name_asc".into()), Some(page), Some(100),
+        )
+        .unwrap();
+        assert_eq!(
+            by_name.items.iter().map(|d| d.name.clone()).collect::<Vec<_>>(),
+            strings(
+                &tx,
+                &format!(
+                    "SELECT name FROM directors ORDER BY name COLLATE NOCASE ASC, id ASC \
+                     LIMIT 100 OFFSET {}",
+                    offset
+                )
+            ),
+            "name_asc 排序第 {} 页",
+            page
+        );
+    }
+
+    // 合作片商家数换一条形状不同的 SQL 再算一遍（子查询而不是 GROUP BY），
+    // 免得两边共用同一个写法、一起错。取库里作品最多的那位 —— 按**现算**的作品数取，
+    // 不能用 directors.works_count，那一列是过期的。
+    let top = strings(
+        &tx,
+        "SELECT d.name FROM directors d LEFT JOIN movie_directors md ON md.director_id = d.id \
+         GROUP BY d.id ORDER BY count(md.movie_id) DESC, d.name COLLATE NOCASE ASC, d.id ASC LIMIT 1",
+    )
+    .into_iter()
+    .next()
+    .expect("库里总该有一位导演");
+    let row = res.items.iter().find(|d| d.name == top).expect("作品最多的那位应当在第一页");
+    let expected_studios = count1(
+        &tx,
+        "SELECT count(DISTINCT NULLIF(trim(studio_name), '')) FROM movies \
+         WHERE id IN (SELECT movie_id FROM movie_directors md \
+                      JOIN directors d ON d.id = md.director_id WHERE d.name = ?1)",
+        top.clone(),
+    );
+    assert!(expected_studios > 1, "{} 只合作过一家片商，这条测试没测到分组", top);
+    assert_eq!(row.studios_count, expected_studios, "{} 的合作片商家数", top);
+}
+
+/// 搜索框里的 % 和 _ 是字面量，不是通配符；数字则按站点 id 命中。
+#[test]
+fn director_library_search_escapes_like_wildcards() {
+    let conn = db();
+    let tx = snapshot(&conn);
+
+    // 真库里没有名字含 % 的导演，所以按字面量搜 % 应当是 0 条。
+    // 但这条**验不了转义**：去掉 ESCAPE 之后 `%\%%` 只能匹配到含反斜杠的名字，这里
+    // 照样是 0（变异验证时确认过它活了下来）。转义由下面的内存库测试负责 —— 那一条
+    // 是真库验不了的，因为三千多位导演的名字里没有一个含 % _ \。
+    let wild = queries::directors::get_director_library(&tx, Some("%".into()), None, Some(1), Some(10))
+        .unwrap();
+    assert_eq!(wild.total, 0, "按字面量搜 % 不该有人命中");
+
+    // 正常前缀：总数与整页序列都要与带 ESCAPE 的对照 SQL 一致
+    let q = "smith";
+    let res =
+        queries::directors::get_director_library(&tx, Some(q.into()), None, Some(1), Some(100)).unwrap();
+    assert!(res.total > 1, "搜「{}」只有 {} 位，这条测试会退化成没测", q, res.total);
+    assert_eq!(res.total, res.items.len() as i64, "一页装得下时 total 应当等于返回条数");
+    assert_eq!(director_pairs(&res), director_search_page(&tx, q, 100, 0), "搜索结果整页");
+
+    // 搜出来的一页再翻一页，OFFSET 要跟着搜索条件走
+    let res2 =
+        queries::directors::get_director_library(&tx, Some(q.into()), None, Some(2), Some(50)).unwrap();
+    assert_eq!(director_pairs(&res2), director_search_page(&tx, q, 50, 50), "搜索结果第 2 页");
+
+    // 站点 id 也命中：名字里不会有这一串数字
+    let site = count(
+        &tx,
+        "SELECT site_id FROM directors WHERE site_id IS NOT NULL ORDER BY works_count DESC LIMIT 1",
+    );
+    assert_ne!(site, 0, "库里没有一个带 site_id 的导演，这条测试会退化成没测");
+    let by_site = queries::directors::get_director_library(
+        &tx, Some(site.to_string()), None, Some(1), Some(10),
+    ).unwrap();
+    let names = strings(&tx, &format!("SELECT name FROM directors WHERE site_id = {}", site));
+    assert!(
+        names.iter().any(|n| by_site.items.iter().any(|d| &d.name == n)),
+        "搜站点 id {} 没命中 {}",
+        site,
+        names.join(" / ")
+    );
+}
+
+/// 搜索框里的 % _ \ 必须是字面量，不能当通配符或转义符。
+///
+/// 真库验不了这条：三千多位导演的名字里没有一个含这三个字符（实测），而且去掉
+/// ESCAPE 之后 `%\%%` 只匹配得到含反斜杠的名字，所以真库上的断言在错误实现下照样
+/// 成立（这条测试的第一版就写在真库上，变异验证时活了下来 —— 等于没测）。
+/// 所以自建一个内存库，让名字里真的出现这几个字符，验的是**查询构造**。
+#[test]
+fn director_search_treats_wildcards_as_literals() {
+    let conn = Connection::open_in_memory().unwrap();
+    conn.execute_batch(
+        "CREATE TABLE movies (id INTEGER PRIMARY KEY, studio_name TEXT);
+         CREATE TABLE directors (id INTEGER PRIMARY KEY, site_id INTEGER, name TEXT);
+         CREATE TABLE movie_directors (movie_id INTEGER, director_id INTEGER, position INTEGER);
+         INSERT INTO directors (id, site_id, name) VALUES
+             (1, 11, 'A_B'),
+             (2, 12, 'AXB'),
+             (3, 13, '100% Real'),
+             (4, 14, 'Back\\slash'),
+             (5, 15, 'Plain Name');",
+    )
+    .unwrap();
+
+    let found = |q: &str| {
+        queries::directors::get_director_library(&conn, Some(q.into()), None, Some(1), Some(50))
+            .unwrap()
+            .items
+            .into_iter()
+            .map(|d| d.name)
+            .collect::<Vec<_>>()
+    };
+
+    // _ 是「任意一个字符」还是「下划线」：前者会把 AXB 一起捞出来
+    assert_eq!(found("A_B"), vec!["A_B"], "_ 被当成通配符漏进 LIKE 了");
+    assert_eq!(found("100%"), vec!["100% Real"], "% 被当成通配符漏进 LIKE 了");
+    // 反斜杠：转义链的顺序错了（先转 %/_ 再转 \）这里就会多出或少掉一条
+    assert_eq!(found("Back\\"), vec!["Back\\slash"], "反斜杠没被当成字面量");
+    // 普通词与站点 id 两条路照旧
+    assert_eq!(found("Plain"), vec!["Plain Name"]);
+    assert_eq!(found("14"), vec!["Back\\slash"], "站点 id 这条路被转义带坏了");
+}
+
+/// 导演作品必须走关联表，不能走 `movies.director_name`。
+///
+/// 这条测试的正题是防「有人改回去用 legacy 列」：那列在 parser 修复前是无分隔符粘连的
+/// 整串、之后是 `" / "` 连接的多名串，精确相等只找得到「他独自执导」的影片。
+/// 所以除了与对照 SQL 比序列，还断言它**严格宽于** legacy 那支 —— 只比相等的话，
+/// 换回 legacy 实现这条测试会绿。
+#[test]
+fn director_works_come_from_the_junction_table() {
+    let conn = db();
+    let tx = snapshot(&conn);
+    let name = "Chris Ward";
+
+    let res = queries::directors::get_director_works(&tx, name.to_string()).unwrap();
+    assert_eq!(res.name, name);
+
+    let expected = ids(
+        &tx,
+        &format!(
+            "SELECT m.id FROM movies m \
+             JOIN movie_directors md ON md.movie_id = m.id \
+             JOIN directors d ON d.id = md.director_id \
+             WHERE d.name = '{}' ORDER BY m.release_year DESC, m.id DESC",
+            sql_lit(name)
+        ),
+    );
+    let got: Vec<i64> = res.movies.iter().map(|m| m.id).collect();
+    assert_eq!(got, expected, "作品 id 序列（含 ORDER BY）");
+    assert_eq!(res.movies_count, expected.len() as i64, "movies_count 应当等于实际行数");
+    assert!(
+        res.movies_count > 100,
+        "{} 的作品只有 {} 部，这条测试会退化成没测",
+        name,
+        res.movies_count
+    );
+
+    let legacy = ids(
+        &tx,
+        &format!("SELECT id FROM movies WHERE director_name = '{}'", sql_lit(name)),
+    );
+    assert!(
+        legacy.len() < expected.len(),
+        "legacy 列居然没漏（{} vs {}）：这条测试失去鉴别力",
+        legacy.len(),
+        expected.len()
+    );
+
+    // 分词之前存的收藏键可能是整块粘连的名字，查不到导演行 —— 那是「没有作品」，不是错误
+    let unknown = queries::directors::get_director_works(&tx, "No Such Director".to_string()).unwrap();
+    assert!(unknown.movies.is_empty(), "未知导演不该返回作品");
+    assert_eq!(unknown.movies_count, 0);
+}
+
 /// 中文片名能被搜到。
 ///
 /// 真库上没法验证这条：测试是只读打开的，而 `title_zh` 现在整列都是 NULL（第一
@@ -1191,6 +1452,40 @@ fn favorites_counts_match_sql() {
             Some(count1(&tx, "SELECT count(*) FROM movies WHERE studio_name = ?1", s.key.clone()))
         );
     }
+    // 导演的作品数必须走关联表。这一支原来用 `movies.director_name = 名字` 精确相等，
+    // 只算得到「他独自执导」的影片：名字那一列在 parser 修复前是无分隔符粘连的整串、
+    // 之后是 " / " 连接的多名串。所以除了与关联表对照，还断言至少有一位被少算 ——
+    // 只比相等的话，换回旧实现这条测试照样绿。
+    for d in f.director.iter().take(5) {
+        assert_eq!(d.name.as_deref(), Some(d.key.as_str()));
+        assert_eq!(
+            d.works_count,
+            Some(count1(
+                &tx,
+                "SELECT count(*) FROM movie_directors md \
+                 JOIN directors dir ON dir.id = md.director_id WHERE dir.name = ?1",
+                d.key.clone()
+            )),
+            "{} 的作品数应当按关联表算",
+            d.key
+        );
+    }
+    let undercounted = f
+        .director
+        .iter()
+        .filter(|d| {
+            let legacy = count1(
+                &tx,
+                "SELECT count(*) FROM movies WHERE director_name = ?1",
+                d.key.clone(),
+            );
+            d.works_count.unwrap_or(0) > legacy
+        })
+        .count();
+    assert!(
+        undercounted > 0,
+        "收藏的导演里没有一位被 legacy 列少算：这条测试抓不住「改回 director_name」的回归"
+    );
     // 排序：按收藏时间倒序
     let times: Vec<Option<String>> = f.movie.iter().map(|m| m.created_at.clone()).collect();
     let mut sorted = times.clone();

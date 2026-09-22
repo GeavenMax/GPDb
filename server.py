@@ -308,6 +308,19 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/episode-library":
                 return self.handle_episode_library(query_params)
 
+            # 8d. /api/directors/:name/works
+            # `[^/]+` is safe: no director name in the library contains a slash.
+            director_works_match = re.match(r"^/api/directors/([^/]+)/works$", path)
+            if director_works_match:
+                director_name = urllib.parse.unquote(director_works_match.group(1))
+                return self.handle_director_works(director_name)
+
+            # 8e. /api/director-library
+            # Separate from the film routes the way /api/studio-library is: this is the
+            # whole `directors` table with per-row counts, not a list of films.
+            if path == "/api/director-library":
+                return self.handle_director_library(query_params)
+
             # 9. /api/categories
             if path == "/api/categories":
                 return self.handle_categories()
@@ -1310,6 +1323,50 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
             "total": total,
             "page": page,
             "pageSize": page_size,
+        })
+
+    def handle_director_library(self, params: dict):
+        query = params.get("query", [""])[0].strip()
+        page = max(1, int(params.get("page", [1])[0]))
+        page_size = max(1, min(100, int(params.get("pageSize", [24])[0])))
+        sort_by = params.get("sortBy", ["works_desc"])[0].strip()
+        sort = {"name_asc": "name"}.get(sort_by, "works")
+
+        db = DatabaseManager(str(DB_PATH))
+        try:
+            items, total = db.list_directors(
+                query=query, sort=sort, limit=page_size, offset=(page - 1) * page_size
+            )
+        finally:
+            db.close()
+
+        self.send_json({
+            "items": items,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+        })
+
+    def handle_director_works(self, director_name: str):
+        """One director's films.
+
+        Keyed by name, like the studio route, because that is how `user_favorites`
+        stores a director — the 我的收藏 page can open this without resolving an id
+        first. The desktop build's DirectorWorks is `{name, movies, movies_count}`, so
+        the payload says `name` too rather than the studio route's `studio_name`: one
+        shape for both builds to read. No episode key: there is no episode↔director
+        table, so a director's work is films only.
+        """
+        db = DatabaseManager(str(DB_PATH))
+        try:
+            movies = db.get_director_works(director_name)
+        finally:
+            db.close()
+
+        self.send_json({
+            "name": director_name,
+            "movies": movies,
+            "movies_count": len(movies),
         })
 
     def handle_episode_library(self, params: dict):

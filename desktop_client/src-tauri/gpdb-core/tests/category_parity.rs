@@ -78,6 +78,33 @@ elif req["op"] == "glossary":
     finally:
         db.close()
 
+elif req["op"] == "director_library":
+    # 走 server.py 那一层真正调用的 db_manager.list_directors，而不是在这里重写
+    # SELECT —— 重写的那份会在实现改了之后继续通过。
+    db = db_manager.DatabaseManager(str(server.DB_PATH))
+    try:
+        out["pages"] = []
+        for query, sort, page, size in req["probes"]:
+            items, total = db.list_directors(
+                query=query, sort=sort, limit=size, offset=(page - 1) * size
+            )
+            out["pages"].append({
+                "pairs": [[i["name"], i["works_count"], i["studios_count"]] for i in items],
+                "total": total,
+            })
+    finally:
+        db.close()
+
+elif req["op"] == "director_works":
+    db = db_manager.DatabaseManager(str(server.DB_PATH))
+    try:
+        out["works"] = [
+            {"ids": [m["id"] for m in db.get_director_works(name)]}
+            for name in req["names"]
+        ]
+    finally:
+        db.close()
+
 elif req["op"] == "facet_sql":
     # 把 Python 生成的表达式丢进 SQLite 里真跑一遍。只比对 SQL 文本的话，
     # 两边写出字面不同但语义相同的表达式会被误判。probe 是整串，term 是待匹配词。
@@ -326,6 +353,120 @@ fn the_category_filter_matches_tokens_and_stays_case_sensitive() {
         "小写被 LIKE 式的语义命中了，筛选比预期宽"
     );
     assert_eq!(token("Wrestlin"), 0, "部分匹配被命中了");
+}
+
+/// 导演库：同一个库，两边的列表、搜索与作品清单必须逐字一致。
+///
+/// 导演是唯一有真表的一类 —— `directors` + `movie_directors`，而 `directors.works_count`
+/// 那一列是过期的、`movies.director_name` 是粘连的旧字符串，所以两边各有一次「不小心
+/// 用错了源」的机会。Rust 与 Python 各写一份 SQL，谁改歪了这里就红。
+///
+/// 两个进程读的是**同一个正在被刮削写的库**，快照不共享，所以故意只比小窗口：
+/// 通配符探针（结构上恒为 0，与数据无关）、`LaRue`（4 行）、以及一位导演的作品 id。
+/// 真出现不一致时，先重跑一次再判断是分叉还是恰好撞上了一次写入。
+#[test]
+fn director_library_and_works_agree_with_python() {
+    let Some((root, py)) = harness() else { return };
+    let conn = Connection::open_with_flags(find_db(), OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+
+    // (Python 的 sort 取值, Rust 的 sortBy 取值, 查询, 页, 每页条数)
+    // 排序名两边不同（`works`/`name` vs `works_desc`/`name_asc`），映射在
+    // server.py 的 handle_director_library 里，由接口实测覆盖，这里直接给各自的值。
+    let probes: [(&str, Option<&str>, &str, i64, i64); 6] = [
+        ("works", None, "", 1, 24),
+        ("works", None, "", 2, 24),
+        ("name", Some("name_asc"), "", 1, 24),
+        ("works", None, "LaRue", 1, 10),
+        ("works", None, "%", 1, 10),
+        ("works", None, "_", 1, 10),
+    ];
+
+    let request = serde_json::json!({
+        "op": "director_library",
+        "probes": probes.iter().map(|(s, _, q, p, n)| (q, s, p, n)).collect::<Vec<_>>(),
+    })
+    .to_string();
+    let py_pages = run_driver(&root, &py, &request)["pages"].clone();
+    let py_pages = py_pages.as_array().unwrap();
+
+    for (i, (_, rust_sort, query, page, size)) in probes.iter().enumerate() {
+        let rust = gpdb_core::queries::directors::get_director_library(
+            &conn,
+            if query.is_empty() { None } else { Some(query.to_string()) },
+            rust_sort.map(str::to_string),
+            Some(*page),
+            Some(*size),
+        )
+        .unwrap();
+        let rust_pairs: Vec<Vec<serde_json::Value>> = rust
+            .items
+            .iter()
+            .map(|d| {
+                vec![
+                    serde_json::json!(d.name),
+                    serde_json::json!(d.works_count),
+                    serde_json::json!(d.studios_count),
+                ]
+            })
+            .collect();
+        let py_pairs = py_pages[i]["pairs"].clone();
+
+        assert_eq!(
+            serde_json::json!(rust_pairs),
+            py_pairs,
+            "探针 {:?}（第 {} 页，每页 {}）两边不一致",
+            query,
+            page,
+            size
+        );
+        assert_eq!(
+            rust.total,
+            py_pages[i]["total"].as_i64().unwrap(),
+            "探针 {:?} 的 total 两边不一致",
+            query
+        );
+        // 防空转：整表那几页必须真的取到东西，否则两条空列表相等也算通过。
+        if query.is_empty() {
+            assert!(rust.total > 1000 && !rust.items.is_empty(), "导演库取空了，这条对拍没测到东西");
+        }
+    }
+
+    // `LaRue` 命中的是一对只差大小写的名字 —— 顺带钉住两边的 LIKE 都是 ASCII 不区分大小写。
+    assert_eq!(py_pages[3]["total"].as_i64().unwrap(), 4, "LaRue 的命中数变了，探针要跟着调");
+    // 通配符那两条两边都是 0，但 0 本身可能是「本来就没这种东西」——
+    // 补一条控制查询证明去掉转义就会命中一大片。
+    let wildcard_control: i64 = conn
+        .query_row("SELECT count(*) FROM directors WHERE name LIKE '%%%'", [], |r| r.get(0))
+        .unwrap();
+    assert!(wildcard_control > 1000, "控制查询只命中 {} 条，转义那两条等于没测", wildcard_control);
+
+    // 作品：一位真导演（走 junction）与一个查无此人（必须两边都空而不是报错）。
+    let request = serde_json::json!({
+        "op": "director_works",
+        "names": ["Chi Chi LaRue", "No Such Director At All"],
+    })
+    .to_string();
+    let py_works = run_driver(&root, &py, &request);
+
+    for (i, name) in ["Chi Chi LaRue", "No Such Director At All"].iter().enumerate() {
+        let rust = gpdb_core::queries::directors::get_director_works(&conn, name.to_string()).unwrap();
+        let rust_ids: Vec<i64> = rust.movies.iter().map(|m| m.id).collect();
+        let py_ids: Vec<i64> = py_works["works"][i]["ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_i64().unwrap())
+            .collect();
+        assert_eq!(rust_ids, py_ids, "{} 的作品清单两边不一致", name);
+        assert_eq!(rust.movies_count, rust_ids.len() as i64, "{} 的 movies_count 与列表长度不符", name);
+    }
+    assert!(
+        gpdb_core::queries::directors::get_director_works(&conn, "Chi Chi LaRue".to_string())
+            .unwrap()
+            .movies_count
+            > 100,
+        "Chi Chi LaRue 的作品太少，这条对拍会退化成没测"
+    );
 }
 
 /// 词表读取：同一个库，Rust 与 server.py 必须给出同一份 {en: zh}。

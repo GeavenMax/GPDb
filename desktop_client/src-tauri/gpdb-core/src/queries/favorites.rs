@@ -85,19 +85,19 @@ pub fn get_favorites(conn: &Connection) -> Result<FavoritesResponse> {
         .map_err(|e| e.to_string())?;
     out.episode = rows.filter_map(|r| r.ok()).collect();
 
-    // Studios and directors exist only as columns on movies, so the card shows the
-    // name plus how many works the library holds for it.
-    for (etype, column) in [("studio", "studio_name"), ("director", "director_name")] {
+    // A studio exists only as a column on movies, so its card shows the name plus how
+    // many works the library holds for it.
+    {
         let mut stmt = conn
-            .prepare(&format!(
+            .prepare(
                 "SELECT f.entity_key, f.created_at, \
-                        (SELECT COUNT(*) FROM movies WHERE {} = f.entity_key) \
-                 FROM user_favorites f WHERE f.entity_type = ?1 ORDER BY f.created_at DESC",
-                column
-            ))
+                        (SELECT COUNT(*) FROM movies WHERE studio_name = f.entity_key) \
+                 FROM user_favorites f WHERE f.entity_type = 'studio' \
+                 ORDER BY f.created_at DESC",
+            )
             .map_err(|e| e.to_string())?;
         let rows = stmt
-            .query_map(params![etype], |r| {
+            .query_map([], |r| {
                 let key: String = r.get(0)?;
                 Ok(FavoriteItem {
                     name: Some(key.clone()),
@@ -108,12 +108,42 @@ pub fn get_favorites(conn: &Connection) -> Result<FavoritesResponse> {
                 })
             })
             .map_err(|e| e.to_string())?;
-        let items: Vec<FavoriteItem> = rows.filter_map(|r| r.ok()).collect();
-        out.counts.insert(etype.to_string(), items.len() as i64);
-        match etype {
-            "studio" => out.studio = items,
-            _ => out.director = items,
-        }
+        out.studio = rows.filter_map(|r| r.ok()).collect();
+        out.counts.insert("studio".into(), out.studio.len() as i64);
+    }
+
+    // A director is the one favorite type with a real table behind it, so the count has
+    // to go through the junction. Counting `movies.director_name = entity_key` — which is
+    // what this did — only ever found the films they directed *alone*: names in that
+    // column are joined with " / " on rows scraped after the parser fix, and on earlier
+    // rows several names sit glued together with no separator at all. Chris Ward reads 89
+    // that way against 274 real films. db_manager.get_favorites carried the same bug and
+    // was fixed in step.
+    {
+        let mut stmt = conn
+            .prepare(
+                "SELECT f.entity_key, f.created_at, \
+                        (SELECT COUNT(*) FROM movie_directors md \
+                         JOIN directors d ON d.id = md.director_id \
+                         WHERE d.name = f.entity_key) \
+                 FROM user_favorites f WHERE f.entity_type = 'director' \
+                 ORDER BY f.created_at DESC",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |r| {
+                let key: String = r.get(0)?;
+                Ok(FavoriteItem {
+                    name: Some(key.clone()),
+                    key,
+                    created_at: r.get(1)?,
+                    works_count: r.get(2)?,
+                    ..Default::default()
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        out.director = rows.filter_map(|r| r.ok()).collect();
+        out.counts.insert("director".into(), out.director.len() as i64);
     }
 
     out.counts.insert("movie".into(), out.movie.len() as i64);

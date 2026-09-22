@@ -1,9 +1,9 @@
-//! Paged browse commands: films, performers and their facets, studios, episodes,
-//! categories, and the library-wide counts.
+//! Paged browse commands: films, performers and their facets, studios, directors,
+//! episodes, categories, and the library-wide counts.
 
 use gpdb_core::models::{
-    DatabaseStats, EpisodeLibrary, FilterArgs, Glossaries, MoviesResponse, PerformerFacets,
-    PerformerFilterArgs, PerformersResponse, StudioLibrary,
+    DatabaseStats, DirectorLibrary, EpisodeLibrary, FilterArgs, Glossaries, MoviesResponse,
+    PerformerFacets, PerformerFilterArgs, PerformersResponse, StudioLibrary,
 };
 use gpdb_core::queries;
 
@@ -56,6 +56,18 @@ pub fn get_studio_library(
 ) -> Result<StudioLibrary, String> {
     let conn = open_db()?;
     queries::studios::get_studio_library(&conn, query, sort_by, page, page_size)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_director_library(
+    query: Option<String>,
+    sort_by: Option<String>,
+    page: Option<i64>,
+    page_size: Option<i64>,
+) -> Result<DirectorLibrary, String> {
+    let conn = open_db()?;
+    queries::directors::get_director_library(&conn, query, sort_by, page, page_size)
         .map_err(|e| e.to_string())
 }
 

@@ -120,6 +120,45 @@ export interface StudioWorks {
   episodes_count: number;
 }
 
+/** Sort keys accepted by the director library, on both the HTTP and Tauri paths. */
+export type DirectorSortBy = 'works_desc' | 'name_asc';
+
+/**
+ * One row of the director library grid.
+ *
+ * Unlike a studio, a director is a real record — `directors` has one row per person
+ * and `movie_directors` links them to films — but there is still no portrait, so the
+ * card is a letter tile. Both counts are computed live from the junction table:
+ * `directors.works_count` is a denormalized column the everyday scrapers never
+ * refresh, and behind it `movies.director_name` is a legacy string that holds several
+ * glued names, so counting through either one undercounts anyone who shared a credit.
+ */
+export interface DirectorSummary {
+  id: number;
+  name: string;
+  works_count: number;
+  studios_count: number;
+}
+
+export interface DirectorLibraryResponse {
+  items: DirectorSummary[];
+  total: number;
+}
+
+/**
+ * A director's films, as the detail modal shows them.
+ *
+ * Keyed by name rather than id because that is how `user_favorites` stores a director,
+ * so the 我的收藏 page can open one without resolving an id first. Films only: there is
+ * no episode↔director table, so a director's work is movies. The collaborating studios
+ * and the year list are derived from `movies` in the modal — no extra query.
+ */
+export interface DirectorWorks {
+  name: string;
+  movies: Movie[];
+  movies_count: number;
+}
+
 /** An episode's cast, as the library cards need it: id to open, name to label. */
 export interface EpisodeCastRef {
   id: number;
@@ -314,7 +353,14 @@ export interface FilterState {
 export type FavoriteType = 'movie' | 'performer' | 'studio' | 'director' | 'episode';
 
 /** Every top-level view, i.e. everything the sidebar can switch to. */
-export type AppTab = 'movies' | 'performers' | 'studios' | 'episodes' | 'favorites' | 'settings';
+export type AppTab =
+  | 'movies'
+  | 'performers'
+  | 'studios'
+  | 'directors'
+  | 'episodes'
+  | 'favorites'
+  | 'settings';
 
 export const FAVORITE_TYPES: FavoriteType[] = ['movie', 'performer', 'studio', 'director', 'episode'];
 

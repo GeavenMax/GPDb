@@ -15,6 +15,9 @@ import type {
   StudioLibraryResponse,
   StudioSortBy,
   StudioWorks,
+  DirectorLibraryResponse,
+  DirectorSortBy,
+  DirectorWorks,
   EpisodeFilterState,
   EpisodeLibraryResponse,
   EpisodeSortBy,
@@ -842,6 +845,56 @@ export const api = {
       if (res.ok) return await res.json();
     } catch {}
     return { studio_name: studioName, movies: [], movies_count: 0, episodes: [], episodes_count: 0 };
+  },
+
+  /**
+   * The director library grid, paged and searchable by name.
+   *
+   * The director analogue of `getStudioLibrary()`, and the same warning applies:
+   * both branches are needed. A missing Tauri branch silently renders the empty
+   * fallback in the desktop build, and a missing HTTP branch does the same in the
+   * browser, with no error either way.
+   */
+  async getDirectorLibrary(
+    query: string = '',
+    sortBy: DirectorSortBy = 'works_desc',
+    page: number = 1,
+    pageSize: number = 24
+  ): Promise<DirectorLibraryResponse> {
+    if (isTauri) {
+      return tauriInvoke<DirectorLibraryResponse>('get_director_library', {
+        query, sortBy, page, pageSize,
+      });
+    }
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        sortBy,
+      });
+      if (query) params.set('query', query);
+      const res = await fetch(`/api/director-library?${params.toString()}`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return { items: [], total: 0 };
+  },
+
+  /**
+   * One director's films, for the detail modal. Keyed by name, because that is how
+   * `user_favorites` stores a director.
+   *
+   * An unknown name is not an error: a favorite saved before the director roster was
+   * parsed can hold a whole glued string, and the endpoint answers with no films.
+   */
+  async getDirectorWorks(directorName: string): Promise<DirectorWorks> {
+    if (isTauri) {
+      return tauriInvoke<DirectorWorks>('get_director_works', { directorName });
+    }
+    try {
+      const res = await fetch(`/api/directors/${encodeURIComponent(directorName)}/works`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return { name: directorName, movies: [], movies_count: 0 };
   },
 };
 

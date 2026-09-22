@@ -24,6 +24,8 @@ pub fn run() {
             commands::library::get_studios,
             commands::library::get_studio_library,
             commands::detail::get_studio_works,
+            commands::library::get_director_library,
+            commands::detail::get_director_works,
             commands::library::get_episode_library,
             commands::library::get_categories,
             commands::library::get_glossaries,

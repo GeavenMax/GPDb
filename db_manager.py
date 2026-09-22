@@ -1040,18 +1040,36 @@ class DatabaseManager:
             for r in cur.fetchall()
         ]
 
-        # Studios / directors live only as columns on movies, so the card just needs
-        # the name plus how many works we hold for it.
-        for etype, column in (("studio", "studio_name"), ("director", "director_name")):
-            cur.execute(f"""
-                SELECT f.entity_key, f.created_at,
-                       (SELECT COUNT(*) FROM movies WHERE {column} = f.entity_key)
-                FROM user_favorites f WHERE f.entity_type = ? ORDER BY f.created_at DESC
-            """, (etype,))
-            out[etype] = [
-                {"key": r[0], "created_at": r[1], "name": r[0], "works_count": r[2]}
-                for r in cur.fetchall()
-            ]
+        # A studio exists only as a column on movies, so its card just needs the name
+        # plus how many works we hold for it.
+        cur.execute("""
+            SELECT f.entity_key, f.created_at,
+                   (SELECT COUNT(*) FROM movies WHERE studio_name = f.entity_key)
+            FROM user_favorites f WHERE f.entity_type = 'studio' ORDER BY f.created_at DESC
+        """)
+        out["studio"] = [
+            {"key": r[0], "created_at": r[1], "name": r[0], "works_count": r[2]}
+            for r in cur.fetchall()
+        ]
+
+        # A director is the one favorite type with a real table behind it, so its count
+        # has to go through the junction. Counting `movies.director_name = entity_key` —
+        # which is what this did — only ever found the films they directed *alone*:
+        # those names are joined with " / " on rows scraped after the parser fix, and on
+        # earlier rows several names sit glued together with no separator at all. Chris
+        # Ward reads 89 that way against 274 real films. queries/favorites.rs is the
+        # same query and has to change with this one.
+        cur.execute("""
+            SELECT f.entity_key, f.created_at,
+                   (SELECT COUNT(*) FROM movie_directors md
+                    JOIN directors d ON d.id = md.director_id
+                    WHERE d.name = f.entity_key)
+            FROM user_favorites f WHERE f.entity_type = 'director' ORDER BY f.created_at DESC
+        """)
+        out["director"] = [
+            {"key": r[0], "created_at": r[1], "name": r[0], "works_count": r[2]}
+            for r in cur.fetchall()
+        ]
 
         return out
 
@@ -1256,6 +1274,105 @@ class DatabaseManager:
             for r in cur.fetchall()
         ]
         return items, total
+
+    def list_directors(self, query: str = "", sort: str = "works",
+                       limit: int = 24, offset: int = 0) -> tuple[list[dict], int]:
+        """One page of the director library, plus how many directors match the search.
+
+        Kept in step with gpdb_core's queries::directors::get_director_library, which
+        serves the desktop build the same page.
+
+        Both counts are computed live from `movie_directors`. `directors.works_count`
+        looks like the cheaper source and is wrong: only `scraper_v2.py --mode
+        directors` ever refreshes it, while the everyday scrapers add links without
+        touching it (SUM(works_count) is 37,261 against 37,502 links).
+
+        LEFT JOIN, not JOIN: 107 directors have no link at all, and a library whose
+        whole purpose is to hold everybody cannot drop them — they come back at 0.
+
+        `d.id ASC` last is what makes the ordering total. 1,304 directors have exactly
+        one film and 20 pairs of names differ only by case (Chi Chi LaRue / Chi Chi
+        Larue), so both orderings tie constantly; without it a different LIMIT/OFFSET
+        may order the tied rows differently and the same director turns up on two
+        pages while another is never shown.
+        """
+        query = query.strip()
+        where = ""
+        args: list = []
+        if query:
+            where = "WHERE (d.name LIKE ? ESCAPE '\\' OR d.site_id = ?)"
+            # The search box is free text, so % and _ must reach LIKE as literals.
+            escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            args.append(f"%{escaped}%")
+            # A director is also reachable by the id the site gives them, matching the
+            # performer list's `name LIKE ? OR id = ?`. Rust parses that probe with
+            # i64::from_str, which refuses underscores and non-ASCII digits where
+            # Python's int() accepts both ("1_0" -> 10, "１２３" -> 123), so anything
+            # but plain ASCII digits is treated as "not an id" on both sides.
+            probe = query[1:] if query[:1] in "+-" else query
+            args.append(int(query) if probe.isascii() and probe.isdigit() else -1)
+
+        order = {
+            "name": "d.name COLLATE NOCASE ASC, d.id ASC",
+        }.get(sort, "works_count DESC, d.name COLLATE NOCASE ASC, d.id ASC")
+
+        # The conditions all constrain `directors` alone, so the same clause counts the
+        # total without dragging the joins along — the two cannot disagree about which
+        # rows match.
+        row = self.conn.execute(
+            f"SELECT count(*) FROM directors d {where}", args
+        ).fetchone()
+        total = row[0] if row else 0
+
+        # NULLIF/trim so a blank studio_name counts as "no studio" rather than as a
+        # studio of its own; count(DISTINCT) skips the NULLs that leaves behind.
+        cur = self.conn.execute(f"""
+            SELECT d.id, d.name,
+                   count(md.movie_id) AS works_count,
+                   count(DISTINCT NULLIF(trim(m.studio_name), '')) AS studios_count
+            FROM directors d
+            LEFT JOIN movie_directors md ON md.director_id = d.id
+            LEFT JOIN movies m ON m.id = md.movie_id
+            {where}
+            GROUP BY d.id
+            ORDER BY {order}
+            LIMIT ? OFFSET ?
+        """, [*args, limit, offset])
+        items = [
+            {"id": r[0], "name": r[1], "works_count": r[2], "studios_count": r[3]}
+            for r in cur.fetchall()
+        ]
+        return items, total
+
+    def get_director_works(self, name: str) -> list[dict]:
+        """Every film the library credits to one director, newest first.
+
+        Mirrors gpdb_core's queries::directors::get_director_works — including where it
+        gets the films from: `movie_directors`, never `movies.director_name`, which is
+        the legacy glued string and undercounts anyone who ever shared a credit (Chris
+        Ward reads 89 there against 274 here).
+
+        An unknown name is not an error. A favorite saved before the roster was parsed
+        can hold a whole glued string, and "no films" is the honest answer for it.
+
+        Same 17 columns the studio route selects, so a card renders identically
+        whichever route it arrived on.
+        """
+        cur = self.conn.execute("""
+            SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year,
+                   m.duration_mins, m.category, m.rating, m.movie_type,
+                   m.description, m.description_zh, m.cover_icon, m.cover_full,
+                   m.covers_json, m.director_id, m.director_name, m.title_zh
+            FROM movies m
+            JOIN movie_directors md ON md.movie_id = m.id
+            JOIN directors d ON d.id = md.director_id
+            WHERE d.name = ?
+            ORDER BY m.release_year DESC, m.id DESC
+        """, (name,))
+        # Column names come off the cursor rather than a second hand-written list, so a
+        # column added above cannot end up under the wrong key.
+        cols = [c[0] for c in cur.description]
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
 
     def list_episodes(self, query: str = "", sort: str = "id_desc", studio: str = "",
                       has_zh: bool = False, has_performers: bool = False,

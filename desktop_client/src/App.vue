@@ -6,6 +6,7 @@ import MovieCard from './components/MovieCard.vue';
 import MovieDetailModal from './components/MovieDetailModal.vue';
 import PerformerDetailModal from './components/PerformerDetailModal.vue';
 import StudioDetailModal from './components/StudioDetailModal.vue';
+import DirectorDetailModal from './components/DirectorDetailModal.vue';
 import EpisodeCard from './components/EpisodeCard.vue';
 import EpisodeDetailModal from './components/EpisodeDetailModal.vue';
 import ImageLightbox from './components/ImageLightbox.vue';
@@ -39,6 +40,9 @@ import type {
   StudioSummary,
   StudioSortBy,
   StudioWorks,
+  DirectorSummary,
+  DirectorSortBy,
+  DirectorWorks,
   EpisodeSummary,
   EpisodeSortBy,
   EpisodeFilterState,
@@ -49,6 +53,7 @@ import { titlePrimary, titleSecondary, sceneFilm } from './utils/bilingual';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
+  Megaphone,
 } from '@lucide/vue';
 
 /** Labels for the five favorites sections and the type pickers. */
@@ -83,6 +88,22 @@ const studioSortBy = ref<StudioSortBy>('works_desc');
 const STUDIO_SORTS = [
   { id: 'works_desc', label: '按作品数' },
   { id: 'episodes_desc', label: '按片段数' },
+  { id: 'name_asc', label: '按名称' },
+] as const;
+
+/**
+ * The director library. Rows carry a real id, unlike studios, but the grid is keyed
+ * by name anyway — that is what `user_favorites` stores for a director, so the
+ * favorites page and this grid address the same person the same way.
+ */
+const directorRows = ref<DirectorSummary[]>([]);
+const totalDirectorRows = ref(0);
+const directorQuery = ref('');
+const directorSortBy = ref<DirectorSortBy>('works_desc');
+
+/** Orderings offered on the director tab. Two is enough: count, or name. */
+const DIRECTOR_SORTS = [
+  { id: 'works_desc', label: '按作品数' },
   { id: 'name_asc', label: '按名称' },
 ] as const;
 
@@ -166,6 +187,15 @@ const studioWorks = ref<StudioWorks | null>(null);
 const studioWorksLoading = ref(false);
 
 /**
+ * The director being viewed, and their films. Fetched here so the modal stays
+ * presentational, exactly like the studio one. `id` is only present when the modal
+ * was opened from the grid; the favorites page has nothing but the name.
+ */
+const selectedDirector = ref<{ id?: number; name: string } | null>(null);
+const directorWorks = ref<DirectorWorks | null>(null);
+const directorWorksLoading = ref(false);
+
+/**
  * The scene being viewed. Unlike the studio, everything it shows is already in the
  * grid row it was opened from, so there is nothing to fetch — only the neighbour
  * lookup for ‹ / › needs the list it was opened in.
@@ -181,7 +211,7 @@ const episodeList = ref<EpisodeSummary[]>([]);
  * which one sits on top. Openers push to the end; the last entry gets the highest
  * layer.
  */
-type ModalKind = 'movie' | 'performer' | 'studio' | 'episode';
+type ModalKind = 'movie' | 'performer' | 'studio' | 'director' | 'episode';
 
 const modalStack = ref<ModalKind[]>([]);
 
@@ -329,6 +359,7 @@ const listMode = ref<'scroll' | 'paged'>(
 const moviePage = ref(1);
 const performerPage = ref(1);
 const studioPage = ref(1);
+const directorPage = ref(1);
 const episodePage = ref(1);
 const isLoading = ref(false);
 const isLoadingMore = ref(false);
@@ -352,6 +383,7 @@ function goToPage(n: number) {
   if (currentTab.value === 'movies') fetchMovies(true, n);
   else if (currentTab.value === 'performers') fetchPerformers(true, n);
   else if (currentTab.value === 'studios') fetchStudios(true, n);
+  else if (currentTab.value === 'directors') fetchDirectors(true, n);
   else if (currentTab.value === 'episodes') fetchEpisodes(true, n);
   scrollContainerRef.value?.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -361,6 +393,7 @@ function reloadCurrentTab() {
   if (currentTab.value === 'movies') fetchMovies(true);
   else if (currentTab.value === 'performers') fetchPerformers(true);
   else if (currentTab.value === 'studios') fetchStudios(true);
+  else if (currentTab.value === 'directors') fetchDirectors(true);
   else if (currentTab.value === 'episodes') fetchEpisodes(true);
   else return;
   nextTick(() => fillViewport());
@@ -587,6 +620,12 @@ function resetStudioFilters() {
   studioSortBy.value = 'works_desc';
 }
 
+/** Same for the director tab. */
+function resetDirectorFilters() {
+  directorQuery.value = '';
+  directorSortBy.value = 'works_desc';
+}
+
 async function loadCacheStats() {
   cacheStats.value = await api.getCacheStats();
 }
@@ -767,6 +806,40 @@ async function loadMoreStudios() {
   await fetchStudios(false, studioPage.value + 1);
 }
 
+async function fetchDirectors(replace = true, targetPage = 1) {
+  directorPage.value = targetPage;
+  if (replace) isLoading.value = true;
+  else isLoadingMore.value = true;
+
+  try {
+    const res = await api.getDirectorLibrary(
+      directorQuery.value, directorSortBy.value, directorPage.value, pageSize.value
+    );
+    if (replace) {
+      directorRows.value = res.items;
+    } else {
+      // Deduped by id, not by name as studios are: 20 pairs of directors differ only
+      // by case (Chi Chi LaRue / Chi Chi Larue), and a name-keyed filter would drop
+      // the second of a pair from the loaded window.
+      const existing = new Set(directorRows.value.map(d => d.id));
+      directorRows.value.push(...res.items.filter(d => !existing.has(d.id)));
+    }
+    totalDirectorRows.value = res.total;
+    loadError.value = '';
+  } catch (err) {
+    reportLoadError(err);
+  } finally {
+    isLoading.value = false;
+    isLoadingMore.value = false;
+  }
+}
+
+async function loadMoreDirectors() {
+  if (isLoading.value || isLoadingMore.value) return;
+  if (directorRows.value.length >= totalDirectorRows.value) return;
+  await fetchDirectors(false, directorPage.value + 1);
+}
+
 async function fetchEpisodes(replace = true, targetPage = 1) {
   episodePage.value = targetPage;
   if (replace) isLoading.value = true;
@@ -827,6 +900,8 @@ function handleScroll() {
     if (!isLoading.value && !isLoadingMore.value && performers.value.length < totalPerformers.value) loadMorePerformers();
   } else if (currentTab.value === 'studios') {
     if (!isLoading.value && !isLoadingMore.value && studioRows.value.length < totalStudioRows.value) loadMoreStudios();
+  } else if (currentTab.value === 'directors') {
+    if (!isLoading.value && !isLoadingMore.value && directorRows.value.length < totalDirectorRows.value) loadMoreDirectors();
   } else if (currentTab.value === 'episodes') {
     if (!isLoading.value && !isLoadingMore.value && episodeRows.value.length < totalEpisodeRows.value) loadMoreEpisodes();
   }
@@ -854,6 +929,9 @@ async function fillViewport() {
     } else if (currentTab.value === 'studios') {
       if (isLoading.value || isLoadingMore.value || studioRows.value.length >= totalStudioRows.value) return;
       await loadMoreStudios();
+    } else if (currentTab.value === 'directors') {
+      if (isLoading.value || isLoadingMore.value || directorRows.value.length >= totalDirectorRows.value) return;
+      await loadMoreDirectors();
     } else if (currentTab.value === 'episodes') {
       if (isLoading.value || isLoadingMore.value || episodeRows.value.length >= totalEpisodeRows.value) return;
       await loadMoreEpisodes();
@@ -869,12 +947,14 @@ const searchQuery = computed({
   get: () => {
     if (currentTab.value === 'performers') return performerFilters.query;
     if (currentTab.value === 'studios') return studioQuery.value;
+    if (currentTab.value === 'directors') return directorQuery.value;
     if (currentTab.value === 'episodes') return episodeQuery.value;
     return filters.query;
   },
   set: (val: string) => {
     if (currentTab.value === 'performers') performerFilters.query = val;
     else if (currentTab.value === 'studios') studioQuery.value = val;
+    else if (currentTab.value === 'directors') directorQuery.value = val;
     else if (currentTab.value === 'episodes') episodeQuery.value = val;
     else filters.query = val;
   },
@@ -905,6 +985,11 @@ watch([studioQuery, studioSortBy], () => {
   if (currentTab.value === 'studios') reloadCurrentTab();
 });
 
+// Same for directors: a search box and a sort, no drawer.
+watch([directorQuery, directorSortBy], () => {
+  if (currentTab.value === 'directors') reloadCurrentTab();
+});
+
 // Episodes take both: a sort control in the toolbar (as studios do) and a drawer
 // for the three filters, which is where the sort also lives.
 watch([episodeQuery, episodeSortBy, episodeFilters], () => {
@@ -922,6 +1007,8 @@ watch(currentTab, (newTab) => {
     loadPerformerFacets();
   } else if (newTab === 'studios') {
     if (studioRows.value.length === 0) reloadCurrentTab();
+  } else if (newTab === 'directors') {
+    if (directorRows.value.length === 0) reloadCurrentTab();
   } else if (newTab === 'episodes') {
     if (episodeRows.value.length === 0) reloadCurrentTab();
   } else if (newTab === 'favorites') {
@@ -953,6 +1040,17 @@ function togglePerformerFavorite(p: Performer) {
 /** Studios have no id — the name is the key, here and in the library filter. */
 function toggleStudioFavorite(name: string) {
   void toggleFavoriteEntity('studio', name);
+}
+
+/**
+ * Favoriting a director stores the *name*, the way studios do — and, as with studios,
+ * that key is case-sensitive: hearting `Chi Chi LaRue` leaves the separate `Chi Chi
+ * Larue` row un-hearted even though one search shows both. Merging the two would mean
+ * picking a canonical spelling for people the site itself spells two ways, so the two
+ * rows stay two rows.
+ */
+function toggleDirectorFavorite(name: string) {
+  void toggleFavoriteEntity('director', name);
 }
 
 /** Episodes key on their row id, like films. */
@@ -1099,6 +1197,7 @@ function closeAllModals() {
   if (selectedMovie.value) closeMovieDetail();
   if (selectedPerformer.value) closePerformerDetail();
   if (selectedStudio.value) closeStudioDetail();
+  if (selectedDirector.value) closeDirectorDetail();
   if (selectedEpisode.value) closeEpisodeDetail();
 }
 
@@ -1125,6 +1224,7 @@ function handleNavClick(tab: AppTab) {
   if (tab === 'movies') resetMovieFilters();
   else if (tab === 'performers') resetPerformerFilters();
   else if (tab === 'studios') resetStudioFilters();
+  else if (tab === 'directors') resetDirectorFilters();
   else if (tab === 'episodes') resetEpisodeFilters();
   else return;   // favorites / settings have nothing to clear
 
@@ -1184,6 +1284,50 @@ function closeStudioDetail() {
   selectedStudio.value = null;
   studioWorks.value = null;
   popModal('studio');
+}
+
+/**
+ * Open a director's page.
+ *
+ * Same shape as `openStudioDetail`: the grid has an id but the favorites page has
+ * only a name, and every path fetches the films from the name anyway, so the id is
+ * carried purely for the display.
+ */
+async function openDirectorDetail(director: { id?: number; name: string }) {
+  pushModal('director');
+  selectedDirector.value = director;
+  directorWorks.value = null;
+  directorWorksLoading.value = true;
+  try {
+    const works = await api.getDirectorWorks(director.name);
+    // A slower fetch for director A must not land on top of director B's page.
+    if (selectedDirector.value?.name === director.name) directorWorks.value = works;
+  } finally {
+    directorWorksLoading.value = false;
+  }
+}
+
+function closeDirectorDetail() {
+  selectedDirector.value = null;
+  directorWorks.value = null;
+  popModal('director');
+}
+
+/**
+ * Jump to the 片商库, filtered to one studio.
+ *
+ * Distinct from `filterByStudio`, which drops you into the *movie* grid: this is the
+ * studio-library analogue, used by the chip row on a director's page.
+ *
+ * The tab is set before the query, and that order matters: the
+ * `[studioQuery, studioSortBy]` watcher only refetches while the studio tab is
+ * current, so writing the query first would fetch nothing until the tab changed.
+ */
+function openStudioLibrary(studioName: string) {
+  closeAllModals();
+  currentTab.value = 'studios';
+  studioQuery.value = studioName;
+  fetchStudios(true);
 }
 
 /**
@@ -1292,7 +1436,7 @@ onUnmounted(() => {
           ? activePerformerFilterCount > 0
           : currentTab === 'episodes'
             ? activeEpisodeFilterCount > 0
-            : currentTab === 'studios'
+            : currentTab === 'studios' || currentTab === 'directors'
               ? false
               : Boolean(filters.studio || filters.director || filters.category || filters.sortBy !== 'year_desc')
       "
@@ -1794,6 +1938,133 @@ onUnmounted(() => {
           />
         </div>
 
+        <!-- 3b. Directors Tab — every director the library has parsed -->
+        <div v-else-if="currentTab === 'directors'" class="space-y-6">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div class="flex items-center gap-2">
+              <h1 class="text-xl font-bold text-fg tracking-tight">导演库</h1>
+              <span class="text-xs text-fg-4 font-mono">({{ directorRows.length }} / {{ totalDirectorRows.toLocaleString() }} 位)</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <!-- Sort: no filter drawer for directors either -->
+              <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
+                <button
+                  v-for="s in DIRECTOR_SORTS"
+                  :key="s.id"
+                  @click="directorSortBy = s.id"
+                  :class="[
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    directorSortBy === s.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
+                  ]"
+                >
+                  {{ s.label }}
+                </button>
+              </div>
+
+              <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
+                <button
+                  v-for="m in [
+                    { id: 'scroll', label: '滑动加载' },
+                    { id: 'paged', label: '翻页' }
+                  ]"
+                  :key="m.id"
+                  @click="setListMode(m.id as 'scroll' | 'paged')"
+                  :class="[
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
+                  ]"
+                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                >
+                  {{ m.label }}
+                </button>
+              </div>
+
+              <!-- Grid columns adjuster -->
+              <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
+                <span class="text-fg-4 text-[11px]">每行</span>
+                <button
+                  @click="decreaseCols"
+                  :disabled="activeCols <= 2"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
+                  title="减少每行列数"
+                >
+                  &lt;
+                </button>
+                <span class="w-5 text-center font-mono font-bold text-accent">{{ activeCols }}</span>
+                <button
+                  @click="increaseCols"
+                  :disabled="activeCols >= activeColsMax"
+                  class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
+                  title="增加每行列数"
+                >
+                  &gt;
+                </button>
+                <span class="text-fg-4 text-[11px]">列</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- No portrait exists for a director, so the tile is the first letter,
+               as on the studio cards. -->
+          <div
+            v-if="directorRows.length > 0"
+            class="grid gap-4 transition-all duration-200"
+            :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
+          >
+            <div
+              v-for="d in directorRows"
+              :key="d.id"
+              @click="openDirectorDetail(d)"
+              class="p-4 rounded-2xl bg-surface/60 border border-line hover:border-accent-fill/40 hover:bg-surface transition-all cursor-pointer flex flex-col items-center text-center group"
+            >
+              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-line-strong/60 group-hover:ring-accent-fill/50 transition">
+                <div class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-2xl font-black text-on-fill/70">
+                  {{ d.name.charAt(0).toUpperCase() }}
+                </div>
+              </div>
+              <h3 class="text-xs font-semibold text-fg-2 mt-3 group-hover:text-accent transition truncate w-full">
+                {{ d.name }}
+              </h3>
+              <div class="text-[10px] text-fg-4 mt-1">{{ d.works_count }} 部作品</div>
+              <div v-if="d.studios_count" class="text-[10px] text-fg-5 mt-0.5">
+                {{ d.studios_count }} 家片商
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
+            <Megaphone class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
+            <div class="text-sm font-semibold text-fg-3">没有符合条件的导演</div>
+            <div class="text-xs text-fg-5">试试更换关键词，或清空搜索框</div>
+          </div>
+
+          <!-- Infinite-scroll footer -->
+          <div v-if="listMode === 'scroll' && directorRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
+            <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
+              <Loader2 class="w-4 h-4 animate-spin" />
+              <span>滑动加载更多导演中...</span>
+            </div>
+            <div v-else-if="directorRows.length >= totalDirectorRows && totalDirectorRows > 0" class="flex items-center gap-2 text-fg-4 text-xs">
+              <span class="w-12 h-px bg-surface-2"></span>
+              <span>已加载全部 {{ totalDirectorRows.toLocaleString() }} 位导演</span>
+              <span class="w-12 h-px bg-surface-2"></span>
+            </div>
+          </div>
+
+          <PaginationBar
+            v-if="listMode === 'paged' && directorRows.length > 0"
+            :page="directorPage"
+            :page-size="pageSize"
+            :total="totalDirectorRows"
+            :loading="isLoading"
+            :page-size-options="PAGE_SIZE_OPTIONS"
+            @update:page="goToPage"
+            @update:page-size="setPageSize"
+          />
+        </div>
+
         <!-- 4. Episodes Tab — the whole episodes table, browsable on its own -->
         <div v-else-if="currentTab === 'episodes'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
@@ -2147,7 +2418,11 @@ onUnmounted(() => {
                   :key="f.key"
                   class="group flex items-center gap-2 pl-3 pr-1.5 py-1.5 rounded-xl bg-surface/70 border border-line hover:border-accent-fill/50 transition"
                 >
-                  <button @click="filterByDirector(f.key)" class="text-xs font-medium text-fg-2 hover:text-accent-soft transition" :title="`查看 ${f.key} 导演的全部影片`">
+                  <button
+                    @click="openDirectorDetail({ name: f.key })"
+                    class="text-xs font-medium text-fg-2 hover:text-accent-soft transition"
+                    :title="`打开 ${f.key} 的导演档案`"
+                  >
                     {{ f.key }}
                   </button>
                   <span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-fg-4 font-mono">{{ f.works_count || 0 }}</span>
@@ -2779,6 +3054,22 @@ onUnmounted(() => {
       @select-movie-id="openMovieDetailById"
       @toggle-favorite="toggleStudioFavorite"
       @toggle-entity-favorite="toggleFavoriteEntity"
+    />
+
+    <DirectorDetailModal
+      :director="selectedDirector"
+      :works="directorWorks"
+      :loading="directorWorksLoading"
+      :lang="descLang"
+      :z-index="layerOf('director')"
+      :is-top="modalStack[modalStack.length - 1] === 'director'"
+      :is-favorite="selectedDirector ? isFavorite('director', selectedDirector.name) : false"
+      :favorite-keys="favorites"
+      @close="closeDirectorDetail"
+      @select-movie="openMovieDetail"
+      @toggle-favorite="toggleDirectorFavorite"
+      @toggle-entity-favorite="toggleFavoriteEntity"
+      @open-studio="openStudioLibrary"
     />
 
     <EpisodeDetailModal

@@ -14,8 +14,8 @@
 
 - 项目根：`/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database`
 - 主库：`gevi.db`（约 300 MB）
-- 分支：`gevi-plus`。本轮之前最后提交 `16fefee`；本轮成果已拆成 5 个提交
-  `f540530` → `6eb0d65`（明细见 §4.1）
+- 分支：`gevi-plus`。更早一轮成果拆成 5 个提交 `f540530` → `6eb0d65`（明细见 §4.2）；
+  本轮（导演库）的提交见 §4.1
 - 后端：Python 3 **纯标准库**，`python3 server.py` 起在 **8787** 端口
 - 桌面端：Tauri v2 + Vue 3，Rust 侧核心逻辑在 `desktop_client/src-tauri/gpdb-core/`
 
@@ -56,8 +56,8 @@
 | └ 隶属影片的分集 | 32,125 |
 | movie_performers | 450,697 |
 | episode_performers | 272,462 |
-| directors / movie_directors | 3,077 / 37,502 |
-| 片商（distinct `movies.studio_id`） | 2,411（最大 id 8,175 = **站点公司 id 的上限**，见 §4.3） |
+| directors / movie_directors | 3,077 / 37,502（导演库入口，见 §4.1） |
+| 片商（distinct `movies.studio_id`） | 2,411（最大 id 8,175 = **站点公司 id 的上限**，见 §4.4） |
 
 **翻译进度（几乎没做）**：`movies.description_zh` 2,367 / 63,238；
 `movies.title_zh` **0**；`episodes.description_zh` 77。
@@ -130,11 +130,103 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 加列要**同时**改两处：`db_manager.MIGRATIONS["<表>"]` 和 `schema.sql` 的 CREATE TABLE。
 `apply_migrations()` 是幂等的（`PRAGMA table_info` 查缺列再 `ALTER TABLE ADD COLUMN`）。
 
+### 3.6 ★ 导演身份只认 junction 表，计数一律现算
+
+两条都是踩过坑写下的，改任何导演相关查询之前先看一眼：
+
+- **`movies.director_name` 不是导演身份。** 那是分词之前遗留的粘连字符串
+  （33,757 行非空，只有 782 行带 `" / "`，其余是人名首尾相接的一整块）。
+  一律走 `movie_directors` / `directors`。
+  实测差距不是舍入误差：Chris Ward 走 junction 是 **274** 部，走那列只有 **89**。
+- **`directors.works_count` 是过期列，不要读**（原因写在 `schema.sql` §11）。
+  一律 `count(md.movie_id)` 现算。
+
+两处必须成对改：Rust 的 `queries/favorites.rs` 与 Python 的 `db_manager.get_favorites`
+各有一份同名逻辑，只改一边不会有编译错误，只会让两个前端显示不同的数字。
+
 ---
 
 ## 4. 已完成的工作
 
-### 4.1 本轮（2026-09-22）：分集高清图 + 独立分集抓取
+### 4.1 本轮（2026-09-22）：导演库
+
+用户在 `资源检索` 里要一个**导演库**：收纳全部导演、按名字检索、在导演页里检索他的作品、
+显示合作片商（点击跳片商库）、一键收藏。此前导演是**唯一一个已落库却没有任何入口**的数据——
+只在影片详情的导演 chip 和「我的收藏」的导演分组里露头。
+
+**成果**
+
+- `资源检索` 新增第六个入口「导演库」（`Megaphone` 图标，排在片商库与分集库之间），
+  桌面端与 HTTP 后端**两条路都通**。
+- 两个新查询，Rust 与 Python 各一份、语义逐字对齐（差别只有语言）：
+  `get_director_library(query, sort_by, page, page_size)` 与
+  `get_director_works(director_name)`；HTTP 侧是
+  `GET /api/director-library` 与 `GET /api/directors/<name>/works`。
+- **修了一个明明错了很久的计数**：收藏的导演作品数一直是错的，因为两边都在拿
+  `movies.director_name` 精确等值去数（见 §3.6）。库里 5 条导演收藏的真实值：
+
+  | 收藏的导演 | 修前 | 修后（正确） |
+  |---|---|---|
+  | Chi Chi LaRue | 497 | **614** |
+  | Chris Ward | 89 | **274** |
+  | Joe Gage | 155 | 160 |
+  | Tom Moore | 63 | 64 |
+  | Liam Cole | 19 | 31 |
+
+- `cargo test --workspace`：**65 passed / 0 failed**，`--nocapture` 下 0 条 `skipping:`。
+  `npx vue-tsc --noEmit` 干净。
+- 接口实测与控制 SQL 对拍：`COUNT(*) FROM directors` = 3,077；William Higgins 817 部 /
+  6 家片商，Jake Cruise 752/4，Chi Chi LaRue 614/36；Chris Ward 274 部（每条 17 个键）；
+  `%` 与 `_` 按字面量搜索返回 0（不是通配）；不存在的导演名返回 0 条而不是报错。
+
+**设计上定死的几件事（都有理由，别顺手改）**
+
+- **作品一次全量返回，不再分页。** 单人最多 817 部（William Higgins），
+  和片商详情同一个做法；片商 chip 与年份筛选因此可以纯前端算，**没有为它们新增任何 SQL**。
+- **按名字而不是 id 检索作品**（`get_director_works(name)`）：收藏是按名字存的，
+  「我的收藏」里点开导演时手上只有名字，走名字就不必先反查 id。
+- **列表用 `LEFT JOIN`**：107 位导演一条链接都没有，inner join 会让他们在导演库里凭空消失。
+- **排序带 `d.id ASC` 兜底**：1,304 位导演恰好只有一部作品，还有 20 对名字只差大小写
+  （`Chi Chi LaRue` / `Chi Chi Larue`），两种排序都会大量并列。没有兜底时 SQLite 可能
+  对不同的 LIMIT/OFFSET 给出不同的并列顺序——同一位导演会出现在两页上，另一位一次也不出现。
+  **诚实记录：把它删掉不会让任何测试变红**（试过了，SQLite 在这个查询计划下恰好按 id 顺序
+  返回并列行），所以这条是「对任何查询计划成立」的保证，不是「对今天这个计划成立」——
+  代码注释里也是这么写的，没有一个测试声称能抓住它。
+- Python 侧的数字探针（`d.site_id = ?`）用 `probe.isascii() and probe.isdigit()` 把 `int()`
+  挡住：Python 的 `int()` 接受 `"1_0"`（=10）和全角 `"１２３"`，而 Rust 的 `i64::from_str`
+  两个都拒。不加这个判断，同一个搜索词在桌面端和后端会给出不同结果。
+- **没有碰 `MOVIE_COLUMNS`**：导演作品查询复用它，新列只出现在列表查询自己的 SELECT 里，
+  所以 §3.5 的按下标读列这个风险本轮没有被引入。
+
+**改动的文件**
+
+| 文件 | 改了什么 |
+|---|---|
+| `gpdb-core/src/queries/directors.rs` | 新增（模板 `queries/studios.rs`），含上面两条查询 |
+| `gpdb-core/src/models.rs` | `DirectorSummary` / `DirectorLibrary` / `DirectorWorks` |
+| `gpdb-core/src/queries/favorites.rs` | 导演计数改走 junction（见上表） |
+| `src-tauri/src/commands/{library,detail}.rs`、`lib.rs` | 两个 Tauri 命令 + 注册 |
+| `db_manager.py` | `list_directors()` / `get_director_works()`；`get_favorites` 导演分支改走 junction |
+| `server.py` | 两个路由 + 两个 handler（改完已重启 8787） |
+| `tests/parity.rs` | 新增导演列表/搜索/作品/收藏计数四条控制 SQL 对照 |
+| `tests/category_parity.rs` | 新增跨实现对照（驱动真 `db_manager.list_directors`） |
+| `src/{types,api}.ts` | `DirectorSummary` 等类型；`getDirectorLibrary` / `getDirectorWorks`，Tauri 与 HTTP 分支都写 |
+| `src/components/Sidebar.vue` | `NAV_ITEMS` 加导演库（`loadOrder()` 自动追加新 id，无需迁移） |
+| `src/components/DirectorDetailModal.vue` | 新增。作品区纯前端：关键字（`title` + `title_zh`）、片商 chip 行、年份下拉、年份/片名排序 |
+| `src/App.vue` | 新 tab 的 17 处接线（见下方「踩过的坑」） |
+| `schema.sql` | §9 的过期注释订正；§11 补 `works_count` 不要读的说明 |
+
+**验证过的事**
+
+- 4 个变异全部被抓到：去掉 `ESCAPE '\'`、作品查询改成 `m.director_name = ?`、
+  排序去掉 `COLLATE NOCASE`、收藏计数改回 legacy 列——各自对应的测试真的红，
+  改回来后恢复绿。（唯一没被抓到的是 `d.id ASC` 兜底，已如实记录在上面。）
+- 跨实现对照测试会驱动**真的 Python**（`-c` DRIVER 程序），所以「Rust 改了、Python 没改」
+  这种单边改动会红。注意它没有共享快照，是跨进程比两份各自读的结果（别的进程在写就会假红，
+  重跑一遍再下结论）。
+- 本轮**没有动任何数据**：不跑 `refresh_director_counts`、不重抓、不改现有行。
+
+### 4.2 上一轮（2026-09-22）：分集高清图 + 独立分集抓取
 
 对应计划：`/Users/joel/.claude/plans/silly-bouncing-haven.md`
 （**注意**：Claude 的 plan 文件路径会被后续会话覆盖，尽早另存）。
@@ -146,7 +238,7 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
   它的影片」的公司**——是公司 id 探针找出来的（见下条）。
 - 公司 id 探针 1..12,000 已**全部扫完**（12:26–13:09，`scrape_progress` 里 company
   12,000 行全 200）。**这一步是一次性补齐，已经结束**：站点公司 id 上限就是 8,175
-  （证据见 §4.3），探到 12,000 纯属余量，再跑不会有新目标。
+  （证据见 §4.4），探到 12,000 纯属余量，再跑不会有新目标。
 - 已有 32,125 条的 `movie_id` **一条没变**（拿开工前快照逐行对拍，差异 0）。
 - 缩略图：**119,246 条高清（`b.jpg`），剩余低清 0 条**（剩下 15,243 条站点本身就没图，
   已用探针确认低清高清都 404）。
@@ -203,7 +295,7 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
   **它们的影片所属公司的 coep 表里根本没有这条分集**（走遍全部分页都没有），
   是站点侧的缺口，不是我们漏抓。
 
-### 4.2 更早的已完成工作（按提交）
+### 4.3 更早的已完成工作（按提交）
 
 - `16fefee` 修打包版打不开资料库（空库 ≠ 数据丢了，是找错地方）
 - `668e73b` / `d05b9c2` GPDb 应用图标，明暗与着色自适应
@@ -215,7 +307,7 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 - `d08e3af` 改名 GEVI+
 - `52d05da` 修六项缺陷：分集板块空白、分集剧照过大、导演名粘连、一级菜单、片商 chip、作品计数
 
-### 4.3 历史结论（别重复踩）
+### 4.4 历史结论（别重复踩）
 
 - **1,108 条字段残缺的影片不要再重抓**——源头站点本身就是空的。已验证。
 - **导演分词已落库**，回滚语句在当时的计划里；启发式方案已被否决。
@@ -236,14 +328,15 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 
 ### 5.1 提交状态：已完成
 
-本轮 10 个代码文件的改动已全部提交，拆成 5 个提交（见 §4.1 的表）；
-这份交接文档与 `.gitignore` 是第 6 个。
+**本轮（导演库）**：一个提交，见 §4.1。代码、测试、文档（含 `schema.sql` 的注释订正）
+都在里面；`HANDOVER.md` 的这一轮改动也随之一起提交。
+
+**上一轮（分集）**：10 个代码文件的改动拆成 5 个提交（见 §4.2 的表），
+交接文档与 `.gitignore` 是第 6 个。
 `cover_dl.log` / `cover_dl.pid` / `translate.log` / `translate.pid` 已在 `.gitignore`
 里挡掉（两个 `.pid` 是死进程留下的，已删）。
-
-后面又加了一次未提交的改动（探针跑完后做的订正，别当成数据被谁动过）：
-`HANDOVER.md` 的数字刷新 + `scraper_v2.py` 的 `_report_empty_work_list()`
-（空目标时把「为什么空」讲清楚，见 §7.11）。
+后面还有一次订正（探针跑完后做的，别当成数据被谁动过）：`HANDOVER.md` 的数字刷新 +
+`scraper_v2.py` 的 `_report_empty_work_list()`（空目标时把「为什么空」讲清楚，见 §7.11）。
 
 下面 5.2 起才是真正待做的。
 
@@ -252,10 +345,10 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 **第一步 — 公司补齐探针：✅ 已完成，不要再跑。**
 
 `scrape_progress` 里 company 12,000 行全部 200，即 id 1..12,000 全覆盖（2,411 家已知
-片商 + 9,589 个探针）。结果是 66 家新公司、13,372 条独立分集（见 §4.1）。
+片商 + 9,589 个探针）。结果是 66 家新公司、13,372 条独立分集（见 §4.2）。
 
 **再跑这个命令只会打印「目标: 0 条」然后立刻退出**——这不是坏了，是真的没活了。
-站点公司 id 上限就是 8,175（证据见 §4.3），**把 `--sweep-companies`
+站点公司 id 上限就是 8,175（证据见 §4.4），**把 `--sweep-companies`
 调多大都没用**，探针这个方向已经走到底。
 
 ```bash
@@ -304,6 +397,15 @@ python3 -u cache_images.py --mode episodes --concurrency 32 > /tmp/img_dl.log 2>
 
 - **分集搜索不搜 `e.title`**（`queries/episodes.rs:31-37` 和 `db_manager.list_episodes` 都是）。
   用户已明确列为**后续项**，本轮不做。但要知道：刚抓来的 10.2 万条真实标题**目前搜不到**。
+- **导演库的两条已知边界**（都确认过，不是缺陷）：
+  1. 导演的「作品」**只有影片，不含分集**——库里没有 `episode_directors` 表，
+     分集数据里也没有导演字段。所以导演页上的作品数就是他的影片数。
+  2. `directors.works_count` **仍然没有随刮削刷新**（§3.6），但导演库**完全不读它**，
+     所以不会再有人看到过期数字。将来若要跑 `refresh_director_counts()`，
+     那是一次全表回填、只改这一列，不影响 `movie_directors`，属于可做可不做。
+- **导演详情弹窗的筛选是纯前端的**（关键字/年份/片商 chip），所以只作用于**已加载**的作品。
+  作品是一次全量返回的，因此今天不等价于「只筛第一页」；但如果将来某位导演的作品真的
+  多到需要分页，这套筛选必须一起改成服务端，否则会静默地只筛一部分。
 - `server.py` / 桌面端的人工验证：分集库页面、片商页、演员详情页的分集页签
   （这轮改了 SQL 和 LEFT JOIN，值得实际点一遍）。
 
@@ -373,7 +475,7 @@ cd desktop_client && npx vue-tsc --noEmit
    真标题必然被打回 `Episode #N`。所以解析器侧就不能再合成占位符。
 7. **`filter_map(|r| r.ok())` 会静默吞行**：类型不匹配（NULL 读进 `i64`）时整行消失，
    不报错。`movie_id` 必须 `Option<i64>`。
-8. **对拍测试静默跳过**：见 §4.3。
+8. **对拍测试静默跳过**：见 §4.4。
 9. **`iCloud Drive` 路径带空格和括号**，命令里务必加引号。
 10. **改文件不影响正在跑的进程**：Python 已把模块载入内存，
     可以趁长任务在跑时改代码，但要记得**下次启动才生效**。

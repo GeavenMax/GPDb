@@ -115,6 +115,27 @@ pub struct StudioLibrary {
     pub total: i64,
 }
 
+/// One director as the library grid shows them.
+///
+/// `works_count` and `studios_count` are both computed live from `movie_directors` —
+/// *not* read off `directors.works_count`, which is stale (see `queries::directors`).
+/// A director with no links at all is still a row here, with both counts 0.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct DirectorSummary {
+    pub id: i64,
+    pub name: String,
+    pub works_count: i64,
+    /// How many distinct studios they directed for. The chips themselves are derived
+    /// from the loaded films on the client, so this is only the card's badge.
+    pub studios_count: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DirectorLibrary {
+    pub items: Vec<DirectorSummary>,
+    pub total: i64,
+}
+
 /// An episode's cast, as the episode library's cards need it: the id to open the
 /// performer, the name to label the chip. Deliberately not `PerformerRef`, which also
 /// carries a portrait the chips never show and which would have to be joined per row.
@@ -162,6 +183,19 @@ pub struct StudioWorks {
     pub movies_count: i64,
     pub episodes: Vec<Episode>,
     pub episodes_count: i64,
+}
+
+/// One director's complete filmography — the shape `/api/directors/<name>/works` returns.
+///
+/// Films only: the site credits directors per film, and there is no `episode_directors`
+/// table, so a director has no episodes to list. The studios they worked with are not
+/// returned either — the modal derives those from `movies[].studio_name`, which costs
+/// no extra query.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DirectorWorks {
+    pub name: String,
+    pub movies: Vec<Movie>,
+    pub movies_count: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

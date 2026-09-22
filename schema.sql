@@ -190,9 +190,12 @@ CREATE TABLE IF NOT EXISTS user_movie_data (
 -- 9. 收藏 (Favorites) —— 跨条目类型
 --
 -- entity_key 用 TEXT 而不是 INTEGER：影片/演员/片段确实有数字 ID，但片商和导演
--- 在本库里没有独立的表（只有 movies.studio_name / director_name 两列冗余字段）。
--- 影片库的片商筛选本来就是按名字做的（filters.studio = 名字），所以收藏键直接用
--- 名字，收藏 → 筛选这条链路中间不需要任何 ID 转换。
+-- 存的是名字。
+-- 片商没有独立的表（只有 movies.studio_name 这一列冗余字段），影片库的片商筛选
+-- 本来就是按名字做的（filters.studio = 名字），所以收藏键直接用名字，
+-- 收藏 → 筛选这条链路中间不需要任何 ID 转换。
+-- 导演**有**独立的表（见 §11），但收藏键仍然是名字：分词之前存下的历史收藏只有
+-- 名字，而名字是唯一贯穿新老数据的键（§11 里说明了为什么不能用 site_id）。
 -- 约定: movie/performer/episode 存数字 ID 的字符串形式；studio/director 存名字本身。
 CREATE TABLE IF NOT EXISTS user_favorites (
     entity_type TEXT NOT NULL,      -- 'movie' | 'performer' | 'studio' | 'director' | 'episode'
@@ -239,11 +242,17 @@ CREATE TABLE IF NOT EXISTS attr_glossary (
 --
 -- 建表不改 movies，所以分词结果可以随时重跑：
 --   DELETE FROM movie_directors;  然后重跑 --mode directors --apply 即可回到空状态。
+--
+-- ★ works_count 不要读。只有 refresh_director_counts()（仅 --mode directors 会调）
+--   会更新它，而日常刮削只往 movie_directors 里加链接，所以它一抓就落后：
+--   实测 SUM(works_count)=37,261 vs 关联表 37,502 行，还有 76 位导演计数 >0 却一条
+--   链接都没有。导演库一律现算 COUNT(*) FROM movie_directors（见 queries/directors.rs、
+--   db_manager.list_directors），这张表的这一列因此已无人依赖。
 CREATE TABLE IF NOT EXISTS directors (
     id INTEGER PRIMARY KEY,          -- 本库内部 ID（rowid 自增）
     site_id INTEGER UNIQUE,          -- 站点 director/<ID>，重抓后回填；分词阶段为 NULL
     name TEXT NOT NULL UNIQUE,
-    works_count INTEGER DEFAULT 0,   -- 影片数，由 --mode directors 回填
+    works_count INTEGER DEFAULT 0,   -- 影片数，由 --mode directors 回填（已经过期，别读，见下）
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
