@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:icon && vue-tsc -b && vite build",
+    "build": "vue-tsc -b && vite build",
     "build:icon": "bash src-tauri/build-icon.sh",
     "preview": "vite preview",
     "tauri": "tauri"

@@ -73,7 +73,7 @@ jobs:
       #      sudo xattr -cr /Applications/GPDb.app
       - name: Build Tauri app (unsigned)
         working-directory: desktop_client
-        run: npm run tauri build
+        run: npm run tauri build -- --bundles app,dmg
 
       # ── 7. 找到 DMG 文件并重命名为规范格式 ──────────────────────────────
       - name: Locate and rename DMG

@@ -54,7 +54,7 @@ jobs:
       # ── 6. 构建 Tauri Windows 客户端 (NSIS 安装程序 & MSI 包) ────────────────
       - name: Build Tauri app for Windows
         working-directory: desktop_client
-        run: npm run tauri build
+        run: npm run tauri build -- --bundles nsis,msi
 
       # ── 7. 定位并整理 Windows 构建产物 ────────────────────────────────────────
       - name: Locate Windows Bundle Artifacts
