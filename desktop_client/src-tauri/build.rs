@@ -42,37 +42,36 @@ fn main() {
         println!("cargo:rerun-if-changed={input}");
     }
 
-    // Stale when anything is missing, or when a source is newer than the oldest
-    // product. The second half matters because editing the artwork and forgetting to
-    // rebuild would otherwise ship the previous icon with no complaint at all.
-    let products: Option<Vec<SystemTime>> = OUTPUTS
-        .iter()
-        .map(|o| mtime(&root.join(o)))
-        .collect();
-    let newest_input = INPUTS.iter().filter_map(|i| mtime(&root.join(i))).max();
+    #[cfg(target_os = "macos")]
+    {
+        // Stale when anything is missing, or when a source is newer than the oldest
+        // product. The second half matters because editing the artwork and forgetting to
+        // rebuild would otherwise ship the previous icon with no complaint at all.
+        let products: Option<Vec<SystemTime>> = OUTPUTS
+            .iter()
+            .map(|o| mtime(&root.join(o)))
+            .collect();
+        let newest_input = INPUTS.iter().filter_map(|i| mtime(&root.join(i))).max();
 
-    let stale = match (products, newest_input) {
-        (Some(products), Some(newest_input)) => {
-            products.into_iter().min().expect("non-empty") < newest_input
-        }
-        _ => true,
-    };
+        let stale = match (products, newest_input) {
+            (Some(products), Some(newest_input)) => {
+                products.into_iter().min().expect("non-empty") < newest_input
+            }
+            _ => true,
+        };
 
-    if stale {
-        // Worth surfacing: a silent five-second regeneration in the middle of a build
-        // is confusing when it is not what you thought you were waiting for.
-        println!("cargo:warning=regenerating the app icon (gen/icons was missing or stale)");
-        let script = root.join("build-icon.sh");
-        let status = Command::new("bash").arg(&script).current_dir(&root).status();
-        match status {
-            Ok(s) if s.success() => {}
-            Ok(s) => panic!(
-                "build-icon.sh exited with {s}.\n\
-                 It needs Xcode: actool and ictool both live inside Xcode.app, and the \
-                 copies in /usr/bin are stubs. Install Xcode, or run \
-                 `xcode-select --install` if only the command line tools are missing."
-            ),
-            Err(e) => panic!("could not run {}: {e}", script.display()),
+        if stale {
+            println!("cargo:warning=regenerating the app icon (gen/icons was missing or stale)");
+            let script = root.join("build-icon.sh");
+            let status = Command::new("bash").arg(&script).current_dir(&root).status();
+            match status {
+                Ok(s) if s.success() => {}
+                Ok(s) => eprintln!(
+                    "build-icon.sh exited with {s}.\n\
+                     It needs Xcode: actool and ictool both live inside Xcode.app."
+                ),
+                Err(e) => eprintln!("could not run {}: {e}", script.display()),
+            }
         }
     }
 
