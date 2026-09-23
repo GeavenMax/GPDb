@@ -5,8 +5,10 @@ import { pluginsConfig, savePluginsConfig, DEFAULT_TRANSLATION_PROMPT } from '..
 import { generateAiPersonaInsight, clearAiReport, activeAiReport, isAiAnalyzing, aiAnalysisError, exportAiReportMarkdown } from '../services/aiAnalysis';
 import { t, TARGET_TRANSLATION_LANGUAGES } from '../i18n';
 import type { TranslationStats, TranslationProfile, TranslationPreset } from '../types';
-import { Blocks, Sparkles, Compass, RefreshCw, Languages, Trophy, AlertCircle, CheckCircle2, SlidersHorizontal, Download, Trash2, Volume2, VolumeX } from '@lucide/vue';
+import { Blocks, Sparkles, Compass, RefreshCw, Languages, Trophy, AlertCircle, CheckCircle2, SlidersHorizontal, Download, Trash2, Volume2, VolumeX, ChevronRight } from '@lucide/vue';
 import TrophyResetModal from '../components/TrophyResetModal.vue';
+import { trophyStats } from '../services/trophySystem';
+import { recordPluginVisit } from '../services/analytics';
 const emit = defineEmits<{
   (e: 'open-trophies'): void;
   (e: 'refresh-movies'): void;
@@ -26,12 +28,12 @@ const isTranslating = ref(false);
 const translateMsg = ref('');
 
 const translateMode = ref<'single' | 'batch'>(
-  (localStorage.getItem('gevi_translate_mode') as 'single' | 'batch') || 'single'
+  (localStorage.getItem('gpdb_translate_mode') as 'single' | 'batch') || 'single'
 );
 
 function setTranslateMode(mode: 'single' | 'batch') {
   translateMode.value = mode;
-  localStorage.setItem('gevi_translate_mode', mode);
+  localStorage.setItem('gpdb_translate_mode', mode);
 }
 
 function updateTranslationTarget(lang: string) {
@@ -229,7 +231,6 @@ async function handleRunGlossary(dryRun: boolean) {
 // --- 4. Trophies Plugin ---
 
 const showTrophyResetModal = ref(false);
-const trophyStats = ref({ unlocked: 0, percentage: 0 });
 
 function toggleTrophySound() {
   savePluginsConfig({ trophiesSoundEnabled: !pluginsConfig.value.trophiesSoundEnabled });
@@ -288,6 +289,7 @@ const reportSections = computed(() => {
 });
 
 onMounted(() => {
+  recordPluginVisit();
   loadTranslationStats();
   loadProviders();
 });

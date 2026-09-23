@@ -27,9 +27,14 @@ export interface UserAnalytics {
   nightOwlViewsCount: number;
   searchHistory: string[];
   browseHistory: BrowseHistoryItem[];
+  pluginsVisitedCount?: number;
+  settingsVisitedCount?: number;
+  langSwitchedCount?: number;
+  gridAdjustedCount?: number;
+  btUsedCount?: number;
 }
 
-const ANALYTICS_KEY = 'gevi_user_analytics';
+const ANALYTICS_KEY = 'gpdb_user_analytics';
 
 function getTodayString(): string {
   const d = new Date();
@@ -56,6 +61,11 @@ function loadAnalytics(): UserAnalytics {
     nightOwlViewsCount: 0,
     searchHistory: [],
     browseHistory: [],
+    pluginsVisitedCount: 0,
+    settingsVisitedCount: 0,
+    langSwitchedCount: 0,
+    gridAdjustedCount: 0,
+    btUsedCount: 0,
   };
 
   try {
@@ -257,9 +267,33 @@ export function recordTagCreate() {
   notifyListeners();
 }
 
-export function recordTranslation() {
+export function recordPluginVisit() {
   if (!privacySettings.value.collectAnalytics) return;
-  analytics.value.translationsCount++;
+  analytics.value.pluginsVisitedCount = (analytics.value.pluginsVisitedCount || 0) + 1;
+  notifyListeners();
+}
+
+export function recordSettingsVisit() {
+  if (!privacySettings.value.collectAnalytics) return;
+  analytics.value.settingsVisitedCount = (analytics.value.settingsVisitedCount || 0) + 1;
+  notifyListeners();
+}
+
+export function recordLangSwitch() {
+  if (!privacySettings.value.collectAnalytics) return;
+  analytics.value.langSwitchedCount = (analytics.value.langSwitchedCount || 0) + 1;
+  notifyListeners();
+}
+
+export function recordGridAdjust() {
+  if (!privacySettings.value.collectAnalytics) return;
+  analytics.value.gridAdjustedCount = (analytics.value.gridAdjustedCount || 0) + 1;
+  notifyListeners();
+}
+
+export function recordBtSearch() {
+  if (!privacySettings.value.collectAnalytics) return;
+  analytics.value.btUsedCount = (analytics.value.btUsedCount || 0) + 1;
   notifyListeners();
 }
 
@@ -283,6 +317,11 @@ export function resetAllAnalytics() {
     nightOwlViewsCount: 0,
     searchHistory: [],
     browseHistory: [],
+    pluginsVisitedCount: 0,
+    settingsVisitedCount: 0,
+    langSwitchedCount: 0,
+    gridAdjustedCount: 0,
+    btUsedCount: 0,
   };
   persist();
 }

@@ -5,6 +5,7 @@ import {
   RotateCcw, ShieldAlert, CheckCircle2
 } from '@lucide/vue';
 import {
+  resetUnlockedTrophies,
   resetAndRecheckTrophiesSequentially,
   resetAllDataAndTrophiesCompletely,
   trophyStats
@@ -12,24 +13,35 @@ import {
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'reset-complete', mode: 1 | 2, count?: number): void;
+  (e: 'reset-complete', mode: 1 | 2 | 3, count?: number): void;
 }>();
 
 const isProcessing = ref(false);
 const completedMessage = ref('');
 
-function handleMode1() {
+function handleClearTrophiesOnly() {
+  isProcessing.value = true;
+  resetUnlockedTrophies();
+  completedMessage.value = '已成功清空所有已获成就奖杯记录，奖杯已全部恢复为未解锁状态！';
+  setTimeout(() => {
+    isProcessing.value = false;
+    emit('reset-complete', 1);
+    emit('close');
+  }, 800);
+}
+
+function handleRecheckSequentially() {
   isProcessing.value = true;
   const unlockedCount = resetAndRecheckTrophiesSequentially();
   completedMessage.value = `已重置并重新触发 ${unlockedCount} 座奖杯的连续队列解锁！`;
   setTimeout(() => {
     isProcessing.value = false;
-    emit('reset-complete', 1, unlockedCount);
+    emit('reset-complete', 3, unlockedCount);
     emit('close');
   }, 800);
 }
 
-function handleMode2() {
+function handleResetAllCompletely() {
   isProcessing.value = true;
   resetAllDataAndTrophiesCompletely();
   completedMessage.value = '已彻底抹除所有本地统计记录与成就奖杯，系统已恢复为全新未开启状态。';
@@ -44,7 +56,7 @@ function handleMode2() {
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim/80 backdrop-blur-sm animate-fade-in">
     <div
-      class="relative w-full max-w-xl chrome-panel border border-line-strong rounded-3xl p-6 md:p-8 shadow-2xl text-fg space-y-6"
+      class="relative w-full max-w-xl chrome-panel border border-line-strong rounded-3xl p-6 md:p-8 shadow-2xl text-fg space-y-6 max-h-[90vh] overflow-y-auto"
     >
       <!-- Close Button -->
       <button
@@ -63,46 +75,46 @@ function handleMode2() {
         <div>
           <h2 class="text-xl font-extrabold text-fg tracking-tight">重置成就奖杯记录</h2>
           <p class="text-xs text-fg-4 mt-1 leading-relaxed">
-            确认操作将清空当前已解锁的全部 <span class="text-amber-400 font-bold font-mono">{{ trophyStats.unlocked }}</span> 座奖杯。请在下方选择您希望采用的重置解锁方式：
+            当前已解锁 <span class="text-amber-400 font-bold font-mono">{{ trophyStats.unlocked }}</span> / {{ trophyStats.total }} 座奖杯。请在下方选择您希望采用的操作方式：
           </p>
         </div>
       </div>
 
-      <!-- Mode 1 & Mode 2 Options Cards -->
+      <!-- Options Cards -->
       <div class="space-y-3.5">
-        <!-- Mode 1 Card -->
+        <!-- Option 1: Clear Trophies Only -->
         <div
-          class="p-5 rounded-2xl border border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 transition space-y-3"
+          class="p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition space-y-3"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <div class="p-1.5 rounded-xl bg-purple-500/20 text-purple-300">
-                <Sparkles class="w-4 h-4" />
+              <div class="p-1.5 rounded-xl bg-amber-500/20 text-amber-300">
+                <RotateCcw class="w-4 h-4" />
               </div>
-              <span class="text-sm font-bold text-fg">方式 1：保留数据并连环逐个解锁</span>
+              <span class="text-sm font-bold text-fg">方式 1：仅清空已获得奖杯（推荐）</span>
             </div>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
-              强烈推荐 · 视听盛宴
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+              清空奖杯数据
             </span>
           </div>
 
           <p class="text-xs text-fg-3 leading-relaxed">
-            <strong>不删除</strong>现有的浏览记录、评星打分与收藏数据。系统将根据现有数据重新比对成就条件，将所有符合条件的奖杯加入<strong>连环弹窗动画队列</strong>：在上一个解锁横幅消失后再弹出下一个，享受连续解锁带来的极致爽快感！
+            立即<strong>清空全部已获得的奖杯数据</strong>，所有成就恢复为未解锁锁定状态。保留现有的浏览历史、评星打分、收藏与统计数据。
           </p>
 
           <div class="flex justify-end pt-1">
             <button
-              @click="handleMode1"
+              @click="handleClearTrophiesOnly"
               :disabled="isProcessing"
-              class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-2 transition shadow-lg shadow-purple-600/30 cursor-pointer disabled:opacity-50"
+              class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-2 transition shadow-lg shadow-amber-600/30 cursor-pointer disabled:opacity-50"
             >
               <RotateCcw class="w-3.5 h-3.5" />
-              <span>保留数据并连环解锁</span>
+              <span>立即清空已获奖杯</span>
             </button>
           </div>
         </div>
 
-        <!-- Mode 2 Card -->
+        <!-- Option 2: Completely Reset Everything -->
         <div
           class="p-5 rounded-2xl border border-danger-fill/30 bg-danger-fill/5 hover:bg-danger-fill/10 transition space-y-3"
         >
@@ -111,7 +123,7 @@ function handleMode2() {
               <div class="p-1.5 rounded-xl bg-danger-fill/20 text-danger">
                 <ShieldAlert class="w-4 h-4" />
               </div>
-              <span class="text-sm font-bold text-fg">方式 2：彻底抹除数据从零开始</span>
+              <span class="text-sm font-bold text-fg">方式 2：彻底抹除所有统计与奖杯</span>
             </div>
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-danger-fill/20 text-danger font-bold border border-danger-fill/30">
               彻底归零
@@ -124,12 +136,44 @@ function handleMode2() {
 
           <div class="flex justify-end pt-1">
             <button
-              @click="handleMode2"
+              @click="handleResetAllCompletely"
               :disabled="isProcessing"
               class="px-4 py-2 rounded-xl bg-danger-fill/20 hover:bg-danger-fill/30 text-danger border border-danger-fill/40 font-bold text-xs flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
             >
               <Trash2 class="w-3.5 h-3.5" />
               <span>清空所有数据从 0 起步</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Option 3: Replay sequential unlocking -->
+        <div
+          class="p-5 rounded-2xl border border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 transition space-y-3"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="p-1.5 rounded-xl bg-purple-500/20 text-purple-300">
+                <Sparkles class="w-4 h-4" />
+              </div>
+              <span class="text-sm font-bold text-fg">方式 3：保留数据并连环逐个解锁</span>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
+              连环视听盛宴
+            </span>
+          </div>
+
+          <p class="text-xs text-fg-3 leading-relaxed">
+            不删除现有数据，根据当前已有数据重新比对成就条件，将所有符合条件的奖杯加入<strong>连环弹窗动画队列</strong>依次展示解锁。
+          </p>
+
+          <div class="flex justify-end pt-1">
+            <button
+              @click="handleRecheckSequentially"
+              :disabled="isProcessing"
+              class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-2 transition shadow-lg shadow-purple-600/30 cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles class="w-3.5 h-3.5" />
+              <span>重温连环解锁动画</span>
             </button>
           </div>
         </div>

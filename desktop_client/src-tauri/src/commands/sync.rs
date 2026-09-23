@@ -73,22 +73,37 @@ fn manager() -> &'static Mutex<ScraperManager> {
     }))
 }
 
-/// 寻找可用的 Python 解释器路径 (macOS GUI App 下环境变量回退)
+/// 寻找可用的 Python 解释器路径 (跨平台环境变量与默认命令探测)
 pub fn resolve_python() -> String {
-    for exe in [
+    #[cfg(target_os = "windows")]
+    let candidates = [
+        "python.exe",
+        "python",
+        "python3.exe",
+        "python3",
+        "py.exe",
+        "py",
+    ];
+    #[cfg(not(target_os = "windows"))]
+    let candidates = [
         "/opt/homebrew/bin/python3",
         "/usr/local/bin/python3",
         "/usr/bin/python3",
         "python3",
         "python",
-    ] {
+    ];
+
+    for exe in candidates {
         if let Ok(out) = std::process::Command::new(exe).args(["-c", "print(1)"]).output() {
             if out.status.success() {
                 return exe.to_string();
             }
         }
     }
-    "python3".to_string()
+    #[cfg(target_os = "windows")]
+    return "python".to_string();
+    #[cfg(not(target_os = "windows"))]
+    return "python3".to_string();
 }
 
 /// 寻找指定的 Python 刮削脚本路径 (支持源码相对路径、数据库同级、Tauri资源包及程序祖先目录)
@@ -177,7 +192,7 @@ pub fn get_scraper_status() -> Result<ScraperStatus, String> {
 pub fn stop_scraper(app: AppHandle) -> Result<ScraperStatus, String> {
     let mut mgr = manager().lock().unwrap();
     if let Some(pid) = mgr.child_pid.take() {
-        // Send SIGINT (2) for graceful SQLite write flush
+        // Send SIGINT (2) for graceful SQLite write flush on Unix, taskkill /F /T on Windows
         #[cfg(unix)]
         {
             let _ = std::process::Command::new("kill")
@@ -185,11 +200,15 @@ pub fn stop_scraper(app: AppHandle) -> Result<ScraperStatus, String> {
                 .arg(pid.to_string())
                 .status();
         }
-        #[cfg(not(unix))]
+        #[cfg(windows)]
         {
             let _ = std::process::Command::new("taskkill")
-                .arg("/F")
-                .arg("/PID")
+                .args(["/F", "/T", "/PID", &pid.to_string()])
+                .status();
+        }
+        #[cfg(not(any(unix, windows)))]
+        {
+            let _ = std::process::Command::new("kill")
                 .arg(pid.to_string())
                 .status();
         }
@@ -221,7 +240,7 @@ pub fn start_scraper(
     // Determine target script and arguments
     let db_path = crate::db::find_db_path()
         .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| "gevi.db".to_string());
+        .unwrap_or_else(|| "GPDb.db".to_string());
 
     let (script_name, args) = match mode.as_str() {
         "incremental" => {
@@ -230,7 +249,7 @@ pub fn start_scraper(
                 a.push("--probe".to_string());
                 a.push(l.to_string());
             }
-            ("sync_gevi.py", a)
+            ("sync_gpdb.py", a)
         }
         "bftv_catalog" => {
             let a = vec!["--db".to_string(), db_path.clone()];
@@ -520,12 +539,12 @@ pub fn start_scraper(
 /// 兼容原有接口 run_sync
 #[tauri::command]
 pub fn run_sync(app: AppHandle) -> Result<SyncResult, String> {
-    let script_path = find_script(Some(&app), "sync_gevi.py")
-        .ok_or_else(|| "未找到 sync_gevi.py 脚本".to_string())?;
+    let script_path = find_script(Some(&app), "sync_gpdb.py")
+        .ok_or_else(|| "未找到 sync_gpdb.py 脚本".to_string())?;
 
     let db_path = crate::db::find_db_path()
         .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|| "gevi.db".to_string());
+        .unwrap_or_else(|| "GPDb.db".to_string());
 
     let python_bin = resolve_python();
     let output = std::process::Command::new(&python_bin)
@@ -586,8 +605,8 @@ mod tests {
 
     #[test]
     fn test_find_scripts() {
-        let script = find_script(None, "sync_gevi.py");
-        assert!(script.is_some(), "sync_gevi.py must be discovered");
+        let script = find_script(None, "sync_gpdb.py");
+        assert!(script.is_some(), "sync_gpdb.py must be discovered");
         let batch = find_script(None, "batch_scraper.py");
         assert!(batch.is_some(), "batch_scraper.py must be discovered");
     }

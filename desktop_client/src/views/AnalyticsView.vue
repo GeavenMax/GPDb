@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue';
 import { analytics, resetAllAnalytics } from '../services/analytics';
-import { trophyStats } from '../services/trophySystem';
+import { trophyStats, resetUnlockedTrophies } from '../services/trophySystem';
 import { pluginsConfig } from '../services/pluginManager';
 import {
   deepInsights, loadDeepInsights, exportUserDataBundle, isInsightsLoading
@@ -64,6 +64,7 @@ const firstLaunchFormatted = computed(() => {
 
 function confirmReset() {
   resetAllAnalytics();
+  resetUnlockedTrophies();
   showConfirmReset.value = false;
 }
 

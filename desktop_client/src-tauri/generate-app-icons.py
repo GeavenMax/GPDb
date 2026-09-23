@@ -114,7 +114,7 @@ def main():
                     "filename": fn,
                     "scale": f"{scale}x"
                 })
-            with open(appiconset / "Contents.json", "w") as f:
+            with open(appiconset / "Contents.json", "w", encoding="utf-8") as f:
                 json.dump({"images": contents_images, "info": {"version": 1, "author": "xcode"}}, f, indent=2)
 
             run_cmd([

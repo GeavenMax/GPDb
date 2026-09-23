@@ -41,7 +41,7 @@ function copyCommand(key: string, text: string) {
 }
 
 function handleDismiss() {
-  localStorage.setItem('gevi_env_check_dismissed', 'true');
+  localStorage.setItem('gpdb_env_check_dismissed', 'true');
   emit('close');
 }
 
@@ -210,7 +210,7 @@ onMounted(() => {
                     <p class="text-[11px] text-fg-4 leading-relaxed truncate max-w-sm">
                       {{ envInfo?.database_ready
                         ? `存储路径: ${envInfo.database_path}`
-                        : '尚未连接或创建本地 gevi.db 数据库文件。' }}
+                        : '尚未连接或创建本地 GPDb.db 数据库文件。' }}
                     </p>
                   </div>
                 </div>

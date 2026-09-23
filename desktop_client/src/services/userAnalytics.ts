@@ -169,7 +169,7 @@ export async function exportUserDataBundle(): Promise<void> {
   const userTags = await api.getUserTags();
 
   const bundle = {
-    app: 'GPDb (GEVI Offline Database)',
+    app: 'GPDb (GPDb Offline Database)',
     version: '2.0.0',
     exportedAt: new Date().toISOString(),
     analytics: analytics.value,

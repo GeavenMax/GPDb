@@ -75,7 +75,8 @@ import {
   startFocusTracker, recordMovieView, recordPerformerView,
   recordEpisodeView, recordDirectorView, recordStudioView,
   clearSearchHistory, clearBrowseHistory, resetAllAnalytics,
-  recordFavoriteToggle, recordRating
+  recordFavoriteToggle, recordRating, recordSettingsVisit,
+  recordPluginVisit, recordGridAdjust
 } from './services/analytics';
 import { initScraperService, onScraperDataChange } from './services/scraper';
 import { initAutoSyncSchedule } from './services/autoSync';
@@ -253,12 +254,14 @@ function decreaseCols() {
     if (listCols.value > 2) {
       listCols.value--;
       localStorage.setItem(PREFS.listCols, String(listCols.value));
+      recordGridAdjust();
     }
     return;
   }
   if (gridCols.value > 2) {
     gridCols.value--;
     localStorage.setItem(PREFS.gridCols, String(gridCols.value));
+    recordGridAdjust();
   }
 }
 
@@ -267,12 +270,14 @@ function increaseCols() {
     if (listCols.value < 4) {
       listCols.value++;
       localStorage.setItem(PREFS.listCols, String(listCols.value));
+      recordGridAdjust();
     }
     return;
   }
   if (gridCols.value < 8) {
     gridCols.value++;
     localStorage.setItem(PREFS.gridCols, String(gridCols.value));
+    recordGridAdjust();
   }
 }
 
@@ -396,7 +401,7 @@ async function checkInitialEnvironment() {
   try {
     const info = await api.checkRuntimeEnvironment();
     // Prompt if critical environment components are not ready and user hasn't dismissed the alert
-    if (!info.all_ready && !localStorage.getItem('gevi_env_check_dismissed')) {
+    if (!info.all_ready && !localStorage.getItem('gpdb_env_check_dismissed')) {
       showEnvironmentModal.value = true;
     }
   } catch (e) {
@@ -490,7 +495,7 @@ async function handleScanDatabases() {
     const cands = await api.scanDatabases();
     dbCandidates.value = cands;
     if (cands.length === 0) {
-      dbMessage.value = { ok: false, text: '未能自动检测到 gevi.db，请手动浏览选择或输入路径。' };
+      dbMessage.value = { ok: false, text: '未能自动检测到 GPDb.db，请手动浏览选择或输入路径。' };
     } else {
       dbMessage.value = { ok: true, text: `扫描完成，发现 ${cands.length} 个候选数据库。` };
       if (!dbInfo.value?.exists && cands[0]) {
@@ -1066,6 +1071,9 @@ watch(currentTab, (newTab) => {
   } else if (newTab === 'settings') {
     loadCacheStats();
     loadTranslationStats();
+    recordSettingsVisit();
+  } else if (newTab === 'plugins') {
+    recordPluginVisit();
   }
 });
 
@@ -3385,7 +3393,7 @@ onUnmounted(() => {
                   <input
                     v-model="customDbInput"
                     type="text"
-                    placeholder="输入或粘贴 gevi.db 绝对路径，如 ~/Documents/.../gevi.db"
+                    placeholder="输入或粘贴 GPDb.db 绝对路径，如 ~/Documents/.../GPDb.db"
                     class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono focus:border-accent-fill/50 focus:outline-none"
                     @keydown.enter="applyCustomDbPath()"
                   />

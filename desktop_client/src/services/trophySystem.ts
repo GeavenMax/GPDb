@@ -15,7 +15,7 @@ export interface Trophy {
   condition: (a: UserAnalytics) => boolean;
 }
 
-const TROPHIES_STORAGE_KEY = 'gevi_unlocked_trophies';
+const TROPHIES_STORAGE_KEY = 'gpdb_unlocked_trophies';
 
 function loadUnlockedMap(): Record<string, number> {
   try {
@@ -731,11 +731,11 @@ export const TROPHIES: Trophy[] = [
     id: 'bronze_plugin_bt',
     tier: 'bronze',
     title: '寻宝罗盘',
-    desc: '启用 BT 磁力资源搜索扩展',
+    desc: '使用 BT 磁力资源搜索扩展',
     icon: 'Compass',
     unlockedAt: null,
-    progress: () => ({ current: pluginsConfig.value.btSearchEnabled ? 1 : 0, max: 1 }),
-    condition: () => pluginsConfig.value.btSearchEnabled,
+    progress: (a) => ({ current: Math.min(a.btUsedCount || 0, 1), max: 1 }),
+    condition: (a) => (a.btUsedCount || 0) >= 1,
   },
   {
     id: 'bronze_plugin_toggle',
@@ -744,8 +744,8 @@ export const TROPHIES: Trophy[] = [
     desc: '访问插件管理面板体验模块化扩展',
     icon: 'Sliders',
     unlockedAt: null,
-    progress: () => ({ current: 1, max: 1 }),
-    condition: () => true, // Will unlock when user visits plugin page
+    progress: (a) => ({ current: Math.min(a.pluginsVisitedCount || 0, 1), max: 1 }),
+    condition: (a) => (a.pluginsVisitedCount || 0) >= 1,
   },
   {
     id: 'bronze_db_scanned',
@@ -754,18 +754,18 @@ export const TROPHIES: Trophy[] = [
     desc: '在设置中查看本地离线数据库状态',
     icon: 'HardDrive',
     unlockedAt: null,
-    progress: () => ({ current: 1, max: 1 }),
-    condition: () => true,
+    progress: (a) => ({ current: Math.min(a.settingsVisitedCount || 0, 1), max: 1 }),
+    condition: (a) => (a.settingsVisitedCount || 0) >= 1,
   },
   {
     id: 'bronze_lang_switch',
     tier: 'bronze',
     title: '国际视界',
-    desc: '多语种菜单与国际化功能就绪',
+    desc: '体验多语种切换与国际化功能',
     icon: 'Globe2',
     unlockedAt: null,
-    progress: () => ({ current: 1, max: 1 }),
-    condition: () => true,
+    progress: (a) => ({ current: Math.min(a.langSwitchedCount || 0, 1), max: 1 }),
+    condition: (a) => (a.langSwitchedCount || 0) >= 1,
   },
   {
     id: 'bronze_filter_category',
@@ -801,11 +801,11 @@ export const TROPHIES: Trophy[] = [
     id: 'bronze_grid_adjust',
     tier: 'bronze',
     title: '视野掌控',
-    desc: '享受自由调节网格列数的瀑布流视觉',
+    desc: '调节网格列数的瀑布流视觉',
     icon: 'LayoutGrid',
     unlockedAt: null,
-    progress: () => ({ current: 1, max: 1 }),
-    condition: () => true,
+    progress: (a) => ({ current: Math.min(a.gridAdjustedCount || 0, 1), max: 1 }),
+    condition: (a) => (a.gridAdjustedCount || 0) >= 1,
   },
   {
     id: 'bronze_alias_finder',

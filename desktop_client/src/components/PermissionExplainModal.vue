@@ -65,7 +65,7 @@ const emit = defineEmits<{
               <HardDrive class="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
               <div>
                 <strong class="text-fg block mb-0.5">为什么需要访问文件夹？</strong>
-                为了加载您的本地影库数据库文件（<span class="font-mono text-indigo-300">gevi.db</span>）以及海报、剧照和演员头像缓存，客户端需要读取您存放在本地的特定文件夹（例如“文稿”或“下载”目录）。
+                为了加载您的本地影库数据库文件（<span class="font-mono text-indigo-300">GPDb.db</span>）以及海报、剧照和演员头像缓存，客户端需要读取您存放在本地的特定文件夹（例如“文稿”或“下载”目录）。
               </div>
             </div>
 

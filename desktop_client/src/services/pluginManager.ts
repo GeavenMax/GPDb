@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { recordBtSearch } from './analytics';
 
 export interface CustomBtTemplate {
   id: string;
@@ -43,7 +44,7 @@ export interface PluginsConfig {
   aiInsightEnabled: boolean;
 }
 
-const PLUGINS_KEY = 'gevi_plugins_config';
+const PLUGINS_KEY = 'gpdb_plugins_config';
 
 export const DEFAULT_TRANSLATION_PROMPT = `你是一名成人影片资料库的专职译者。你会收到英文剧情简介、分集与专有名词，需要如实翻译成简体中文。
 
@@ -256,6 +257,7 @@ export async function openUrlExternal(url: string) {
 
 export async function openBtSearch(query: string) {
   if (!query || !query.trim()) return;
+  recordBtSearch();
   await openUrlExternal(buildBtSearchUrl(query.trim()));
 }
 
@@ -265,6 +267,7 @@ export async function openBtSearch(query: string) {
 export async function openBtMovieSearch(rawTitle: string) {
   const clean = extractMovieCleanTitle(rawTitle);
   if (!clean) return;
+  recordBtSearch();
   await openUrlExternal(buildBtSearchUrl(clean));
 }
 

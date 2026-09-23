@@ -1,5 +1,5 @@
 use crate::db::{
-    self, expand_tilde, is_valid_gevi_db, is_valid_sqlite_db, load_db_config, save_db_config,
+    self, expand_tilde, is_valid_gpdb_db, is_valid_sqlite_db, load_db_config, save_db_config,
     scan_candidate_databases,
 };
 
@@ -20,7 +20,7 @@ pub fn get_database_info() -> Result<DatabaseInfo, String> {
 
     let (exists, valid, size_mb) = if let Some(ref p) = current_path {
         let exists = p.is_file();
-        let valid = exists && is_valid_gevi_db(p);
+        let valid = exists && is_valid_gpdb_db(p);
         let size = p.metadata().map(|m| m.len() as f64 / 1_048_576.0).unwrap_or(0.0);
         (exists, valid, (size * 10.0).round() / 10.0)
     } else {
@@ -51,9 +51,9 @@ pub fn create_new_database(target_path: Option<String>) -> Result<DatabaseInfo, 
     let final_path = if let Some(p) = target_path.filter(|s| !s.trim().is_empty()) {
         expand_tilde(p.trim())
     } else {
-        // Default to ~/Documents/GPDb/gevi.db
+        // Default to ~/Documents/GPDb/GPDb.db
         let home = std::env::var_os("HOME").map(std::path::PathBuf::from).unwrap_or_else(|| std::path::PathBuf::from("."));
-        home.join("Documents").join("GPDb").join("gevi.db")
+        home.join("Documents").join("GPDb").join("GPDb.db")
     };
 
     if let Some(parent) = final_path.parent() {
@@ -92,8 +92,8 @@ pub fn set_custom_database_path(path: String) -> Result<DatabaseInfo, String> {
     if !is_valid_sqlite_db(&expanded) {
         return Err("该文件不是有效的 SQLite 格式数据库".to_string());
     }
-    if !is_valid_gevi_db(&expanded) {
-        return Err("该数据库缺少 movies 表，不是有效的 GEVI 数据库".to_string());
+    if !is_valid_gpdb_db(&expanded) {
+        return Err("该数据库缺少 movies 表，不是有效的 GPDb 数据库".to_string());
     }
 
     let mut cfg = load_db_config();
@@ -116,18 +116,42 @@ pub fn scan_databases() -> Result<Vec<String>, String> {
 }
 
 fn get_export_dir() -> std::path::PathBuf {
-    if let Ok(home) = std::env::var("HOME") {
-        let downloads = std::path::PathBuf::from(&home).join("Downloads");
-        if downloads.is_dir() {
-            return downloads;
+    if let Some(dl) = dirs::download_dir() {
+        if dl.is_dir() {
+            return dl;
         }
-        let desktop = std::path::PathBuf::from(&home).join("Desktop");
-        if desktop.is_dir() {
-            return desktop;
+    }
+    if let Some(desk) = dirs::desktop_dir() {
+        if desk.is_dir() {
+            return desk;
         }
-        return std::path::PathBuf::from(&home);
+    }
+    if let Some(home) = dirs::home_dir() {
+        return home;
     }
     std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
+}
+
+pub fn show_in_folder(path: &str) {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open")
+            .arg("-R")
+            .arg(path)
+            .spawn();
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("explorer")
+            .args(["/select,", path])
+            .spawn();
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = std::process::Command::new("xdg-open")
+            .arg(path)
+            .spawn();
+    }
 }
 
 fn get_unique_filepath(dir: &std::path::Path, stem: &str, ext: &str) -> std::path::PathBuf {
@@ -158,11 +182,40 @@ pub fn pick_database_file(app: tauri::AppHandle) -> Result<Option<String>, Strin
     {
         pick_database_file_macos(&app)
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        let _ = app;
+        pick_database_file_windows()
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         let _ = app;
         Ok(None)
     }
+}
+
+#[cfg(target_os = "windows")]
+fn pick_database_file_windows() -> Result<Option<String>, String> {
+    let script = r#"
+        Add-Type -AssemblyName System.Windows.Forms
+        $dialog = New-Object System.Windows.Forms.OpenFileDialog
+        $dialog.Filter = "SQLite 数据库 (*.db)|*.db|所有文件 (*.*)|*.*"
+        $dialog.Title = "选择 GPDb 数据库文件"
+        if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            Write-Output $dialog.FileName
+        }
+    "#;
+    let out = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", script])
+        .output()
+        .map_err(|e| format!("启动文件选择器失败: {}", e))?;
+    if out.status.success() {
+        let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !path.is_empty() {
+            return Ok(Some(path));
+        }
+    }
+    Ok(None)
 }
 
 #[cfg(target_os = "macos")]
@@ -251,21 +304,14 @@ pub fn export_database_file() -> Result<Option<String>, String> {
         .unwrap_or_else(|_| "backup".to_string());
 
     let base_dir = get_export_dir();
-    let stem = format!("gevi_backup_{}", date_str);
+    let stem = format!("gpdb_backup_{}", date_str);
     let dest_path = get_unique_filepath(&base_dir, &stem, "db");
 
     std::fs::copy(&current_path, &dest_path)
         .map_err(|e| format!("导出数据库文件失败: {}", e))?;
 
     let dest_str = dest_path.to_string_lossy().to_string();
-
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("open")
-            .arg("-R")
-            .arg(&dest_str)
-            .spawn();
-    }
+    show_in_folder(&dest_str);
 
     Ok(Some(dest_str))
 }
@@ -277,7 +323,7 @@ mod tests {
     #[test]
     fn test_create_new_database_creates_all_tables() {
         let temp_dir = std::env::temp_dir().join(format!("gpdb_test_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
-        let db_path = temp_dir.join("test_gevi.db");
+        let db_path = temp_dir.join("test_GPDb.db");
         let result = create_new_database(Some(db_path.to_string_lossy().to_string()));
         assert!(result.is_ok(), "create_new_database failed: {:?}", result.err());
 

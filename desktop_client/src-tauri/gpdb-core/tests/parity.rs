@@ -10,7 +10,7 @@
 //!    序列**（含 ORDER BY / LIMIT / OFFSET），而不是我自己手写一套比较规则 ——
 //!    手写规则会在 `COLLATE NOCASE` 这类细节上和实现悄悄分叉。
 //!
-//! 只读打开真库，不写、不建副本。路径可用 `GEVI_DB` 覆盖。
+//! 只读打开真库，不写、不建副本。路径可用 `GPDB_DB` 覆盖。
 
 use gpdb_core::models::{FilterArgs, MoviesResponse, PerformerFilterArgs};
 use gpdb_core::queries;
@@ -20,16 +20,16 @@ use std::path::PathBuf;
 
 /// 测试二进制的 cwd 是 crate 根（gpdb-core/），真库在上面三层。
 fn find_db() -> PathBuf {
-    if let Ok(p) = std::env::var("GEVI_DB") {
+    if let Ok(p) = std::env::var("GPDB_DB") {
         return PathBuf::from(p);
     }
-    for candidate in ["../../../gevi.db", "../../gevi.db", "gevi.db"] {
+    for candidate in ["../../../GPDb.db", "../../GPDb.db", "GPDb.db"] {
         let p = PathBuf::from(candidate);
         if p.exists() {
             return p;
         }
     }
-    panic!("没找到 gevi.db —— 用 GEVI_DB=/path/to/gevi.db 指定，或从 src-tauri/ 下跑");
+    panic!("没找到 GPDb.db —— 用 GPDB_DB=/path/to/GPDb.db 指定，或从 src-tauri/ 下跑");
 }
 
 fn db() -> Connection {

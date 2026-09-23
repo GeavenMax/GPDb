@@ -13,38 +13,45 @@ def find_default_db_path() -> Path:
     """自动获取客户端记录的或本地存在的数据库路径。
 
     检索优先级：
-    1. 环境变量 `GEVI_DB`
+    1. 环境变量 `GPDB_DB`
     2. 客户端配置文件：~/Library/Application Support/com.gpdb.app/db_config.json
-    3. 客户端快捷标记：~/.gevi_db_path
-    4. 当前工作目录下的 gevi.db
-    5. db_manager.py 所在目录下的 gevi.db
-    6. 上级或上两级目录下的 gevi.db
-    7. 客户端标准目录：~/Documents/GPDb/gevi.db
-    8. 回退：当前脚本所在目录下的 gevi.db
+    3. 客户端快捷标记：~/.gpdb_db_path
+    4. 当前工作目录下的 GPDb.db
+    5. db_manager.py 所在目录下的 GPDb.db
+    6. 上级或上两级目录下的 GPDb.db
+    7. 客户端标准目录：~/Documents/GPDb/GPDb.db
+    8. 回退：当前脚本所在目录下的 GPDb.db
     """
-    # 1. GEVI_DB env var
-    if env_db := os.environ.get("GEVI_DB"):
+    # 1. GPDB_DB env var
+    if env_db := os.environ.get("GPDB_DB"):
         p = Path(env_db).expanduser()
         if p.is_file():
             return p
 
-    # 2. com.gpdb.app/db_config.json (macOS Application Support)
-    try:
-        cfg_file = Path.home() / "Library" / "Application Support" / "com.gpdb.app" / "db_config.json"
-        if cfg_file.exists():
-            with open(cfg_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                custom = data.get("custom_db_path")
-                if custom:
-                    p = Path(custom).expanduser()
-                    if p.is_file():
-                        return p
-    except Exception:
-        pass
+    # 2. com.gpdb.app/db_config.json (macOS Application Support / Windows AppData)
+    cfg_candidates = [
+        Path.home() / "Library" / "Application Support" / "com.gpdb.app" / "db_config.json",
+        Path(os.environ.get("APPDATA", "")) / "com.gpdb.app" / "db_config.json",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "com.gpdb.app" / "db_config.json",
+        Path.home() / "AppData" / "Roaming" / "com.gpdb.app" / "db_config.json",
+        Path.home() / ".config" / "com.gpdb.app" / "db_config.json",
+    ]
+    for cfg_file in cfg_candidates:
+        try:
+            if cfg_file.is_file():
+                with open(cfg_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    custom = data.get("custom_db_path")
+                    if custom:
+                        p = Path(custom).expanduser()
+                        if p.is_file():
+                            return p
+        except Exception:
+            pass
 
-    # 3. ~/.gevi_db_path
+    # 3. ~/.gpdb_db_path
     try:
-        dotfile = Path.home() / ".gevi_db_path"
+        dotfile = Path.home() / ".gpdb_db_path"
         if dotfile.exists():
             content = dotfile.read_text("utf-8").strip()
             if content:
@@ -55,23 +62,23 @@ def find_default_db_path() -> Path:
         pass
 
     # 4. Current working directory
-    cwd_db = Path.cwd() / "gevi.db"
+    cwd_db = Path.cwd() / "GPDb.db"
     if cwd_db.is_file():
         return cwd_db
 
     # 5. Beside db_manager.py
-    script_db = Path(__file__).resolve().parent / "gevi.db"
+    script_db = Path(__file__).resolve().parent / "GPDb.db"
     if script_db.is_file():
         return script_db
 
     # 6. Ancestors (e.g. if script is in a subdirectory)
     for parent in Path(__file__).resolve().parents:
-        cand = parent / "gevi.db"
+        cand = parent / "GPDb.db"
         if cand.is_file():
             return cand
 
-    # 7. Standard default ~/Documents/GPDb/gevi.db
-    std_gpdb = Path.home() / "Documents" / "GPDb" / "gevi.db"
+    # 7. Standard default ~/Documents/GPDb/GPDb.db
+    std_gpdb = Path.home() / "Documents" / "GPDb" / "GPDb.db"
     if std_gpdb.is_file():
         return std_gpdb
 
@@ -87,9 +94,9 @@ class DatabaseManager:
     """
 
     def __init__(self, db_path: str | Path | None = None):
-        if db_path is None or db_path == "gevi.db":
+        if db_path is None or db_path == "GPDb.db":
             resolved = find_default_db_path()
-            self.db_path = str(resolved if resolved.exists() else (db_path or "gevi.db"))
+            self.db_path = str(resolved if resolved.exists() else (db_path or "GPDb.db"))
         else:
             self.db_path = str(db_path)
         self._write_lock = threading.RLock()
@@ -401,7 +408,7 @@ class DatabaseManager:
     def get_known_performer_ids(self) -> list[int]:
         """Every performer ID we have ever seen referenced by a movie's cast list.
 
-        Far cheaper than scanning a numeric range: the GEVI performer ID space is
+        Far cheaper than scanning a numeric range: the GPDb performer ID space is
         extremely sparse, so range scanning wastes the vast majority of requests.
         """
         cur = self.conn.cursor()

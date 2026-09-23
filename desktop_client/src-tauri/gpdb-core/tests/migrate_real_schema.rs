@@ -6,7 +6,7 @@
 //! columns. So this one builds a database from the real `schema.sql`, strips the new
 //! columns back out to simulate a library that predates them, and migrates it.
 //!
-//! It does not copy the 244 MB `gevi.db`: replaying `schema.sql` into a temp file
+//! It does not copy the 244 MB `GPDb.db`: replaying `schema.sql` into a temp file
 //! produces the same shape in milliseconds, and a test that heavy would not get run.
 //! The real file is never opened, let alone written.
 

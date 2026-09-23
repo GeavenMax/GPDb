@@ -6,7 +6,7 @@
  * and a miss is invisible: the preference silently resets, and the user concludes the
  * app forgot their settings. Naming them here makes the rename a single edit.
  *
- * The `gpdb_` prefix replaced `gevi_` when the client was renamed from GEVI+ to GPDb.
+ * The `gpdb_` prefix replaced `gpdb_` when the client was renamed from GPDb+ to GPDb.
  * `migrate()` below carries old values over; it runs as a side effect of importing this
  * module, so any module that reads a preference is guaranteed to see migrated values —
  * theme.ts reads localStorage at module scope, before any function could be called, and
@@ -36,21 +36,21 @@ export const PREFS = {
 
 export type PrefName = keyof typeof PREFS;
 
-/** The GEVI+ key each preference lived under before the rename. */
+/** The GPDb+ key each preference lived under before the rename. */
 const LEGACY: Record<PrefName, string> = {
-  theme: 'gevi_theme',
-  themeStyle: 'gevi_theme_style',
-  descLang: 'gevi_desc_lang',
-  gridCols: 'gevi_grid_cols',
-  listCols: 'gevi_list_cols',
-  translateMode: 'gevi_translate_mode',
-  pageSize: 'gevi_page_size',
-  listMode: 'gevi_list_mode',
-  navOrder: 'gevi_nav_order',
+  theme: 'gpdb_theme',
+  themeStyle: 'gpdb_theme_style',
+  descLang: 'gpdb_desc_lang',
+  gridCols: 'gpdb_grid_cols',
+  listCols: 'gpdb_list_cols',
+  translateMode: 'gpdb_translate_mode',
+  pageSize: 'gpdb_page_size',
+  listMode: 'gpdb_list_mode',
+  navOrder: 'gpdb_nav_order',
 };
 
 /**
- * Carries values written under the GEVI+ names over to the GPDb names, once.
+ * Carries values written under the GPDb+ names over to the GPDb names, once.
  *
  * A value already at the new key always wins — so this is safe to run on every start,
  * and safe to run twice (index.html does the theme pair before the bundle loads).

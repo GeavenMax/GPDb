@@ -6,7 +6,7 @@ export interface PrivacySettings {
   keepBrowseHistory: boolean;
 }
 
-const PRIVACY_KEY = 'gevi_privacy_settings';
+const PRIVACY_KEY = 'gpdb_privacy_settings';
 
 function loadPrivacySettings(): PrivacySettings {
   try {

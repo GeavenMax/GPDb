@@ -29,8 +29,10 @@ export const TARGET_TRANSLATION_LANGUAGES = [
   { code: 'fr', label: 'Français' },
 ];
 
-const STORAGE_KEY = 'gevi_ui_locale';
+const STORAGE_KEY = 'gpdb_ui_locale';
 const savedLocale = (localStorage.getItem(STORAGE_KEY) as SupportedLocale) || 'zh-CN';
+
+import { recordLangSwitch } from '../services/analytics';
 
 export const currentLocale = ref<SupportedLocale>(savedLocale);
 
@@ -38,6 +40,9 @@ export function setLocale(locale: SupportedLocale) {
   currentLocale.value = locale;
   localStorage.setItem(STORAGE_KEY, locale);
   document.documentElement.lang = locale;
+  try {
+    recordLangSwitch();
+  } catch {}
 }
 
 const MESSAGES: Record<SupportedLocale, Record<string, string>> = {
@@ -122,7 +127,7 @@ const MESSAGES: Record<SupportedLocale, Record<string, string>> = {
     'plugins.btSearch': 'BT 磁力资源搜索扩展',
     'plugins.btSearchDesc': '在影片、演员及分集页面一键跳转至主流 BT 站点检索磁力资源',
     'plugins.customScraper': '自动化刮削更新插件',
-    'plugins.customScraperDesc': '一键后台增量同步 GEVI 网站最新影片、分集与演职员数据',
+    'plugins.customScraperDesc': '一键后台增量同步 GPDb 网站最新影片、分集与演职员数据',
     'plugins.translation': '大模型 AI 翻译引擎',
     'plugins.translationDesc': '接入 OpenAI / DeepSeek / Claude / Ollama 自定义 Prompt 批量翻译影片与分集',
     'plugins.trophies': '典藏成就奖杯系统 (77 奖杯)',
@@ -230,7 +235,7 @@ const MESSAGES: Record<SupportedLocale, Record<string, string>> = {
     'plugins.btSearch': 'BT 磁力資源搜尋外掛',
     'plugins.btSearchDesc': '在影片、演員及分集頁面一鍵跳轉至主流 BT 站搜尋資源',
     'plugins.customScraper': '自動化刮削更新外掛',
-    'plugins.customScraperDesc': '一鍵後台增量同步 GEVI 網站最新數據',
+    'plugins.customScraperDesc': '一鍵後台增量同步 GPDb 網站最新數據',
     'plugins.translation': '大模型 AI 翻譯引擎',
     'plugins.translationDesc': '接入各大 LLM API 自定義 Prompt 批量翻譯',
     'plugins.trophies': '典藏成就獎盃系統 (77 獎盃)',
@@ -338,7 +343,7 @@ const MESSAGES: Record<SupportedLocale, Record<string, string>> = {
     'plugins.btSearch': 'Torrent / Magnet Search Extension',
     'plugins.btSearchDesc': 'One-click jump to major BT portals from movie and performer pages',
     'plugins.customScraper': 'Automated Scraper Plugin',
-    'plugins.customScraperDesc': 'Background incremental scraping for latest GEVI data',
+    'plugins.customScraperDesc': 'Background incremental scraping for latest GPDb data',
     'plugins.translation': 'LLM AI Translation Engine',
     'plugins.translationDesc': 'Configure OpenAI / DeepSeek / Claude / Ollama with custom prompts',
     'plugins.trophies': 'Exploration Trophy System (77 Trophies)',
@@ -446,7 +451,7 @@ const MESSAGES: Record<SupportedLocale, Record<string, string>> = {
     'plugins.btSearch': 'Ricerca Risorse Torrent / Magnet',
     'plugins.btSearchDesc': 'Accesso diretto ai portali torrent dalle schede film e attori',
     'plugins.customScraper': 'Scraper Automatico',
-    'plugins.customScraperDesc': 'Aggiornamento incrementale dei dati GEVI in background',
+    'plugins.customScraperDesc': 'Aggiornamento incrementale dei dati GPDb in background',
     'plugins.translation': 'Motore di Traduzione AI',
     'plugins.translationDesc': 'Traduzione con LLM e prompt personalizzabili',
     'plugins.trophies': 'Sistema Trofei d\'Esplorazione (77 Trofei)',
@@ -554,7 +559,7 @@ const MESSAGES: Record<SupportedLocale, Record<string, string>> = {
     'plugins.btSearch': 'BT・マグネット検索拡張',
     'plugins.btSearchDesc': 'ワンクリックでトレント検索サイトへアクセス',
     'plugins.customScraper': '自動スクレイピング更新',
-    'plugins.customScraperDesc': 'GEVIサイトの最新データをバックグラウンドで収集',
+    'plugins.customScraperDesc': 'GPDbサイトの最新データをバックグラウンドで収集',
     'plugins.translation': '大規模言語モデル翻訳エンジン',
     'plugins.translationDesc': 'プロンプトとAPIを設定して作品情報を翻訳',
     'plugins.trophies': 'トロフィー達成システム (77 トロフィー)',
@@ -770,7 +775,7 @@ const MESSAGES: Record<SupportedLocale, Record<string, string>> = {
     'plugins.btSearch': 'Torrent / Magnet-Suche',
     'plugins.btSearchDesc': 'Direktes Weiterleiten zu Torrent-Portalen für Filme und Darsteller',
     'plugins.customScraper': 'Automatisierter Scraper',
-    'plugins.customScraperDesc': 'Inkrementelle Synchronisation der neuesten GEVI-Daten im Hintergrund',
+    'plugins.customScraperDesc': 'Inkrementelle Synchronisation der neuesten GPDb-Daten im Hintergrund',
     'plugins.translation': 'KI-Übersetzungs-Engine',
     'plugins.translationDesc': 'Verbinden Sie LLMs zur automatischen Übersetzung von Filmtexten',
     'plugins.trophies': 'Entdeckungs-Trophäensystem (77 Trophäen)',

@@ -16,7 +16,7 @@ static CACHED_STATS: RwLock<Option<(Instant, CacheStats)>> = RwLock::new(None);
 const STATS_TTL: Duration = Duration::from_secs(300); // 5 minutes
 
 pub fn find_cache_dir() -> PathBuf {
-    // 1. If gevi.db is found, image_cache is right next to it
+    // 1. If GPDb.db is found, image_cache is right next to it
     if let Some(db_path) = db::find_db_path() {
         if let Some(parent) = db_path.parent() {
             let cache = parent.join("image_cache");

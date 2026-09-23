@@ -1205,7 +1205,7 @@ export const api = {
       python_path: '/usr/bin/python3',
       sqlite3_available: true,
       database_ready: true,
-      database_path: 'gevi.db',
+      database_path: 'GPDb.db',
       playwright_available: false,
       all_ready: true,
       missing_items: [],

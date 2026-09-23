@@ -7,7 +7,7 @@
 //! of the fix are here: search somewhere that actually works when bundled, and never
 //! open for creation.
 //!
-//! Pointing the app at a library elsewhere is `GEVI_DB`, the same variable the Python
+//! Pointing the app at a library elsewhere is `GPDB_DB`, the same variable the Python
 //! side and the parity tests read, or custom configuration saved in user app support.
 
 use rusqlite::{Connection, OpenFlags};
@@ -23,13 +23,22 @@ pub struct DbConfig {
 }
 
 pub fn config_file_path() -> Option<PathBuf> {
-    std::env::var_os("HOME").map(|h| {
-        PathBuf::from(h)
-            .join("Library")
-            .join("Application Support")
-            .join("com.gpdb.app")
-            .join("db_config.json")
-    })
+    #[cfg(target_os = "windows")]
+    {
+        dirs::config_dir()
+            .map(|p| p.join("com.gpdb.app").join("db_config.json"))
+            .or_else(|| dirs::data_dir().map(|p| p.join("com.gpdb.app").join("db_config.json")))
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::env::var_os("HOME").map(|h| {
+            PathBuf::from(h)
+                .join("Library")
+                .join("Application Support")
+                .join("com.gpdb.app")
+                .join("db_config.json")
+        })
+    }
 }
 
 pub fn load_db_config() -> DbConfig {
@@ -51,10 +60,10 @@ pub fn save_db_config(cfg: &DbConfig) -> Result<(), String> {
         let data = serde_json::to_vec_pretty(cfg).map_err(|e| e.to_string())?;
         std::fs::write(&p, data).map_err(|e| e.to_string())?;
     }
-    // Also save a ~/.gevi_db_path convenience text file so any script/shell can easily read it
+    // Also save a ~/.gpdb_db_path convenience text file so any script/shell can easily read it
     if let Some(ref path_str) = cfg.custom_db_path {
-        if let Some(home) = std::env::var_os("HOME") {
-            let dotfile = PathBuf::from(home).join(".gevi_db_path");
+        if let Some(home) = dirs::home_dir().or_else(|| std::env::var_os("HOME").map(PathBuf::from)) {
+            let dotfile = home.join(".gpdb_db_path");
             let _ = std::fs::write(dotfile, path_str);
         }
     }
@@ -64,8 +73,8 @@ pub fn save_db_config(cfg: &DbConfig) -> Result<(), String> {
 pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
     let p = path.as_ref();
     if let Ok(stripped) = p.strip_prefix("~") {
-        if let Some(home) = std::env::var_os("HOME") {
-            return PathBuf::from(home).join(stripped);
+        if let Some(home) = dirs::home_dir().or_else(|| std::env::var_os("HOME").map(PathBuf::from)) {
+            return home.join(stripped);
         }
     }
     p.to_path_buf()
@@ -84,7 +93,7 @@ pub fn is_valid_sqlite_db(path: &Path) -> bool {
     false
 }
 
-pub fn is_valid_gevi_db(path: &Path) -> bool {
+pub fn is_valid_gpdb_db(path: &Path) -> bool {
     if !is_valid_sqlite_db(path) {
         return false;
     }
@@ -102,14 +111,14 @@ pub fn is_valid_gevi_db(path: &Path) -> bool {
     }
 }
 
-/// Scan candidate databases using Spotlight mdfind and common directories.
+/// Scan candidate databases using Spotlight mdfind on macOS, or bounded directory traversal on Windows / other OS.
 pub fn scan_candidate_databases() -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     let mut seen = HashSet::new();
 
     let mut add = |p: PathBuf| {
         let key = std::fs::canonicalize(&p).unwrap_or_else(|_| p.clone());
-        if seen.insert(key.clone()) && is_valid_gevi_db(&key) {
+        if seen.insert(key.clone()) && is_valid_gpdb_db(&key) {
             candidates.push(key);
         }
     };
@@ -118,7 +127,7 @@ pub fn scan_candidate_databases() -> Vec<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         if let Ok(output) = std::process::Command::new("mdfind")
-            .args(["kMDItemFSName == 'gevi.db'"])
+            .args(["kMDItemFSName == 'GPDb.db'"])
             .output()
         {
             if output.status.success() {
@@ -133,44 +142,42 @@ pub fn scan_candidate_databases() -> Vec<PathBuf> {
         }
     }
 
-    // 2. Check well-known user folders
-    if let Some(home) = std::env::var_os("HOME") {
-        let home = PathBuf::from(home);
-        let probe_roots = [
-            home.join("iCloud Drive (Archive)").join("Documents"),
-            home.join("Library/Mobile Documents/com~apple~CloudDocs"),
-            home.join("Documents"),
-            home.join("Downloads"),
-            home.join("Desktop"),
-        ];
-        for root in probe_roots {
-            if !root.is_dir() {
-                continue;
-            }
-            if let Ok(entries) = std::fs::read_dir(&root) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_file() && path.file_name().is_some_and(|n| n == "gevi.db") {
-                        add(path.clone());
-                    } else if path.is_dir() {
-                        let sub_db = path.join("gevi.db");
-                        if sub_db.is_file() {
-                            add(sub_db);
-                        }
-                        // Check one more level deeper
-                        if let Ok(sub_entries) = std::fs::read_dir(&path) {
-                            for sub in sub_entries.flatten() {
-                                let sub_path = sub.path();
-                                if sub_path.is_dir() {
-                                    let deep_db = sub_path.join("gevi.db");
-                                    if deep_db.is_file() {
-                                        add(deep_db);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+    // 2. Check well-known user folders across platforms
+    let mut probe_roots: Vec<PathBuf> = Vec::new();
+
+    if let Some(doc) = dirs::document_dir() {
+        probe_roots.push(doc.clone());
+        probe_roots.push(doc.join("GPDb"));
+    }
+    if let Some(desk) = dirs::desktop_dir() {
+        probe_roots.push(desk);
+    }
+    if let Some(dl) = dirs::download_dir() {
+        probe_roots.push(dl);
+    }
+    if let Some(home) = dirs::home_dir() {
+        probe_roots.push(home.join("iCloud Drive (Archive)").join("Documents"));
+        probe_roots.push(home.join("Library/Mobile Documents/com~apple~CloudDocs"));
+    }
+
+    // Traverse probe roots with depth <= 3
+    for root in probe_roots {
+        if !root.is_dir() {
+            continue;
+        }
+        for entry in walkdir::WalkDir::new(&root)
+            .max_depth(3)
+            .into_iter()
+            .filter_entry(|e| {
+                let name = e.file_name().to_string_lossy();
+                // Skip hidden folders, node_modules, target, .git
+                !name.starts_with('.') && name != "node_modules" && name != "target"
+            })
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+            if path.is_file() && entry.file_name() == "GPDb.db" {
+                add(path.to_path_buf());
             }
         }
     }
@@ -190,8 +197,8 @@ fn migrated_paths() -> &'static Mutex<HashSet<PathBuf>> {
 
 /// The database, or `None` if it is nowhere we know how to look.
 pub fn find_db_path() -> Option<PathBuf> {
-    // 1. Explicit GEVI_DB env var wins outright
-    if let Some(raw) = std::env::var_os("GEVI_DB") {
+    // 1. Explicit GPDB_DB env var wins outright
+    if let Some(raw) = std::env::var_os("GPDB_DB") {
         if !raw.is_empty() {
             let p = expand_tilde(PathBuf::from(raw));
             if p.is_file() {
@@ -204,13 +211,13 @@ pub fn find_db_path() -> Option<PathBuf> {
     let cfg = load_db_config();
     if let Some(custom) = cfg.custom_db_path {
         let p = expand_tilde(PathBuf::from(custom));
-        if is_valid_gevi_db(&p) {
+        if is_valid_gpdb_db(&p) {
             return Some(p);
         }
     }
 
     // 3. Relative to the working directory (e.g. tauri dev)
-    for candidate in ["gevi.db", "../gevi.db", "../../gevi.db"] {
+    for candidate in ["GPDb.db", "../GPDb.db", "../../GPDb.db"] {
         let p = PathBuf::from(candidate);
         if p.is_file() {
             return Some(p);
@@ -230,7 +237,7 @@ pub fn find_db_path() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         if let Ok(output) = std::process::Command::new("mdfind")
-            .args(["kMDItemFSName == 'gevi.db'"])
+            .args(["kMDItemFSName == 'GPDb.db'"])
             .output()
         {
             if output.status.success() {
@@ -239,7 +246,7 @@ pub fn find_db_path() -> Option<PathBuf> {
                     let trimmed = line.trim();
                     if !trimmed.is_empty() {
                         let p = PathBuf::from(trimmed);
-                        if is_valid_gevi_db(&p) {
+                        if is_valid_gpdb_db(&p) {
                             let mut cfg = load_db_config();
                             cfg.custom_db_path = Some(p.to_string_lossy().to_string());
                             let _ = save_db_config(&cfg);
@@ -251,13 +258,28 @@ pub fn find_db_path() -> Option<PathBuf> {
         }
     }
 
+    // 6. Fast fallback for Windows: check ~/Documents/GPDb/GPDb.db or ~/Documents/GPDb.db
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(doc) = dirs::document_dir() {
+            let p1 = doc.join("GPDb").join("GPDb.db");
+            if is_valid_gpdb_db(&p1) {
+                return Some(p1);
+            }
+            let p2 = doc.join("GPDb.db");
+            if is_valid_gpdb_db(&p2) {
+                return Some(p2);
+            }
+        }
+    }
+
     None
 }
 
-/// Walk from the executable's directory upward looking for `gevi.db`.
+/// Walk from the executable's directory upward looking for `GPDb.db`.
 fn find_beside_exe(exe: &Path) -> Option<PathBuf> {
     for dir in exe.parent()?.ancestors() {
-        let p = dir.join("gevi.db");
+        let p = dir.join("GPDb.db");
         if p.is_file() {
             return Some(p);
         }
@@ -268,7 +290,7 @@ fn find_beside_exe(exe: &Path) -> Option<PathBuf> {
 /// `find_db_path`, or an error saying what to do about it.
 pub fn db_path() -> Result<PathBuf, String> {
     find_db_path().ok_or_else(|| {
-        "找不到 gevi.db。\n\
+        "找不到 GPDb.db。\n\
          请在「缓存与设置 → 本地离线数据中心」中指定数据库路径，\
          或使用「智能扫描」自动定位。"
             .to_string()
@@ -290,7 +312,7 @@ pub fn open_db() -> Result<Connection, String> {
     let key = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
     let key_str = key.to_string_lossy().to_string();
 
-    // Ensure client config and ~/.gevi_db_path reflect the currently active database path
+    // Ensure client config and ~/.gpdb_db_path reflect the currently active database path
     let mut cfg = load_db_config();
     if cfg.custom_db_path.as_deref() != Some(&key_str) {
         cfg.custom_db_path = Some(key_str);
@@ -334,7 +356,7 @@ mod tests {
     fn finds_the_library_up_from_a_bundled_app() {
         let scratch = Scratch::new("bundle");
         let project = scratch.0.join("proj");
-        let lib = project.join("gevi.db");
+        let lib = project.join("GPDb.db");
         let exe = project.join(
             "desktop_client/src-tauri/target/release/bundle/macos/GPDb.app/Contents/MacOS/gpdb",
         );
@@ -352,8 +374,8 @@ mod tests {
             "desktop_client/src-tauri/target/release/bundle/macos/GPDb.app/Contents/MacOS/gpdb",
         );
         std::fs::create_dir_all(exe.parent().unwrap()).expect("create bundle tree");
-        let outer = project.join("gevi.db");
-        let inner = exe.parent().unwrap().join("gevi.db");
+        let outer = project.join("GPDb.db");
+        let inner = exe.parent().unwrap().join("GPDb.db");
         std::fs::write(&outer, b"").expect("write outer");
         std::fs::write(&inner, b"").expect("write inner");
 
@@ -385,8 +407,8 @@ mod tests {
     #[test]
     fn tilde_expansion_replaces_home() {
         if let Some(home) = std::env::var_os("HOME") {
-            let expanded = expand_tilde("~/test/gevi.db");
-            assert_eq!(expanded, PathBuf::from(home).join("test/gevi.db"));
+            let expanded = expand_tilde("~/test/GPDb.db");
+            assert_eq!(expanded, PathBuf::from(home).join("test/GPDb.db"));
         }
     }
 
@@ -403,20 +425,20 @@ mod tests {
     }
 
     #[test]
-    fn validates_gevi_schema_requires_movies_table() {
+    fn validates_gpdb_schema_requires_movies_table() {
         let scratch = Scratch::new("schema_check");
         let empty_db = scratch.0.join("empty.db");
         {
             let conn = Connection::open(&empty_db).unwrap();
             conn.execute("CREATE TABLE other (id INTEGER PRIMARY KEY);", []).unwrap();
         }
-        assert!(!is_valid_gevi_db(&empty_db));
+        assert!(!is_valid_gpdb_db(&empty_db));
 
         let valid_db = scratch.0.join("valid.db");
         {
             let conn = Connection::open(&valid_db).unwrap();
             conn.execute("CREATE TABLE movies (id INTEGER PRIMARY KEY, title TEXT);", []).unwrap();
         }
-        assert!(is_valid_gevi_db(&valid_db));
+        assert!(is_valid_gpdb_db(&valid_db));
     }
 }

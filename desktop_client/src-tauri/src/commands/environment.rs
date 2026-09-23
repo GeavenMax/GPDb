@@ -3,7 +3,7 @@
 //! 检测项包含：
 //! 1. Python 3 解释器是否可用、版本号、执行路径（自动化刮削与数据同步基石）
 //! 2. Python 是否内置 sqlite3 模块
-//! 3. 数据库文件是否就绪并包含有效 GEVI 表结构
+//! 3. 数据库文件是否就绪并包含有效 GPDb 表结构
 //! 4. 扩展依赖（Playwright 浏览器自动化引擎）是否安装就绪
 //! 5. 综合健康评估与缺失项提醒列表
 
@@ -39,25 +39,24 @@ pub fn check_runtime_environment() -> Result<RuntimeEnvironmentInfo, String> {
     let mut missing = Vec::new();
     let mut recs = Vec::new();
 
-    // 1. 检测 Python 3 可执行路径
-    let python_path = {
-        let which_cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
-        Command::new(which_cmd)
-            .arg("python3")
-            .output()
-            .ok()
-            .and_then(|out| {
-                if out.status.success() {
-                    let s = String::from_utf8_lossy(&out.stdout).trim().lines().next()?.to_string();
-                    if !s.is_empty() { Some(s) } else { None }
-                } else {
-                    None
-                }
-            })
-    };
+    // 1 & 2. 检测 Python 3 解释器及版本
+    let python_bin = crate::commands::sync::resolve_python();
+    let which_cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
 
-    // 2. 检测 Python 版本
-    let (python_installed, python_version) = match Command::new("python3").arg("--version").output() {
+    let python_path = Command::new(which_cmd)
+        .arg(&python_bin)
+        .output()
+        .ok()
+        .and_then(|out| {
+            if out.status.success() {
+                let s = String::from_utf8_lossy(&out.stdout).trim().lines().next()?.to_string();
+                if !s.is_empty() { Some(s) } else { None }
+            } else {
+                None
+            }
+        });
+
+    let (python_installed, python_version) = match Command::new(&python_bin).arg("--version").output() {
         Ok(out) if out.status.success() => {
             let ver = String::from_utf8_lossy(&out.stdout).trim().to_string();
             let final_ver = if ver.is_empty() {
@@ -71,15 +70,17 @@ pub fn check_runtime_environment() -> Result<RuntimeEnvironmentInfo, String> {
             missing.push("Python 3 运行环境缺失".to_string());
             #[cfg(target_os = "macos")]
             recs.push("建议在终端运行「xcode-select --install」或通过 brew「brew install python3」安装 Python 3。".to_string());
-            #[cfg(not(target_os = "macos"))]
-            recs.push("请前往 python.org 官方网站下载安装 Python 3 并勾选 Add to PATH。".to_string());
+            #[cfg(target_os = "windows")]
+            recs.push("请前往 python.org 官方网站下载安装 Python 3，安装时务必勾选「Add python.exe to PATH」。".to_string());
+            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+            recs.push("请在系统中安装 Python 3 并将其加入系统 PATH 环境变量。".to_string());
             (false, None)
         }
     };
 
     // 3. 检测 sqlite3 模块
     let sqlite3_available = if python_installed {
-        match Command::new("python3")
+        match Command::new(&python_bin)
             .args(["-c", "import sqlite3; print('ok')"])
             .output()
         {
@@ -97,7 +98,7 @@ pub fn check_runtime_environment() -> Result<RuntimeEnvironmentInfo, String> {
     // 4. 检测数据库就绪状态
     let db_path_opt = crate::db::find_db_path();
     let (database_ready, database_path) = match db_path_opt {
-        Some(ref p) if p.is_file() && crate::db::is_valid_gevi_db(p) => {
+        Some(ref p) if p.is_file() && crate::db::is_valid_gpdb_db(p) => {
             (true, Some(p.to_string_lossy().to_string()))
         }
         Some(ref p) => {
@@ -106,15 +107,15 @@ pub fn check_runtime_environment() -> Result<RuntimeEnvironmentInfo, String> {
             (false, Some(p.to_string_lossy().to_string()))
         }
         None => {
-            missing.push("尚未连接或创建 gevi.db 本地数据库".to_string());
-            recs.push("请在首屏引导弹窗中点击「一键创建全新空白数据库」或指定已有的 gevi.db。".to_string());
+            missing.push("尚未连接或创建 GPDb.db 本地数据库".to_string());
+            recs.push("请在首屏引导弹窗中点击「一键创建全新空白数据库」或指定已有的 GPDb.db。".to_string());
             (false, None)
         }
     };
 
     // 5. 检测可选进阶扩展 Playwright
     let playwright_available = if python_installed {
-        match Command::new("python3")
+        match Command::new(&python_bin)
             .args(["-c", "import playwright; print('ok')"])
             .output()
         {

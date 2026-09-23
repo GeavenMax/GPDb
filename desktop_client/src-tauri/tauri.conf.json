@@ -30,9 +30,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
+    "targets": "all",
     "resources": [
-      "../../sync_gevi.py",
+      "../../sync_gpdb.py",
+      "../../sync_bftv_catalog.py",
       "../../batch_scraper.py",
       "../../db_manager.py",
       "../../scrape_bftv_performers.py",
@@ -42,6 +43,14 @@
       "gen/icons/AppIcon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
     "macOS": {
       "files": {
         "Resources/Assets.car": "gen/icons/Assets.car"

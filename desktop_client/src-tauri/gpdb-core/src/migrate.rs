@@ -10,7 +10,7 @@
 //! The schema has always been owned by Python (`schema.sql` + `db_manager.MIGRATIONS`
 //! + `apply_migrations`). Asking the user to run Python once does not close this hole:
 //! the desktop is meant to work on a machine with no Python at all, and the library it
-//! opens is not necessarily one Python has ever seen — `GEVI_DB` can point it anywhere.
+//! opens is not necessarily one Python has ever seen — `GPDB_DB` can point it anywhere.
 //!
 //! # The rule for this module
 //!

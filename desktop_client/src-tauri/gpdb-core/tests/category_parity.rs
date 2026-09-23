@@ -40,16 +40,16 @@ fn python() -> Option<String> {
 }
 
 fn find_db() -> PathBuf {
-    if let Ok(p) = std::env::var("GEVI_DB") {
+    if let Ok(p) = std::env::var("GPDB_DB") {
         return PathBuf::from(p);
     }
-    for candidate in ["../../../gevi.db", "../../gevi.db", "gevi.db"] {
+    for candidate in ["../../../GPDb.db", "../../GPDb.db", "GPDb.db"] {
         let p = PathBuf::from(candidate);
         if p.exists() {
             return p;
         }
     }
-    panic!("没找到 gevi.db —— 用 GEVI_DB=/path/to/gevi.db 指定，或从 src-tauri/ 下跑");
+    panic!("没找到 GPDb.db —— 用 GPDB_DB=/path/to/GPDb.db 指定，或从 src-tauri/ 下跑");
 }
 
 /// 一条请求走 stdin，一次回答走 stdout。驱动的是真函数，不是抄一份实现过来 ——

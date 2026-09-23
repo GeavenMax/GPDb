@@ -34,3 +34,5 @@ tauri = { version = "2.11.6", features = [] }
 tauri-plugin-log = "2"
 rusqlite = { version = "0.31", features = ["bundled"] }
 url = "2"
+dirs = "5.0"
+walkdir = "2.5"

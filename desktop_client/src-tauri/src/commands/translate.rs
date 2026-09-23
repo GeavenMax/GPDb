@@ -9,7 +9,7 @@
 //! 两者分开，`translate_config_parity.rs` 才能把 core 单独拿去和 `translate.py`
 //! 对拍。把它们揉在一起会让「和 CLI 读同一个文件」这件事失去可验证性。
 //!
-//! 配置文件与 `gevi.db` 同目录（`translate.py` 用的也是仓库根目录），所以换库
+//! 配置文件与 `GPDb.db` 同目录（`translate.py` 用的也是仓库根目录），所以换库
 //! 路径会一并换掉翻译配置 —— 这正是用户把库和配置当成一套东西时的预期。
 
 use gpdb_core::translate_config as tc;

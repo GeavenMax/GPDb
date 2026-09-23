@@ -388,16 +388,18 @@ pub fn export_user_data() -> Result<UserBackupData, String> {
 }
 
 fn get_export_dir() -> std::path::PathBuf {
-    if let Ok(home) = std::env::var("HOME") {
-        let downloads = std::path::PathBuf::from(&home).join("Downloads");
-        if downloads.is_dir() {
-            return downloads;
+    if let Some(dl) = dirs::download_dir() {
+        if dl.is_dir() {
+            return dl;
         }
-        let desktop = std::path::PathBuf::from(&home).join("Desktop");
-        if desktop.is_dir() {
-            return desktop;
+    }
+    if let Some(desk) = dirs::desktop_dir() {
+        if desk.is_dir() {
+            return desk;
         }
-        return std::path::PathBuf::from(&home);
+    }
+    if let Some(home) = dirs::home_dir() {
+        return home;
     }
     std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."))
 }
@@ -443,14 +445,7 @@ pub fn export_user_data_file() -> Result<Option<String>, String> {
         .map_err(|e| format!("写入备份文件失败: {}", e))?;
 
     let dest_str = dest_path.to_string_lossy().to_string();
-
-    #[cfg(target_os = "macos")]
-    {
-        let _ = std::process::Command::new("open")
-            .arg("-R")
-            .arg(&dest_str)
-            .spawn();
-    }
+    crate::commands::database::show_in_folder(&dest_str);
 
     Ok(Some(dest_str))
 }

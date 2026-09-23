@@ -32,12 +32,12 @@ pub fn open_external_url(url: String) -> Result<(), String> {
 }
 
 fn dirs_home() -> Option<std::path::PathBuf> {
-    std::env::var("HOME").ok().map(std::path::PathBuf::from)
+    dirs::home_dir().or_else(|| std::env::var_os("HOME").map(std::path::PathBuf::from))
 }
 
 pub fn get_saved_icon_scheme() -> String {
     if let Some(home) = dirs_home() {
-        let p = home.join(".gevi_icon_scheme");
+        let p = home.join(".gpdb_icon_scheme");
         if let Ok(content) = std::fs::read_to_string(&p) {
             let trimmed = content.trim();
             if !trimmed.is_empty() {
@@ -50,7 +50,7 @@ pub fn get_saved_icon_scheme() -> String {
 
 pub fn save_icon_scheme(scheme_id: &str) {
     if let Some(home) = dirs_home() {
-        let p = home.join(".gevi_icon_scheme");
+        let p = home.join(".gpdb_icon_scheme");
         let _ = std::fs::write(&p, scheme_id);
     }
 }

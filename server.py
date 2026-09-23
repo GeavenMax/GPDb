@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GEVI Offline Database - Local HTTP/REST Server
+GPDb Offline Database - Local HTTP/REST Server
 Provides sub-millisecond local API endpoints for the Desktop Client (Vue 3 / Browser / LAN).
 Requires zero external pip dependencies (built entirely on Python standard library & SQLite3 WAL).
 """
@@ -23,23 +23,30 @@ from db_manager import DatabaseManager
 BASE_DIR = Path(__file__).resolve().parent
 
 def resolve_initial_db_path() -> Path:
-    if "GEVI_DB" in os.environ and os.environ["GEVI_DB"].strip():
-        p = Path(os.path.expanduser(os.environ["GEVI_DB"].strip()))
+    if "GPDB_DB" in os.environ and os.environ["GPDB_DB"].strip():
+        p = Path(os.path.expanduser(os.environ["GPDB_DB"].strip()))
         if p.is_file():
             return p
-    cfg_file = Path.home() / "Library" / "Application Support" / "com.gpdb.app" / "db_config.json"
-    if cfg_file.is_file():
-        try:
-            with open(cfg_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                custom = data.get("custom_db_path")
-                if custom:
-                    p = Path(os.path.expanduser(custom))
-                    if p.is_file():
-                        return p
-        except Exception:
-            pass
-    return BASE_DIR / "gevi.db"
+    cfg_candidates = [
+        Path.home() / "Library" / "Application Support" / "com.gpdb.app" / "db_config.json",
+        Path(os.environ.get("APPDATA", "")) / "com.gpdb.app" / "db_config.json",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "com.gpdb.app" / "db_config.json",
+        Path.home() / "AppData" / "Roaming" / "com.gpdb.app" / "db_config.json",
+        Path.home() / ".config" / "com.gpdb.app" / "db_config.json",
+    ]
+    for cfg_file in cfg_candidates:
+        if cfg_file.is_file():
+            try:
+                with open(cfg_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    custom = data.get("custom_db_path")
+                    if custom:
+                        p = Path(os.path.expanduser(custom))
+                        if p.is_file():
+                            return p
+            except Exception:
+                pass
+    return BASE_DIR / "GPDb.db"
 
 DB_PATH = resolve_initial_db_path()
 
@@ -182,7 +189,7 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     # itself is fine.
     request_queue_size = 128
 
-class GEVIRequestHandler(BaseHTTPRequestHandler):
+class GPDbRequestHandler(BaseHTTPRequestHandler):
     def send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -450,7 +457,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
         if DB_PATH.is_file():
             candidates.append(str(DB_PATH))
         try:
-            res = subprocess.run(["mdfind", "kMDItemFSName == 'gevi.db'"], capture_output=True, text=True)
+            res = subprocess.run(["mdfind", "kMDItemFSName == 'GPDb.db'"], capture_output=True, text=True)
             if res.returncode == 0:
                 for line in res.stdout.splitlines():
                     lp = Path(line.strip())
@@ -474,7 +481,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
                         json.dump({"custom_db_path": None}, f)
                 except Exception:
                     pass
-            DB_PATH = BASE_DIR / "gevi.db"
+            DB_PATH = BASE_DIR / "GPDb.db"
             return self.handle_get_database_info()
 
         p = Path(os.path.expanduser(raw_path))
@@ -1527,7 +1534,7 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
     def handle_sync(self):
         # Trigger incremental sync
         import subprocess
-        sync_script = BASE_DIR / "sync_gevi.py"
+        sync_script = BASE_DIR / "sync_gpdb.py"
         try:
             res = subprocess.run(
                 ["python3", str(sync_script), "--probe-count", "15"],
@@ -1559,8 +1566,8 @@ class GEVIRequestHandler(BaseHTTPRequestHandler):
 
 def main():
     port = int(os.environ.get("PORT", 8787))
-    server = ThreadedHTTPServer(("127.0.0.1", port), GEVIRequestHandler)
-    print(f"[*] GEVI Offline API Server running at http://127.0.0.1:{port}/")
+    server = ThreadedHTTPServer(("127.0.0.1", port), GPDbRequestHandler)
+    print(f"[*] GPDb Offline API Server running at http://127.0.0.1:{port}/")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

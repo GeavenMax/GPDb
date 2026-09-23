@@ -16,13 +16,13 @@
        * DEFAULT_STYLE fallback); this copy exists only because it cannot import.
        *
        * The two-key migration below mirrors migrateLegacyPrefs() in
-       * src/utils/prefs.ts, which carries every preference over from its GEVI+ name.
+       * src/utils/prefs.ts, which carries every preference over from its GPDb+ name.
        * These two have to happen *here* rather than there: doing them after the bundle
        * loads would paint the frame this script exists to get right.
        */
       (function () {
         try {
-          [['gpdb_theme', 'gevi_theme'], ['gpdb_theme_style', 'gevi_theme_style']].forEach(function (pair) {
+          [['gpdb_theme', 'gpdb_theme'], ['gpdb_theme_style', 'gpdb_theme_style']].forEach(function (pair) {
             if (localStorage.getItem(pair[0]) === null) {
               var previous = localStorage.getItem(pair[1]);
               if (previous !== null) localStorage.setItem(pair[0], previous);
