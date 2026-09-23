@@ -1,18 +1,21 @@
-# --- Secrets: never commit ---
+# --- Secrets & private scripts: never commit ---
 translate_config.json
 .env
 .env.local
 scripts/.env
 scripts/.changelog_pusher_state.json
+scripts/PUSH_GUIDELINES.md
+scripts/send_db_to_tg.py
+scripts/tg_changelog_pusher.py
 
 
 # --- Scraped data & caches (large, regenerable, backed up separately) ---
-gevi.db
-gevi.db-shm
-gevi.db-wal
-gevi.db.backup-*
-# Manual pre-scrape copies (`cp gevi.db backups/gevi-<date>.db`). Deliberately not
-# named gevi.db.backup-* so the scraper's own prune (keep=5) cannot delete them.
+GPDb.db
+GPDb.db-shm
+GPDb.db-wal
+GPDb.db.backup-*
+# Manual pre-scrape copies (`cp GPDb.db backups/gpdb-<date>.db`). Deliberately not
+# named GPDb.db.backup-* so the scraper's own prune (keep=5) cannot delete them.
 backups/
 image_cache/
 

@@ -64,3 +64,13 @@
 ### 6. 零密钥泄露原则 (Zero Secret Leakage)
 * 任何 Telegram Bot Token、API Key、密码或私钥**绝对禁止**写入源码提交中。
 * 敏感凭据统一通过环境变量（如 `TG_BOT_TOKEN`）、命令行参数或 Git 忽略配置文件读取。
+
+---
+
+### 7. 🚫 私人/推送脚本黑名单防提交机制
+* 绝对禁止在 Git 仓库中追踪或提交以下脚本与辅助文件：
+  - `scripts/PUSH_GUIDELINES.md`
+  - `scripts/send_db_to_tg.py`
+  - `scripts/tg_changelog_pusher.py`
+  - `scripts/.changelog_pusher_state.json`
+* 上述规则已硬编码写入根目录 [.gitignore](file:///Users/joel/iCloud%20Drive%20%28Archive%29/Documents/antigravity/%E6%B8%B8%E6%88%8F%E5%BA%93%E7%AE%A1%E7%90%86App/GEVI_Offline_Database/.gitignore)，在以后的任意代码提交和版本发布操作中，不得将其添加进版本控制。
