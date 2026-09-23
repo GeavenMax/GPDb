@@ -18,9 +18,10 @@ import urllib.error
 import ssl
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from db_manager import find_default_db_path
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "gevi.db"
+DB_PATH = find_default_db_path()
 DEFAULT_CACHE_DIR = BASE_DIR / "image_cache"
 
 USER_AGENTS = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
