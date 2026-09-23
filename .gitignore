@@ -1,5 +1,10 @@
 # --- Secrets: never commit ---
 translate_config.json
+.env
+.env.local
+scripts/.env
+scripts/.changelog_pusher_state.json
+
 
 # --- Scraped data & caches (large, regenerable, backed up separately) ---
 gevi.db

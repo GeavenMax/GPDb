@@ -3,6 +3,29 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本文件记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.6.0] - 2026-09-23
+
+### 🚀 架构重构 (Architectural Refactoring)
+- **后端核心与边缘模块解耦**：
+  - 将 AI 翻译（`translate.py`）与 BFTV 数据同步（`sync_bftv_catalog.py`）的杂乱调度逻辑从主服务 `server.py` 中彻底剥离。
+  - 新增独立的 `plugins/` 目录，封装上述功能为独立的模块接口，确保 `server.py` 恢复纯粹的 API 路由分发职责，并且严格保持零第三方依赖。
+- **Rust 数据层纯净度审查**：
+  - 全面审查 `gpdb-core` (Tauri/Rust 查询层)，确保其纯粹提供原始数据（如 `works_count`），不耦合任何前端 UI 的呈现状态与标识逻辑。
+
+### ⚡ UI 极简与性能优化 (UI Simplification & Performance)
+- **剔除过度设计的特效**：
+  - 彻底移除耗能较高的 Web Audio 6 音琶音合成器 (`soundSynthesizer.ts`)。
+  - 重构 PSN 风格的 `FluidGlassTrophyIcon`，移除严重消耗 GPU 的流体玻璃滤镜 (`backdrop-filter`)，采用扁平化 (Flat) SVG 徽章代替，大幅提升渲染性能。
+- **拍平复杂交互层级**：
+  - 重写影片与演员详情页中的“想看/已看”多模态手风琴卡片，将其折叠、弹窗打分等繁琐交互降级为清晰直观的单层级切换 (Toggle) 与内联展示。
+  - 简化“功能插件/设置中心”面板，移除多余的动态叠加特效，回归标准 Tab 选项卡视图。
+
+### 🧩 模块化升级 (Modularization)
+- **前端外挂组件懒加载**：
+  - 将各个详情页中重复内嵌的“BT 搜索”、“BFTV 主页直达”等外部资源按钮提取为独立的懒加载组件 (`ResourceSearchWidget.vue`)。
+  - 将极速匹配与刮削自动化配置面板隔离至专属的 `SyncModal.vue` 并按需挂载。
+  - 全面修复重构过程中产生的组件导入缺失与 TypeScript 报错，执行 `vue-tsc -b` 零警告通过。
+
 ## [v2.5.2] - 2026-09-23
 
 ### 🚀 新增 (Added)

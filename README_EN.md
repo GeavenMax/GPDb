@@ -118,7 +118,7 @@ In adult media, an individual's viewing history, curated collections, and sexual
 ### For General Users (Recommended)
 
 Download the pre-compiled installer directly from the [GitHub Releases](https://github.com/GeavenMax/GPDb/releases) page:
-- **macOS**: Download `GPDb-macOS-v2.5.0.dmg`. Double-click and drag `GPDb.app` to your `Applications` folder.
+- **macOS**: Download `GPDb-macOS-v2.6.0.dmg`. Double-click and drag `GPDb.app` to your `Applications` folder.
 - **Android** (Stand-alone client currently under development): Download the `.apk` package to install on your mobile device.
 
 ### For Developers

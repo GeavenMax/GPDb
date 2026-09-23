@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { X, Film, Layers, Heart, ExternalLink, LayoutGrid, List } from '@lucide/vue';
+import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
+import { X, Film, Layers, Heart, LayoutGrid, List } from '@lucide/vue';
 import type { Performer, Movie, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
-import { pluginsConfig, openUrlExternal, openBtSearch, openGoogleSearch } from '../services/pluginManager';
+import { pluginsConfig } from '../services/pluginManager';
+
+const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
 const props = defineProps<{
   performer: Performer | null;
@@ -250,34 +252,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <!-- Action buttons (BT Search + Fav) -->
           <div class="mr-10 shrink-0 self-start flex items-center gap-2 flex-wrap">
             <template v-if="pluginsConfig.resourceSearchEnabled">
-              <button
-                @click="openBtSearch(performer.name)"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
-                :title="`在 BT 站检索「${performer.name}」作品`"
-              >
-                <ExternalLink class="w-3.5 h-3.5" />
-                <span>BT 搜索</span>
-              </button>
-
-              <button
-                v-if="performer.bftv_url"
-                @click="openUrlExternal(performer.bftv_url)"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border-amber-500/30 flex items-center gap-1.5 transition cursor-pointer"
-                :title="`直接打开「${performer.name}」的 BFTV 主页`"
-              >
-                <ExternalLink class="w-3.5 h-3.5" />
-                <span>BFTV #{{ performer.bftv_url.match(/(\d+)\/$/)?.at(1) ?? '' }}</span>
-              </button>
-
-              <button
-                v-if="pluginsConfig.webJumpConfig.googleSearchEnabled"
-                @click="openGoogleSearch(performer.name)"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
-                :title="`在 Google 检索「${performer.name}」`"
-              >
-                <ExternalLink class="w-3.5 h-3.5 text-blue-400" />
-                <span>Google 搜索</span>
-              </button>
+              <ResourceSearchWidget type="performer" :title="performer.name" :bftvUrl="performer.bftv_url" />
             </template>
 
             <button

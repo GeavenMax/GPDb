@@ -16,7 +16,8 @@ import EnvironmentCheckModal from './components/EnvironmentCheckModal.vue';
 import ImageLightbox from './components/ImageLightbox.vue';
 import FilterDrawer from './components/FilterDrawer.vue';
 import ActiveFilterBar from './components/ActiveFilterBar.vue';
-import SyncModal from './components/SyncModal.vue';
+import { defineAsyncComponent } from 'vue';
+const SyncModal = defineAsyncComponent(() => import('./components/plugins/SyncModal.vue'));
 import PaginationBar from './components/PaginationBar.vue';
 import {
   api, createMovieFilters, createPerformerFilters, countActivePerformerFilters,

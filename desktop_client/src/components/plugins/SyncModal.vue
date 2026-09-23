@@ -4,12 +4,12 @@ import {
   X, RefreshCw, CheckCircle2, Film, Users, Sparkles, AlertCircle,
   Square, ArrowDownToLine, Zap, Terminal, Layers, Clock, Globe
 } from '@lucide/vue';
-import type { DatabaseStats, ScraperMode } from '../types';
+import type { DatabaseStats, ScraperMode } from '../../types';
 import {
   scraperState, isScrapingRunning, startScraperTask, stopScraperTask
-} from '../services/scraper';
-import { pluginsConfig } from '../services/pluginManager';
-import { nextRunDescription } from '../services/autoSync';
+} from '../../services/scraper';
+import { pluginsConfig } from '../../services/pluginManager';
+import { nextRunDescription } from '../../services/autoSync';
 
 const props = defineProps<{
   open: boolean;

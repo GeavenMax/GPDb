@@ -15,11 +15,48 @@ import urllib.request
 import urllib.parse
 from datetime import datetime
 
+def load_env_file():
+    """自动寻找并读取本地 .env 配置文件，将环境变量加载到 os.environ"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.abspath(os.path.join(script_dir, ".."))
+    env_paths = [
+        os.path.join(script_dir, ".env"),
+        os.path.join(root_dir, ".env"),
+        os.path.join(root_dir, ".env.local")
+    ]
+    for p in env_paths:
+        if os.path.isfile(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line or line.startswith("#") or "=" not in line:
+                            continue
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("'\"")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+            except Exception:
+                pass
+
+load_env_file()
+
 DEFAULT_CHANGELOG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "CHANGELOG.md"))
 DEFAULT_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 DEFAULT_CHAT_ID = os.environ.get("TG_CHAT_ID", "@gpdbnews")
 STATE_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".changelog_pusher_state.json")
 GITHUB_REPO_URL = "https://github.com/GeavenMax/GPDb"
+
+
+def mask_token(token):
+    """脱敏输出 Telegram Bot Token 保护安全"""
+    if not token:
+        return "<EMPTY>"
+    if len(token) > 10:
+        return f"{token[:4]}****{token[-4:]}"
+    return "****"
+
 
 
 def parse_semver(version_str):
@@ -267,7 +304,8 @@ def watch_changelog(changelog_path, bot_token, chat_id, poll_interval=10):
     持续监听 CHANGELOG.md 文件更新，发现新版本即刻发布。
     """
     print(f"[WATCHER] Starting watcher on: {changelog_path}")
-    print(f"[WATCHER] Target channel: {chat_id}, Poll interval: {poll_interval}s")
+    print(f"[WATCHER] Target channel: {chat_id}, Bot Token: {mask_token(bot_token)}, Poll interval: {poll_interval}s")
+
     
     # 启动时首先发布一次所有未发布的历史版本
     push_pending_versions(changelog_path, bot_token, chat_id)

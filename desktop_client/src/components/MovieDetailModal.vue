@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
-import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown, ExternalLink } from '@lucide/vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue';
+import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown,  } from '@lucide/vue';
 import type { Movie, UserTag, FavoriteType, MovieSeriesResponse } from '../types';
 import EpisodeRow from './EpisodeRow.vue';
 import SeriesModal from './SeriesModal.vue';
@@ -9,7 +9,9 @@ import { claimEscape } from '../utils/escape';
 import { titlePrimary, titleSecondary } from '../utils/bilingual';
 import { trCategory } from '../utils/glossary';
 import { api, IS_TAURI } from '../api';
-import { pluginsConfig, openBtMovieSearch, openBftvMovie, openGoogleSearch } from '../services/pluginManager';
+import { pluginsConfig } from '../services/pluginManager';
+
+const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
 const props = defineProps<{
   movie: Movie | null;
@@ -360,10 +362,8 @@ function handleStatusClick(stId: string) {
   if (stId === 'watched') {
     if (userStatus.value === 'watched') {
       userStatus.value = null;
-      showRatingCard.value = false;
     } else {
       userStatus.value = 'watched';
-      showRatingCard.value = true;
     }
     persistUserData();
   } else {
@@ -709,47 +709,10 @@ onUnmounted(() => {
                   <span>{{ st.label }}</span>
                 </button>
 
-                <!-- Current Rating Pill if user has rated (click to open rating popover) -->
-                <button
-                  v-if="userRating"
-                  @click="showRatingCard = !showRatingCard"
-                  class="py-1 px-2.5 rounded-xl text-xs font-bold border border-accent/40 bg-accent/10 text-accent flex items-center gap-1 hover:bg-accent/20 transition"
-                  title="点击调整评分"
-                >
-                  <Star class="w-3.5 h-3.5 fill-accent text-accent" />
-                  <span>{{ userRating.toFixed(1) }} 星</span>
-                </button>
 
-                <!-- Resource Search Plugin Button Group -->
-                <div v-if="pluginsConfig.resourceSearchEnabled" class="flex items-center gap-1.5 flex-wrap ml-auto">
-                  <button
-                    @click="openBtMovieSearch(movie.title)"
-                    class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
-                    :title="`在 BT 站检索「${movie.title}」资源`"
-                  >
-                    <ExternalLink class="w-3.5 h-3.5" />
-                    <span>BT 搜索</span>
-                  </button>
-
-                  <button
-                    v-if="pluginsConfig.webJumpConfig.bftvMovieEnabled"
-                    @click="openBftvMovie(movie.title)"
-                    class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
-                    :title="`在 BFTV 检索「${movie.title}」影片资料`"
-                  >
-                    <ExternalLink class="w-3.5 h-3.5 text-amber-400" />
-                    <span>在BFTV搜索影片资料</span>
-                  </button>
-
-                  <button
-                    v-if="pluginsConfig.webJumpConfig.googleSearchEnabled"
-                    @click="openGoogleSearch(movie.title)"
-                    class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
-                    :title="`在 Google 检索「${movie.title}」`"
-                  >
-                    <ExternalLink class="w-3.5 h-3.5 text-blue-400" />
-                    <span>Google 搜索</span>
-                  </button>
+                <!-- Resource Search Plugin Button Group (Lazy Loaded) -->
+                <div class="flex items-center gap-1.5 flex-wrap ml-auto">
+                  <ResourceSearchWidget type="movie" :title="movie.title" />
                 </div>
 
                 <!-- Subordinate feature: Tags & Notes toggle button -->
@@ -774,48 +737,27 @@ onUnmounted(() => {
                 </button>
               </div>
 
-              <!-- Rating Card: only pops up when '已看' is clicked or user clicks the rating badge -->
-              <div
-                v-if="showRatingCard"
-                class="p-3 rounded-2xl bg-surface/95 border border-line shadow-xl flex items-center justify-between gap-3 flex-wrap animate-fade-in"
-              >
-                <div class="flex items-center gap-3">
-                  <span class="text-xs font-semibold text-fg-2">评星打分：</span>
-                  <div class="flex items-center gap-1">
-                    <button
-                      v-for="star in 5"
-                      :key="star"
-                      @click="setRating(star)"
-                      class="p-1 hover:scale-125 transition-transform"
-                      :title="`评分 ${star} 星`"
-                    >
-                      <Star
-                        class="w-5 h-5 transition-colors"
-                        :class="userRating && userRating >= star ? 'text-accent fill-accent' : 'text-fg-5 hover:text-accent-soft'"
-                      />
-                    </button>
-                  </div>
-                  <span class="text-xs font-bold text-accent font-mono ml-1">
-                    {{ userRating ? `${userRating.toFixed(1)} 星` : '未评' }}
-                  </span>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <!-- Rating inline -->
+                <div v-if="userStatus === 'watched' || userRating" class="flex items-center gap-1 ml-2 border-l border-line pl-3">
+                  <button
+                    v-for="star in 5"
+                    :key="star"
+                    @click="setRating(star)"
+                    class="p-0.5 hover:scale-125 transition-transform"
+                    :title="`评分 ${star} 星`"
+                  >
+                    <Star
+                      class="w-4 h-4 transition-colors"
+                      :class="userRating && userRating >= star ? 'text-accent fill-accent' : 'text-fg-5 hover:text-accent-soft'"
+                    />
+                  </button>
                   <button
                     v-if="userRating"
                     @click="setRating(userRating)"
-                    class="text-[11px] text-fg-5 hover:text-danger ml-2 transition"
+                    class="text-[10px] text-fg-5 hover:text-danger ml-1 transition"
                   >
                     清除
-                  </button>
-                </div>
-
-                <div class="flex items-center gap-2 text-xs">
-                  <span v-if="saveSuccess" class="text-success flex items-center gap-1 font-medium text-[11px]">
-                    <CheckCircle2 class="w-3.5 h-3.5" /> 已保存
-                  </span>
-                  <button
-                    @click="showRatingCard = false"
-                    class="text-fg-4 hover:text-fg-2 px-2 py-0.5 rounded-md hover:bg-surface-2 transition text-[11px]"
-                  >
-                    完成
                   </button>
                 </div>
               </div>

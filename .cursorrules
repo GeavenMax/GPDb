@@ -1,0 +1,41 @@
+# GEVI Offline Database - 项目开发规范与铁律 (Project Rules)
+
+> 本文件根据 `HANDOVER.md` 提取了本项目的核心规则。**任何大模型或开发者在进行代码修改前，必须严格遵守以下规范。**
+
+## 1. 核心架构限制 (Architecture Constraints)
+
+*   **后端零第三方依赖**: Python 后端（`server.py`, `scraper_v2.py`, `db_manager.py` 等）**严格仅使用 macOS 系统自带的 Python 3 标准库**。
+    *   绝对禁止使用 `pip install`。
+    *   绝对禁止使用 `requests`, `httpx`, `anthropic`, `openai` 等第三方网络库。
+    *   HTTP 请求必须使用 `urllib.request`。
+    *   并发处理必须使用 `concurrent.futures`。
+*   **服务重启**: 任何对 `server.py` 或 `db_manager.py` 的修改，**必须**重启 8787 端口的后端服务，否则前端将继续访问旧进程。
+*   **前端与桌面端**: 桌面端使用 Tauri v2 + Vue 3 + Rust (`desktop_client/src-tauri/gpdb-core/`)。Rust 和 Vue 侧可以正常使用包管理器管理依赖。
+
+## 2. 数据安全与数据库操作 (Database & Data Safety)
+
+*   **数据备份**: 备份数据库时**必须**使用 SQLite 专用备份命令（如 `sqlite3 gevi.db ".backup '/tmp/gevi-backup.db'"`），**严禁使用 `cp` 命令**，因为 WAL 日志中的数据会丢失导致数据库损坏。
+*   **测试环境**: 测试或调试时，**一律使用 `/tmp` 目录下的数据库副本**，绝不允许直接在真实的 `gevi.db` 上运行破坏性测试。
+*   **保留字与命名约定**: 以下名称/路径在前后端共享，**严禁修改**，否则会导致连接断裂：
+    *   `gevi.db`
+    *   环境变量 `GEVI_DB`
+    *   `sync_gevi.py`, `gevi_cli.py`
+    *   所有以 `GEVI_LLM_` 开头的环境变量名
+*   **账本安全 (Voids)**: **绝不使用空参数的 `--forget-voids`** (`scraper_v2.py --forget-voids`)。这会清空“确认抓不到”的黑名单账本，导致系统重新去尝试抓取数万条永远抓不到的死链。仅允许在图片重试场景下使用限定范围的 `--forget-image-voids`。
+
+## 3. 并发与限流 (Rate Limiting)
+
+*   **吞吐量限制**: 目标站点按 IP 限制吞吐，舒适区约为 1.4 – 1.7 req/s。虽然并发拉高（如 32 并发）可以提速，但**持续数小时的高并发会导致站点直接拒绝连接** (`ssl.SSLEOFError`)，期间将没有任何数据写入。
+*   **单任务原则**: **同时只允许运行一个繁重的爬虫或下载任务**。绝不允许开启两个终端同时进行抓取。
+
+## 4. 安全与密钥管理 (Security)
+
+*   **密钥隔离**: LLM 翻译 API Key（存在于 `translate_config.json` 或环境变量 `GEVI_LLM_API_KEY` 中）**绝对不允许下发给前端**。前端接口 `/api/translate/*` 只能返回布尔值 `has_key` 和打码处理后的 `key_hint`。
+
+## 5. 关键业务逻辑设计模式 (Key Domain Logic)
+
+*   **分集隶属关系**: `db_manager.save_standalone_episodes()` 永远不写 `movie_id` 字段。一条已经属于某部影片的分集，绝不能被独立分集的抓取逻辑覆盖掉隶属关系。
+*   **列读取模式**: Rust 层的 SQL 查询（如 `sql.rs`）是按**下标 (index)** 读取列的。在数据库表中**新增列一律加在 SELECT 语句的末尾**，并在 `db_manager.MIGRATIONS` 和 `schema.sql` 中同步修改。如果从中间插入列，会导致所有后续字段静默错位，且编译器不会报错。
+*   **导演数据查询**:
+    *   查询影片导演时，**必须**走 `movie_directors` 与 `directors` 的关联表 (junction table)，**绝不允许读取 `movies.director_name` 列**（该列存在遗留的未分词脏数据）。
+    *   统计导演作品数量时，**必须**使用 `count(md.movie_id)` 动态计算，**绝不允许读取已废弃的 `directors.works_count` 列**。

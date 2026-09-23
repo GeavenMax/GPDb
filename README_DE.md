@@ -118,7 +118,7 @@ Im Bereich der Erwachsenenunterhaltung gehören Sehgewohnheiten, Favoriten und p
 ### Für Endanwender (Empfohlen)
 
 Laden Sie das vorkompilierte Installationspaket direkt von der [Releases-Seite](https://github.com/GeavenMax/GPDb/releases) herunter:
-- **macOS**: Laden Sie `GPDb-macOS-v2.5.0.dmg` herunter, öffnen Sie die Datei und ziehen Sie `GPDb.app` in Ihren `Programme`-Ordner.
+- **macOS**: Laden Sie `GPDb-macOS-v2.6.0.dmg` herunter, öffnen Sie die Datei und ziehen Sie `GPDb.app` in Ihren `Programme`-Ordner.
 - **Android** (Eigenständige App in Entwicklung): Laden Sie die `.apk`-Datei herunter und installieren Sie diese auf Ihrem Gerät.
 
 ### Für Entwickler (Lokaler Build)

@@ -92,74 +92,28 @@ const tierTheme = computed(() => {
     class="relative select-none flex items-center justify-center shrink-0 transition-transform hover:scale-105 duration-200"
     :class="dimensions.box"
   >
-    <!-- UNLOCKED: FLUID GLASS -->
+    <!-- UNLOCKED: FLAT DESIGN -->
     <template v-if="isUnlocked">
-      <!-- Glow Underlay -->
       <div
-        class="absolute inset-0 rounded-inherit opacity-60 blur-md bg-gradient-to-tr"
-        :class="[tierTheme.gradient, tierTheme.glow]"
+        class="absolute inset-0 rounded-inherit bg-gradient-to-br shadow-sm"
+        :class="tierTheme.gradient"
       ></div>
-
-      <!-- Ultra-thin Glass Body -->
-      <div
-        class="absolute inset-0 rounded-inherit border backdrop-blur-xl overflow-hidden bg-white/20 dark:bg-black/30 shadow-lg"
-        :class="tierTheme.border"
-      >
-        <!-- Liquid Gradient Backdrop -->
-        <div
-          class="absolute inset-0 bg-gradient-to-br opacity-80"
-          :class="tierTheme.gradient"
-        ></div>
-
-        <!-- Specular Fluid Highlight Arc (Curved top reflection) -->
-        <svg
-          class="absolute top-0 left-0 w-full h-2/3 pointer-events-none opacity-75"
-          viewBox="0 0 100 60"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M 0 0 L 100 0 L 100 15 C 60 45 40 45 0 25 Z"
-            fill="url(#fluidSpecular)"
-          />
-          <defs>
-            <linearGradient id="fluidSpecular" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
-              <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0" />
-            </linearGradient>
-          </defs>
-        </svg>
-
-        <!-- Subtle Inner Sheen -->
-        <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-white/30 to-transparent"></div>
-      </div>
-
-      <!-- Semantic Icon Content (Glowing in center) -->
+      
+      <!-- Semantic Icon Content -->
       <component
         :is="ResolvedIcon"
-        class="relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]"
+        class="relative z-10"
         :class="[dimensions.icon, tierTheme.text]"
       />
     </template>
 
-    <!-- LOCKED: OBSIDIAN FROSTED GLASS WITH CRYSTAL LOCK -->
+    <!-- LOCKED: FLAT DARK DESIGN -->
     <template v-else>
-      <!-- Obsidian Frosted Glass Layer -->
       <div
-        class="absolute inset-0 rounded-inherit border border-white/10 bg-zinc-950/70 backdrop-blur-md shadow-inner overflow-hidden flex items-center justify-center"
+        class="absolute inset-0 rounded-inherit bg-zinc-800/80 shadow-inner flex items-center justify-center"
       >
-        <!-- Faint Silhouette of underlying semantic symbol -->
-        <component
-          :is="ResolvedIcon"
-          class="absolute opacity-15 text-zinc-400 blur-[0.5px]"
-          :class="dimensions.icon"
-        />
-
-        <!-- Obsidian Specular Highlight -->
-        <div class="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent opacity-40"></div>
-
-        <!-- Crystal Lock Clasp in Center -->
         <div
-          class="relative z-10 rounded-full p-1.5 bg-zinc-900/90 border border-white/20 shadow-md flex items-center justify-center text-zinc-400 group-hover:text-zinc-200 transition"
+          class="relative z-10 rounded-full p-1.5 bg-zinc-900 border border-zinc-700 flex items-center justify-center text-zinc-500"
         >
           <Lock :class="dimensions.lock" />
         </div>

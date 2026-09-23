@@ -1,6 +1,5 @@
 import { ref, computed } from 'vue';
 import { analytics, type UserAnalytics, onAnalyticsEvent, resetAllAnalytics } from './analytics';
-import { playTrophyUnlockSound } from '../utils/soundSynthesizer';
 import { pluginsConfig } from './pluginManager';
 
 export type TrophyTier = 'platinum' | 'gold' | 'silver' | 'bronze';
@@ -845,9 +844,6 @@ function processUnlockQueue() {
   const trophy = unlockQueue.shift()!;
 
   if (pluginsConfig.value.trophiesEnabled) {
-    if (pluginsConfig.value.trophiesSoundEnabled) {
-      playTrophyUnlockSound();
-    }
     currentUnlockedToast.value = trophy;
   }
 
