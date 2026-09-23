@@ -1,62 +1,150 @@
-# GEVI 影视离线数据库与批量抓取系统 (独立模块)
+# GPDb · 极速隐私优先的本地离线影视库管理系统
 
-> **注意**：本文件夹为 GEVI 影视数据库刮削、离线存储与同步的**独立专属模块**，与本项目（游戏库管理App）的其他模块和对话完全隔离。请勿将无关代码存入此目录。
+<p align="center">
+  <img src="./desktop_client/src/assets/icons/scheme-a.svg" alt="GPDb Logo" width="120" height="120" />
+</p>
+
+<p align="center">
+  <strong>面向海量影视元数据与演职员档案打造的高性能、纯单机、零云端追踪的现代化本地影视管理平台</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Android%20(In%20Dev)-blue?style=flat-square" alt="Platform" />
+  <img src="https://img.shields.io/badge/Architecture-Tauri%20v2%20%2B%20Rust%20%2B%20Vue%203-emerald?style=flat-square" alt="Tech Stack" />
+  <img src="https://img.shields.io/badge/Database-SQLite%20(WAL%20Mode)-orange?style=flat-square" alt="Database" />
+  <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=flat-square" alt="Privacy" />
+  <img src="https://img.shields.io/badge/License-MIT-purple?style=flat-square" alt="License" />
+</p>
 
 ---
 
-## 目录结构
+## 📖 项目简介 (About GPDb)
+
+**GPDb** 是一款专为影迷与数字媒体收藏家打造的**现代化本地离线影视库管理系统**。
+
+在流媒体与云服务日益中心化的今天，个人的观影记录、收藏足迹与本地资料面临着隐私泄露、云端服务突然下线、敏感数据被扫描审查的风险。**GPDb 秉承“本地第一（Offline-First）与绝对隐私保障”的设计哲学**：所有的数据库、图片缓存、收藏打标与分析画像均 100% 保留在用户自己的个人设备上，完全不依赖任何第三方中心化云服务器。
+
+基于 **Rust 核心引擎 (`gpdb-core`)** 与 **Tauri v2 + Vue 3** 现代桌面/移动架构构建，GPDb 能够在面对 **60,000+ 部完整影片、100,000+ 独立分集、6,000+ 演职人员以及 1,300+ 制片厂牌** 的海量本地数据时，依然保持 60fps 丝滑渲染与毫秒级即时模糊检索。
+
+---
+
+## ✨ 核心亮点与功能优势 (Key Features)
+
+### 1. 毫秒级全库检索与多维筛选系统
+- **全文与分集搜索**：深度覆盖电影原名、中文译名、剧情简介、以及十万级分集标题的全文模糊搜索。
+- **多面交集筛选器**：支持按制片厂牌、发行年份跨度（如 1980~2026）、分级、分类标签、演职员身体属性等多重条件实时组合过滤。
+
+### 2. 现代流媒体级视听主页 (Home Feed)
+- **焦点大屏轮播**：高光影视海报平滑自动轮播，支持自定义滚动间隔与动画。
+- **往年今日 · 经典首映**：智能对照历史日历，回顾数年乃至数十年前同日首映的时代经典。
+- **今日星光 · 标志面孔**：双重物理磁盘校验，智能推荐拥有高清精美头像的标志性演员。
+- **经典系列大放送**：自动打捞跨越十余部曲的长篇史诗系列。
+- **随心探索 · 盲盒发现**：一键摇骰，从茫茫片海中打捞未曾涉足的冷门珍品。
+
+### 3. 智能系列影片集与自适应封面拼图 (Smart Series & Collage Covers)
+- **算法聚类**：内置罗马数字与副标题识别算法，自动将散落的系列影片（如 *Part I, Part II, Part III*）归纳为专属连贯篇章。
+- **动态拼图矩阵**：为系列专题自动生成 1 张大图、2 张对称拼贴、3 张阶梯排布或 4 分格田字矩阵的艺术拼接封面，支持自定义暗角遮罩与离线协议极速解算。
+
+### 4. 演职员与导演深度档案库
+- **双向参演追踪**：完整收录演职人员参演的完整电影（Films）与独立分集（Scenes），智能区分正片与客串。
+- **导演独立档案卡**：影片详情一键唤起导演专属履历，支持在片库中一键按导演探索全量执导作品。
+- **别名与曾用名索引**：智能识别并在档案中标注演职人员在不同厂牌与时期的别名/艺名。
+
+### 5. AI 影迷偏好洞察与审美画像 (AI Persona Insights)
+- **全异步无感架构**：利用后台独立工作线程调度大语言模型，告别界面等待假死。
+- **深度人文剖析**：基于用户的真实观影足迹与打标记录，生成包含“核心审美原型代号”、“时代视听光谱”的 2000 字深度艺术鉴赏报告。
+- **多步骤可视化进度面板**：磨砂玻璃悬浮弹窗，实时显示加密连接、特征提取与分析进度。
+
+### 6. 资源检索与外部扩展插件系统 (v2.0)
+- **多站智能跳转**：支持针对特定条目在外部专业数据库（如 BoyfriendTV、Google、各大影视资料站）一键直达，原名精准对齐。
+- **BT 磁力搜索集成**：一键组合电影原名与厂牌关键词，直达外部资源引擎检索。
+- **精细化启闭**：所有插件支持独立总控与子开关，完全按需启用。
+
+### 7. 全语言国际化与游戏化成就系统
+- **7 种全界面可选语言**：简体中文 (`zh-CN`)、繁体中文 (`zh-TW`)、English (`en`)、Italiano (`it`)、日本語 (`ja`)、Español (`es`)、Deutsch (`de`)。
+- **PlayStation 风格奖杯系统**：内置数十种探索、收藏与检索成就，达成时触发 PSN 风格流体毛玻璃动画提示。
+
+---
+
+## 🛠️ 技术架构 (Technology Stack)
 
 ```
-GEVI_Offline_Database/
-├── README.md             # 本说明文档
-├── schema.sql            # SQLite 数据库表范式与 FTS5 全文索引定义
-├── db_manager.py         # 数据库连接、原子事务与断点进度管理
-├── batch_scraper.py      # 多线程批量刮削引擎 (支持断点续传、流量控制、Ctrl+C优雅保存)
-├── sync_gevi.py          # 增量更新与自动整合工具 (监控 /newm /newp 与高水位探测)
-├── gevi_cli.py           # macOS 终端毫秒级离线全文检索工具
-└── gevi.db               # 本地 SQLite 离线数据库 (含 FTS5 全文检索引擎)
+┌─────────────────────────────────────────────────────────────┐
+│                    GPDb 前端表现层 (UI)                     │
+│  Vue 3 + Vite + TypeScript + Tailwind CSS + Lucide Icons   │
+│       (响应式栅格布局、毛玻璃特效、国际化 i18n、状态管理)     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ (Tauri IPC / 高速二进制通道)
+┌──────────────────────────────▼──────────────────────────────┐
+│                    Tauri v2 宿主适配层                      │
+│     自定义协议 (gpdb-img://)、系统窗口控制、安全文件选择器     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ (Rust Native 接口)
+┌──────────────────────────────▼──────────────────────────────┐
+│                 Rust 核心服务层 (gpdb-core)                 │
+│ • SQL 查询生成器与模糊索引 (rusqlite)                         │
+│ • 多级本地图片物理校验与安全解析 (Cache Resolver)             │
+│ • 异步大模型交互通道 (Async Runtime)                         │
+│ • 自动化 Schema 迁移与自愈引擎 (Migrate Engine)              │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+┌──────────────────────────────▼──────────────────────────────┐
+│                    底层持久化存储 (Storage)                 │
+│      gevi.db (SQLite 3 WAL 模式) + image_cache/ (本地图片)  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 常用命令指南
+## 🚀 快速上手 (Quick Start)
 
-进入当前独立目录：
+### 普通用户（推荐）
+
+直接前往本仓库的 [Releases 页面](../../releases) 下载已打包编译完成的安装包：
+- **macOS**：下载 `.dmg` 或 `.zip`，解压后拖入 `Applications`（应用程序）即可使用。
+- **Android**（即将推出）：下载 `.apk` 安装包直接安装于手机或平板。
+
+### 开发者本地编译与运行
+
+#### 环境要求
+- Node.js 20+ 及 npm
+- Rust 1.78+ (`cargo`)
+- macOS 12+ (支持 Apple Silicon M 系列及 Intel 架构)
+
+#### 运行步骤
 ```bash
-cd "/Users/joel/Documents/antigravity/游戏库管理App/GEVI_Offline_Database"
+# 1. 克隆代码仓库
+git clone https://github.com/your-username/GPDb.git
+cd GPDb
+
+# 2. 进入桌面客户端目录
+cd desktop_client
+
+# 3. 安装前端依赖
+npm install
+
+# 4. 以开发模式启动桌面客户端
+npm run tauri dev
+
+# 5. 构建正式生产版应用程序
+npm run tauri build
 ```
 
-### 1. 离线检索 (毫秒级响应)
-```bash
-# 查看数据库统计概览
-python3 gevi_cli.py --stats
+---
 
-# 搜索电影名或片商 (如搜索 "Dirty" 或 "Frat")
-python3 gevi_cli.py "Dirty"
+## ⚖️ 法律声明与免责条款 (Disclaimer)
 
-# 查看指定电影的完整详情 (含演职员、时长、高清封面、剧情、分集)
-python3 gevi_cli.py -m 75183
+1. **软件定位**：
+   本软件（GPDb）仅为一款**通用开源的离线媒体元数据本地索引与数据库管理工具（Universal Offline Media Metadata & Library Management Tool）**。
+2. **内容免责**：
+   本项目源代码及其发布版本中**不包含、不托管、不分发任何受版权保护的音视频文件、种子数据或图片素材**。软件中展示的示例字段仅用于数据库技术验证与界面排版测试。
+3. **使用者责任**：
+   用户使用本软件管理其个人的本地数据库文件、或使用外部搜索跳转功能所产生的一切行为及版权合规责任，均由使用者本人独立承担，与本软件开发者及开源贡献者无关。
+4. **合规遵守**：
+   请在遵守您所在国家和地区相关法律法规的前提下合理、合法使用本开源工具。
 
-# 搜索演员姓名
-python3 gevi_cli.py -p "Clay"
+---
 
-# 查看演员完整身体档案与参演影视列表
-python3 gevi_cli.py --performer-id 146520
-```
+## 📄 开源许可证 (License)
 
-### 2. 增量同步 (拉取官网最新收录并自动整合)
-```bash
-python3 sync_gevi.py
-```
-
-### 3. 批量抓取全站数据 (支持随时按 Ctrl+C 中断，再次运行自动断点续传)
-```bash
-# 抓取最新 1,000 部电影 (倒序)
-python3 batch_scraper.py --mode movies --start 1 --end 76000 --limit 1000 --reverse --concurrency 8
-
-# 全量抓取电影
-python3 batch_scraper.py --mode movies --start 1 --end 76000 --concurrency 8
-
-# 全量抓取演员档案
-python3 batch_scraper.py --mode performers --start 1 --end 150000 --concurrency 8
-```
+本项目采用 [MIT 许可证](LICENSE) 开源。您可以自由阅读、修改、分发或整合本项目代码，唯须在副本中保留原作者版权信息与本免责声明。
