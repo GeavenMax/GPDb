@@ -9,6 +9,17 @@
 </p>
 
 <p align="center">
+  <a href="./README.md"><b>简体中文</b></a> |
+  <a href="./README_EN.md">English</a> |
+  <a href="./README_ZH_TW.md">繁體中文</a> |
+  <a href="./README_JA.md">日本語</a> |
+  <a href="./README_DE.md">Deutsch</a> |
+  <a href="./README_ES.md">Español</a> |
+  <a href="./README_IT.md">Italiano</a>
+</p>
+
+
+<p align="center">
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Android%20(In%20Dev)-blue?style=flat-square" alt="Platform" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=flat-square" alt="Category" />
   <img src="https://img.shields.io/badge/Architecture-Tauri%20v2%20%2B%20Rust%20%2B%20Vue%203-emerald?style=flat-square" alt="Tech Stack" />

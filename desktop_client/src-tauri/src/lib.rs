@@ -54,6 +54,7 @@ pub fn run() {
             commands::translate::run_ai_analysis,
             commands::sync::run_sync,
             commands::database::get_database_info,
+            commands::database::create_new_database,
             commands::database::set_custom_database_path,
             commands::database::scan_databases,
             commands::database::pick_database_file,

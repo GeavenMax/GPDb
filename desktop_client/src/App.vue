@@ -443,6 +443,28 @@ async function handlePickDbFile() {
   }
 }
 
+async function handleCreateNewDatabase() {
+  dbSwitching.value = true;
+  dbMessage.value = null;
+  try {
+    const updated = await api.createNewDatabase();
+    dbInfo.value = updated;
+    customDbInput.value = updated.custom_path || '';
+    if (updated.candidates) dbCandidates.value = updated.candidates;
+    loadError.value = '';
+    showPermissionModal.value = false;
+    dbMessage.value = { ok: true, text: `全新影库已初始化创建：${updated.path || '默认位置'}` };
+    await loadStats();
+    await reloadCurrentTab();
+    // Prompt scraping by opening sync modal automatically
+    isSyncOpen.value = true;
+  } catch (e: any) {
+    dbMessage.value = { ok: false, text: e?.message || String(e) };
+  } finally {
+    dbSwitching.value = false;
+  }
+}
+
 async function handleScanDatabases() {
   dbScanning.value = true;
   dbMessage.value = null;
@@ -3832,6 +3854,7 @@ onUnmounted(() => {
       @close="showPermissionModal = false"
       @pick-file="handlePickDbFile"
       @scan-folders="handleScanDatabases"
+      @create-database="handleCreateNewDatabase"
     />
   </div>
 </template>

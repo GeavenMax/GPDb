@@ -157,11 +157,9 @@ pub async fn clear_cache() -> Result<usize, String> {
 
 /// Resolves a requested image URL to a local cached file on disk.
 /// Matches folders: Covers, Episodes, Stars, Icons, Logo.
-pub fn resolve_cache_file(url: &str) -> Option<(PathBuf, &'static str)> {
+/// Resolves what the destination path in local image_cache should be.
+pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
     let cache_dir = find_cache_dir();
-    if !cache_dir.exists() {
-        return None;
-    }
 
     let normalized = url.replace('\\', "/");
     let lower = normalized.to_ascii_lowercase();
@@ -191,24 +189,33 @@ pub fn resolve_cache_file(url: &str) -> Option<(PathBuf, &'static str)> {
             .unwrap_or(rel_path);
 
         let path = cache_dir.join(folder).join(clean_rel);
-        if path.is_file() {
-            let mime = if clean_rel.to_ascii_lowercase().ends_with(".png") {
-                "image/png"
-            } else if clean_rel.to_ascii_lowercase().ends_with(".webp") {
-                "image/webp"
-            } else {
-                "image/jpeg"
-            };
-            return Some((path, mime));
-        }
+        let mime = if clean_rel.to_ascii_lowercase().ends_with(".png") {
+            "image/png"
+        } else if clean_rel.to_ascii_lowercase().ends_with(".webp") {
+            "image/webp"
+        } else {
+            "image/jpeg"
+        };
+        return Some((path, mime));
     }
 
     None
 }
 
+/// Resolves a requested image URL to an existing local cached file on disk.
+/// Matches folders: Covers, Episodes, Stars, Icons, Logo.
+pub fn resolve_cache_file(url: &str) -> Option<(PathBuf, &'static str)> {
+    let (path, mime) = resolve_cache_target_path(url)?;
+    if path.is_file() {
+        Some((path, mime))
+    } else {
+        None
+    }
+}
+
 /// Custom URI scheme protocol handler for `gpdb-img://`.
 /// Enables ultra-fast local disk image loading directly from `image_cache/`
-/// without needing an external python server.
+/// with automatic on-demand download & caching for un-cached images.
 pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http::Response<Vec<u8>> {
     let uri_str = req.uri().to_string();
     let parsed_url = url::Url::parse(&uri_str).ok();
@@ -220,6 +227,7 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
         req.uri().path().trim_start_matches('/').to_string()
     });
 
+    // 1. If already cached on local disk, serve immediately
     if let Some((local_path, mime)) = resolve_cache_file(&target) {
         if let Ok(bytes) = fs::read(&local_path) {
             return tauri::http::Response::builder()
@@ -232,11 +240,56 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
         }
     }
 
-    // Fallback: If not cached locally but target is a remote URL, redirect so WebKit can fetch it
-    if target.starts_with("http://") || target.starts_with("https://") {
+    // 2. On-demand download and persistent caching
+    let remote_url = if target.starts_with("http://") || target.starts_with("https://") {
+        Some(target.clone())
+    } else if target.starts_with("images/") || target.starts_with("/images/") {
+        Some(format!("https://gayeroticvideoindex.com/{}", target.trim_start_matches('/')))
+    } else {
+        None
+    };
+
+    if let (Some(url), Some((dest_path, mime))) = (remote_url.as_ref(), resolve_cache_target_path(&target)) {
+        if let Some(parent) = dest_path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+
+        // Fetch via curl and persist to disk
+        let status = std::process::Command::new("curl")
+            .arg("-s")
+            .arg("-L")
+            .arg("-f")
+            .arg("--connect-timeout")
+            .arg("4")
+            .arg("--max-time")
+            .arg("12")
+            .arg("--create-dirs")
+            .arg("-o")
+            .arg(&dest_path)
+            .arg(url)
+            .status();
+
+        if status.is_ok_and(|s| s.success()) && dest_path.is_file() {
+            if let Ok(bytes) = fs::read(&dest_path) {
+                if let Ok(mut g) = CACHED_STATS.write() {
+                    *g = None;
+                }
+                return tauri::http::Response::builder()
+                    .status(200)
+                    .header("Content-Type", mime)
+                    .header("Cache-Control", "public, max-age=31536000, immutable")
+                    .header("Access-Control-Allow-Origin", "*")
+                    .body(bytes)
+                    .unwrap();
+            }
+        }
+    }
+
+    // 3. Fallback: If download failed or timed out, 302 redirect so WebKit can still try loading
+    if let Some(url) = remote_url {
         return tauri::http::Response::builder()
             .status(302)
-            .header("Location", &target)
+            .header("Location", &url)
             .header("Access-Control-Allow-Origin", "*")
             .body(Vec::new())
             .unwrap();

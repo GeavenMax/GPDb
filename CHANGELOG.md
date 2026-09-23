@@ -25,6 +25,10 @@
   - 引入 PSN 风格流体毛玻璃奖杯解锁 Toast 提示与成就详情页。
 - **开源门面与法律声明**：
   - 编写全新中文 `README.md` 与标准 MIT `LICENSE` 文件。
+- **全语种多语言文档矩阵 (Multi-language Documentation)**：
+  - 为客户端支持的全部 7 种语言独立编写并发布原生文档：简体中文 (`README.md`)、English (`README_EN.md`)、繁體中文 (`README_ZH_TW.md`)、日本語 (`README_JA.md`)、Deutsch (`README_DE.md`)、Español (`README_ES.md`)、Italiano (`README_IT.md`)。
+  - 在所有语言文档顶部集成互联互通的快速切换语言导航条。
+
 
 ### ⚡ 优化 (Changed)
 - **男同成人影视专业管理定位确立**：

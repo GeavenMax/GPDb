@@ -58,6 +58,148 @@ CREATE INDEX IF NOT EXISTS idx_movie_directors_director ON movie_directors(direc
 CREATE INDEX IF NOT EXISTS idx_directors_name ON directors(name);
 ";
 
+const CORE_SCHEMA: &str = "
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
+
+CREATE TABLE IF NOT EXISTS movies (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    studio_id INTEGER,
+    studio_name TEXT,
+    release_year INTEGER,
+    duration_mins INTEGER,
+    category TEXT,
+    rating TEXT,
+    movie_type TEXT,
+    description TEXT,
+    cover_icon TEXT,
+    cover_full TEXT,
+    cover_back TEXT,
+    covers_json TEXT,
+    director_id INTEGER,
+    director_name TEXT,
+    description_zh TEXT,
+    translation_attempts INTEGER DEFAULT 0,
+    title_zh TEXT,
+    title_attempts INTEGER DEFAULT 0,
+    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_movies_year ON movies(release_year);
+CREATE INDEX IF NOT EXISTS idx_movies_studio ON movies(studio_name);
+CREATE INDEX IF NOT EXISTS idx_movies_category ON movies(category);
+CREATE INDEX IF NOT EXISTS idx_movies_director ON movies(director_name);
+
+CREATE TABLE IF NOT EXISTS performers (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    hair TEXT,
+    eyes TEXT,
+    body_hair TEXT,
+    facial_hair TEXT,
+    height TEXT,
+    weight TEXT,
+    build TEXT,
+    skin TEXT,
+    dick_size TEXT,
+    foreskin TEXT,
+    tattoos TEXT,
+    notes TEXT,
+    image_url TEXT,
+    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_performers_name ON performers(name);
+CREATE INDEX IF NOT EXISTS idx_performers_build ON performers(build);
+CREATE INDEX IF NOT EXISTS idx_performers_hair ON performers(hair);
+CREATE INDEX IF NOT EXISTS idx_performers_eyes ON performers(eyes);
+CREATE INDEX IF NOT EXISTS idx_performers_skin ON performers(skin);
+CREATE INDEX IF NOT EXISTS idx_performers_body_hair ON performers(body_hair);
+CREATE INDEX IF NOT EXISTS idx_performers_facial_hair ON performers(facial_hair);
+CREATE INDEX IF NOT EXISTS idx_performers_image ON performers(image_url);
+
+CREATE TABLE IF NOT EXISTS movie_performers (
+    movie_id INTEGER NOT NULL,
+    performer_id INTEGER NOT NULL,
+    performer_name TEXT,
+    PRIMARY KEY (movie_id, performer_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mp_performer_id ON movie_performers(performer_id);
+
+CREATE TABLE IF NOT EXISTS episodes (
+    id INTEGER PRIMARY KEY,
+    movie_id INTEGER,
+    title TEXT,
+    thumbnail_url TEXT,
+    description TEXT,
+    description_zh TEXT,
+    action_notes TEXT,
+    release_date TEXT,
+    studio_id INTEGER,
+    studio_name TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_episodes_movie_id ON episodes(movie_id);
+
+CREATE TABLE IF NOT EXISTS episode_performers (
+    episode_id INTEGER NOT NULL,
+    performer_id INTEGER NOT NULL,
+    performer_name TEXT,
+    PRIMARY KEY (episode_id, performer_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_movie_data (
+    movie_id INTEGER PRIMARY KEY,
+    rating REAL,
+    favorite INTEGER DEFAULT 0,
+    tags TEXT,
+    notes TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    color TEXT DEFAULT '#4F46E5',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS movie_user_tags (
+    movie_id INTEGER,
+    tag_id INTEGER,
+    PRIMARY KEY (movie_id, tag_id)
+);
+
+CREATE TABLE IF NOT EXISTS favorites (
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (entity_type, entity_id)
+);
+
+CREATE TABLE IF NOT EXISTS series_collections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    root_title TEXT NOT NULL,
+    studio_name TEXT,
+    movie_count INTEGER NOT NULL DEFAULT 0,
+    sample_covers TEXT,
+    year_start INTEGER,
+    year_end INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(root_title, studio_name)
+);
+";
+
+/// Initialize an empty database file with full core schema and migrations.
+pub fn create_empty_database_schema(conn: &Connection) -> Result<()> {
+    conn.execute_batch(CORE_SCHEMA)?;
+    ensure_schema(conn)?;
+    Ok(())
+}
+
 /// Bring an existing database up to what this crate's queries expect. Idempotent.
 ///
 /// Takes `&Connection` and keeps no state, so the caller decides when to skip it; see

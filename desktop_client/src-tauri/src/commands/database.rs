@@ -47,6 +47,34 @@ pub fn get_database_info() -> Result<DatabaseInfo, String> {
 }
 
 #[tauri::command]
+pub fn create_new_database(target_path: Option<String>) -> Result<DatabaseInfo, String> {
+    let final_path = if let Some(p) = target_path.filter(|s| !s.trim().is_empty()) {
+        expand_tilde(p.trim())
+    } else {
+        // Default to ~/Documents/GPDb/gevi.db
+        let home = std::env::var_os("HOME").map(std::path::PathBuf::from).unwrap_or_else(|| std::path::PathBuf::from("."));
+        home.join("Documents").join("GPDb").join("gevi.db")
+    };
+
+    if let Some(parent) = final_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("无法创建数据库存储目录: {}", e))?;
+    }
+
+    // Open/create database file and apply full migration schema
+    let conn = rusqlite::Connection::open(&final_path)
+        .map_err(|e| format!("无法创建数据库文件: {}", e))?;
+    gpdb_core::migrate::create_empty_database_schema(&conn)
+        .map_err(|e| format!("数据库初始化建表与索引失败: {}", e))?;
+
+    // Save into db_config.json
+    let mut cfg = load_db_config();
+    cfg.custom_db_path = Some(final_path.to_string_lossy().to_string());
+    save_db_config(&cfg)?;
+
+    get_database_info()
+}
+
+#[tauri::command]
 pub fn set_custom_database_path(path: String) -> Result<DatabaseInfo, String> {
     let trimmed = path.trim();
     if trimmed.is_empty() {

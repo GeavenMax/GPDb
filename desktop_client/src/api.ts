@@ -1054,6 +1054,13 @@ export const api = {
     };
   },
 
+  async createNewDatabase(targetPath?: string): Promise<DatabaseInfo> {
+    if (isTauri) {
+      return tauriInvoke<DatabaseInfo>('create_new_database', { targetPath });
+    }
+    return this.getDatabaseInfo();
+  },
+
   async setCustomDatabasePath(path: string): Promise<DatabaseInfo> {
     if (isTauri) {
       return tauriInvoke<DatabaseInfo>('set_custom_database_path', { path });

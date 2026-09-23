@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FolderCheck, ShieldCheck, HardDrive, FileSearch, X } from '@lucide/vue';
+import { FolderCheck, ShieldCheck, HardDrive, FileSearch, X, Sparkles } from '@lucide/vue';
 
 defineProps<{
   show: boolean;
@@ -10,6 +10,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'pickFile'): void;
   (e: 'scanFolders'): void;
+  (e: 'createDatabase'): void;
 }>();
 </script>
 
@@ -84,7 +85,16 @@ const emit = defineEmits<{
           </div>
 
           <!-- Actions -->
-          <div class="space-y-2 pt-2 relative z-10">
+          <div class="space-y-3 pt-2 relative z-10">
+            <!-- 1-Click Create New Blank Database (First-time user onboarding) -->
+            <button
+              @click="emit('createDatabase')"
+              class="w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-white font-bold text-xs shadow-lg shadow-orange-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+            >
+              <Sparkles class="w-4 h-4 text-amber-200" />
+              <span>✨ 一键创建全新空白影库（首次使用推荐）</span>
+            </button>
+
             <div class="flex items-center gap-3">
               <!-- Pick file button -->
               <button
