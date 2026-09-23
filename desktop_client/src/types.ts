@@ -516,6 +516,7 @@ export interface ScraperStatus {
   current_title: string;
   new_movies: number;
   new_performers: number;
+  new_episodes: number;
   speed_fps: number;
   eta_minutes: number;
   message: string;
@@ -523,6 +524,12 @@ export interface ScraperStatus {
   elapsed_secs: number;
   finished: boolean;
   error?: string | null;
+}
+
+export interface SyncResult {
+  newMovies: number;
+  newPerformers: number;
+  newEpisodes: number;
 }
 
 

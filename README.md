@@ -118,8 +118,8 @@
 
 ### 普通用户（推荐）
 
-直接前往本仓库的 [Releases 页面](../../releases) 下载已打包编译完成的安装包：
-- **macOS**：下载 `GPDb-macOS-v2.0.dmg`，双击后将 `GPDb.app` 拖入 `Applications`（应用程序）即可启动。
+直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载已打包编译完成的安装包：
+- **macOS**：下载 `GPDb-macOS-v2.4.0.dmg`，双击后将 `GPDb.app` 拖入 `Applications`（应用程序）即可启动。
 - **Android**（独立工程开发中）：下载 `.apk` 安装包直接安装于手机或平板。
 
 ### 开发者本地编译与运行
@@ -132,7 +132,7 @@
 #### 运行步骤
 ```bash
 # 1. 克隆代码仓库
-git clone https://github.com/your-username/GPDb.git
+git clone https://github.com/GeavenMax/GPDb.git
 cd GPDb
 
 # 2. 进入桌面客户端目录

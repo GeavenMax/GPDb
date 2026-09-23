@@ -117,8 +117,8 @@
 
 ### 一般ユーザー向け（推奨）
 
-[Releases ページ](../../releases) からビルド済みのインストーラーをダウンロードしてください：
-- **macOS**：`GPDb-macOS-v2.0.dmg` をダウンロードし、マウント後に `GPDb.app` を `Applications` フォルダへドラッグ＆ドロップします。
+[Releases ページ](https://github.com/GeavenMax/GPDb/releases) からビルド済みのインストーラーをダウンロードしてください：
+- **macOS**：`GPDb-macOS-v2.4.0.dmg` をダウンロードし、マウント後に `GPDb.app` を `Applications` フォルダへドラッグ＆ドロップします。
 - **Android**（開発進行中）：`.apk` パッケージを端末にダウンロードしてインストールします。
 
 ### 開発者向けローカルビルド手順
@@ -131,7 +131,7 @@
 #### ビルド手順
 ```bash
 # 1. リポジトリをクローン
-git clone https://github.com/littlebighero/GPDb.git
+git clone https://github.com/GeavenMax/GPDb.git
 cd GPDb
 
 # 2. デスクトップクライアントディレクトリに移動

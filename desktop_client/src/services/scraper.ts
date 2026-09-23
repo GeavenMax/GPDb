@@ -13,6 +13,7 @@ const defaultStatus: ScraperStatus = {
   current_title: '',
   new_movies: 0,
   new_performers: 0,
+  new_episodes: 0,
   speed_fps: 0,
   eta_minutes: 0,
   message: '就绪',
@@ -27,7 +28,7 @@ export const scraperState = ref<ScraperStatus>({ ...defaultStatus });
 export const isScrapingRunning = computed(() => scraperState.value.running);
 
 export const newlyScrapedCount = computed(
-  () => scraperState.value.new_movies + scraperState.value.new_performers
+  () => scraperState.value.new_movies + scraperState.value.new_performers + scraperState.value.new_episodes
 );
 
 let isInitialized = false;
@@ -43,6 +44,7 @@ export function onScraperDataChange(cb: () => void) {
 
 let lastMoviesCount = 0;
 let lastPerformersCount = 0;
+let lastEpisodesCount = 0;
 
 export async function initScraperService() {
   if (isInitialized) return;
@@ -53,6 +55,7 @@ export async function initScraperService() {
     scraperState.value = status;
     lastMoviesCount = status.new_movies;
     lastPerformersCount = status.new_performers;
+    lastEpisodesCount = status.new_episodes || 0;
   } catch (err) {
     console.warn('[ScraperService] Failed to get initial status:', err);
   }
@@ -62,13 +65,15 @@ export async function initScraperService() {
     await listen<ScraperStatus>('scraper-progress', (event) => {
       scraperState.value = event.payload;
 
-      // If new movies or performers were scraped, trigger UI refresh listeners
+      // If new movies, performers or episodes were scraped, trigger UI refresh listeners
       if (
         event.payload.new_movies > lastMoviesCount ||
-        event.payload.new_performers > lastPerformersCount
+        event.payload.new_performers > lastPerformersCount ||
+        (event.payload.new_episodes || 0) > lastEpisodesCount
       ) {
         lastMoviesCount = event.payload.new_movies;
         lastPerformersCount = event.payload.new_performers;
+        lastEpisodesCount = event.payload.new_episodes || 0;
         for (const cb of listeners) {
           try {
             cb();

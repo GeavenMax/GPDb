@@ -544,15 +544,15 @@ export const api = {
     return ['General Hardcore', 'Bisexual', 'Bareback', 'Twink', 'All-Male', 'Muscle'];
   },
 
-  async runSync(): Promise<{ newMovies: number; newPerformers: number }> {
+  async runSync(): Promise<{ newMovies: number; newPerformers: number; newEpisodes: number }> {
     if (isTauri) {
-      return tauriInvoke<{ newMovies: number; newPerformers: number }>('run_sync');
+      return tauriInvoke<{ newMovies: number; newPerformers: number; newEpisodes: number }>('run_sync');
     }
     try {
       const res = await fetch('/api/sync', { method: 'POST' });
       if (res.ok) return await res.json();
     } catch {}
-    return { newMovies: 0, newPerformers: 0 };
+    return { newMovies: 0, newPerformers: 0, newEpisodes: 0 };
   },
 
   // Asynchronous Scraper & Sync Engine
@@ -594,6 +594,7 @@ export const api = {
       current_title: '',
       new_movies: 0,
       new_performers: 0,
+      new_episodes: 0,
       speed_fps: 0,
       eta_minutes: 0,
       message: '就绪',

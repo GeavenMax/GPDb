@@ -49,11 +49,16 @@ pub fn save_db_config(cfg: &DbConfig) -> Result<(), String> {
             let _ = std::fs::create_dir_all(parent);
         }
         let data = serde_json::to_vec_pretty(cfg).map_err(|e| e.to_string())?;
-        std::fs::write(p, data).map_err(|e| e.to_string())?;
-        Ok(())
-    } else {
-        Err("无法定位用户主目录".to_string())
+        std::fs::write(&p, data).map_err(|e| e.to_string())?;
     }
+    // Also save a ~/.gevi_db_path convenience text file so any script/shell can easily read it
+    if let Some(ref path_str) = cfg.custom_db_path {
+        if let Some(home) = std::env::var_os("HOME") {
+            let dotfile = PathBuf::from(home).join(".gevi_db_path");
+            let _ = std::fs::write(dotfile, path_str);
+        }
+    }
+    Ok(())
 }
 
 pub fn expand_tilde<P: AsRef<Path>>(path: P) -> PathBuf {
@@ -283,6 +288,15 @@ pub fn open_db() -> Result<Connection, String> {
     );
 
     let key = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+    let key_str = key.to_string_lossy().to_string();
+
+    // Ensure client config and ~/.gevi_db_path reflect the currently active database path
+    let mut cfg = load_db_config();
+    if cfg.custom_db_path.as_deref() != Some(&key_str) {
+        cfg.custom_db_path = Some(key_str);
+        let _ = save_db_config(&cfg);
+    }
+
     let needs_migration = !migrated_paths().lock().unwrap().contains(&key);
     if needs_migration {
         gpdb_core::migrate::ensure_schema(&conn).map_err(|e| {

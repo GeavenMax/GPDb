@@ -117,8 +117,8 @@ Nell'ambito dei contenuti per adulti, la cronologia di visione, i segnalibri e l
 
 ### Per utenti finali (Consigliato)
 
-Scaricate il file di installazione precompilato dalla pagina delle [Releases](../../releases):
-- **macOS**: Scaricate `GPDb-macOS-v2.0.dmg`, aprite l'immagine disco e trascinate `GPDb.app` nella cartella `Applicazioni`.
+Scaricate il file di installazione precompilato dalla pagina delle [Releases](https://github.com/GeavenMax/GPDb/releases):
+- **macOS**: Scaricate `GPDb-macOS-v2.4.0.dmg`, aprite l'immagine disco e trascinate `GPDb.app` nella cartella `Applicazioni`.
 - **Android** (Applicazione autonoma in fase di sviluppo): Scaricate il pacchetto `.apk` per installarlo direttamente sul vostro dispositivo.
 
 ### Per sviluppatori (Compilazione locale)
@@ -131,7 +131,7 @@ Scaricate il file di installazione precompilato dalla pagina delle [Releases](..
 #### Istruzioni di compilazione
 ```bash
 # 1. Clonare il repository
-git clone https://github.com/littlebighero/GPDb.git
+git clone https://github.com/GeavenMax/GPDb.git
 cd GPDb
 
 # 2. Accedere alla cartella del client desktop

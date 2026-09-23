@@ -9,6 +9,74 @@ from typing import Any
 
 SCHEMA_FILE = Path(__file__).parent / "schema.sql"
 
+def find_default_db_path() -> Path:
+    """自动获取客户端记录的或本地存在的数据库路径。
+
+    检索优先级：
+    1. 环境变量 `GEVI_DB`
+    2. 客户端配置文件：~/Library/Application Support/com.gpdb.app/db_config.json
+    3. 客户端快捷标记：~/.gevi_db_path
+    4. 当前工作目录下的 gevi.db
+    5. db_manager.py 所在目录下的 gevi.db
+    6. 上级或上两级目录下的 gevi.db
+    7. 客户端标准目录：~/Documents/GPDb/gevi.db
+    8. 回退：当前脚本所在目录下的 gevi.db
+    """
+    # 1. GEVI_DB env var
+    if env_db := os.environ.get("GEVI_DB"):
+        p = Path(env_db).expanduser()
+        if p.is_file():
+            return p
+
+    # 2. com.gpdb.app/db_config.json (macOS Application Support)
+    try:
+        cfg_file = Path.home() / "Library" / "Application Support" / "com.gpdb.app" / "db_config.json"
+        if cfg_file.exists():
+            with open(cfg_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                custom = data.get("custom_db_path")
+                if custom:
+                    p = Path(custom).expanduser()
+                    if p.is_file():
+                        return p
+    except Exception:
+        pass
+
+    # 3. ~/.gevi_db_path
+    try:
+        dotfile = Path.home() / ".gevi_db_path"
+        if dotfile.exists():
+            content = dotfile.read_text("utf-8").strip()
+            if content:
+                p = Path(content).expanduser()
+                if p.is_file():
+                    return p
+    except Exception:
+        pass
+
+    # 4. Current working directory
+    cwd_db = Path.cwd() / "gevi.db"
+    if cwd_db.is_file():
+        return cwd_db
+
+    # 5. Beside db_manager.py
+    script_db = Path(__file__).resolve().parent / "gevi.db"
+    if script_db.is_file():
+        return script_db
+
+    # 6. Ancestors (e.g. if script is in a subdirectory)
+    for parent in Path(__file__).resolve().parents:
+        cand = parent / "gevi.db"
+        if cand.is_file():
+            return cand
+
+    # 7. Standard default ~/Documents/GPDb/gevi.db
+    std_gpdb = Path.home() / "Documents" / "GPDb" / "gevi.db"
+    if std_gpdb.is_file():
+        return std_gpdb
+
+    return script_db
+
 class DatabaseManager:
     """SQLite access layer.
 
@@ -18,8 +86,12 @@ class DatabaseManager:
     "cannot commit transaction - SQL statements in progress".
     """
 
-    def __init__(self, db_path: str = "gevi.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: str | Path | None = None):
+        if db_path is None or db_path == "gevi.db":
+            resolved = find_default_db_path()
+            self.db_path = str(resolved if resolved.exists() else (db_path or "gevi.db"))
+        else:
+            self.db_path = str(db_path)
         self._write_lock = threading.RLock()
         self.conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
         self.conn.execute("PRAGMA journal_mode = WAL;")

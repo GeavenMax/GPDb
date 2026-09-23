@@ -117,8 +117,8 @@
 
 ### 一般使用者（推薦）
 
-直接前往本倉庫的 [Releases 頁面](../../releases) 下載已打包編譯完成的安裝套件：
-- **macOS**：下載 `GPDb-macOS-v2.0.dmg`，按兩下後將 `GPDb.app` 拖入 `Applications`（應用程式）即可啟動。
+直接前往本倉庫的 [Releases 頁面](https://github.com/GeavenMax/GPDb/releases) 下載已打包編譯完成的安裝套件：
+- **macOS**：下載 `GPDb-macOS-v2.4.0.dmg`，按兩下後將 `GPDb.app` 拖入 `Applications`（應用程式）即可啟動。
 - **Android**（獨立專案開發中）：下載 `.apk` 安裝套件直接安裝於手機或平板。
 
 ### 開發者本地編譯與執行
@@ -131,7 +131,7 @@
 #### 執行步驟
 ```bash
 # 1. 複製程式碼倉庫
-git clone https://github.com/littlebighero/GPDb.git
+git clone https://github.com/GeavenMax/GPDb.git
 cd GPDb
 
 # 2. 進入桌面客戶端目錄

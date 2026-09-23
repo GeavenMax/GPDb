@@ -37,7 +37,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from db_manager import DatabaseManager
+from db_manager import DatabaseManager, find_default_db_path
 from cache_images import hd_url_for
 
 BASE_URL = "https://gayeroticvideoindex.com"
@@ -659,7 +659,8 @@ def main():
     parser.add_argument("--limit", type=int, default=None, help="Limit number of items to scrape in this run")
     parser.add_argument("--concurrency", type=int, default=10, help="Number of worker threads (default: 10; each thread reuses one persistent TLS connection)")
     parser.add_argument("--delay", type=float, default=0.02, help="Polite delay between requests per worker (seconds, default: 0.02)")
-    parser.add_argument("--db", type=str, default="gevi.db", help="SQLite database path")
+    detected_db = find_default_db_path()
+    parser.add_argument("--db", type=str, default=str(detected_db), help=f"SQLite database path (default: {detected_db})")
     parser.add_argument("--stats", action="store_true", help="Print current database statistics and exit")
     parser.add_argument("--reverse", action="store_true", help="Scrape from latest ID downwards")
     parser.add_argument("--retry-failed", action="store_true", help="Retry scraping failed items (status 500)")

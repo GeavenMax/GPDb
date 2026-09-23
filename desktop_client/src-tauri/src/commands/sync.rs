@@ -9,7 +9,7 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ScraperStatus {
@@ -22,6 +22,8 @@ pub struct ScraperStatus {
     pub current_title: String,
     pub new_movies: u32,
     pub new_performers: u32,
+    #[serde(default)]
+    pub new_episodes: u32,
     pub speed_fps: f64,
     pub eta_minutes: f64,
     pub message: String,
@@ -43,6 +45,7 @@ impl Default for ScraperStatus {
             current_title: String::new(),
             new_movies: 0,
             new_performers: 0,
+            new_episodes: 0,
             speed_fps: 0.0,
             eta_minutes: 0.0,
             message: "就绪".to_string(),
@@ -70,8 +73,26 @@ fn manager() -> &'static Mutex<ScraperManager> {
     }))
 }
 
-/// 寻找指定的 Python 刮削脚本路径
-fn find_script(name: &str) -> Option<PathBuf> {
+/// 寻找可用的 Python 解释器路径 (macOS GUI App 下环境变量回退)
+pub fn resolve_python() -> String {
+    for exe in [
+        "/opt/homebrew/bin/python3",
+        "/usr/local/bin/python3",
+        "/usr/bin/python3",
+        "python3",
+        "python",
+    ] {
+        if let Ok(out) = std::process::Command::new(exe).args(["-c", "print(1)"]).output() {
+            if out.status.success() {
+                return exe.to_string();
+            }
+        }
+    }
+    "python3".to_string()
+}
+
+/// 寻找指定的 Python 刮削脚本路径 (支持源码相对路径、数据库同级、Tauri资源包及程序祖先目录)
+pub fn find_script(app: Option<&AppHandle>, name: &str) -> Option<PathBuf> {
     let candidates = [
         PathBuf::from(name),
         PathBuf::from("..").join(name),
@@ -92,6 +113,26 @@ fn find_script(name: &str) -> Option<PathBuf> {
             if candidate.exists() {
                 return Some(candidate);
             }
+        }
+    }
+
+    if let Some(handle) = app {
+        if let Ok(res_dir) = handle.path().resource_dir() {
+            let candidate = res_dir.join(name);
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        let mut cur = exe.parent();
+        while let Some(dir) = cur {
+            let candidate = dir.join(name);
+            if candidate.exists() {
+                return Some(candidate);
+            }
+            cur = dir.parent();
         }
     }
 
@@ -234,7 +275,7 @@ pub fn start_scraper(
         _ => return Err(format!("未知的刮削模式: {}", mode)),
     };
 
-    let script_path = find_script(script_name)
+    let script_path = find_script(Some(&app), script_name)
         .ok_or_else(|| format!("未在应用目录或父目录找到刮削脚本: {}", script_name))?;
 
     // Reset status
@@ -248,6 +289,7 @@ pub fn start_scraper(
         current_title: String::new(),
         new_movies: 0,
         new_performers: 0,
+        new_episodes: 0,
         speed_fps: 0.0,
         eta_minutes: 0.0,
         message: format!("正在初始化 {} 任务引擎...", mode),
@@ -259,7 +301,8 @@ pub fn start_scraper(
     mgr.start_time = Some(Instant::now());
 
     // Spawn child process with unbuffered IO
-    let mut child = std::process::Command::new("python3")
+    let python_bin = resolve_python();
+    let mut child = std::process::Command::new(&python_bin)
         .arg("-u")
         .arg(&script_path)
         .args(&args)
@@ -325,6 +368,18 @@ pub fn start_scraper(
                         }
                     }
                     mgr.status.message = format!("已入库演员: {}", mgr.status.current_title);
+                }
+                // 2.5 "+ 新增分集 #890: Title"
+                else if trimmed.contains("+ 新增分集 #") {
+                    mgr.status.new_episodes += 1;
+                    if let Some(idx) = trimmed.find('#') {
+                        let sub = &trimmed[idx + 1..];
+                        if let Some(colon) = sub.find(':') {
+                            mgr.status.current_id = sub[..colon].trim().parse().unwrap_or(0);
+                            mgr.status.current_title = sub[colon + 1..].trim().to_string();
+                        }
+                    }
+                    mgr.status.message = format!("已入库分集: {}", mgr.status.current_title);
                 }
                 // 3. Batch scraper progress: "[Movie] 42/1000 ( 4.2%) | Speed: 12.5 req/s | 200 OK: 40 | 404: 2 | Err: 0 | ETA: 1.3m"
                 else if trimmed.contains("req/s") && trimmed.contains('/') {
@@ -407,14 +462,14 @@ pub fn start_scraper(
         mgr.status.finished = true;
         mgr.child_pid = None;
 
-        if !err_msg.trim().is_empty() && (mgr.status.new_movies == 0 && mgr.status.new_performers == 0) {
+        if !err_msg.trim().is_empty() && (mgr.status.new_movies == 0 && mgr.status.new_performers == 0 && mgr.status.new_episodes == 0) {
             mgr.status.error = Some(err_msg.trim().to_string());
             mgr.status.message = format!("执行异常: {}", err_msg.lines().next().unwrap_or(""));
         } else {
             mgr.status.percent = 100.0;
             mgr.status.message = format!(
-                "同步刮削完成！本次共整合新增影片 {} 部，新增演员 {} 位",
-                mgr.status.new_movies, mgr.status.new_performers
+                "同步刮削完成！本次共整合新增影片 {} 部，新增演员 {} 位，新增分集 {} 个",
+                mgr.status.new_movies, mgr.status.new_performers, mgr.status.new_episodes
             );
         }
 
@@ -431,14 +486,15 @@ pub fn start_scraper(
 /// 兼容原有接口 run_sync
 #[tauri::command]
 pub fn run_sync(app: AppHandle) -> Result<SyncResult, String> {
-    let script_path = find_script("sync_gevi.py")
+    let script_path = find_script(Some(&app), "sync_gevi.py")
         .ok_or_else(|| "未找到 sync_gevi.py 脚本".to_string())?;
 
     let db_path = crate::db::find_db_path()
         .map(|p| p.to_string_lossy().to_string())
         .unwrap_or_else(|| "gevi.db".to_string());
 
-    let output = std::process::Command::new("python3")
+    let python_bin = resolve_python();
+    let output = std::process::Command::new(&python_bin)
         .arg(&script_path)
         .arg("--db")
         .arg(&db_path)
@@ -450,6 +506,7 @@ pub fn run_sync(app: AppHandle) -> Result<SyncResult, String> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut new_movies = 0;
     let mut new_performers = 0;
+    let mut new_episodes = 0;
 
     for line in stdout.lines() {
         if line.contains("Saved") && line.contains("movies") {
@@ -470,6 +527,14 @@ pub fn run_sync(app: AppHandle) -> Result<SyncResult, String> {
                 }
             }
         }
+        if line.contains("新分集:") {
+            if let Some(idx) = line.find("新分集:") {
+                let rest = &line[idx + 10..];
+                if let Some(e_idx) = rest.find("个") {
+                    new_episodes = rest[..e_idx].trim().parse().unwrap_or(new_episodes);
+                }
+            }
+        }
     }
 
     let _ = app.emit("scraper-finished", ());
@@ -477,6 +542,7 @@ pub fn run_sync(app: AppHandle) -> Result<SyncResult, String> {
     Ok(SyncResult {
         new_movies,
         new_performers,
+        new_episodes,
     })
 }
 
@@ -486,9 +552,9 @@ mod tests {
 
     #[test]
     fn test_find_scripts() {
-        let script = find_script("sync_gevi.py");
+        let script = find_script(None, "sync_gevi.py");
         assert!(script.is_some(), "sync_gevi.py must be discovered");
-        let batch = find_script("batch_scraper.py");
+        let batch = find_script(None, "batch_scraper.py");
         assert!(batch.is_some(), "batch_scraper.py must be discovered");
     }
 

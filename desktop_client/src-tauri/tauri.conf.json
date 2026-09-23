@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "GPDb",
   "mainBinaryName": "gpdb",
-  "version": "2.0.0",
+  "version": "2.4.0",
   "identifier": "com.gpdb.app",
   "build": {
     "frontendDist": "../dist",
@@ -30,7 +30,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
+    "targets": ["app", "dmg"],
+    "resources": [
+      "../../sync_gevi.py",
+      "../../batch_scraper.py",
+      "../../db_manager.py"
+    ],
     "icon": [
       "gen/icons/AppIcon.icns",
       "icons/icon.ico"

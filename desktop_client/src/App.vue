@@ -3725,9 +3725,12 @@ onUnmounted(() => {
           <AnalyticsView @open-trophies="currentTab = 'trophies'" />
         </div>
 
-        <!-- 8. Plugins Center Tab -->
         <div v-else-if="currentTab === 'plugins'" class="space-y-6">
-          <PluginsView @open-trophies="currentTab = 'trophies'" />
+          <PluginsView
+            @open-trophies="currentTab = 'trophies'"
+            @open-sync="isSyncOpen = true"
+            @refresh-movies="loadStats(); fetchMovies(true);"
+          />
         </div>
 
         <!-- 9. PSN 77 Trophies Hall Tab -->

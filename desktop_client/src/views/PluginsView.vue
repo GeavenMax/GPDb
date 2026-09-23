@@ -24,35 +24,39 @@ import {
   clearAiReport,
 } from '../services/aiAnalysis';
 import AiAnalysisModal from '../components/AiAnalysisModal.vue';
+import {
+  scraperState,
+  isScrapingRunning,
+  startScraperTask,
+  stopScraperTask
+} from '../services/scraper';
 
 const emit = defineEmits<{
   (e: 'open-trophies'): void;
   (e: 'refresh-movies'): void;
+  (e: 'open-sync'): void;
 }>();
 
 type PluginSubTab = 'all' | 'ai' | 'bt' | 'scraper' | 'translate' | 'trophy';
 const activePluginTab = ref<PluginSubTab>('all');
 
 // --- 1. Scraper state ---
-const isScraping = ref(false);
 const scraperMessage = ref('');
 const scraperSuccess = ref<boolean | null>(null);
 
 async function runScraper() {
-  if (isScraping.value) return;
-  isScraping.value = true;
+  if (isScrapingRunning.value) return;
   scraperMessage.value = '正在安全检测并执行增量刮削...';
   scraperSuccess.value = null;
 
   try {
-    const res = await api.runSync();
+    await startScraperTask('incremental');
     scraperSuccess.value = true;
-    scraperMessage.value = `增量同步完成！新增影片: ${res.newMovies} 部，新增演员: ${res.newPerformers} 位。已导入数据库，请点击顶部「同步」按钮刷新。`;
+    scraperMessage.value = '增量同步任务已在后台极速启动，数据将实时自动同步！';
+    emit('refresh-movies');
   } catch (err: any) {
     scraperSuccess.value = false;
-    scraperMessage.value = `同步请求失败: ${err?.message || err || '服务未响应'}`;
-  } finally {
-    isScraping.value = false;
+    scraperMessage.value = `启动失败: ${err?.message || err || '服务未响应'}`;
   }
 }
 
@@ -846,13 +850,25 @@ onMounted(() => {
       >
         <div class="flex items-start justify-between gap-4">
           <div class="flex items-center gap-3.5">
-            <div class="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <RefreshCw class="w-6 h-6" :class="{ 'animate-spin': isScraping }" />
+            <div
+              class="p-3 rounded-2xl transition shadow"
+              :class="isScrapingRunning
+                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'"
+            >
+              <RefreshCw class="w-6 h-6" :class="{ 'animate-spin': isScrapingRunning }" />
             </div>
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-base font-bold text-fg">{{ t('plugins.customScraper') }}</h3>
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">内置</span>
+                <span
+                  v-if="isScrapingRunning"
+                  class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30 flex items-center gap-1"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                  同步中
+                </span>
+                <span v-else class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20">内置</span>
               </div>
               <p class="text-xs text-fg-4 mt-0.5">{{ t('plugins.customScraperDesc') }}</p>
             </div>
@@ -869,30 +885,91 @@ onMounted(() => {
           </label>
         </div>
 
-        <div v-if="pluginsConfig.customScraperEnabled" class="pt-4 border-t border-line/60 space-y-3">
+        <div v-if="pluginsConfig.customScraperEnabled" class="pt-4 border-t border-line/60 space-y-3.5">
+          <!-- Control Actions -->
           <div class="flex items-center gap-3 flex-wrap">
             <button
               @click="runScraper"
-              :disabled="isScraping"
-              class="px-4 py-2 rounded-xl bg-accent-fill text-on-fill text-xs font-bold flex items-center gap-2 hover:bg-accent-fill/90 transition shadow disabled:opacity-50"
+              :disabled="isScrapingRunning"
+              class="px-4 py-2 rounded-xl bg-accent-fill text-on-fill text-xs font-bold flex items-center gap-2 hover:bg-accent-fill/90 transition shadow disabled:opacity-50 cursor-pointer"
             >
-              <Loader2 v-if="isScraping" class="w-3.5 h-3.5 animate-spin" />
+              <Loader2 v-if="isScrapingRunning" class="w-3.5 h-3.5 animate-spin" />
               <RefreshCw v-else class="w-3.5 h-3.5" />
-              <span>{{ isScraping ? '增量刮削执行中...' : '一键启动增量刮削' }}</span>
+              <span>{{ isScrapingRunning ? '增量同步运行中...' : '一键启动增量刮削' }}</span>
             </button>
+
+            <button
+              v-if="isScrapingRunning"
+              @click="stopScraperTask"
+              class="px-3 py-2 rounded-xl bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 border border-rose-500/30 text-xs font-bold transition cursor-pointer"
+            >
+              中止任务
+            </button>
+
+            <button
+              @click="emit('open-sync')"
+              class="px-4 py-2 rounded-xl bg-surface-2 text-fg hover:bg-surface-3 border border-line text-xs font-bold flex items-center gap-2 transition cursor-pointer"
+              title="打开全功能刮削与数据同步中心，支持全量、逆序及选段抓取"
+            >
+              <Compass class="w-3.5 h-3.5 text-indigo-400" />
+              <span>打开同步控制中心</span>
+            </button>
+
             <span class="text-[11px] text-fg-4">
-              自动抓取 /newm 与 /newp 并将增量数据导入 SQLite
+              自动检索 /newm、/newp、/newe，实时增量整合影片、演职员与分集
             </span>
           </div>
 
+          <!-- Live Progress Banner when running -->
+          <div v-if="isScrapingRunning" class="p-3.5 rounded-2xl bg-surface-2/70 border border-line/80 space-y-2 text-xs">
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="font-bold text-fg flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                {{ scraperState.message || '正在增量刮削...' }}
+              </span>
+              <div class="flex items-center gap-2 font-mono text-fg-3 text-[10px]">
+                <span>+{{ scraperState.new_movies }} 电影</span>
+                <span>+{{ scraperState.new_performers }} 演员</span>
+                <span>+{{ scraperState.new_episodes }} 分集</span>
+              </div>
+            </div>
+
+            <!-- Mini Progress bar -->
+            <div class="w-full h-1.5 rounded-full bg-surface-3 overflow-hidden">
+              <div
+                class="h-full bg-gradient-to-r from-indigo-500 to-amber-500 transition-all duration-300"
+                :style="{ width: `${Math.min(100, Math.max(5, scraperState.percent))}%` }"
+              ></div>
+            </div>
+
+            <!-- Latest log line preview -->
+            <div v-if="scraperState.logs.length" class="text-[10px] font-mono text-fg-4 truncate">
+              > {{ scraperState.logs[scraperState.logs.length - 1] }}
+            </div>
+          </div>
+
+          <!-- Status Message when finished or stopped -->
           <div
-            v-if="scraperMessage"
-            class="p-3 rounded-xl border text-xs flex items-center gap-2"
-            :class="scraperSuccess ? 'bg-success-fill/10 border-success-fill/30 text-success' : 'bg-surface-2 border-line text-fg-3'"
+            v-else-if="scraperMessage || scraperState.finished"
+            class="p-3 rounded-xl border text-xs flex items-center justify-between gap-2"
+            :class="(scraperSuccess !== false && !scraperState.error) ? 'bg-success-fill/10 border-success-fill/30 text-success' : 'bg-surface-2 border-line text-rose-400'"
           >
-            <CheckCircle2 v-if="scraperSuccess" class="w-4 h-4 shrink-0" />
-            <AlertCircle v-else class="w-4 h-4 shrink-0" />
-            <span>{{ scraperMessage }}</span>
+            <div class="flex items-center gap-2">
+              <CheckCircle2 v-if="scraperSuccess !== false && !scraperState.error" class="w-4 h-4 shrink-0" />
+              <AlertCircle v-else class="w-4 h-4 shrink-0" />
+              <span>
+                {{ scraperState.finished
+                  ? `增量同步完成！本次入库影片 +${scraperState.new_movies} 部，演员 +${scraperState.new_performers} 位，分集 +${scraperState.new_episodes} 个。`
+                  : scraperMessage }}
+              </span>
+            </div>
+            <button
+              v-if="scraperState.finished"
+              @click="emit('refresh-movies')"
+              class="text-[11px] underline hover:text-fg transition cursor-pointer shrink-0"
+            >
+              刷新列表
+            </button>
           </div>
         </div>
       </div>

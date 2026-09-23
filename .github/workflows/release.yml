@@ -22,6 +22,8 @@ jobs:
   build-macos:
     name: Build macOS DMG (Apple Silicon + Intel Universal)
     runs-on: macos-latest   # GitHub 托管的 macOS runner（Apple Silicon M1）
+    permissions:
+      contents: write
 
     steps:
       # ── 1. 检出代码 ──────────────────────────────────────────────────────────

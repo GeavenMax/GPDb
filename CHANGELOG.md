@@ -5,6 +5,52 @@
 
 ---
 
+## [v2.4.1] - 2026-09-23
+
+### 🐛 修复 (Fixed)
+- **自动化刮削更新插件历史 404 误判修复**：
+  - 修复 `sync_gevi.py` 中因历史全量探测导致大量新 ID（75191..76000）被记录为 404 而被 `get_completed_ids` 判定为“已完成”进而 100% 误杀过滤新片的问题。
+  - 重构增量待抓取列表计算逻辑：官网 `/newm`、`/newp` 确认发现的新片/新星条目不受历史 404 阻断，仅对本地数据库已收录记录去重；前向探测引入时效保护机制，并自动清除超前 404 占位缓存。
+- **官网最新分集（/newe）增量接入与自动解析**：
+  - 在 `sync_gevi.py` 中接入 `/newe` 实时更新流，新增 `get_latest_ids_from_pages` 与 `parse_episode_details` 专用解析器。
+  - 自动抓取新分集标题、高清预览剧照、所属片商（Studio/Company）、发布日期以及关联出演演员表，并通过 `save_company_episodes` 深度入库。
+- **macOS 客户端环境下的 Python 路径与独立安装包资源寻址**：
+  - 在 Tauri 核心 `commands/sync.rs` 中引入 `resolve_python()` 路径降级解析器，按序探测 `/opt/homebrew/bin/python3`、`/usr/local/bin/python3`、`/usr/bin/python3`，解决 macOS GUI 进程无终端环境变量导致的启动失败。
+  - `find_script` 引入多级寻址（含 Tauri App 资源目录 `app.path().resource_dir()` 与可执行程序祖先目录），并在 `tauri.conf.json` 中配置 `bundle.resources`，确保打包 DMG / 独立应用后依然能稳定调用刮削脚本。
+
+### ⚡ 优化 (Changed)
+- **“功能外挂”自动化刮削插件视图实时体验升级**：
+  - 重构 `PluginsView.vue` 中的刮削卡片交互，将其与统一后台刮削服务（`scraperState` / `startScraperTask`）完全接轨。
+  - 引入呼吸态徽标（“同步中”）、微型渐变进度条、实时条目计数（+电影/+演员/+分集）与单行实时日志浮层，支持随时中止任务。
+  - 新增“打开同步控制中心”快捷按钮，方便一键呼出全功能同步模态窗（`SyncModal.vue`）。
+  - 任务完成后自动触发 `@refresh-movies` 全局数据与统计重载，彻底消除“点击无反应/页面无变化”的断层感。
+- **同步结果数据结构增强**：
+  - 在 Rust 后端 `SyncResult` 与前端 `ScraperStatus` / `SyncResult` 中统一加入 `new_episodes`（新增分集数）字段，多端数据模型严格对齐。
+
+---
+
+## [v2.4.0] - 2026-09-23
+
+### 🚀 新增 (Added)
+- **BoyfriendTV 演员主页直达与精准检索**：
+  - 新增 `scrape_bftv_performers.py` 自动化批量爬虫，爬取演员 BFTV 专属档案页 URL 并持久化至 `performers.bftv_url`（支持断点续爬、并发度与延时控制）。
+  - 在演员专属档案模态窗 `PerformerDetailModal.vue` 中支持一键直跳主页；若未收录直链则智能降级为演员名精准搜索。
+- **BT 资源搜索主标题智能净化 (Clean Title Extraction)**：
+  - 新增 `extractMovieCleanTitle` 算法，智能剔除副标题、多余序号与标点修饰符，保留影片自然大小写，全面兼容 em-dash 与 en-dash 破折号。
+  - 影片详情卡片 `MovieDetailModal.vue`、分集弹窗 `EpisodeDetailModal.vue` 与分集行 `EpisodeRow.vue` 全面接入 `openBtMovieSearch`，磁力搜索命中准确度显著提升。
+- **GitHub Actions 自动编译与 Release 发布流水线**：
+  - 交付完整自动化构建工作流 `.github/workflows/release.yml`，打 Tag 即自动拉起 macOS Runner 编译前端与 Rust 核心，生成通用 DMG 安装包。
+  - 自动发布 GitHub Release，附带详细 macOS 首次启动安全说明与 `xattr -cr` 隔离属性解除指引。
+- **开源门面迁移至 GeavenMax 主页**：
+  - 全面将 Git 远程源、克隆地址及 7 种语言矩阵的 Releases 下载链接统一校准至 `https://github.com/GeavenMax/GPDb`。
+
+### ⚡ 优化 (Changed)
+- **版本号全生态对齐**：
+  - 将 `desktop_client/package.json`、`desktop_client/src-tauri/tauri.conf.json`、`Cargo.toml` 以及底层核心库 `gpdb-core` 统一升级至 `2.4.0`。
+  - 在 Tauri 打包配置中显式启用 `["app", "dmg"]` 双产物构建目标。
+
+---
+
 ## [v2.0.0] - 2026-09-23
 
 ### 🚀 新增 (Added)

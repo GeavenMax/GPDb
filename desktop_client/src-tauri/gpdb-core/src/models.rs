@@ -324,6 +324,8 @@ pub struct SyncResult {
     pub new_movies: i64,
     #[serde(alias = "new_performers")]
     pub new_performers: i64,
+    #[serde(default, alias = "new_episodes")]
+    pub new_episodes: i64,
 }
 /// One favorited item, shaped for the card that renders it.
 ///
