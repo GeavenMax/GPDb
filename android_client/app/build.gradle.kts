@@ -99,9 +99,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.core)
 
-    // ── Accompanist（权限 + 系统 UI 控制）────────────────────
+    // ── Accompanist（权限）───────────────────────────────────
     implementation(libs.accompanist.permissions)
-    implementation(libs.accompanist.systemuicontroller)
 
     // ── DataStore（持久化用户设置，如挂载路径）───────────────
     implementation(libs.androidx.datastore.preferences)
