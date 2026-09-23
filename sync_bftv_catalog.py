@@ -49,12 +49,22 @@ def ensure_bftv_column(conn: sqlite3.Connection) -> None:
         print("✓ 已为 performers 表初始化 bftv_url 字段", flush=True)
 
 
-def fetch_from_sitemap() -> list[tuple[str, str, str]]:
+def fetch_from_sitemap(local_cache_file: Path | None = None) -> tuple[list[tuple[str, str, str]], int]:
     """
-    通过官方 CDN Sitemap 获取全部演员主页 URL。
-    返回列表: [(full_url, slug, bftv_id), ...]
+    通过官方 CDN Sitemap 获取全部演员主页 URL，并持久化到本地文件。
+    返回: (matches, new_diff_count)
     """
+    old_urls: set[str] = set()
+    if local_cache_file and local_cache_file.exists():
+        try:
+            cached_text = local_cache_file.read_text(encoding="utf-8", errors="ignore")
+            old_urls = set(re.findall(r'<loc>(https://www\.boyfriendtv\.com/pornstars/[a-z0-9\-]+-\d+/)</loc>', cached_text))
+            print(f"📁 本地已缓存 BFTV 演员索引: {len(old_urls)} 位", flush=True)
+        except Exception as e:
+            print(f"⚠ 读取本地缓存失败: {e}", flush=True)
+
     print(f"📡 正在从 BFTV CDN Sitemap 获取全量演员索引 ({SITEMAP_URL})...", flush=True)
+    xml_data = ""
     try:
         # 使用 curl 避免某些 Python 环境下的 TLS Handshake EOF 问题
         proc = subprocess.run(
@@ -63,26 +73,46 @@ def fetch_from_sitemap() -> list[tuple[str, str, str]]:
             text=True,
             timeout=25
         )
-        if proc.returncode != 0 or not proc.stdout:
-            raise RuntimeError(f"curl 退出代码 {proc.returncode}")
-        xml_data = proc.stdout
+        if proc.returncode == 0 and proc.stdout and "<urlset" in proc.stdout:
+            xml_data = proc.stdout
     except Exception as e:
         print(f"⚠ 直连 CDN Sitemap 失败: {e}，正在尝试 urllib 回退...", flush=True)
-        import urllib.request
-        import ssl
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        req = urllib.request.Request(
-            SITEMAP_URL,
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
-        )
-        with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
-            xml_data = resp.read().decode("utf-8", errors="ignore")
+
+    if not xml_data:
+        try:
+            import urllib.request
+            import ssl
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(
+                SITEMAP_URL,
+                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
+            )
+            with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
+                xml_data = resp.read().decode("utf-8", errors="ignore")
+        except Exception as e:
+            print(f"⚠ urllib 回退亦失败: {e}", flush=True)
+
+    # 若抓取成功，立即持久化保存到本地缓存文件
+    if xml_data and "<urlset" in xml_data:
+        if local_cache_file:
+            try:
+                local_cache_file.write_text(xml_data, encoding="utf-8")
+                print(f"💾 已将最新 BFTV 索引同步持久化至本地: {local_cache_file}", flush=True)
+            except Exception as e:
+                print(f"⚠ 写入本地缓存文件失败: {e}", flush=True)
+    elif local_cache_file and local_cache_file.exists():
+        print("📂 当前网络无法连接 CDN，自动无缝降级读取本地缓存文件...", flush=True)
+        xml_data = local_cache_file.read_text(encoding="utf-8", errors="ignore")
 
     matches = re.findall(r'<loc>(https://www\.boyfriendtv\.com/pornstars/([a-z0-9\-]+)-(\d+)/)</loc>', xml_data)
-    print(f"✓ 成功从 Sitemap 解析出 {len(matches)} 位演员档案条目！", flush=True)
-    return matches
+    current_urls = {m[0] for m in matches}
+    new_diff = current_urls - old_urls
+    if old_urls and new_diff:
+        print(f"✨ 发现 BFTV 官方最新收录演员 {len(new_diff)} 位！", flush=True)
+    print(f"✓ 成功解析出 {len(matches)} 位演员档案条目！", flush=True)
+    return matches, len(new_diff)
 
 
 def crawl_with_playwright(max_pages: int = 20) -> list[tuple[str, str, str]]:
@@ -172,10 +202,13 @@ def sync_bftv_catalog(
     conn = sqlite3.connect(str(db_file), timeout=30)
     ensure_bftv_column(conn)
 
+    local_cache_file = db_file.parent / "sitemap_pornstars.xml"
+
     # 1. 抓取 BFTV 演员列表
     bftv_items: dict[str, tuple[str, str, str]] = {} # href -> item
+    new_sitemap_diff = 0
     try:
-        sitemap_items = fetch_from_sitemap()
+        sitemap_items, new_sitemap_diff = fetch_from_sitemap(local_cache_file=local_cache_file)
         for item in sitemap_items:
             bftv_items[item[0]] = item
     except Exception as e:
@@ -191,7 +224,7 @@ def sync_bftv_catalog(
         print("❌ 未能获取任何 BFTV 演员数据，请检查网络或代理设置", flush=True)
         return 0, 0
 
-    print(f"\n⚡ BFTV 演员索引库就绪，共计 {total_bftv} 位模特/演员", flush=True)
+    print(f"\n⚡ BFTV 演员索引库就绪，共计 {total_bftv} 位模特/演员 (最新发现 {new_sitemap_diff} 位新演员)", flush=True)
     print("🔍 正在构建本地数据库演职员内存哈希映射表...", flush=True)
 
     # 2. 构建本地数据库内存倒排索引 (key -> [(id, name, bftv_url)])
@@ -224,7 +257,7 @@ def sync_bftv_catalog(
                 else:
                     updates.append((full_url, pid))
                     if verbose or len(updates) <= 15:
-                        print(f"+ 新增演员主页 #{pid}: {orig_name} -> {full_url}", flush=True)
+                        print(f"+ 新增演员主页 #{pid}: {orig_name} -> BFTV #{bftv_id} ({full_url})", flush=True)
 
         if idx % 1000 == 0 or idx == total_bftv:
             pct = (idx / total_bftv) * 100

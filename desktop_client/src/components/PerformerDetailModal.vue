@@ -7,7 +7,7 @@ import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
-import { pluginsConfig, openBtSearch, openBftvPerformer, openGoogleSearch } from '../services/pluginManager';
+import { pluginsConfig, openUrlExternal, openBtSearch, openGoogleSearch } from '../services/pluginManager';
 
 const props = defineProps<{
   performer: Performer | null;
@@ -260,13 +260,13 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               </button>
 
               <button
-                v-if="pluginsConfig.webJumpConfig.bftvPerformerEnabled"
-                @click="openBftvPerformer(performer.name, performer.bftv_url)"
-                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
-                :title="performer.bftv_url ? `直接打开「${performer.name}」的 BFTV 主页` : `在 BFTV 检索「${performer.name}」演员资料`"
+                v-if="performer.bftv_url"
+                @click="openUrlExternal(performer.bftv_url)"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 border-amber-500/30 flex items-center gap-1.5 transition cursor-pointer"
+                :title="`直接打开「${performer.name}」的 BFTV 主页`"
               >
-                <ExternalLink class="w-3.5 h-3.5 text-amber-400" />
-                <span>{{ performer.bftv_url ? '打开BFTV主页' : '在BFTV搜索演员资料' }}</span>
+                <ExternalLink class="w-3.5 h-3.5" />
+                <span>BFTV #{{ performer.bftv_url.match(/(\d+)\/$/)?.at(1) ?? '' }}</span>
               </button>
 
               <button

@@ -269,15 +269,12 @@ export async function openBtMovieSearch(rawTitle: string) {
 }
 
 /**
- * Open a performer's BFTV page.
- * If a direct profile URL (bftvUrl) is already stored in the DB, jump straight there.
- * Otherwise fall back to the BFTV search page.
+ * Open a performer's BFTV page directly.
+ * Only called when a direct profile URL (bftvUrl) is already stored in the DB.
  */
-export async function openBftvPerformer(name: string, bftvUrl?: string | null) {
+export async function openBftvPerformer(_name: string, bftvUrl?: string | null) {
   if (bftvUrl && bftvUrl.trim()) {
     await openUrlExternal(bftvUrl.trim());
-  } else if (name && name.trim()) {
-    await openUrlExternal(buildBftvPerformerUrl(name));
   }
 }
 
