@@ -42,6 +42,7 @@ class DatabaseManager:
         ],
         "performers": [
             ("image_url", "TEXT"),
+            ("bftv_url", "TEXT"),  # BoyfriendTV 演员个人页直链，由 scrape_bftv_performers.py 批量填充
         ],
         "episodes": [
             ("description_zh", "TEXT"),
