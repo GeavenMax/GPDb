@@ -2,7 +2,7 @@
 import { ref, watch, nextTick } from 'vue';
 import {
   X, RefreshCw, CheckCircle2, Film, Users, Sparkles, AlertCircle,
-  Square, ArrowDownToLine, Zap, Terminal, Layers, Clock
+  Square, ArrowDownToLine, Zap, Terminal, Layers, Clock, Globe
 } from '@lucide/vue';
 import type { DatabaseStats, ScraperMode } from '../types';
 import {
@@ -52,6 +52,8 @@ async function handleStart() {
       await startScraperTask('movies_full', undefined, startId.value, endId.value);
     } else if (selectedMode.value === 'performers_full') {
       await startScraperTask('performers_full');
+    } else if (selectedMode.value === 'bftv_catalog') {
+      await startScraperTask('bftv_catalog');
     }
   } catch (err: any) {
     actionError.value = err?.message || String(err);
@@ -231,6 +233,25 @@ function formatElapsed(seconds: number): string {
               </div>
               <p class="text-[11px] text-fg-4 leading-relaxed">
                 根据已录入电影的演员名单，为所有出演演员批量爬取身体属性、曾用名与高清头像。
+              </p>
+            </button>
+
+            <!-- Mode 5: BFTV Reverse Catalog Sync -->
+            <button
+              type="button"
+              @click="selectedMode = 'bftv_catalog'"
+              class="p-3.5 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer col-span-1 sm:col-span-2"
+              :class="selectedMode === 'bftv_catalog'
+                ? 'bg-emerald-500/10 border-emerald-500/60 shadow-sm'
+                : 'bg-surface-2/40 border-line hover:border-line-strong hover:bg-surface-2/80'"
+            >
+              <div class="flex items-center gap-2 mb-1">
+                <Globe class="w-4 h-4" :class="selectedMode === 'bftv_catalog' ? 'text-emerald-400' : 'text-fg-4'" />
+                <span class="font-bold text-xs" :class="selectedMode === 'bftv_catalog' ? 'text-emerald-300' : 'text-fg'">BFTV 演员主页全网极速匹配</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">3秒入库万条</span>
+              </div>
+              <p class="text-[11px] text-fg-4 leading-relaxed">
+                反向遍历 BoyfriendTV 全站 12,000+ 模特/演员档案，智能剥离后缀别名，3 秒内将直达个人主页注入数据库，再无漫长等待！
               </p>
             </button>
           </div>

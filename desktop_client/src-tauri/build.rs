@@ -27,9 +27,9 @@ const OUTPUTS: &[&str] = &["gen/icons/Assets.car", "gen/icons/AppIcon.icns"];
 
 /// The tracked source of the artwork — these, and only these, are worth rebuilding for.
 const INPUTS: &[&str] = &[
-    "make-app-icon.py",
-    "AppIcon.icon/icon.json",
+    "generate-app-icons.py",
     "build-icon.sh",
+    "../src/assets/icons/scheme-a.png",
 ];
 
 fn mtime(p: &Path) -> Option<SystemTime> {

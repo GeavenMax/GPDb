@@ -504,7 +504,7 @@ export interface HomeFeedData {
   total_studios: number;
 }
 
-export type ScraperMode = 'incremental' | 'movies_boost' | 'movies_full' | 'performers_full';
+export type ScraperMode = 'incremental' | 'movies_boost' | 'movies_full' | 'performers_full' | 'bftv_catalog';
 
 export interface ScraperStatus {
   running: boolean;

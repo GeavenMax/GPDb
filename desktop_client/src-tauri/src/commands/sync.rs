@@ -232,6 +232,10 @@ pub fn start_scraper(
             }
             ("sync_gevi.py", a)
         }
+        "bftv_catalog" => {
+            let a = vec!["--db".to_string(), db_path.clone()];
+            ("sync_bftv_catalog.py", a)
+        }
         "movies_boost" => {
             let limit_str = limit.unwrap_or(1000).to_string();
             let a = vec![
@@ -380,6 +384,36 @@ pub fn start_scraper(
                         }
                     }
                     mgr.status.message = format!("已入库分集: {}", mgr.status.current_title);
+                }
+                // 2.6 "+ 新增演员主页 #103859: Alex Kof -> ..."
+                else if trimmed.contains("+ 新增演员主页 #") {
+                    mgr.status.new_performers += 1;
+                    if let Some(idx) = trimmed.find('#') {
+                        let sub = &trimmed[idx + 1..];
+                        if let Some(colon) = sub.find(':') {
+                            mgr.status.current_id = sub[..colon].trim().parse().unwrap_or(0);
+                            mgr.status.current_title = sub[colon + 1..].trim().to_string();
+                        }
+                    }
+                    mgr.status.message = format!("已关联 BFTV 主页: {}", mgr.status.current_title);
+                }
+                // 2.7 BFTV progress: "[BFTV] 1000/12436 ( 8.0%) | 累计已匹配: 1035 位 | 待写入: 1035 位"
+                else if trimmed.starts_with("[BFTV]") {
+                    if let Some(slash_idx) = trimmed.find('/') {
+                        let before = &trimmed[6..slash_idx];
+                        mgr.status.processed_count = before.trim().parse().unwrap_or(mgr.status.processed_count);
+                        let after = &trimmed[slash_idx + 1..];
+                        if let Some(space_idx) = after.find(' ') {
+                            mgr.status.target_total = after[..space_idx].trim().parse().unwrap_or(mgr.status.target_total);
+                        }
+                    }
+                    if let Some(pct_idx) = trimmed.find('%') {
+                        let before_pct = &trimmed[..pct_idx];
+                        if let Some(open_paren) = before_pct.rfind('(') {
+                            mgr.status.percent = before_pct[open_paren + 1..].trim().parse().unwrap_or(mgr.status.percent);
+                        }
+                    }
+                    mgr.status.message = trimmed.clone();
                 }
                 // 3. Batch scraper progress: "[Movie] 42/1000 ( 4.2%) | Speed: 12.5 req/s | 200 OK: 40 | 404: 2 | Err: 0 | ETA: 1.3m"
                 else if trimmed.contains("req/s") && trimmed.contains('/') {

@@ -20,6 +20,19 @@ pub fn run() {
             });
         })
         .plugin(tauri_plugin_log::Builder::default().build())
+        .setup(|app| {
+            #[cfg(target_os = "macos")]
+            {
+                let scheme = commands::system::get_saved_icon_scheme();
+                let bytes = commands::system::get_icon_bytes(&scheme);
+                let bytes_vec = bytes.to_vec();
+                let app_handle = app.handle().clone();
+                let _ = app_handle.run_on_main_thread(move || {
+                    let _ = commands::system::set_dock_icon_macos(&bytes_vec);
+                });
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::library::get_stats,
             commands::library::get_movies,

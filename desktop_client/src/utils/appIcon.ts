@@ -92,8 +92,8 @@ export function updateFavicon(schemeId: IconSchemeId) {
 export function initAppIcon() {
   const current = currentIconScheme.value;
   updateFavicon(current);
-  // Do NOT invoke api.setDockIcon on startup.
-  // The app bundle icon is already displayed by macOS upon launch.
-  // Calling setDockIcon during window restore/boot causes AppKit/WindowServer race conditions.
-  // Dock icon changes should only occur when the user explicitly changes the scheme in Settings.
+  // Immediately synchronize the user's selected icon scheme to the macOS Dock on startup
+  api.setDockIcon(current).catch(err => {
+    console.warn('Failed to sync dock icon on launch:', err);
+  });
 }

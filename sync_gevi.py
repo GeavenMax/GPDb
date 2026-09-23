@@ -282,6 +282,15 @@ def run_sync(db_path: str = "gevi.db", probe_depth: int = 50):
             else:
                 db.record_progress("episode", eid, status=404)
 
+    # 7. Auto-match BFTV profile URLs for newly added performers
+    if new_perfs_added > 0:
+        print("\n🌐 正在自动为新增演员匹配 BoyfriendTV 官方档案主页...")
+        try:
+            from sync_bftv_catalog import sync_bftv_catalog
+            sync_bftv_catalog(db_path=db_path, overwrite=False)
+        except Exception as e:
+            print(f"⚠ 自动匹配 BFTV 演员主页提示: {e}")
+
     print("\n" + "=" * 70)
     print(f"🎉 增量同步完成！本次入库新电影: {new_movies_added} 部 | 新演员: {new_perfs_added} 位 | 新分集: {new_eps_added} 个")
     stats = db.get_stats()

@@ -31,8 +31,33 @@ pub fn open_external_url(url: String) -> Result<(), String> {
     Ok(())
 }
 
+fn dirs_home() -> Option<std::path::PathBuf> {
+    std::env::var("HOME").ok().map(std::path::PathBuf::from)
+}
+
+pub fn get_saved_icon_scheme() -> String {
+    if let Some(home) = dirs_home() {
+        let p = home.join(".gevi_icon_scheme");
+        if let Ok(content) = std::fs::read_to_string(&p) {
+            let trimmed = content.trim();
+            if !trimmed.is_empty() {
+                return trimmed.to_string();
+            }
+        }
+    }
+    "scheme-a".to_string()
+}
+
+pub fn save_icon_scheme(scheme_id: &str) {
+    if let Some(home) = dirs_home() {
+        let p = home.join(".gevi_icon_scheme");
+        let _ = std::fs::write(&p, scheme_id);
+    }
+}
+
 #[tauri::command]
 pub fn set_dock_icon(app: tauri::AppHandle, scheme_id: String) -> Result<(), String> {
+    save_icon_scheme(&scheme_id);
     let bytes = get_icon_bytes(&scheme_id);
 
     #[cfg(target_os = "macos")]
@@ -62,7 +87,7 @@ pub fn get_icon_bytes(scheme_id: &str) -> &'static [u8] {
 }
 
 #[cfg(target_os = "macos")]
-fn set_dock_icon_macos(png_bytes: &[u8]) -> Result<(), String> {
+pub fn set_dock_icon_macos(png_bytes: &[u8]) -> Result<(), String> {
     use std::ffi::c_void;
     type Id = *mut c_void;
     type Sel = *mut c_void;
@@ -115,6 +140,18 @@ fn set_dock_icon_macos(png_bytes: &[u8]) -> Result<(), String> {
         // [app setApplicationIconImage:image]
         let set_icon_sel = sel_registerName(b"setApplicationIconImage:\0".as_ptr() as *const _);
         let _: Id = send_1(app, set_icon_sel, image);
+
+        // [[app dockTile] display] - Force Dock to repaint immediately
+        let dock_tile_sel = sel_registerName(b"dockTile\0".as_ptr() as *const _);
+        let dock_tile: Id = send_0(app, dock_tile_sel);
+        if !dock_tile.is_null() {
+            let display_sel = sel_registerName(b"display\0".as_ptr() as *const _);
+            let _: Id = send_0(dock_tile, display_sel);
+        }
+
+        // Release the allocated NSImage
+        let release_sel = sel_registerName(b"release\0".as_ptr() as *const _);
+        let _: Id = send_0(image, release_sel);
 
         Ok(())
     }

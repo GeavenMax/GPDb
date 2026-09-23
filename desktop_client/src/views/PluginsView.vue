@@ -13,7 +13,8 @@ import {
   Blocks, Compass, RefreshCw, Languages, Trophy,
   AlertCircle, CheckCircle2, ChevronRight, Loader2,
   Sparkles, Trash2, Volume2, VolumeX, RotateCcw,
-  Download, SlidersHorizontal, Clock, Cpu
+  Download, SlidersHorizontal, Clock, Cpu,
+  Globe, Play, ChevronDown, ChevronUp, Users
 } from '@lucide/vue';
 import {
   activeAiReport,
@@ -50,6 +51,12 @@ const activePluginTab = ref<PluginSubTab>('all');
 const scraperMessage = ref('');
 const scraperSuccess = ref<boolean | null>(null);
 
+const showCustomScraperOptions = ref(false);
+const scraperCustomMode = ref<'incremental' | 'bftv_catalog' | 'movies_boost' | 'movies_full' | 'performers_full'>('incremental');
+const scraperCustomLimit = ref(1000);
+const scraperCustomStartId = ref(1);
+const scraperCustomEndId = ref(76000);
+
 async function runScraper() {
   if (isScrapingRunning.value) return;
   scraperMessage.value = '正在安全检测并执行增量刮削...';
@@ -59,6 +66,32 @@ async function runScraper() {
     await startScraperTask('incremental');
     scraperSuccess.value = true;
     scraperMessage.value = '增量同步任务已在后台极速启动，数据将实时自动同步！';
+    emit('refresh-movies');
+  } catch (err: any) {
+    scraperSuccess.value = false;
+    scraperMessage.value = `启动失败: ${err?.message || err || '服务未响应'}`;
+  }
+}
+
+async function runCustomScraper() {
+  if (isScrapingRunning.value) return;
+  scraperMessage.value = '正在启动自定义刮削任务...';
+  scraperSuccess.value = null;
+
+  try {
+    if (scraperCustomMode.value === 'incremental') {
+      await startScraperTask('incremental');
+    } else if (scraperCustomMode.value === 'bftv_catalog') {
+      await startScraperTask('bftv_catalog');
+    } else if (scraperCustomMode.value === 'movies_boost') {
+      await startScraperTask('movies_boost', scraperCustomLimit.value);
+    } else if (scraperCustomMode.value === 'movies_full') {
+      await startScraperTask('movies_full', undefined, scraperCustomStartId.value, scraperCustomEndId.value);
+    } else if (scraperCustomMode.value === 'performers_full') {
+      await startScraperTask('performers_full');
+    }
+    scraperSuccess.value = true;
+    scraperMessage.value = '刮削任务已在后台极速启动，数据将实时自动同步！';
     emit('refresh-movies');
   } catch (err: any) {
     scraperSuccess.value = false;
@@ -946,9 +979,157 @@ onMounted(() => {
               <span>运行环境自检</span>
             </button>
 
+            <button
+              @click="showCustomScraperOptions = !showCustomScraperOptions"
+              class="px-3.5 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg text-xs font-bold border flex items-center gap-1.5 transition cursor-pointer"
+              :class="showCustomScraperOptions ? 'border-accent text-accent' : 'border-line'"
+              title="自定义刮削策略与范围参数"
+            >
+              <SlidersHorizontal class="w-3.5 h-3.5 text-amber-400" />
+              <span>高度自定义执行选项</span>
+              <ChevronUp v-if="showCustomScraperOptions" class="w-3 h-3 ml-0.5" />
+              <ChevronDown v-else class="w-3 h-3 ml-0.5" />
+            </button>
+
             <span class="text-[11px] text-fg-4">
               自动检索 /newm、/newp、/newe，实时增量整合影片、演职员与分集
             </span>
+          </div>
+
+          <!-- Advanced Custom Options Panel -->
+          <div v-if="showCustomScraperOptions" class="p-4 rounded-2xl bg-surface-2/70 border border-line space-y-3.5 animate-fade-in text-xs">
+            <div class="flex items-center justify-between">
+              <div class="font-bold text-fg flex items-center gap-2">
+                <SlidersHorizontal class="w-4 h-4 text-accent" />
+                <span>自定义刮削与同步参数</span>
+              </div>
+              <span class="text-[11px] text-fg-4">选择模式并根据需要调整参数</span>
+            </div>
+
+            <!-- Mode selection pills -->
+            <div class="space-y-1.5">
+              <div class="text-[11px] font-semibold text-fg-3">执行策略：</div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  @click="scraperCustomMode = 'incremental'"
+                  class="p-2.5 rounded-xl border text-left transition cursor-pointer"
+                  :class="scraperCustomMode === 'incremental' ? 'bg-indigo-500/15 border-indigo-500 text-indigo-300' : 'bg-surface border-line text-fg-4 hover:text-fg'"
+                >
+                  <div class="font-bold text-xs flex items-center gap-1.5">
+                    <RefreshCw class="w-3.5 h-3.5" />
+                    <span>增量极速同步</span>
+                  </div>
+                  <div class="text-[10px] text-fg-4 mt-0.5">抓取近期新增影片与演员</div>
+                </button>
+
+                <button
+                  type="button"
+                  @click="scraperCustomMode = 'bftv_catalog'"
+                  class="p-2.5 rounded-xl border text-left transition cursor-pointer"
+                  :class="scraperCustomMode === 'bftv_catalog' ? 'bg-emerald-500/15 border-emerald-500 text-emerald-300' : 'bg-surface border-line text-fg-4 hover:text-fg'"
+                >
+                  <div class="font-bold text-xs flex items-center gap-1.5">
+                    <Globe class="w-3.5 h-3.5" />
+                    <span>BFTV 主页秒级关联</span>
+                  </div>
+                  <div class="text-[10px] text-fg-4 mt-0.5">3秒注入12,000+演员直达链接</div>
+                </button>
+
+                <button
+                  type="button"
+                  @click="scraperCustomMode = 'movies_boost'"
+                  class="p-2.5 rounded-xl border text-left transition cursor-pointer"
+                  :class="scraperCustomMode === 'movies_boost' ? 'bg-amber-500/15 border-amber-500 text-amber-300' : 'bg-surface border-line text-fg-4 hover:text-fg'"
+                >
+                  <div class="font-bold text-xs flex items-center gap-1.5">
+                    <Sparkles class="w-3.5 h-3.5" />
+                    <span>热门新片逆序爬取</span>
+                  </div>
+                  <div class="text-[10px] text-fg-4 mt-0.5">倒序抓取精选热门库</div>
+                </button>
+
+                <button
+                  type="button"
+                  @click="scraperCustomMode = 'movies_full'"
+                  class="p-2.5 rounded-xl border text-left transition cursor-pointer"
+                  :class="scraperCustomMode === 'movies_full' ? 'bg-purple-500/15 border-purple-500 text-purple-300' : 'bg-surface border-line text-fg-4 hover:text-fg'"
+                >
+                  <div class="font-bold text-xs flex items-center gap-1.5">
+                    <Download class="w-3.5 h-3.5" />
+                    <span>指定 ID 范围抓取</span>
+                  </div>
+                  <div class="text-[10px] text-fg-4 mt-0.5">按自定义起止 ID 批量爬取</div>
+                </button>
+
+                <button
+                  type="button"
+                  @click="scraperCustomMode = 'performers_full'"
+                  class="p-2.5 rounded-xl border text-left transition cursor-pointer"
+                  :class="scraperCustomMode === 'performers_full' ? 'bg-rose-500/15 border-rose-500 text-rose-300' : 'bg-surface border-line text-fg-4 hover:text-fg'"
+                >
+                  <div class="font-bold text-xs flex items-center gap-1.5">
+                    <Users class="w-3.5 h-3.5" />
+                    <span>演员全量资料补齐</span>
+                  </div>
+                  <div class="text-[10px] text-fg-4 mt-0.5">补齐已知演员身材与头像</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Dynamic Parameters -->
+            <div v-if="scraperCustomMode === 'movies_boost'" class="p-3 rounded-xl bg-surface/60 border border-line flex items-center gap-3">
+              <span class="text-fg-3">抓取数量上限：</span>
+              <input
+                type="number"
+                v-model.number="scraperCustomLimit"
+                min="100"
+                max="10000"
+                step="100"
+                class="px-2.5 py-1 rounded-lg bg-surface border border-line text-fg font-mono font-bold w-24 text-xs"
+              />
+              <span class="text-[11px] text-fg-4">部影片（推荐 500 ~ 2,000 部）</span>
+            </div>
+
+            <div v-else-if="scraperCustomMode === 'movies_full'" class="p-3 rounded-xl bg-surface/60 border border-line flex items-center gap-3 flex-wrap">
+              <div class="flex items-center gap-1.5">
+                <span class="text-fg-3">起始 ID：</span>
+                <input
+                  type="number"
+                  v-model.number="scraperCustomStartId"
+                  min="1"
+                  class="px-2.5 py-1 rounded-lg bg-surface border border-line text-fg font-mono font-bold w-24 text-xs"
+                />
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-fg-3">结束 ID：</span>
+                <input
+                  type="number"
+                  v-model.number="scraperCustomEndId"
+                  min="1"
+                  class="px-2.5 py-1 rounded-lg bg-surface border border-line text-fg font-mono font-bold w-24 text-xs"
+                />
+              </div>
+              <span class="text-[11px] text-fg-4">当前影库上限约 #76,000</span>
+            </div>
+
+            <div v-else-if="scraperCustomMode === 'bftv_catalog'" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] flex items-center gap-2">
+              <Globe class="w-4 h-4 shrink-0" />
+              <span>通过 BoyfriendTV 全网目录反向匹配，自动剥离别名后缀，3 秒内将万余位演员直达链接写入数据库！</span>
+            </div>
+
+            <!-- Launch button -->
+            <div class="flex items-center justify-end gap-3 pt-1">
+              <button
+                @click="runCustomScraper"
+                :disabled="isScrapingRunning"
+                class="px-4 py-2 rounded-xl bg-accent-fill text-on-fill font-bold text-xs flex items-center gap-1.5 hover:bg-accent-fill/90 transition shadow cursor-pointer disabled:opacity-50"
+              >
+                <Loader2 v-if="isScrapingRunning" class="w-3.5 h-3.5 animate-spin" />
+                <Play v-else class="w-3.5 h-3.5" />
+                <span>立即按自定义配置启动</span>
+              </button>
+            </div>
           </div>
 
           <!-- Live Progress Banner when running -->

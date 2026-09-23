@@ -3,6 +3,35 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本文件记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.5.1] - 2026-09-23
+
+### 🚀 新增 (Added)
+- **BoyfriendTV (BFTV) 演员档案逆向极速同步引擎 (`sync_bftv_catalog.py`)**：
+  - **全网目录逆向关联突破性策略**：针对传统单人逐一向 BFTV 搜索匹配耗时数小时且易触发 Cloudflare 质询的性能瓶颈，反向利用 BFTV 全站演员数量远少于本地影库的特性，从 BFTV 官方 CDN Sitemap 瞬时下载解析全站 12,436+ 位男星/模特的官方主页 URL 与专属编号。
+  - **零 Cloudflare 阻断极速拉取**：直连 CDN 节点，2.6 秒内完成全站演员列表下载解析，彻底摆脱反爬拦截限制。
+  - **智能别名净化与内存倒排索引匹配**：自动剥离 GEVI 数据库中演员后缀如 `(dp)`、`(white)`、`(asian)`、`(aka Kenny)`，并支持连字符 Slug 格式还原与标准化去重匹配。10.8 万演员内存哈希比对仅耗时 0.1 秒，单次批量更新事务仅耗时 3.05 秒，一次性为本地数据库关联新增 16,950+ 位演员的官方 BFTV 直达主页。
+  - **无缝集成增量同步流**：在 `sync_gevi.py` 增量发现新入库演员时自动触发逆向匹配，确保新入库演员立即具备 BFTV 资料直达能力。
+
+### ⚡ 优化 (Changed)
+- **自动化刮削更新插件高度自定义执行选项面板**：
+  - 在“功能外挂”控制台的“自动化刮削更新”插件中，新增常驻“高度自定义执行选项”展开面板。
+  - 用户可在插件内直接切换并配置五大执行策略：
+    1. ⚡ **增量极速同步**（自动抓取官网 `/newm`、`/newp`、`/newe`）
+    2. 🌐 **BFTV 演员主页秒级关联**（3 秒注入 12,000+ 演员直达链接）
+    3. 🚀 **热门新片逆序爬取**（自定义数量 500 ~ 2,000 部）
+    4. 🎯 **指定 ID 范围抓取**（自定义起始与结束 ID，支持高达 76,000 范围抓取）
+    5. 👥 **演员全量资料补齐**（一键补齐已知演员身材属性与写真头像）
+  - 动态显示参数调整输入框（如抓取上限、起始与结束 ID），并提供“立即按自定义配置启动”按钮与全生命周期进度追踪。
+- **全功能同步控制中心 (`SyncModal.vue`) 接入 BFTV 演员全网极速匹配**：
+  - 新增“BFTV 演员主页全网极速匹配 (3秒入库万条)”策略卡片，支持一键在弹窗中启动并在终端中实时查看匹配进度。
+
+### 🐛 修复 (Fixed)
+- **修复应用打包未同步部署导致旧版占位提示文字残留问题**：
+  - 针对用户反馈“点击运行后不会开始运行脚本，每次都只输出 增量同步完成！新增影片: 0 部，新增演员: 0 位。已导入数据库，请点击顶部「同步」按钮刷新”的根本原因进行彻底根治：该字符串来源于历史早期的占位 Mock 代码，因本地 `/Applications/GPDb.app` 停留在早间旧版进程未自动更新导致。
+  - 重新全量编译 release 二进制与 DMG 生产包并安全部署至 `/Applications/GPDb.app`，全面激活新一代异步刮削引擎。
+
+---
+
 ## [v2.5.0] - 2026-09-23
 
 ### 🚀 新增 (Added)
@@ -29,8 +58,15 @@
   - 针对增量同步（`sync_gevi.py`）后新入库条目仅存 URL 无本地图片缓存的问题，新增 `download_image_to_cache()` 离线缓存下载引擎。
   - 在同步新电影、新演员、新分集元数据时，同步将海报大图（`Covers/`）、缩略图（`Icons/`）、分集剧照（`Episodes/`）以及演员写真（`Stars/`）持久化至 `image_cache/`。
   - 默认注入防盗链请求头（`Referer: https://gayeroticvideoindex.com/`）与 `curl` 双重重试机制，有效规避 Cloudflare TLS 异常，确保 macOS 客户端即时以 `gpdb-img://` 协议丝滑秒开高清封面。
+- **macOS 27 规范 Dock 栏图标原生热切换与双轨同步引擎**：
+  - **遵循 macOS 27 HIG 规范**：全套图标统一遵循 macOS 连续曲率超椭圆（Squircle）网格、824px 画布安全边距、环境落影（Ambient Drop-Shadow）与微透晶体材质规范，由新版 `generate-app-icons.py` 自动化管线生成包含 16x16 至 1024x1024 全像素阶梯的 `AppIcon.icns` 与现代化 Asset Catalog `Assets.car`。
+  - **用户自选方案双轨持久化**：新增 `~/.gevi_icon_scheme` 配置持久化层；Rust 原生 `setup` 启动钩子与前端 `initAppIcon()` 双重加载生效，确保冷启动、热重启或系统唤醒时 Dock 图标均精确保持用户自选方案。
 
 ### 🐛 修复 (Fixed)
+- **彻底删除旧版 Dock 栏硬编码图标与冷启动重置缺陷**：
+  - 彻底删除并清理原 `make-app-icon.py` 与 `AppIcon.icon` 硬编码生成的琥珀褐色 "G" 盘片图标以及旧版 Tauri 遗留资源，将官方推荐方案 A「黑曜石棱镜胶片之匣」设为编译期全局基准图标。
+  - 修复前端 `initAppIcon()` 因历史注释未在应用启动时同步调用原生 Dock 图标更新指令的问题，彻底杜绝冷启动时 Dock 栏重置为旧图标的缺陷。
+  - 重构 `commands/system.rs` 中的 `set_dock_icon_macos`，接入 `[NSApp setApplicationIconImage:]` 并协同 `[[NSApp dockTile] display]` 强制刷新 Dock Tile，修复切换后偶发延迟重绘问题，并补齐 `release` 内存管理。
 - **BoyfriendTV 演员爬虫 Cloudflare Turnstile 质询拦截与别名干扰修复**：
   - **动态穿透 Turnstile 质询盾**：针对 BoyfriendTV 搜索网关 (`/searchgate/`) 部署的 Cloudflare Turnstile 人机质询，升级 Playwright 隐身指纹注入（抹除 `navigator.webdriver` 特征、模拟真实 Chrome 插件及英文语言环境），并引入自适应轮询等待机制（最长 8 秒自动检测并等待 Turnstile 盾解除），彻底根治此前仅等待 2.5 秒导致质询未完成即被判为“未找到”的卡点。
   - **搜索关键词智能净化 (Query Normalization)**：针对 GEVI 数据库中超 26% 演员带有括号别名或年代标注（例如 `(white)`、`(80s)`、`(aka Kenny)`）导致 BFTV 模糊匹配失效的问题，新增 `clean_performer_name()` 正则净化引擎，自动剔除注释字符，大幅提升现代活跃演员的检索命中率。
