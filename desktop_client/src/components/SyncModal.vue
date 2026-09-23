@@ -2,12 +2,14 @@
 import { ref, watch, nextTick } from 'vue';
 import {
   X, RefreshCw, CheckCircle2, Film, Users, Sparkles, AlertCircle,
-  Square, ArrowDownToLine, Zap, Terminal, Layers
+  Square, ArrowDownToLine, Zap, Terminal, Layers, Clock
 } from '@lucide/vue';
 import type { DatabaseStats, ScraperMode } from '../types';
 import {
   scraperState, isScrapingRunning, startScraperTask, stopScraperTask
 } from '../services/scraper';
+import { pluginsConfig } from '../services/pluginManager';
+import { nextRunDescription } from '../services/autoSync';
 
 const props = defineProps<{
   open: boolean;
@@ -113,6 +115,14 @@ function formatElapsed(seconds: number): string {
             >
               <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
               后台运行中
+            </span>
+            <span
+              v-else-if="pluginsConfig.autoSyncConfig.enabled"
+              class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1 cursor-help"
+              :title="`定时后台更新计划生效中，下次：${nextRunDescription}`"
+            >
+              <Clock class="w-3 h-3" />
+              定时同步生效中
             </span>
           </div>
           <p class="text-xs text-fg-4 mt-0.5">支持极速增量与全量工业级搜刮，断点续传零数据竞争，界面完全解耦</p>

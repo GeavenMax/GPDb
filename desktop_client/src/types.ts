@@ -532,5 +532,27 @@ export interface SyncResult {
   newEpisodes: number;
 }
 
+export interface RuntimeEnvironmentInfo {
+  python_installed: boolean;
+  python_version?: string | null;
+  python_path?: string | null;
+  sqlite3_available: boolean;
+  database_ready: boolean;
+  database_path?: string | null;
+  playwright_available: boolean;
+  all_ready: boolean;
+  missing_items: string[];
+  recommendations: string[];
+}
+
+export interface AutoSyncScheduleConfig {
+  enabled: boolean;
+  intervalHours: number; // e.g. 6, 12, 24, or custom N hours
+  mode: 'interval' | 'daily'; // 'interval': 每 N 小时; 'daily': 每天固定时间
+  dailyTime: string; // e.g. "04:00"
+  lastRunTime?: string | null; // ISO string
+  nextRunTime?: string | null; // ISO string
+}
+
 
 

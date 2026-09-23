@@ -3,6 +3,36 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本文件记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.5.0] - 2026-09-23
+
+### 🚀 新增 (Added)
+- **定时自动后台更新新条目 (Scheduled Background Auto-Sync)**：
+  - 自动化刮削更新插件全新集成定时后台静默同步引擎，支持开启/关闭自动调度。
+  - 支持用户高度自定义执行计划：
+    - **周期循环模式**：可自由设定每 4 小时、6 小时、12 小时（推荐）、24 小时或 48 小时自动静默抓取。
+    - **每天定点模式**：支持自定义每天指定时刻（如凌晨 04:00）在后台静默执行。
+  - 心跳调度服务 (`services/autoSync.ts`) 实时计算上次自动同步时间与下次计划执行时间，并在同步中心 (`SyncModal.vue`) 与插件页 (`PluginsView.vue`) 提供呼吸态状态指示。
+  - 任务执行采用完全解耦的异步后台线程，不占用前台 UI，入库完成后自动无感刷新影库数据与统计信息。
+- **首次安装运行环境自动校验与配置向导 (Runtime Environment Check & Guidance)**：
+  - 新增 Rust 端 `check_runtime_environment` 诊断命令，全面探测系统环境健康状况：
+    - Python 3 解释器安装状态、版本号及执行路径（自动化刮削更新核心基石）；
+    - Python 内置 SQLite 模块健康度；
+    - 本地 `gevi.db` 核心数据库连接与有效性；
+    - 进阶 Playwright 浏览器反爬自动化引擎就绪状态（用于 BoyfriendTV Cloudflare 穿透）。
+  - 全新设计并上线 `EnvironmentCheckModal.vue` 诊断向导：
+    - 首次安装或核心环境未就绪时自动温和提醒用户；
+    - 提供苹果官方命令行工具 (`xcode-select --install`) 与 Homebrew (`brew install python3`) 一键复制安装命令；
+    - 支持一键“重新检测环境”与“去配置数据库”；
+    - 在“功能外挂”控制台常驻“运行环境自检”入口，支持随时重新发起体检诊断。
+
+### ⚡ 优化 (Changed)
+- **数据库路径全生态自动识别与双轨持久化**：
+  - 客户端成功打开数据库时，自动将规范化绝对路径双轨写入 macOS 标准配置 `com.gpdb.app/db_config.json` 与便利标记文件 `~/.gevi_db_path`。
+  - Python 端重构 `find_default_db_path()` 算法，按序从环境变量 `GEVI_DB`、客户端配置文件、快捷标记文件及本地工作区自动定位数据库，`scrape_bftv_performers.py`、`sync_gevi.py`、`batch_scraper.py`、`cache_images.py` 无需再手动加 `--db` 参数即可零配置运行。
+- **BoyfriendTV 演员主页直链批量抓取能力增强**：
+  - `scrape_bftv_performers.py` 升级内置 Playwright Chromium Stealth 引擎，无感穿透 Cloudflare 质询盾，毫秒级提取真实演员个人页直链。
+  - 优化优先度排序，优先遍历有肖像头像的活跃演员，并支持 `--name` 单演员精准测试。
+
 ---
 
 ## [v2.4.1] - 2026-09-23

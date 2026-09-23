@@ -28,6 +28,7 @@ import type {
   SeriesCollectionsResponse,
   ScraperStatus,
   ScraperMode,
+  RuntimeEnvironmentInfo,
 } from './types';
 import { FAVORITE_TYPES } from './types';
 
@@ -1190,6 +1191,23 @@ export const api = {
       total_episodes: 0,
       total_performers: 0,
       total_studios: 0,
+    };
+  async checkRuntimeEnvironment(): Promise<RuntimeEnvironmentInfo> {
+    if (isTauri) {
+      return tauriInvoke<RuntimeEnvironmentInfo>('check_runtime_environment');
+    }
+    // Web fallback simulation
+    return {
+      python_installed: true,
+      python_version: 'Python 3.12 (Web Mode)',
+      python_path: '/usr/bin/python3',
+      sqlite3_available: true,
+      database_ready: true,
+      database_path: 'gevi.db',
+      playwright_available: false,
+      all_ready: true,
+      missing_items: [],
+      recommendations: [],
     };
   },
 };

@@ -10,6 +10,7 @@
 pub mod cache;
 pub mod database;
 pub mod detail;
+pub mod environment;
 pub mod library;
 pub mod sync;
 pub mod system;

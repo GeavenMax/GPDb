@@ -12,6 +12,7 @@ import EpisodeDetailModal from './components/EpisodeDetailModal.vue';
 import SeriesModal from './components/SeriesModal.vue';
 import SeriesCollageCover from './components/SeriesCollageCover.vue';
 import PermissionExplainModal from './components/PermissionExplainModal.vue';
+import EnvironmentCheckModal from './components/EnvironmentCheckModal.vue';
 import ImageLightbox from './components/ImageLightbox.vue';
 import FilterDrawer from './components/FilterDrawer.vue';
 import ActiveFilterBar from './components/ActiveFilterBar.vue';
@@ -76,6 +77,7 @@ import {
   recordFavoriteToggle, recordRating
 } from './services/analytics';
 import { initScraperService, onScraperDataChange } from './services/scraper';
+import { initAutoSyncSchedule } from './services/autoSync';
 
 type SettingsSubTab = 'all' | 'appearance' | 'localization' | 'data' | 'privacy';
 const settingsSubTab = ref<SettingsSubTab>('all');
@@ -386,6 +388,20 @@ const dbSwitching = ref(false);
 const dbCandidates = ref<string[]>([]);
 const dbMessage = ref<{ ok: boolean; text: string } | null>(null);
 const showPermissionModal = ref(false);
+const showEnvironmentModal = ref(false);
+
+async function checkInitialEnvironment() {
+  if (!IS_TAURI) return;
+  try {
+    const info = await api.checkRuntimeEnvironment();
+    // Prompt if critical environment components are not ready and user hasn't dismissed the alert
+    if (!info.all_ready && !localStorage.getItem('gevi_env_check_dismissed')) {
+      showEnvironmentModal.value = true;
+    }
+  } catch (e) {
+    console.warn('Initial environment check error:', e);
+  }
+}
 
 async function loadDatabaseInfo() {
   try {
@@ -1554,6 +1570,12 @@ onMounted(async () => {
       reloadCurrentTab();
     }
   });
+
+  // Initialize auto-sync background schedule
+  initAutoSyncSchedule();
+
+  // Perform initial runtime environment health check
+  checkInitialEnvironment();
 });
 
 onUnmounted(() => {
@@ -3729,6 +3751,7 @@ onUnmounted(() => {
           <PluginsView
             @open-trophies="currentTab = 'trophies'"
             @open-sync="isSyncOpen = true"
+            @open-environment-check="showEnvironmentModal = true"
             @refresh-movies="loadStats(); fetchMovies(true);"
           />
         </div>
@@ -3884,6 +3907,13 @@ onUnmounted(() => {
       @pick-file="handlePickDbFile"
       @scan-folders="handleScanDatabases"
       @create-database="handleCreateNewDatabase"
+    />
+
+    <!-- Runtime Environment Diagnosis & First Install Guidance Modal -->
+    <EnvironmentCheckModal
+      :show="showEnvironmentModal"
+      @close="showEnvironmentModal = false"
+      @open-database-setup="showPermissionModal = true; showEnvironmentModal = false"
     />
   </div>
 </template>

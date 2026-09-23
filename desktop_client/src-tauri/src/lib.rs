@@ -69,6 +69,7 @@ pub fn run() {
             commands::cache::clear_cache,
             commands::system::open_external_url,
             commands::system::set_dock_icon,
+            commands::environment::check_runtime_environment,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

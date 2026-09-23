@@ -26,6 +26,8 @@ export interface TranslationPluginConfig {
   customPromptTemplate: string;
 }
 
+import type { AutoSyncScheduleConfig } from '../types';
+
 export interface PluginsConfig {
   resourceSearchEnabled: boolean;
   /** Maintained for backward compatibility; always kept in sync with resourceSearchEnabled */
@@ -33,6 +35,7 @@ export interface PluginsConfig {
   btSearchConfig: BtSearchConfig;
   webJumpConfig: WebJumpConfig;
   customScraperEnabled: boolean;
+  autoSyncConfig: AutoSyncScheduleConfig;
   translationEnabled: boolean;
   translationConfig: TranslationPluginConfig;
   trophiesEnabled: boolean;
@@ -73,6 +76,14 @@ const DEFAULT_CONFIG: PluginsConfig = {
     googleSearchEnabled: true,
   },
   customScraperEnabled: true,
+  autoSyncConfig: {
+    enabled: false,
+    intervalHours: 12,
+    mode: 'interval',
+    dailyTime: '04:00',
+    lastRunTime: null,
+    nextRunTime: null,
+  },
   translationEnabled: true,
   translationConfig: {
     targetLanguage: 'zh-CN',
@@ -133,6 +144,10 @@ function loadConfig(): PluginsConfig {
           ...DEFAULT_CONFIG.translationConfig,
           ...transCfg,
           customPromptTemplate: prompt,
+        },
+        autoSyncConfig: {
+          ...DEFAULT_CONFIG.autoSyncConfig,
+          ...(parsed.autoSyncConfig || {}),
         },
       };
     }

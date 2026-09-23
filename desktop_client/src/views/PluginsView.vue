@@ -13,7 +13,7 @@ import {
   Blocks, Compass, RefreshCw, Languages, Trophy,
   AlertCircle, CheckCircle2, ChevronRight, Loader2,
   Sparkles, Trash2, Volume2, VolumeX, RotateCcw,
-  Download, SlidersHorizontal
+  Download, SlidersHorizontal, Clock, Calendar, Cpu
 } from '@lucide/vue';
 import {
   activeAiReport,
@@ -30,11 +30,17 @@ import {
   startScraperTask,
   stopScraperTask
 } from '../services/scraper';
+import {
+  nextRunDescription,
+  lastRunDescription,
+  updateAutoSyncSchedule
+} from '../services/autoSync';
 
 const emit = defineEmits<{
   (e: 'open-trophies'): void;
   (e: 'refresh-movies'): void;
   (e: 'open-sync'): void;
+  (e: 'open-environment-check'): void;
 }>();
 
 type PluginSubTab = 'all' | 'ai' | 'bt' | 'scraper' | 'translate' | 'trophy';
@@ -58,6 +64,22 @@ async function runScraper() {
     scraperSuccess.value = false;
     scraperMessage.value = `启动失败: ${err?.message || err || '服务未响应'}`;
   }
+}
+
+function handleToggleAutoSync(enabled: boolean) {
+  updateAutoSyncSchedule({ enabled });
+}
+
+function handleUpdateScheduleMode(mode: 'interval' | 'daily') {
+  updateAutoSyncSchedule({ mode });
+}
+
+function handleUpdateIntervalHours(intervalHours: number) {
+  updateAutoSyncSchedule({ intervalHours });
+}
+
+function handleUpdateDailyTime(dailyTime: string) {
+  updateAutoSyncSchedule({ dailyTime });
 }
 
 // --- 2. BT Search config ---
@@ -915,6 +937,15 @@ onMounted(() => {
               <span>打开同步控制中心</span>
             </button>
 
+            <button
+              @click="emit('open-environment-check')"
+              class="px-3.5 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg text-xs font-bold border border-line flex items-center gap-1.5 transition cursor-pointer"
+              title="校验 Python 3 解释器、SQLite 与本地影库环境就绪情况"
+            >
+              <Cpu class="w-3.5 h-3.5 text-sky-400" />
+              <span>运行环境自检</span>
+            </button>
+
             <span class="text-[11px] text-fg-4">
               自动检索 /newm、/newp、/newe，实时增量整合影片、演职员与分集
             </span>
@@ -970,6 +1001,109 @@ onMounted(() => {
             >
               刷新列表
             </button>
+          </div>
+
+          <!-- Scheduled Auto-Sync Settings Panel -->
+          <div class="p-4 rounded-2xl bg-surface-2/60 border border-line/80 space-y-3">
+            <div class="flex items-center justify-between gap-4">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                  <Clock class="w-4 h-4" />
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-fg">定时自动后台更新</span>
+                    <span
+                      v-if="pluginsConfig.autoSyncConfig.enabled"
+                      class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1"
+                    >
+                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      计划生效中
+                    </span>
+                    <span v-else class="text-[10px] px-2 py-0.5 rounded-full bg-surface-3 text-fg-4 font-medium">未启用</span>
+                  </div>
+                  <p class="text-[11px] text-fg-4 mt-0.5">在后台按自定义计划自动增量抓取最新条目，不干扰日常操作</p>
+                </div>
+              </div>
+
+              <!-- Toggle switch -->
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  :checked="pluginsConfig.autoSyncConfig.enabled"
+                  @change="handleToggleAutoSync(($event.target as HTMLInputElement).checked)"
+                  class="sr-only peer"
+                />
+                <div class="w-9 h-5 bg-surface-3 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-fill"></div>
+              </label>
+            </div>
+
+            <!-- Interval / Daily configuration controls when enabled -->
+            <div v-if="pluginsConfig.autoSyncConfig.enabled" class="pt-3 border-t border-line/50 space-y-3 text-xs">
+              <!-- Mode select: Interval vs Daily -->
+              <div class="flex items-center gap-4 flex-wrap">
+                <div class="flex items-center gap-2 text-xs font-medium text-fg-3">
+                  <span>执行计划：</span>
+                </div>
+                <div class="flex items-center gap-1.5 p-1 rounded-xl bg-surface-3/80 border border-line">
+                  <button
+                    @click="handleUpdateScheduleMode('interval')"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                    :class="pluginsConfig.autoSyncConfig.mode === 'interval' ? 'bg-surface text-fg shadow-sm' : 'text-fg-4 hover:text-fg'"
+                  >
+                    ⏱️ 周期循环
+                  </button>
+                  <button
+                    @click="handleUpdateScheduleMode('daily')"
+                    class="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                    :class="pluginsConfig.autoSyncConfig.mode === 'daily' ? 'bg-surface text-fg shadow-sm' : 'text-fg-4 hover:text-fg'"
+                  >
+                    📅 每天定点
+                  </button>
+                </div>
+
+                <!-- If Interval mode -->
+                <div v-if="pluginsConfig.autoSyncConfig.mode === 'interval'" class="flex items-center gap-2">
+                  <span class="text-fg-4 text-xs">每隔</span>
+                  <select
+                    :value="pluginsConfig.autoSyncConfig.intervalHours"
+                    @change="handleUpdateIntervalHours(Number(($event.target as HTMLSelectElement).value))"
+                    class="px-2.5 py-1 rounded-lg bg-surface border border-line text-xs font-bold text-fg focus:outline-none cursor-pointer"
+                  >
+                    <option :value="4">4 小时</option>
+                    <option :value="6">6 小时</option>
+                    <option :value="12">12 小时 (推荐)</option>
+                    <option :value="24">24 小时 (1 天)</option>
+                    <option :value="48">48 小时 (2 天)</option>
+                  </select>
+                  <span class="text-fg-4 text-xs">自动同步</span>
+                </div>
+
+                <!-- If Daily mode -->
+                <div v-else class="flex items-center gap-2">
+                  <span class="text-fg-4 text-xs">每天</span>
+                  <input
+                    type="time"
+                    :value="pluginsConfig.autoSyncConfig.dailyTime"
+                    @change="handleUpdateDailyTime(($event.target as HTMLInputElement).value)"
+                    class="px-2 py-1 rounded-lg bg-surface border border-line text-xs font-bold text-fg focus:outline-none cursor-pointer"
+                  />
+                  <span class="text-fg-4 text-xs">静默执行</span>
+                </div>
+              </div>
+
+              <!-- Status display: last run + next run -->
+              <div class="flex items-center justify-between text-[11px] text-fg-4 pt-1 flex-wrap gap-2">
+                <div class="flex items-center gap-1.5">
+                  <span>上次自动同步：</span>
+                  <span class="font-mono text-fg-3">{{ lastRunDescription }}</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span>下次计划执行：</span>
+                  <span class="font-mono text-accent font-bold">{{ nextRunDescription }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
