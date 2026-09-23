@@ -13,8 +13,11 @@ pub mod db;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .register_uri_scheme_protocol("gpdb-img", |_app, req| {
-            commands::cache::handle_image_protocol(&req)
+        .register_asynchronous_uri_scheme_protocol("gpdb-img", |_app, req, responder| {
+            tauri::async_runtime::spawn_blocking(move || {
+                let resp = commands::cache::handle_image_protocol(&req);
+                responder.respond(resp);
+            });
         })
         .plugin(tauri_plugin_log::Builder::default().build())
         .invoke_handler(tauri::generate_handler![

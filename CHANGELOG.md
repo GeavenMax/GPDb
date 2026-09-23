@@ -27,8 +27,12 @@
   - 编写全新中文 `README.md` 与标准 MIT `LICENSE` 文件。
 - **全语种多语言文档矩阵 (Multi-language Documentation)**：
   - 为客户端支持的全部 7 种语言独立编写并发布原生文档：简体中文 (`README.md`)、English (`README_EN.md`)、繁體中文 (`README_ZH_TW.md`)、日本語 (`README_JA.md`)、Deutsch (`README_DE.md`)、Español (`README_ES.md`)、Italiano (`README_IT.md`)。
-  - 在所有语言文档顶部集成互联互通的快速切换语言导航条。
-
+- **一键创建全新空白数据库与冷启动引导 (Zero-Friction DB Initializer)**：
+  - 在 `gpdb-core/src/migrate.rs` 提供原生零依赖的独立建表与迁移脚本，无缝在 `~/Documents/GPDb/gevi.db` 建立包含 14 张核心表结构、全文检索索引与视图的标准库。
+  - 在权限引导模态窗 `PermissionExplainModal.vue` 与“缓存与设置”页顶置高奢渐变“✨ 一键创建全新空白影库（首次使用推荐）”按钮，支持创建中加载态与防重保护，创建后自动引导进入数据同步中心。
+- **未缓存图片边看边自动离线下载与本地持久化 (On-Demand Image Caching Engine)**：
+  - 在 Tauri 宿主层启用非阻塞异步协议 `register_asynchronous_uri_scheme_protocol("gpdb-img")`，实现多图并发多线程请求。
+  - 在 `commands/cache.rs` 实现原子写入与智能路由机制：命中本地缓存时亚毫秒极速直读；未命中缓存时由后台通过伪装 User-Agent 与防盗链 Referer 头按需自动下载，落盘校验后原子重命名至 `image_cache/`，实现“边看边下载，下次全离线”。
 
 ### ⚡ 优化 (Changed)
 - **男同成人影视专业管理定位确立**：

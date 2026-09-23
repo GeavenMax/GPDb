@@ -174,6 +174,16 @@ pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
         Some(("Icons", &normalized[idx + "images/icons/".len()..]))
     } else if let Some(idx) = lower.find("images/logo/") {
         Some(("Logo", &normalized[idx + "images/logo/".len()..]))
+    } else if let Some(idx) = lower.find("covers/") {
+        Some(("Covers", &normalized[idx + "covers/".len()..]))
+    } else if let Some(idx) = lower.find("episodes/") {
+        Some(("Episodes", &normalized[idx + "episodes/".len()..]))
+    } else if let Some(idx) = lower.find("stars/") {
+        Some(("Stars", &normalized[idx + "stars/".len()..]))
+    } else if let Some(idx) = lower.find("icons/") {
+        Some(("Icons", &normalized[idx + "icons/".len()..]))
+    } else if let Some(idx) = lower.find("logo/") {
+        Some(("Logo", &normalized[idx + "logo/".len()..]))
     } else {
         None
     };
@@ -245,6 +255,12 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
         Some(target.clone())
     } else if target.starts_with("images/") || target.starts_with("/images/") {
         Some(format!("https://gayeroticvideoindex.com/{}", target.trim_start_matches('/')))
+    } else if target.starts_with("Covers/") || target.starts_with("covers/")
+        || target.starts_with("Episodes/") || target.starts_with("episodes/")
+        || target.starts_with("Stars/") || target.starts_with("stars/")
+        || target.starts_with("Icons/") || target.starts_with("icons/")
+        || target.starts_with("Logo/") || target.starts_with("logo/") {
+        Some(format!("https://gayeroticvideoindex.com/images/{}", target.trim_start_matches('/')))
     } else {
         None
     };
@@ -254,7 +270,13 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
             let _ = fs::create_dir_all(parent);
         }
 
-        // Fetch via curl and persist to disk
+        // Fetch via curl and persist to disk safely with atomic temp file
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let temp_path = dest_path.with_extension(format!("tmp.{}", nanos));
+
         let status = std::process::Command::new("curl")
             .arg("-s")
             .arg("-L")
@@ -263,25 +285,37 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
             .arg("4")
             .arg("--max-time")
             .arg("12")
-            .arg("--create-dirs")
+            .arg("-A")
+            .arg("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+            .arg("-e")
+            .arg("https://gayeroticvideoindex.com/")
             .arg("-o")
-            .arg(&dest_path)
+            .arg(&temp_path)
             .arg(url)
             .status();
 
-        if status.is_ok_and(|s| s.success()) && dest_path.is_file() {
-            if let Ok(bytes) = fs::read(&dest_path) {
-                if let Ok(mut g) = CACHED_STATS.write() {
-                    *g = None;
+        if status.is_ok_and(|s| s.success()) && temp_path.is_file() {
+            if let Ok(meta) = fs::metadata(&temp_path) {
+                if meta.len() > 0 {
+                    let _ = fs::rename(&temp_path, &dest_path);
+                    if let Ok(bytes) = fs::read(&dest_path) {
+                        if let Ok(mut g) = CACHED_STATS.write() {
+                            *g = None;
+                        }
+                        return tauri::http::Response::builder()
+                            .status(200)
+                            .header("Content-Type", mime)
+                            .header("Cache-Control", "public, max-age=31536000, immutable")
+                            .header("Access-Control-Allow-Origin", "*")
+                            .body(bytes)
+                            .unwrap();
+                    }
+                } else {
+                    let _ = fs::remove_file(&temp_path);
                 }
-                return tauri::http::Response::builder()
-                    .status(200)
-                    .header("Content-Type", mime)
-                    .header("Cache-Control", "public, max-age=31536000, immutable")
-                    .header("Access-Control-Allow-Origin", "*")
-                    .body(bytes)
-                    .unwrap();
             }
+        } else {
+            let _ = fs::remove_file(&temp_path);
         }
     }
 
@@ -325,4 +359,36 @@ mod tests {
             assert_eq!(mime, "image/jpeg");
         }
     }
+
+    #[test]
+    fn test_resolve_cache_target_path() {
+        let sample1 = "https://gayeroticvideoindex.com/images/Covers/1/video1.jpg";
+        let (path1, mime1) = resolve_cache_target_path(sample1).expect("Failed to resolve sample1");
+        assert_eq!(mime1, "image/jpeg");
+        assert!(path1.to_string_lossy().ends_with("Covers/1/video1.jpg"));
+
+        let sample2 = "images/stars/performer10.jpg?v=123";
+        let (path2, mime2) = resolve_cache_target_path(sample2).expect("Failed to resolve sample2");
+        assert_eq!(mime2, "image/jpeg");
+        assert!(path2.to_string_lossy().ends_with("Stars/performer10.jpg"));
+
+        let sample3 = "covers/2/video2.jpg";
+        let (path3, _) = resolve_cache_target_path(sample3).expect("Failed to resolve sample3");
+        assert!(path3.to_string_lossy().ends_with("Covers/2/video2.jpg"));
+    }
+
+    #[test]
+    fn test_handle_image_protocol_response() {
+        let req = tauri::http::Request::builder()
+            .uri("gpdb-img://localhost/?url=https%3A%2F%2Fgayeroticvideoindex.com%2Fimages%2FCovers%2F1%2Fvideo1.jpg")
+            .body(Vec::new())
+            .unwrap();
+        let resp = handle_image_protocol(&req);
+        assert!(resp.status() == 200 || resp.status() == 302, "Unexpected status: {}", resp.status());
+        if resp.status() == 200 {
+            assert_eq!(resp.headers().get("Content-Type").unwrap(), "image/jpeg");
+        }
+    }
 }
+
+
