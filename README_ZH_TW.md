@@ -19,14 +19,13 @@
 </p>
 
 <p align="center">
-  <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=flat-square&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
-  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Android%20(In%20Dev)-blue?style=flat-square" alt="Platform" />
-  <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=flat-square" alt="Category" />
-  <img src="https://img.shields.io/badge/Architecture-Tauri%20v2%20%2B%20Rust%20%2B%20Vue%203-emerald?style=flat-square" alt="Tech Stack" />
-  <img src="https://img.shields.io/badge/Database-SQLite%20(WAL%20Mode)-orange?style=flat-square" alt="Database" />
-  <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=flat-square" alt="Privacy" />
-  <img src="https://img.shields.io/badge/License-MIT-purple?style=flat-square" alt="License" />
+  <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
+  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Android%20(In%20Dev)-blue?style=for-the-badge" alt="Platform" />
+  <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
+  <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
+
+> 📢 **官方 Telegram 頻道**：歡迎訂閱 [GPDb 官方 Telegram 頻道 (https://t.me/gpdbnews)](https://t.me/gpdbnews)，獲取最新的版本發布動態、資料庫更新通知與使用技巧！
 
 ---
 
@@ -108,7 +107,7 @@
                                │
 ┌──────────────────────────────▼──────────────────────────────┐
 │                    底層持久化存儲 (Storage)                 │
-│      gevi.db (SQLite 3 WAL 模式) + image_cache/ (本地圖片)  │
+│      GPDb.db (SQLite 3 WAL 模式) + image_cache/ (本地圖片)  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
