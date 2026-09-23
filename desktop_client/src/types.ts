@@ -26,6 +26,7 @@ export interface Movie {
   studio_id?: number | null;
   studio_name?: string | null;
   release_year?: number | null;
+  release_date?: string | null;
   duration_mins?: number | null;
   category?: string | null;
   rating?: string | null;
@@ -58,6 +59,12 @@ export interface Movie {
   episodes?: Episode[];
   userData?: UserMovieData | null;
   is_favorite?: boolean;
+}
+
+export interface MovieSeriesResponse {
+  root_title: string;
+  studio_name?: string | null;
+  items: Movie[];
 }
 
 export interface Performer {
@@ -195,6 +202,7 @@ export interface EpisodeSummary {
   movie_title_zh?: string | null;
   studio_name?: string | null;
   release_year?: number | null;
+  release_date?: string | null;
   episode_ordinal: number;
   episode_count: number;
   performers: EpisodeCastRef[];
@@ -333,6 +341,7 @@ export interface Episode {
   movie_title_zh?: string | null;
   studio_name?: string | null;
   release_year?: number | null;
+  release_date?: string | null;
 }
 
 export interface FilterState {
@@ -351,23 +360,25 @@ export interface FilterState {
   sortBy: 'year_desc' | 'year_asc' | 'title_asc' | 'id_desc';
 }
 
-/** The five kinds of thing that can be favorited. Values match `entity_type`. */
-export type FavoriteType = 'movie' | 'performer' | 'studio' | 'director' | 'episode';
+export type FavoriteType = 'movie' | 'performer' | 'studio' | 'director' | 'episode' | 'series';
+export const FAVORITE_TYPES: FavoriteType[] = ['movie', 'performer', 'studio', 'director', 'episode', 'series'];
 
-/** Every top-level view, i.e. everything the sidebar can switch to. */
-export type AppTab =
-  | 'movies'
-  | 'performers'
-  | 'studios'
-  | 'directors'
-  | 'episodes'
-  | 'favorites'
-  | 'analytics'
-  | 'plugins'
-  | 'trophies'
-  | 'settings';
+export interface SeriesCollectionItem {
+  id: number;
+  root_title: string;
+  studio_name?: string | null;
+  movie_count: number;
+  cover_url?: string | null;
+  sample_covers?: string[] | null;
+  year_start?: number | null;
+  year_end?: number | null;
+  updated_at?: string | null;
+}
 
-export const FAVORITE_TYPES: FavoriteType[] = ['movie', 'performer', 'studio', 'director', 'episode'];
+export interface SeriesCollectionsResponse {
+  items: SeriesCollectionItem[];
+  total: number;
+}
 
 /**
  * One favorited item, shaped for the card that renders it. Which fields are present
@@ -388,6 +399,7 @@ export interface FavoriteItem {
   release_year?: number | null;
   studio_name?: string | null;
   cover_full?: string | null;
+  covers?: string[] | null;
   has_zh?: boolean;
   image_url?: string | null;
   thumbnail_url?: string | null;
@@ -430,4 +442,64 @@ export interface DatabaseInfo {
   custom_path: string | null;
   candidates: string[];
 }
+
+export type AppTab =
+  | 'home'
+  | 'movies'
+  | 'performers'
+  | 'studios'
+  | 'directors'
+  | 'episodes'
+  | 'favorites'
+  | 'analytics'
+  | 'plugins'
+  | 'trophies'
+  | 'settings';
+
+export interface HomeSpotlightMovie {
+  id: number;
+  title: string;
+  title_zh?: string | null;
+  studio_name?: string | null;
+  director_name?: string | null;
+  release_year?: number | null;
+  cover_full?: string | null;
+  cover_back?: string | null;
+  description_zh?: string | null;
+  description?: string | null;
+  rating?: string | null;
+  category?: string | null;
+}
+
+export interface HomeAnniversaryItem {
+  episode_id: number;
+  episode_title: string;
+  release_date: string;
+  movie_id?: number | null;
+  movie_title?: string | null;
+  movie_title_zh?: string | null;
+  cover_full?: string | null;
+  studio_name?: string | null;
+  years_ago: number;
+}
+
+export interface HomeFeaturedPerformer {
+  id: number;
+  name: string;
+  image_url?: string | null;
+  build?: string | null;
+  hair?: string | null;
+  works_count: number;
+}
+
+export interface HomeFeedData {
+  spotlight_movies: HomeSpotlightMovie[];
+  on_this_day: HomeAnniversaryItem[];
+  star_spotlight: HomeFeaturedPerformer[];
+  total_movies: number;
+  total_episodes: number;
+  total_performers: number;
+  total_studios: number;
+}
+
 

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { X, Film, Layers, Heart, Loader2 } from '@lucide/vue';
+import { X, Film, Layers, Heart, Loader2, ExternalLink } from '@lucide/vue';
 import type { Movie, StudioWorks, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
 import { claimEscape } from '../utils/escape';
+import { pluginsConfig, openBtSearch, openGoogleSearch } from '../services/pluginManager';
 
 /**
  * A studio, as the library grid and the favorites page know it.
@@ -111,19 +112,42 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </div>
         </div>
 
-        <!-- Fav button leaves room for the absolutely-positioned close button -->
-        <button
-          @click="emit('toggle-favorite', studio.name)"
-          :class="[
-            'mr-10 shrink-0 self-start px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
-            isFavorite
-              ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
-              : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
-          ]"
-        >
-          <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-          <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
-        </button>
+        <!-- Action buttons: Resource Search + Fav -->
+        <div class="mr-10 shrink-0 self-start flex items-center gap-2 flex-wrap">
+          <template v-if="pluginsConfig.resourceSearchEnabled">
+            <button
+              @click="openBtSearch(studio.name)"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+              :title="`在 BT 站检索「${studio.name}」`"
+            >
+              <ExternalLink class="w-3.5 h-3.5" />
+              <span>BT 搜索</span>
+            </button>
+
+            <button
+              v-if="pluginsConfig.webJumpConfig.googleSearchEnabled"
+              @click="openGoogleSearch(studio.name)"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+              :title="`在 Google 检索「${studio.name}」`"
+            >
+              <ExternalLink class="w-3.5 h-3.5 text-blue-400" />
+              <span>Google 搜索</span>
+            </button>
+          </template>
+
+          <button
+            @click="emit('toggle-favorite', studio.name)"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition cursor-pointer',
+              isFavorite
+                ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
+                : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
+            ]"
+          >
+            <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
+            <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Works Section -->

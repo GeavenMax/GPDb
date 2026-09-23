@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue';
-import { analytics, type UserAnalytics, onAnalyticsEvent } from './analytics';
+import { analytics, type UserAnalytics, onAnalyticsEvent, resetAllAnalytics } from './analytics';
 import { playTrophyUnlockSound } from '../utils/soundSynthesizer';
 import { pluginsConfig } from './pluginManager';
 
@@ -26,7 +26,8 @@ function loadUnlockedMap(): Record<string, number> {
   return {};
 }
 
-const unlockedMap = ref<Record<string, number>>(loadUnlockedMap());
+export const unlockedMap = ref<Record<string, number>>(loadUnlockedMap());
+export const trophiesVersion = ref(0);
 
 function saveUnlockedMap() {
   localStorage.setItem(TROPHIES_STORAGE_KEY, JSON.stringify(unlockedMap.value));
@@ -829,7 +830,41 @@ for (const t of TROPHIES) {
 // Current toast notification state
 export const currentUnlockedToast = ref<Trophy | null>(null);
 
-let toastTimer: number | null = null;
+// Sequential Toast Queue: ensures toasts display one after another smoothly
+const unlockQueue: Trophy[] = [];
+let isProcessingQueue = false;
+
+function processUnlockQueue() {
+  if (isProcessingQueue) return;
+  if (unlockQueue.length === 0) {
+    currentUnlockedToast.value = null;
+    return;
+  }
+
+  isProcessingQueue = true;
+  const trophy = unlockQueue.shift()!;
+
+  if (pluginsConfig.value.trophiesEnabled) {
+    if (pluginsConfig.value.trophiesSoundEnabled) {
+      playTrophyUnlockSound();
+    }
+    currentUnlockedToast.value = trophy;
+  }
+
+  // Toast stays visible for 3.2s, then 400ms pause before next toast appears
+  window.setTimeout(() => {
+    currentUnlockedToast.value = null;
+    window.setTimeout(() => {
+      isProcessingQueue = false;
+      processUnlockQueue();
+    }, 400);
+  }, 3200);
+}
+
+export function queueTrophyToast(trophy: Trophy) {
+  unlockQueue.push(trophy);
+  processUnlockQueue();
+}
 
 export function triggerTrophyUnlock(trophy: Trophy) {
   if (unlockedMap.value[trophy.id]) return; // already unlocked
@@ -838,28 +873,53 @@ export function triggerTrophyUnlock(trophy: Trophy) {
   unlockedMap.value[trophy.id] = now;
   trophy.unlockedAt = now;
   saveUnlockedMap();
+  trophiesVersion.value++;
 
-  if (pluginsConfig.value.trophiesEnabled) {
-    // Play Web Audio Pure Algorithmic Chime only if sound enabled
-    if (pluginsConfig.value.trophiesSoundEnabled) {
-      playTrophyUnlockSound();
-    }
-
-    // Show Toast
-    currentUnlockedToast.value = trophy;
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => {
-      currentUnlockedToast.value = null;
-    }, 4500);
-  }
+  queueTrophyToast(trophy);
 }
 
 export function resetUnlockedTrophies() {
+  unlockQueue.length = 0;
+  currentUnlockedToast.value = null;
+  isProcessingQueue = false;
+
   unlockedMap.value = {};
   saveUnlockedMap();
   for (const t of TROPHIES) {
     t.unlockedAt = null;
   }
+  trophiesVersion.value++;
+}
+
+/**
+ * 方式 1: 不删除用户数据，根据当前已有数据自动解锁符合条件的奖杯
+ * 有多个符合条件的奖杯则等上一个解锁弹窗消失后再解锁下一个（连环连续解锁）
+ */
+export function resetAndRecheckTrophiesSequentially(): number {
+  resetUnlockedTrophies();
+
+  const eligible = TROPHIES.filter(t => t.condition(analytics.value));
+  const now = Date.now();
+
+  eligible.forEach((t, idx) => {
+    const ts = now + idx * 10;
+    unlockedMap.value[t.id] = ts;
+    t.unlockedAt = ts;
+  });
+  saveUnlockedMap();
+  trophiesVersion.value++;
+
+  eligible.forEach(t => unlockQueue.push(t));
+  processUnlockQueue();
+  return eligible.length;
+}
+
+/**
+ * 方式 2: 删除所有用户数据从 0 开始统计，并从零开始解锁奖杯
+ */
+export function resetAllDataAndTrophiesCompletely() {
+  resetUnlockedTrophies();
+  resetAllAnalytics();
 }
 
 // Check all trophies against current analytics

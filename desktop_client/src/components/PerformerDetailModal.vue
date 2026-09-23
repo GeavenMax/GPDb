@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { X, Film, Layers, Heart, ExternalLink } from '@lucide/vue';
+import { X, Film, Layers, Heart, ExternalLink, LayoutGrid, List } from '@lucide/vue';
 import type { Performer, Movie, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
-import { pluginsConfig, openBtSearch } from '../services/pluginManager';
+import { pluginsConfig, openBtSearch, openBftvPerformer, openGoogleSearch } from '../services/pluginManager';
 
 const props = defineProps<{
   performer: Performer | null;
@@ -27,6 +27,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'select-movie', movie: Movie): void;
   (e: 'select-movie-id', movieId: number): void;
+  (e: 'select-episode-id', episodeId: number): void;
   (e: 'toggle-favorite', performer: Performer): void;
   /** Studio / director / episode hearts; the performer has its own event above. */
   (e: 'toggle-entity-favorite', type: FavoriteType, key: string): void;
@@ -34,6 +35,7 @@ const emit = defineEmits<{
 }>();
 
 const activeTab = ref<'movies' | 'episodes'>('movies');
+const episodeLayout = ref<'grid' | 'list'>('grid');
 const portraitError = ref(false);
 
 function isFav(type: FavoriteType, key: string | null | undefined): boolean {
@@ -115,7 +117,7 @@ const studioOptions = computed(() => {
  * down — measured against the library, the busiest performers cross twenty.
  */
 const STUDIO_CHIP_LIMIT = 8;
-const studiosExpanded = ref(false);
+const studiosExpanded = ref(true);
 
 /**
  * The chips to render. Collapsed to the busiest `STUDIO_CHIP_LIMIT`, except that
@@ -191,67 +193,112 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       <!-- Profile Header. The attribute profile lives here rather than in a section of
            its own below: it is a dozen short label/value pairs, and as a full-width
            block of boxes it pushed the filmography below the fold for no gain. -->
-      <div class="p-6 md:p-8 bg-sunken border-b border-line flex flex-wrap items-start gap-5">
-        <!-- Portrait (issue #6), falls back to the letter tile when unscraped.
-             data-zoom-click: the portrait has no click action of its own, so a single
-             click opens the viewer (see utils/lightbox.ts). -->
-        <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-accent-fill/10 ring-1 ring-line-strong/60">
-          <img
-            v-if="performer.image_url && !portraitError"
-            :src="getImageUrl(performer.image_url)"
-            :alt="performer.name"
-            referrerpolicy="no-referrer"
-            data-zoom-click
-            class="w-full h-full object-cover object-top"
-            @error="portraitError = true"
-          />
-          <div
-            v-else
-            class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-3xl font-black text-on-fill"
-          >
-            {{ performer.name.charAt(0).toUpperCase() }}
+      <!-- Profile Header -->
+      <div class="p-6 md:p-8 bg-sunken border-b border-line space-y-4">
+        <div class="flex items-start justify-between gap-5 flex-wrap">
+          <div class="flex items-start gap-5 min-w-0 flex-1">
+            <!-- Portrait (issue #6), falls back to the letter tile when unscraped. -->
+            <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-accent-fill/10 ring-1 ring-line-strong/60">
+              <img
+                v-if="performer.image_url && !portraitError"
+                :src="getImageUrl(performer.image_url)"
+                :alt="performer.name"
+                referrerpolicy="no-referrer"
+                data-zoom-click
+                class="w-full h-full object-cover object-top"
+                @error="portraitError = true"
+              />
+              <div
+                v-else
+                class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-3xl font-black text-on-fill"
+              >
+                {{ performer.name.charAt(0).toUpperCase() }}
+              </div>
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-semibold text-accent uppercase tracking-wider">演员档案</div>
+              <h1 class="text-2xl md:text-3xl font-extrabold text-fg truncate" :title="performer.name">
+                {{ performer.name }}
+              </h1>
+              <div class="text-xs text-fg-3 mt-1 flex items-center gap-3 flex-wrap">
+                <span>ID: #{{ performer.id }}</span>
+                <span
+                  v-if="performer.works_count ?? performer.movies_count"
+                  class="text-accent/80"
+                >{{ performer.works_count ?? performer.movies_count }} 部作品</span>
+                <span v-if="!performer.image_url" class="text-fg-5">暂无照片</span>
+              </div>
+
+              <!-- Aliases / AKA and Notes -->
+              <div
+                v-if="performer.aliases && performer.aliases.length > 0"
+                class="mt-2 text-[11px] text-fg-4 leading-relaxed max-w-xl"
+              >
+                <span class="text-fg-5 font-medium">曾用艺名 / 别名 (AKA)：</span>
+                <span class="text-fg-3">{{ performer.aliases.join('、') }}</span>
+              </div>
+              <div
+                v-if="performer.notes"
+                class="mt-1.5 text-[11px] text-fg-4/80 leading-relaxed italic max-w-xl"
+              >
+                {{ performer.notes }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Action buttons (BT Search + Fav) -->
+          <div class="mr-10 shrink-0 self-start flex items-center gap-2 flex-wrap">
+            <template v-if="pluginsConfig.resourceSearchEnabled">
+              <button
+                @click="openBtSearch(performer.name)"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+                :title="`在 BT 站检索「${performer.name}」作品`"
+              >
+                <ExternalLink class="w-3.5 h-3.5" />
+                <span>BT 搜索</span>
+              </button>
+
+              <button
+                v-if="pluginsConfig.webJumpConfig.bftvPerformerEnabled"
+                @click="openBftvPerformer(performer.name)"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+                :title="`在 BFTV 检索「${performer.name}」演员资料`"
+              >
+                <ExternalLink class="w-3.5 h-3.5 text-amber-400" />
+                <span>在BFTV搜索演员资料</span>
+              </button>
+
+              <button
+                v-if="pluginsConfig.webJumpConfig.googleSearchEnabled"
+                @click="openGoogleSearch(performer.name)"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+                :title="`在 Google 检索「${performer.name}」`"
+              >
+                <ExternalLink class="w-3.5 h-3.5 text-blue-400" />
+                <span>Google 搜索</span>
+              </button>
+            </template>
+
+            <button
+              @click="emit('toggle-favorite', performer)"
+              :class="[
+                'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition cursor-pointer',
+                isFavorite
+                  ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
+                  : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
+              ]"
+            >
+              <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
+              <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+            </button>
           </div>
         </div>
 
-        <div class="min-w-0 max-w-full">
-          <div class="text-xs font-semibold text-accent uppercase tracking-wider">演员档案</div>
-          <h1 class="text-2xl md:text-3xl font-extrabold text-fg truncate" :title="performer.name">
-            {{ performer.name }}
-          </h1>
-          <div class="text-xs text-fg-3 mt-1 flex items-center gap-3 flex-wrap">
-            <span>ID: #{{ performer.id }}</span>
-            <span
-              v-if="performer.works_count ?? performer.movies_count"
-              class="text-accent/80"
-            >{{ performer.works_count ?? performer.movies_count }} 部作品</span>
-            <span v-if="!performer.image_url" class="text-fg-5">暂无照片</span>
-          </div>
-
-          <!-- Aliases / AKA and Notes -->
-          <div
-            v-if="performer.aliases && performer.aliases.length > 0"
-            class="mt-2 text-[11px] text-fg-4 leading-relaxed max-w-xl"
-          >
-            <span class="text-fg-5 font-medium">曾用艺名 / 别名 (AKA)：</span>
-            <span class="text-fg-3">{{ performer.aliases.join('、') }}</span>
-          </div>
-          <div
-            v-if="performer.notes"
-            class="mt-1.5 text-[11px] text-fg-4/80 leading-relaxed italic max-w-xl"
-          >
-            {{ performer.notes }}
-          </div>
-        </div>
-
-        <!-- Attribute profile as chips, to the right of the name: one chip per
-             attribute, label grey and value emphasised, so a dozen of them read as a
-             block instead of a wall of boxes. Multi-value attributes ("<br />"-
-             separated lists) get one value inside their own chip.
-             basis-17rem is what makes this degrade: when the name and the chips cannot
-             share a line the chips wrap below it, rather than the name being cut off. -->
+        <!-- Attribute profile as chips -->
         <div
           v-if="SPECS.length > 0"
-          class="flex-1 basis-[17rem] min-w-0 flex flex-wrap content-start gap-1.5"
+          class="flex flex-wrap content-start gap-1.5 pt-1"
           aria-label="身体属性档案"
         >
           <span
@@ -273,9 +320,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </span>
           </span>
 
-          <!-- Full width of its own: a tattoo description is prose, not a value. The
-               note about only the locations being translated lives in the tooltip, to
-               keep the chip to one line. -->
           <span
             v-if="tattoos.length > 0"
             class="inline-flex items-baseline gap-1.5 basis-full px-2 py-0.5 rounded-lg bg-surface/80 border border-line"
@@ -288,34 +332,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </span>
         </div>
 
-        <div v-else class="flex-1 basis-[17rem] min-w-0 text-xs text-fg-4 italic">
+        <div v-else class="text-xs text-fg-4 italic pt-1">
           该演员的详情页尚未抓取，暂无声色属性档案。
-        </div>
-
-        <!-- Action buttons (BT Search + Fav) -->
-        <div class="mr-10 shrink-0 flex items-center gap-2">
-          <button
-            v-if="pluginsConfig.btSearchEnabled"
-            @click="openBtSearch(performer.name)"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
-            :title="`在 BT 站检索「${performer.name}」作品`"
-          >
-            <ExternalLink class="w-3.5 h-3.5" />
-            <span>BT 搜索</span>
-          </button>
-
-          <button
-            @click="emit('toggle-favorite', performer)"
-            :class="[
-              'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
-              isFavorite
-                ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
-                : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
-            ]"
-          >
-            <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-            <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
-          </button>
         </div>
       </div>
 
@@ -364,12 +382,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               v-if="collapsedStudioCount > 0 || studiosExpanded"
               type="button"
               @click="studiosExpanded = !studiosExpanded"
-              class="text-[11px] font-medium text-fg-4 hover:text-accent-soft transition shrink-0"
+              class="text-[11px] font-medium text-fg-4 hover:text-accent-soft transition shrink-0 cursor-pointer"
             >
-              {{ studiosExpanded ? '收起' : `+${collapsedStudioCount} 更多` }}
+              {{ studiosExpanded ? '折叠仅显示首行' : `+${studioOptions.length - STUDIO_CHIP_LIMIT} 展开全部` }}
             </button>
           </div>
-          <div :class="['flex items-center gap-2 flex-wrap', studiosExpanded ? 'max-h-40 overflow-y-auto' : '']">
+          <div class="flex items-center gap-2 flex-wrap">
             <button
               v-for="opt in shownStudioOptions"
               :key="opt.name"
@@ -406,23 +424,119 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
 
         <!-- 2. Episodes & Scenes Tab -->
-        <div v-else-if="activeTab === 'episodes'">
-          <div v-if="visibleEpisodes.length > 0" class="grid grid-cols-1 gap-3">
-            <!-- One row per scene, in the shared reading layout — see EpisodeRow.
-                 The row carries no click action here (only the 出处 and 片商 labels
-                 do), so the still zooms on one click. -->
-            <EpisodeRow
-              v-for="ep in visibleEpisodes"
-              :key="ep.id"
-              :episode="ep"
-              :lang="lang"
-              zoom-on-click
-              show-studio
-              :is-favorite="isFav('episode', String(ep.id))"
-              @select-movie-id="emit('select-movie-id', $event)"
-              @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
-              @filter-studio="emit('filter-studio', $event)"
-            />
+        <div v-else-if="activeTab === 'episodes'" class="space-y-3">
+          <div class="flex items-center justify-between pb-1 flex-wrap gap-2">
+            <span class="text-xs text-fg-4">共收录 {{ visibleEpisodes.length }} 个相关片段</span>
+            <!-- Layout Switcher: Grid vs List -->
+            <div class="flex items-center bg-surface-2/80 rounded-xl p-0.5 border border-line text-xs font-semibold">
+              <button
+                type="button"
+                @click="episodeLayout = 'grid'"
+                :class="[
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer',
+                  episodeLayout === 'grid'
+                    ? 'bg-accent-fill text-on-fill shadow-xs'
+                    : 'text-fg-4 hover:text-fg hover:bg-surface-3/50'
+                ]"
+                title="网格视图（展示更多条目）"
+              >
+                <LayoutGrid class="w-3.5 h-3.5" />
+                <span>网格</span>
+              </button>
+              <button
+                type="button"
+                @click="episodeLayout = 'list'"
+                :class="[
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer',
+                  episodeLayout === 'list'
+                    ? 'bg-accent-fill text-on-fill shadow-xs'
+                    : 'text-fg-4 hover:text-fg hover:bg-surface-3/50'
+                ]"
+                title="列表视图（含详细剧情）"
+              >
+                <List class="w-3.5 h-3.5" />
+                <span>列表</span>
+              </button>
+            </div>
+          </div>
+
+          <div v-if="visibleEpisodes.length > 0">
+            <!-- Grid Layout (展示更多条目) -->
+            <div v-if="episodeLayout === 'grid'" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+              <div
+                v-for="ep in visibleEpisodes"
+                :key="ep.id"
+                @click="emit('select-episode-id', ep.id)"
+                class="group relative flex flex-col rounded-2xl bg-surface/60 border border-line/80 hover:border-accent-fill/50 hover:shadow-xl hover:shadow-accent-fill/10 transition-all duration-300 overflow-hidden cursor-pointer select-none"
+              >
+                <div class="relative w-full aspect-video bg-sunken overflow-hidden">
+                  <img
+                    v-if="ep.thumbnail_url"
+                    :src="getImageUrl(ep.thumbnail_url)"
+                    :alt="ep.title"
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div v-else class="w-full h-full flex items-center justify-center text-fg-5">
+                    <Layers class="w-8 h-8 stroke-1" />
+                  </div>
+
+                  <!-- Favorite Heart Badge -->
+                  <button
+                    @click.stop="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+                    class="absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md bg-black/40 hover:bg-black/70 text-fg transition cursor-pointer"
+                    :title="isFav('episode', String(ep.id)) ? '取消收藏' : '收藏片段'"
+                  >
+                    <Heart
+                      class="w-3.5 h-3.5 transition"
+                      :class="isFav('episode', String(ep.id)) ? 'text-danger fill-danger' : 'text-white/80'"
+                    />
+                  </button>
+                </div>
+
+                <div class="p-3 flex-1 flex flex-col justify-between gap-1.5">
+                  <div>
+                    <div class="flex items-start justify-between gap-1">
+                      <h4 class="text-xs font-bold text-fg group-hover:text-accent transition line-clamp-1" :title="ep.title">
+                        {{ ep.title }}
+                      </h4>
+                      <span v-if="ep.description_zh?.trim()" class="text-[9px] font-bold text-success flex items-center shrink-0">
+                        中
+                      </span>
+                    </div>
+                    <div
+                      v-if="ep.movie_title"
+                      @click.stop="ep.movie_id && emit('select-movie-id', ep.movie_id)"
+                      class="text-[11px] text-fg-4 mt-0.5 truncate hover:text-accent hover:underline cursor-pointer"
+                      :title="ep.movie_title"
+                    >
+                      出处: {{ ep.movie_title }}
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between text-[10px] text-fg-4 pt-1.5 border-t border-line/40">
+                    <span class="truncate max-w-[120px] font-medium">{{ ep.studio_name || '未知片商' }}</span>
+                    <span v-if="ep.release_year">{{ ep.release_year }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- List Layout -->
+            <div v-else class="grid grid-cols-1 gap-3">
+              <EpisodeRow
+                v-for="ep in visibleEpisodes"
+                :key="ep.id"
+                :episode="ep"
+                :lang="lang"
+                zoom-on-click
+                show-studio
+                :is-favorite="isFav('episode', String(ep.id))"
+                @select-movie-id="emit('select-movie-id', $event)"
+                @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+                @filter-studio="emit('filter-studio', $event)"
+              />
+            </div>
           </div>
           <div v-else class="text-center py-12 text-fg-4 text-xs">
             {{ studioFilter ? `该演员没有 ${studioFilter} 的分集片段` : '暂无收录该演员的独立分集片段' }}

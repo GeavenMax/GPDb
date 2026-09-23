@@ -108,3 +108,22 @@ pub fn get_glossaries() -> Result<Glossaries, String> {
     let conn = open_db()?;
     queries::glossary::get_glossaries(&conn).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn get_series_collections(
+    query: Option<String>,
+    studio: Option<String>,
+    sort_by: Option<String>,
+    page: Option<i64>,
+    page_size: Option<i64>,
+) -> Result<gpdb_core::models::SeriesCollectionsResponse, String> {
+    let conn = open_db()?;
+    queries::series::get_series_collections(&conn, query, studio, sort_by, page, page_size)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn refresh_series_index() -> Result<usize, String> {
+    let conn = open_db()?;
+    queries::series::refresh_series_index(&conn).map_err(|e| e.to_string())
+}

@@ -1216,6 +1216,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-log",
+ "url",
 ]
 
 [[package]]

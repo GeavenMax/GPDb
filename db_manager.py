@@ -1417,12 +1417,9 @@ class DatabaseManager:
             # The search box is free text, so % and _ must reach LIKE as literals.
             escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             like = f"%{escaped}%"
-            # e.title is not searched: for a film's scene it only ever holds "" or the
-            # old "Episode #N" placeholder. Standalone episodes do carry a real title,
-            # but adding `e.title` here is a deliberate follow-up, not an oversight.
-            conds.append("(m.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\'"
-                         " OR e.description_zh LIKE ? ESCAPE '\\')")
-            args += [like, like, like]
+            conds.append("(m.title LIKE ? ESCAPE '\\' OR e.title LIKE ? ESCAPE '\\'"
+                         " OR e.description LIKE ? ESCAPE '\\' OR e.description_zh LIKE ? ESCAPE '\\')")
+            args += [like, like, like, like]
         if studio:
             # COALESCE, not `m.studio_name`: a standalone episode has no film row, so
             # filtering on the film alone would drop it from its own studio's list.

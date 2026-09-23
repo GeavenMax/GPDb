@@ -47,6 +47,8 @@ const emit = defineEmits<{
    * this leaves the modal for another library rather than hearting something.
    */
   (e: 'open-studio', studioName: string): void;
+  /** Filter movie library by this director */
+  (e: 'filter-director', directorName: string): void;
 }>();
 
 const movies = computed(() => props.works?.movies || []);
@@ -194,19 +196,30 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </div>
         </div>
 
-        <!-- Fav button leaves room for the absolutely-positioned close button -->
-        <button
-          @click="emit('toggle-favorite', director.name)"
-          :class="[
-            'mr-10 shrink-0 self-start px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
-            isFavorite
-              ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
-              : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
-          ]"
-        >
-          <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-          <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
-        </button>
+        <div class="mr-10 shrink-0 self-start flex items-center gap-2">
+          <button
+            @click="emit('filter-director', director.name)"
+            class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line-strong bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg flex items-center gap-1.5 transition"
+            title="在全量影片库中查看该导演所有影片"
+          >
+            <Film class="w-3.5 h-3.5" />
+            <span>在片库查看</span>
+          </button>
+
+          <!-- Fav button leaves room for the absolutely-positioned close button -->
+          <button
+            @click="emit('toggle-favorite', director.name)"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
+              isFavorite
+                ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
+                : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
+            ]"
+          >
+            <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
+            <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Works Section -->

@@ -201,7 +201,8 @@ pub const EPISODE_SQL: &str = "SELECT e.id, e.movie_id, e.title, e.thumbnail_url
      e.description_zh, e.action_notes, m.title, \
      COALESCE(m.studio_name, e.studio_name), \
      COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)), \
-     m.title_zh \
+     m.title_zh, \
+     e.release_date \
      FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id";
 
 pub fn map_episode_row(r: &rusqlite::Row) -> rusqlite::Result<Episode> {
@@ -217,10 +218,11 @@ pub fn map_episode_row(r: &rusqlite::Row) -> rusqlite::Result<Episode> {
         movie_title_zh: r.get(10)?,
         studio_name: r.get(8)?,
         release_year: r.get(9)?,
+        release_date: r.get(11)?,
     })
 }
-/// The five kinds of thing a favorite can point at. Mirrors FAVORITE_TYPES in db_manager.py.
-pub const FAVORITE_TYPES: [&str; 5] = ["movie", "performer", "studio", "director", "episode"];
+/// The kinds of thing a favorite can point at. Mirrors FAVORITE_TYPES in db_manager.py.
+pub const FAVORITE_TYPES: [&str; 6] = ["movie", "performer", "studio", "director", "episode", "series"];
 
 /// A director's name does not necessarily appear verbatim in movies.director_name:
 /// rows scraped before the parser fix glue several names into one separator-free

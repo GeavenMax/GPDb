@@ -9,6 +9,9 @@ import StudioDetailModal from './components/StudioDetailModal.vue';
 import DirectorDetailModal from './components/DirectorDetailModal.vue';
 import EpisodeCard from './components/EpisodeCard.vue';
 import EpisodeDetailModal from './components/EpisodeDetailModal.vue';
+import SeriesModal from './components/SeriesModal.vue';
+import SeriesCollageCover from './components/SeriesCollageCover.vue';
+import PermissionExplainModal from './components/PermissionExplainModal.vue';
 import ImageLightbox from './components/ImageLightbox.vue';
 import FilterDrawer from './components/FilterDrawer.vue';
 import ActiveFilterBar from './components/ActiveFilterBar.vue';
@@ -21,9 +24,12 @@ import {
 import { getImageUrl } from './utils/image';
 import { openLightbox, viewableImageFrom, zoomsOnClick, lightboxImage } from './utils/lightbox';
 import { initTheme, setTheme, themeChoice, themeOptions } from './utils/theme';
+import AppIcon from './components/AppIcon.vue';
+import { ICON_SCHEMES, currentIconScheme, setIconScheme, initAppIcon } from './utils/appIcon';
 import { PREFS } from './utils/prefs';
 import type {
   Movie,
+  MovieSeriesResponse,
   Performer,
   FilterState,
   DatabaseStats,
@@ -52,13 +58,16 @@ import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
   Megaphone, FolderOpen, Search, Globe, Shield,
-  Bookmark, CheckCircle2, ChevronDown, ChevronRight, ChevronsUpDown, Star
+  Bookmark, CheckCircle2, ChevronDown, ChevronRight, ChevronsUpDown, Star, Info,
+  SlidersHorizontal
 } from '@lucide/vue';
+import HomeView from './views/HomeView.vue';
 import AnalyticsView from './views/AnalyticsView.vue';
 import PluginsView from './views/PluginsView.vue';
 import TrophiesView from './views/TrophiesView.vue';
 import TrophyToast from './components/TrophyToast.vue';
-import { SUPPORTED_LANGUAGES, TARGET_TRANSLATION_LANGUAGES, currentLocale, setLocale } from './i18n';
+import { pluginsConfig } from './services/pluginManager';
+import { SUPPORTED_LANGUAGES, currentLocale, setLocale, t } from './i18n';
 import { privacySettings, savePrivacySettings } from './services/privacy';
 import {
   startFocusTracker, recordMovieView, recordPerformerView,
@@ -66,7 +75,9 @@ import {
   clearSearchHistory, clearBrowseHistory, resetAllAnalytics,
   recordFavoriteToggle, recordRating
 } from './services/analytics';
-import { pluginsConfig, savePluginsConfig } from './services/pluginManager';
+
+type SettingsSubTab = 'all' | 'appearance' | 'localization' | 'data' | 'privacy';
+const settingsSubTab = ref<SettingsSubTab>('all');
 
 /** Labels for the five favorites sections and the type pickers. */
 const FAVORITE_LABELS: Record<FavoriteType, string> = {
@@ -75,10 +86,11 @@ const FAVORITE_LABELS: Record<FavoriteType, string> = {
   studio: '片商',
   director: '导演',
   episode: '片段',
+  series: '系列专题',
 };
 
 // State
-const currentTab = ref<AppTab>('movies');
+const currentTab = ref<AppTab>('home');
 const viewMode = ref<'grid' | 'list'>('grid');
 const isFilterOpen = ref(false);
 const isSyncOpen = ref(false);
@@ -153,7 +165,7 @@ const favoriteItems = ref<FavoritesResponse | null>(null);
 const favoritesLoading = ref(false);
 
 function emptyKeys(): Record<FavoriteType, Set<string>> {
-  return { movie: new Set(), performer: new Set(), studio: new Set(), director: new Set(), episode: new Set() };
+  return { movie: new Set(), performer: new Set(), studio: new Set(), director: new Set(), episode: new Set(), series: new Set() };
 }
 
 const selectedMovie = ref<Movie | null>(null);
@@ -218,6 +230,13 @@ function setDescLang(lang: 'zh' | 'en') {
   descLang.value = lang;
   localStorage.setItem(PREFS.descLang, lang);
 }
+
+const hasTranslationAvailable = computed(() => {
+  if (!pluginsConfig.value.translationEnabled && (!stats.value?.translation_done || stats.value.translation_done <= 0)) {
+    return false;
+  }
+  return Boolean((stats.value?.translation_done && stats.value.translation_done > 0) || pluginsConfig.value.translationEnabled);
+});
 
 // Dynamic Grid Columns state (persisted to localStorage)
 const gridCols = ref<number>(Number(localStorage.getItem(PREFS.gridCols)) || 5);
@@ -365,6 +384,7 @@ const dbScanning = ref(false);
 const dbSwitching = ref(false);
 const dbCandidates = ref<string[]>([]);
 const dbMessage = ref<{ ok: boolean; text: string } | null>(null);
+const showPermissionModal = ref(false);
 
 async function loadDatabaseInfo() {
   try {
@@ -375,6 +395,10 @@ async function loadDatabaseInfo() {
     }
     if (info.candidates && info.candidates.length > 0) {
       dbCandidates.value = info.candidates;
+    }
+    // If database cannot be located or is invalid, explain permissions and guide the user gently
+    if (!info.exists || !info.valid) {
+      showPermissionModal.value = true;
     }
   } catch (e) {
     console.error('Failed to load database info', e);
@@ -392,6 +416,7 @@ async function applyCustomDbPath(targetPath?: string) {
     if (updated.candidates) dbCandidates.value = updated.candidates;
     loadError.value = '';
     dbMessage.value = { ok: true, text: `已成功连接数据库：${updated.path || '默认路径'}` };
+    showPermissionModal.value = false;
     await loadStats();
     await reloadCurrentTab();
   } catch (e: any) {
@@ -411,6 +436,7 @@ async function handlePickDbFile() {
     if (picked) {
       customDbInput.value = picked;
       await applyCustomDbPath(picked);
+      showPermissionModal.value = false;
     }
   } catch (e: any) {
     dbMessage.value = { ok: false, text: e?.message || String(e) };
@@ -427,6 +453,10 @@ async function handleScanDatabases() {
       dbMessage.value = { ok: false, text: '未能自动检测到 gevi.db，请手动浏览选择或输入路径。' };
     } else {
       dbMessage.value = { ok: true, text: `扫描完成，发现 ${cands.length} 个候选数据库。` };
+      if (!dbInfo.value?.exists && cands[0]) {
+        await applyCustomDbPath(cands[0]);
+        showPermissionModal.value = false;
+      }
     }
   } catch (e: any) {
     dbMessage.value = { ok: false, text: e?.message || String(e) };
@@ -459,7 +489,6 @@ async function loadStats() {
   stats.value = await api.getStats();
   studios.value = await api.getStudios();
   categories.value = await api.getCategories();
-  loadCacheStats();
   loadTranslationStats();
 }
 
@@ -566,8 +595,23 @@ async function handleBatchDownloadCache() {
 }
 
 async function handleExportUserData() {
+  if (IS_TAURI) {
+    try {
+      const dest = await api.exportUserDataFile();
+      if (dest) {
+        importStatusMsg.value = `个人标记与片单备份成功导出至：${dest}`;
+        setTimeout(() => { importStatusMsg.value = ''; }, 6000);
+      }
+      return;
+    } catch (err: any) {
+      console.warn('Native exportUserDataFile failed, falling back to download:', err);
+    }
+  }
   const data = await api.exportUserData();
-  if (!data) return;
+  if (!data) {
+    alert('导出标记备份失败：未能获取到用户数据');
+    return;
+  }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -575,6 +619,52 @@ async function handleExportUserData() {
   a.download = `gpdb_user_backup_${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+const dbBackupStatusMsg = ref('');
+const isDbExporting = ref(false);
+
+async function handleExportDatabase() {
+  if (isDbExporting.value) return;
+  isDbExporting.value = true;
+  dbBackupStatusMsg.value = '正在安全打包并导出数据库文件...';
+  try {
+    const dest = await api.exportDatabaseFile();
+    if (dest) {
+      dbBackupStatusMsg.value = `数据库完整备份成功导出至：${dest}`;
+      setTimeout(() => { dbBackupStatusMsg.value = ''; }, 6000);
+    } else {
+      dbBackupStatusMsg.value = '';
+    }
+  } catch (err: any) {
+    dbBackupStatusMsg.value = `导出数据库失败: ${err?.message || err}`;
+  } finally {
+    isDbExporting.value = false;
+  }
+}
+
+async function handleImportDatabase() {
+  try {
+    const picked = await api.pickDatabaseFile();
+    if (picked) {
+      if (confirm(`确认切换至所选数据库文件？\n${picked}\n\n切换后应用将重新加载数据库内容。`)) {
+        await api.setCustomDatabasePath(picked);
+        await loadDatabaseInfo();
+        await loadStats();
+        await fetchMovies();
+        alert('数据库已成功切换并载入！');
+      }
+    }
+  } catch (err: any) {
+    alert('导入并切换数据库失败: ' + (err?.message || err));
+  }
+}
+
+function downloadIconFile(schemeId: string, format: 'svg' | 'png' = 'png') {
+  const link = document.createElement('a');
+  link.href = `/src/assets/icons/${schemeId}.${format}`;
+  link.download = `gpdb-icon-${schemeId}.${format}`;
+  link.click();
 }
 
 function triggerImportFileInput() {
@@ -1042,8 +1132,21 @@ const favPerformers = computed(() => favoriteItems.value?.performer || []);
 const favEpisodes = computed(() => favoriteItems.value?.episode || []);
 const favStudios = computed(() => favoriteItems.value?.studio || []);
 const favDirectors = computed(() => favoriteItems.value?.director || []);
+const favSeries = computed(() => favoriteItems.value?.series || []);
 const favWishlist = computed(() => favoriteItems.value?.wishlist || []);
 const favWatched = computed(() => favoriteItems.value?.watched || []);
+
+/** Series Modal popup state for opening series from cards and favorites */
+const seriesModalData = ref<MovieSeriesResponse | null>(null);
+const showAppSeriesModal = ref(false);
+
+async function openSeriesModalByRoot(rootTitle: string, studioName?: string | null) {
+  const data = await api.getMovieSeriesByRoot(rootTitle, studioName);
+  if (data) {
+    seriesModalData.value = data;
+    showAppSeriesModal.value = true;
+  }
+}
 
 /** Total across all sections, for the page header. */
 const favoriteTotal = computed(() => {
@@ -1056,7 +1159,7 @@ const favoriteTotal = computed(() => {
   );
 });
 
-type FavoriteSubTab = 'all' | 'wishlist' | 'watched' | 'movie' | 'performer' | 'studio' | 'director' | 'episode';
+type FavoriteSubTab = 'all' | 'wishlist' | 'watched' | 'series' | 'movie' | 'performer' | 'studio' | 'director' | 'episode';
 const favSubTab = ref<FavoriteSubTab>('all');
 
 const FAV_COLLAPSED_KEY = 'gpdb_fav_collapsed_sections';
@@ -1070,6 +1173,15 @@ function loadFavCollapsed(): Record<string, boolean> {
 }
 const favCollapsed = reactive<Record<string, boolean>>(loadFavCollapsed());
 
+const FAV_EP_COLS_KEY = 'gpdb_fav_ep_cols';
+const favEpisodeCols = ref<number>(Number(localStorage.getItem(FAV_EP_COLS_KEY)) || 2);
+function setFavEpisodeCols(cols: number) {
+  favEpisodeCols.value = cols;
+  try {
+    localStorage.setItem(FAV_EP_COLS_KEY, String(cols));
+  } catch {}
+}
+
 function toggleFavSection(sectionKey: string) {
   favCollapsed[sectionKey] = !favCollapsed[sectionKey];
   try {
@@ -1081,6 +1193,7 @@ const allSectionsCollapsed = computed(() => {
   const activeSectionKeys = [
     ...(favWishlist.value.length ? ['wishlist'] : []),
     ...(favWatched.value.length ? ['watched'] : []),
+    ...(favSeries.value.length ? ['series'] : []),
     ...(favMovies.value.length ? ['movie'] : []),
     ...(favPerformers.value.length ? ['performer'] : []),
     ...(favEpisodes.value.length ? ['episode'] : []),
@@ -1093,7 +1206,7 @@ const allSectionsCollapsed = computed(() => {
 
 function toggleCollapseAllFavs() {
   const target = !allSectionsCollapsed.value;
-  const activeSectionKeys = ['wishlist', 'watched', 'movie', 'performer', 'episode', 'studio', 'director'];
+  const activeSectionKeys = ['wishlist', 'watched', 'series', 'movie', 'performer', 'episode', 'studio', 'director'];
   for (const k of activeSectionKeys) {
     favCollapsed[k] = target;
   }
@@ -1218,6 +1331,21 @@ async function openMovieDetailById(id: number) {
   if (detail) {
     selectedMovie.value = detail;
     recordMovieView(detail.id, detail.title);
+  }
+}
+
+async function openEpisodeDetailById(id: number) {
+  const detail = await api.getEpisodeDetail(id);
+  if (detail) {
+    openEpisodeDetail(detail, [detail]);
+  }
+}
+
+async function handleFavEpisodeClick(f: FavoriteItem) {
+  if (f.movie_id) {
+    await openMovieDetailById(f.movie_id);
+  } else {
+    await openEpisodeDetailById(Number(f.key));
   }
 }
 
@@ -1376,6 +1504,7 @@ function onGlobalDblClick(e: MouseEvent) {
 
 onMounted(async () => {
   startFocusTracker();
+  initAppIcon();
   // index.html's inline script already put the stored theme on <html> before the first
   // paint; this starts the OS listener that keeps 跟随系统 current.
   initTheme();
@@ -1450,6 +1579,13 @@ onUnmounted(() => {
           <span>{{ dbScanning ? '智能识别中…' : '智能识别数据库' }}</span>
         </button>
         <button
+          @click="showPermissionModal = true"
+          class="px-3 py-1.5 rounded-lg bg-surface border border-line-strong hover:bg-surface-2 text-fg-2 text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
+        >
+          <Shield class="w-3.5 h-3.5 text-indigo-400" />
+          <span>权限与存储说明</span>
+        </button>
+        <button
           @click="handlePickDbFile"
           :disabled="dbSwitching"
           class="px-3 py-1.5 rounded-lg bg-surface border border-line-strong hover:bg-surface-2 text-fg-2 text-xs font-medium transition flex items-center gap-1.5"
@@ -1480,8 +1616,18 @@ onUnmounted(() => {
         class="flex-1 overflow-y-auto p-6 md:p-8"
         @scroll.passive="handleScroll"
       >
+        <!-- 0. Home Tab -->
+        <HomeView
+          v-if="currentTab === 'home'"
+          @open-movie="openMovieDetailById"
+          @open-episode="openEpisodeDetailById"
+          @open-performer="openPerformerDetail"
+          @open-series="(title, studio) => openSeriesModalByRoot(title, studio)"
+          @change-tab="currentTab = $event"
+        />
+
         <!-- 1. Movies Tab -->
-        <div v-if="currentTab === 'movies'" class="space-y-6">
+        <div v-else-if="currentTab === 'movies'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
               <h1 class="text-xl font-bold text-fg tracking-tight">探索全量影片</h1>
@@ -1490,20 +1636,31 @@ onUnmounted(() => {
 
             <div class="flex items-center gap-3">
               <!-- Synopsis language toggle (issue #4) -->
-              <div class="flex items-center gap-1 bg-surface border border-line rounded-xl p-0.5 text-xs">
+              <div
+                v-if="hasTranslationAvailable"
+                class="flex items-center gap-1.5 bg-surface border border-line rounded-xl p-0.5 text-xs animate-fade-in"
+              >
                 <Languages class="w-3 h-3 text-fg-4 ml-1.5" />
                 <button
                   v-for="l in [{ id: 'zh', label: '中文' }, { id: 'en', label: '原文' }]"
                   :key="l.id"
                   @click="setDescLang(l.id as 'zh' | 'en')"
                   :class="[
-                    'px-2 py-1 rounded-lg text-[11px] font-medium transition',
+                    'px-2 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer',
                     descLang === l.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
                   :title="l.id === 'zh' ? '优先显示中文简介（未翻译的影片自动回落原文）' : '始终显示英文原文'"
                 >
                   {{ l.label }}
                 </button>
+
+                <!-- Info icon with tooltip -->
+                <div
+                  class="flex items-center pr-1.5 text-fg-5 hover:text-accent cursor-help transition"
+                  title="此处的语言切换仅针对影片简介与分集信息的译文，界面菜单语言请在设置中更改"
+                >
+                  <Info class="w-3.5 h-3.5" />
+                </div>
               </div>
 
               <!-- How the list pages in: auto-load on scroll, or explicit pages -->
@@ -2231,6 +2388,7 @@ onUnmounted(() => {
                 { id: 'all', label: '全部总览', count: favoriteTotal },
                 { id: 'wishlist', label: '想看', count: favWishlist.length },
                 { id: 'watched', label: '已看', count: favWatched.length },
+                { id: 'series', label: '系列专题', count: favSeries.length },
                 { id: 'movie', label: '喜爱影片', count: favMovies.length },
                 { id: 'performer', label: '演员', count: favPerformers.length },
                 { id: 'studio', label: '片商', count: favStudios.length },
@@ -2362,6 +2520,80 @@ onUnmounted(() => {
               </div>
             </section>
 
+            <!-- 2.5 Series Section (系列专题) -->
+            <section
+              v-if="(favSubTab === 'all' || favSubTab === 'series') && favSeries.length > 0"
+              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
+            >
+              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
+                <button
+                  @click="toggleFavSection('series')"
+                  class="flex items-center gap-2 text-left group cursor-pointer"
+                >
+                  <component
+                    :is="favCollapsed.series ? ChevronRight : ChevronDown"
+                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
+                  />
+                  <Layers class="w-4 h-4 text-accent" />
+                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">系列专题集</h2>
+                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favSeries.length }}</span>
+                </button>
+                <button
+                  v-if="favSubTab === 'all'"
+                  @click="favSubTab = 'series'"
+                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
+                >
+                  <span>仅看此类</span>
+                  <span>→</span>
+                </button>
+              </div>
+
+              <div
+                v-show="!favCollapsed.series"
+                class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 pt-1"
+              >
+                <div
+                  v-for="s in favSeries"
+                  :key="s.key"
+                  @click="openSeriesModalByRoot(s.title || s.key, s.studio_name)"
+                  class="group relative rounded-2xl bg-surface border border-line hover:border-accent/40 p-2.5 space-y-2 hover:shadow-lg transition cursor-pointer flex flex-col justify-between"
+                >
+                  <div class="aspect-[2/3] w-full rounded-xl overflow-hidden bg-surface-2 relative border border-line/40">
+                    <SeriesCollageCover
+                      :covers="s.covers"
+                      :single-cover="s.cover_full"
+                      :title="s.title || s.key"
+                      aspect-ratio="h-full w-full"
+                      class="w-full h-full group-hover:scale-105 transition-transform duration-300"
+                    />
+
+                    <!-- Heart toggle button -->
+                    <button
+                      @click.stop="toggleFavoriteEntity('series', s.key)"
+                      class="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-rose-400 backdrop-blur-sm border border-white/10 transition z-10"
+                      title="取消收藏系列"
+                    >
+                      <Heart class="w-3.5 h-3.5 fill-rose-400 text-rose-400" />
+                    </button>
+
+                    <!-- Series count badge -->
+                    <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg bg-black/75 backdrop-blur-md text-[10px] font-bold text-accent border border-accent/30 font-mono">
+                      {{ s.works_count ? `${s.works_count} 部全集` : '系列作品' }}
+                    </div>
+                  </div>
+
+                  <div class="space-y-0.5">
+                    <h3 class="text-xs font-bold text-fg line-clamp-2 leading-snug group-hover:text-accent transition" :title="s.title || s.key">
+                      {{ s.title || s.key }}
+                    </h3>
+                    <div v-if="s.studio_name" class="text-[11px] text-fg-4 truncate">
+                      {{ s.studio_name }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <!-- 3. Movies Section (喜爱影片) -->
             <section
               v-if="(favSubTab === 'all' || favSubTab === 'movie') && favMovies.length > 0"
@@ -2479,7 +2711,7 @@ onUnmounted(() => {
               v-if="(favSubTab === 'all' || favSubTab === 'episode') && favEpisodes.length > 0"
               class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
             >
-              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
+              <div class="flex items-center justify-between pb-2 border-b border-line select-none flex-wrap gap-2">
                 <button
                   @click="toggleFavSection('episode')"
                   class="flex items-center gap-2 text-left group cursor-pointer"
@@ -2492,59 +2724,113 @@ onUnmounted(() => {
                   <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">{{ FAVORITE_LABELS.episode }}</h2>
                   <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favEpisodes.length }}</span>
                 </button>
-                <button
-                  v-if="favSubTab === 'all'"
-                  @click="favSubTab = 'episode'"
-                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
-                >
-                  <span>仅看此类</span>
-                  <span>→</span>
-                </button>
+
+                <div class="flex items-center gap-2.5">
+                  <!-- Grid Size Selector (美化：调整分集网格尺寸) -->
+                  <div class="flex items-center bg-surface-2/80 rounded-xl p-0.5 border border-line text-xs font-semibold">
+                    <span class="text-[10px] text-fg-4 px-2 select-none">尺寸:</span>
+                    <button
+                      v-for="opt in [
+                        { cols: 1, label: '大' },
+                        { cols: 2, label: '中' },
+                        { cols: 3, label: '小' },
+                      ]"
+                      :key="opt.cols"
+                      @click="setFavEpisodeCols(opt.cols)"
+                      :class="[
+                        'px-2 py-0.5 rounded-lg text-xs font-medium transition cursor-pointer',
+                        favEpisodeCols === opt.cols
+                          ? 'bg-accent-fill text-on-fill shadow-xs'
+                          : 'text-fg-4 hover:text-fg hover:bg-surface-3/50'
+                      ]"
+                      :title="`切换为每行 ${opt.cols} 列网格`"
+                    >
+                      {{ opt.label }}
+                    </button>
+                  </div>
+
+                  <button
+                    v-if="favSubTab === 'all'"
+                    @click="favSubTab = 'episode'"
+                    class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>仅看此类</span>
+                    <span>→</span>
+                  </button>
+                </div>
               </div>
+
               <div
                 v-show="!favCollapsed.episode || favSubTab === 'episode'"
-                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1"
+                :class="[
+                  'grid gap-3.5 pt-1',
+                  favEpisodeCols === 1
+                    ? 'grid-cols-1'
+                    : favEpisodeCols === 2
+                    ? 'grid-cols-1 lg:grid-cols-2'
+                    : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+                ]"
               >
                 <div
                   v-for="f in favEpisodes"
                   :key="f.key"
-                  @click="f.movie_id && openMovieDetailById(f.movie_id)"
-                  class="group flex gap-3 rounded-2xl bg-surface/60 border border-line/80 hover:border-accent-fill/50 transition-all duration-200 overflow-hidden cursor-pointer select-none p-2.5"
+                  @click="handleFavEpisodeClick(f)"
+                  class="group flex gap-3.5 rounded-2xl bg-surface/60 border border-line/80 hover:border-accent-fill/50 transition-all duration-200 overflow-hidden cursor-pointer select-none p-3"
                 >
-                  <div class="relative w-24 shrink-0 aspect-video rounded-xl overflow-hidden bg-sunken">
+                  <div
+                    :class="[
+                      'relative shrink-0 aspect-video rounded-xl overflow-hidden bg-sunken',
+                      favEpisodeCols === 1 ? 'w-44 sm:w-56' : favEpisodeCols === 2 ? 'w-32 sm:w-40' : 'w-24 sm:w-28'
+                    ]"
+                  >
                     <img
                       v-if="f.thumbnail_url"
                       :src="getImageUrl(f.thumbnail_url)"
                       :alt="f.title || ''"
                       loading="lazy"
                       referrerpolicy="no-referrer"
-                      class="w-full h-full object-cover"
+                      class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     <div v-else class="w-full h-full flex items-center justify-center text-fg-5">
                       <Layers class="w-5 h-5 stroke-1" />
                     </div>
                   </div>
-                  <div class="flex-1 min-w-0 flex flex-col justify-between gap-1">
+                  <div class="flex-1 min-w-0 flex flex-col justify-between gap-1.5">
                     <div class="min-w-0">
                       <div class="flex items-start justify-between gap-2">
-                        <span class="text-xs font-bold text-accent-soft truncate" :title="f.title || ''">{{ f.title }}</span>
+                        <span
+                          class="font-bold text-accent-soft truncate"
+                          :class="favEpisodeCols === 1 ? 'text-sm' : 'text-xs'"
+                          :title="f.title || ''"
+                        >
+                          {{ f.title || '独立分集 #' + f.key }}
+                        </span>
                         <button
                           @click.stop="toggleFavoriteEntity('episode', f.key)"
-                          class="shrink-0 text-danger transition"
+                          class="shrink-0 text-danger transition hover:scale-110 p-0.5"
                           title="取消收藏该片段"
                         >
-                          <Heart class="w-3.5 h-3.5" fill="currentColor" />
+                          <Heart class="w-4 h-4" fill="currentColor" />
                         </button>
                       </div>
-                      <div v-if="f.movie_title" class="text-[11px] text-fg-3 mt-0.5 flex items-center gap-1 truncate">
-                        <Film class="w-2.5 h-2.5 text-fg-4 shrink-0" />
-                        <span class="truncate" :title="favFilmFull(f)">出处: {{ favFilmTitle(f) }}</span>
+                      <div v-if="f.movie_title" class="text-[11px] text-fg-3 mt-1 flex items-center gap-1 truncate">
+                        <Film class="w-3 h-3 text-fg-4 shrink-0" />
+                        <span
+                          class="truncate hover:text-accent hover:underline"
+                          :title="favFilmFull(f)"
+                          @click.stop="f.movie_id && openMovieDetailById(f.movie_id)"
+                        >
+                          出处: {{ favFilmTitle(f) }}
+                        </span>
+                      </div>
+                      <div v-else class="text-[10px] text-fg-5 mt-1 flex items-center gap-1 italic">
+                        <span>独立收录分集</span>
                       </div>
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-fg-4">
-                      <span v-if="f.studio_name" class="truncate max-w-[120px]" :title="f.studio_name">{{ f.studio_name }}</span>
-                      <span v-if="f.has_zh" class="text-success flex items-center gap-0.5 shrink-0">
-                        <Languages class="w-2.5 h-2.5" />中
+                    <div class="flex items-center gap-2 text-[11px] text-fg-4">
+                      <span v-if="f.studio_name" class="truncate max-w-[150px] font-medium" :title="f.studio_name">{{ f.studio_name }}</span>
+                      <span v-if="f.has_zh" class="text-success flex items-center gap-0.5 shrink-0 text-[10px] font-bold">
+                        <Languages class="w-3 h-3" />中
                       </span>
                     </div>
                   </div>
@@ -2672,13 +2958,42 @@ onUnmounted(() => {
 
         <!-- 6. Settings & Cache Tab -->
         <div v-else-if="currentTab === 'settings'" class="max-w-3xl space-y-6">
-          <h1 class="text-xl font-bold text-fg tracking-tight">存储、缓存与系统设置</h1>
+          <div class="flex items-center justify-between border-b border-line pb-4 flex-wrap gap-4">
+            <div>
+              <h1 class="text-xl md:text-2xl font-bold text-fg tracking-tight">存储、缓存与系统设置</h1>
+              <p class="text-xs text-fg-4 mt-1">管理外观主题、图标方案、界面语言、本地数据库与隐私配置</p>
+            </div>
+          </div>
 
-          <!-- Section 0: 外观. Three styles × dark/light, flat, plus 跟随系统. The
-               swatch strip is inline-styled because it draws colours this page is not
-               wearing — a preview of 经典·浅 has to be drawn in 经典·浅 while the
-               settings panel is still 经典·暗. -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
+          <!-- Subcategory Capsule Switcher -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <button
+              v-for="st in [
+                { id: 'all', labelKey: 'settings.all', label: '全部设置', icon: SlidersHorizontal },
+                { id: 'appearance', labelKey: 'settings.appearance', label: '外观与图标', icon: Palette },
+                { id: 'localization', labelKey: 'settings.localization', label: '语言与本地化', icon: Globe },
+                { id: 'data', labelKey: 'settings.data', label: '数据与存储', icon: HardDrive },
+                { id: 'privacy', labelKey: 'settings.privacy', label: '隐私与安全', icon: Shield },
+              ]"
+              :key="st.id"
+              @click="settingsSubTab = (st.id as SettingsSubTab)"
+              :class="[
+                'px-3.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer shadow-xs',
+                settingsSubTab === st.id
+                  ? 'bg-accent-fill text-on-fill border-accent shadow-sm'
+                  : 'bg-surface-2/70 text-fg-3 border-line hover:text-fg hover:bg-surface-2'
+              ]"
+            >
+              <component :is="st.icon" class="w-3.5 h-3.5" />
+              <span>{{ t(st.labelKey, st.label) }}</span>
+            </button>
+          </div>
+
+          <!-- Section 0: 外观. Three styles × dark/light, flat, plus 跟随系统. -->
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'appearance'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4"
+          >
             <div class="flex items-center gap-3">
               <Palette class="w-5 h-5 text-accent" />
               <div>
@@ -2718,13 +3033,126 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- Section 0.1: App Icon & Branding -->
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'appearance'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4"
+          >
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-3">
+                <Sparkles class="w-5 h-5 text-accent" />
+                <div>
+                  <div class="text-sm font-bold text-fg">应用图标方案 (App Icon)</div>
+                  <div class="text-xs text-fg-3">提供四套独具文化认同与典藏质感的定制图标设计，支持一键切换与预览（默认预设方案 A）</div>
+                </div>
+              </div>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-accent-fill/15 text-accent font-semibold border border-accent-fill/30">
+                当前生效: {{ ICON_SCHEMES.find(s => s.id === currentIconScheme)?.name.split(' ')[0] }}
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div
+                v-for="scheme in ICON_SCHEMES"
+                :key="scheme.id"
+                @click="setIconScheme(scheme.id)"
+                class="relative p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3"
+                :class="currentIconScheme === scheme.id
+                  ? 'bg-accent-fill/10 border-accent shadow-md shadow-accent-fill/10 ring-1 ring-accent/30'
+                  : 'bg-surface border-line hover:border-line-strong hover:bg-surface-2/40'"
+              >
+                <!-- Card Header with Icon Preview -->
+                <div class="flex items-start gap-4">
+                  <div class="shrink-0 relative group">
+                    <AppIcon
+                      :scheme="scheme.id"
+                      :size="64"
+                      class="rounded-2xl shadow-lg border border-line/40 group-hover:scale-105 transition-transform"
+                    />
+                    <div
+                      v-if="currentIconScheme === scheme.id"
+                      class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-accent text-on-fill flex items-center justify-center shadow"
+                    >
+                      <Check class="w-3 h-3 stroke-[3]" />
+                    </div>
+                  </div>
+
+                  <div class="min-w-0 flex-1 space-y-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-xs font-bold text-fg tracking-tight">{{ scheme.name }}</span>
+                      <span
+                        v-if="scheme.badge"
+                        class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30"
+                      >
+                        {{ scheme.badge }}
+                      </span>
+                    </div>
+                    <div class="text-[11px] font-mono text-fg-4">{{ scheme.subtitle }}</div>
+                    <div class="flex items-center gap-2 text-[11px] text-fg-3 flex-wrap pt-0.5">
+                      <span class="px-1.5 py-0.5 rounded bg-surface-2 border border-line text-[10px] text-fg-3">
+                        {{ scheme.style }}
+                      </span>
+                      <span class="text-[10px] text-accent-soft font-medium">
+                        防窥: {{ '★'.repeat(scheme.stars) + '☆'.repeat(5 - scheme.stars) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Description -->
+                <p class="text-xs text-fg-3 leading-relaxed">
+                  {{ scheme.description }}
+                </p>
+
+                <!-- Footer tags & action -->
+                <div class="flex items-center justify-between pt-1 border-t border-line/40 text-[11px]">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span
+                      v-for="tag in scheme.tags"
+                      :key="tag"
+                      class="text-[10px] text-fg-4"
+                    >
+                      #{{ tag }}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button
+                      @click.stop="downloadIconFile(scheme.id, 'png')"
+                      class="text-[11px] text-accent hover:underline flex items-center gap-1 shrink-0"
+                      title="下载高清 PNG 图标"
+                    >
+                      <Download class="w-3 h-3" />
+                      <span>PNG</span>
+                    </button>
+                    <span class="text-fg-4">·</span>
+                    <button
+                      @click.stop="downloadIconFile(scheme.id, 'svg')"
+                      class="text-[11px] text-fg-3 hover:text-accent hover:underline flex items-center gap-1 shrink-0"
+                      title="下载矢量 SVG 图标"
+                    >
+                      <span>SVG</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-xs text-fg-4 flex items-center gap-2 pt-1">
+              <Info class="w-3.5 h-3.5 text-fg-4 shrink-0" />
+              <span>所选图标将即时在应用导航栏、标签页中更新生效。您也可点击「下载矢量」获取源文件用于替换 macOS 应用与程序坞 (Dock) 图标。</span>
+            </div>
+          </div>
+
           <!-- Section 0.5: Language & Localization -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5">
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'localization'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5"
+          >
             <div class="flex items-center gap-3">
               <Globe class="w-5 h-5 text-accent" />
               <div>
                 <div class="text-sm font-bold text-fg">语言与本地化</div>
-                <div class="text-xs text-fg-3">支持 7 种界面菜单语言，以及大模型自动翻译目标语言配置</div>
+                <div class="text-xs text-fg-3">支持 7 种界面菜单语言，即时切换界面文字</div>
               </div>
             </div>
 
@@ -2749,39 +3177,13 @@ onUnmounted(() => {
                 </button>
               </div>
             </div>
-
-            <!-- LLM Translation Target Language -->
-            <div class="space-y-2 pt-2 border-t border-line/60">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-xs font-semibold text-fg-2">大模型自动翻译目标语言</div>
-                  <div class="text-[11px] text-fg-4">在使用大模型翻译剧情简介与分集信息时的输出目标语种</div>
-                </div>
-              </div>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button
-                  v-for="target in TARGET_TRANSLATION_LANGUAGES"
-                  :key="target.code"
-                  @click="savePluginsConfig({
-                    translationConfig: {
-                      ...pluginsConfig.translationConfig,
-                      targetLanguage: target.code
-                    }
-                  })"
-                  class="p-2 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer"
-                  :class="pluginsConfig.translationConfig.targetLanguage === target.code
-                    ? 'bg-accent-fill/15 border-accent-fill/50 text-accent font-bold shadow-sm'
-                    : 'bg-surface border-line hover:border-line-strong text-fg-3 hover:text-fg-2'"
-                >
-                  <span>{{ target.label }}</span>
-                  <Check v-if="pluginsConfig.translationConfig.targetLanguage === target.code" class="w-3.5 h-3.5 text-accent" />
-                </button>
-              </div>
-            </div>
           </div>
 
           <!-- Section 0.6: Privacy & History -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5">
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'privacy'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5"
+          >
             <div class="flex items-center gap-3">
               <Shield class="w-5 h-5 text-accent" />
               <div>
@@ -2876,7 +3278,10 @@ onUnmounted(() => {
           </div>
 
           <!-- Section 1: SQLite Engine & Stats -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5">
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'data'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5"
+          >
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-3">
                 <HardDrive class="w-5 h-5 text-accent" />
@@ -3030,7 +3435,10 @@ onUnmounted(() => {
           </div>
 
           <!-- Section 2: Offline Image Disk Cache System -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'data'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4"
+          >
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <ImageIcon class="w-5 h-5 text-accent" />
@@ -3092,7 +3500,10 @@ onUnmounted(() => {
           </div>
 
           <!-- Section 3 Notice: Merged into Plugins tab -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line flex items-center justify-between gap-4">
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'localization'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line flex items-center justify-between gap-4"
+          >
             <div class="flex items-center gap-3">
               <Languages class="w-5 h-5 text-accent" />
               <div>
@@ -3112,12 +3523,11 @@ onUnmounted(() => {
 
           <!--
             Section 3b: Performer attribute glossary.
-
-            Separate from the synopsis job above: this is a one-off translation of a
-            closed vocabulary rather than a per-film queue, and its result is stored
-            in a lookup table the client reads on startup.
           -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'localization'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4"
+          >
             <div class="flex items-center gap-3">
               <Sparkles class="w-5 h-5 text-accent" />
               <div>
@@ -3170,44 +3580,102 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Section 4: Data Import & Export (Custom Backup & Migration) -->
-          <div class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4">
+          <!-- Section 4: Data Import & Export (Database Package & Personal Migration) -->
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'data'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-5"
+          >
             <div class="flex items-center gap-3">
               <Download class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-fg">个人扩展数据备份与恢复</div>
-                <div class="text-xs text-fg-3">导出或导入所有自定义标签、私密星级评分、观看状态、私密笔记与全部收藏</div>
+                <div class="text-sm font-bold text-fg">数据导入、导出与数据库备份中心</div>
+                <div class="text-xs text-fg-3">支持完整 SQLite 数据库打包导出/导入，以及轻量个人扩展数据 (JSON) 的跨设备迁移</div>
               </div>
             </div>
 
+            <!-- Database Backup Messages -->
+            <div v-if="dbBackupStatusMsg" class="p-3 rounded-xl bg-accent-fill/10 border border-accent-fill/20 text-xs text-accent-soft flex items-center gap-2">
+              <Sparkles class="w-4 h-4 shrink-0 text-accent" />
+              <span>{{ dbBackupStatusMsg }}</span>
+            </div>
+
+            <!-- User Data Import Messages -->
             <div v-if="importStatusMsg" class="p-3 rounded-xl bg-success-fill/10 border border-success-fill/20 text-xs text-success-soft">
               {{ importStatusMsg }}
             </div>
 
-            <div class="flex items-center gap-3 pt-2">
-              <button
-                @click="handleExportUserData"
-                class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg font-medium text-xs border border-line-strong flex items-center gap-2 transition"
-              >
-                <Download class="w-3.5 h-3.5 text-accent" />
-                <span>导出备份数据 (JSON)</span>
-              </button>
+            <!-- Two Sub-panels Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              <!-- Panel A: Full Database Package (.db) -->
+              <div class="p-4 rounded-xl bg-surface-2/60 border border-line-strong space-y-3 flex flex-col justify-between">
+                <div>
+                  <div class="text-xs font-bold text-fg flex items-center gap-1.5">
+                    <HardDrive class="w-4 h-4 text-purple-400" />
+                    <span>完整离线数据库打包 (.db)</span>
+                  </div>
+                  <p class="text-[11px] text-fg-4 mt-1 leading-relaxed">
+                    包含所有影视长片、演员档案、分集剧照索引、片商分类以及 AI 中文翻译库的完整数据库。
+                  </p>
+                </div>
 
-              <button
-                @click="triggerImportFileInput"
-                class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg font-medium text-xs border border-line-strong flex items-center gap-2 transition"
-              >
-                <Upload class="w-3.5 h-3.5 text-accent" />
-                <span>导入恢复数据 (JSON)</span>
-              </button>
-              <input ref="fileInputRef" type="file" accept=".json" class="hidden" @change="handleImportFile" />
+                <div class="flex items-center gap-2 flex-wrap pt-1">
+                  <button
+                    @click="handleExportDatabase"
+                    :disabled="isDbExporting"
+                    class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <Download class="w-3.5 h-3.5 text-purple-400" />
+                    <span>{{ isDbExporting ? '打包中…' : '打包导出数据库 (.db)' }}</span>
+                  </button>
+
+                  <button
+                    @click="handleImportDatabase"
+                    class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Upload class="w-3.5 h-3.5 text-purple-400" />
+                    <span>载入外部数据库 (.db)</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Panel B: Personal User Data (JSON) -->
+              <div class="p-4 rounded-xl bg-surface-2/60 border border-line-strong space-y-3 flex flex-col justify-between">
+                <div>
+                  <div class="text-xs font-bold text-fg flex items-center gap-1.5">
+                    <Bookmark class="w-4 h-4 text-accent" />
+                    <span>个人扩展标记与片单 (JSON)</span>
+                  </div>
+                  <p class="text-[11px] text-fg-4 mt-1 leading-relaxed">
+                    仅导出轻量用户个人数据（私密评星、想看/已看状态、自定义标签、私密笔记与收藏夹）。
+                  </p>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap pt-1">
+                  <button
+                    @click="handleExportUserData"
+                    class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Download class="w-3.5 h-3.5 text-accent" />
+                    <span>导出标记备份 (JSON)</span>
+                  </button>
+
+                  <button
+                    @click="triggerImportFileInput"
+                    class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Upload class="w-3.5 h-3.5 text-accent" />
+                    <span>导入恢复标记 (JSON)</span>
+                  </button>
+                  <input ref="fileInputRef" type="file" accept=".json" class="hidden" @change="handleImportFile" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- 7. Local Analytics Tab -->
         <div v-else-if="currentTab === 'analytics'" class="space-y-6">
-          <AnalyticsView />
+          <AnalyticsView @open-trophies="currentTab = 'trophies'" />
         </div>
 
         <!-- 8. Plugins Center Tab -->
@@ -3232,9 +3700,10 @@ onUnmounted(() => {
       :is-top="modalStack[modalStack.length - 1] === 'movie'"
       :auto-translate="translateMode === 'single'"
       @close="closeMovieDetail"
+      @select-movie="openMovieDetailById"
       @select-performer="openPerformerDetail"
       @filter-studio="filterByStudio"
-      @filter-director="filterByDirector"
+      @filter-director="(name) => openDirectorDetail({ name })"
       @toggle-favorite="toggleFavorite"
       @toggle-entity-favorite="toggleFavoriteEntity"
       @user-data-changed="onUserDataChanged"
@@ -3251,6 +3720,7 @@ onUnmounted(() => {
       @close="closePerformerDetail"
       @select-movie="openMovieDetail"
       @select-movie-id="openMovieDetailById"
+      @select-episode-id="openEpisodeDetailById"
       @toggle-favorite="togglePerformerFavorite"
       @toggle-entity-favorite="toggleFavoriteEntity"
       @filter-studio="filterByStudio"
@@ -3286,6 +3756,7 @@ onUnmounted(() => {
       @toggle-favorite="toggleDirectorFavorite"
       @toggle-entity-favorite="toggleFavoriteEntity"
       @open-studio="openStudioLibrary"
+      @filter-director="filterByDirector"
     />
 
     <EpisodeDetailModal
@@ -3301,6 +3772,16 @@ onUnmounted(() => {
       @select-performer="openPerformerDetail"
       @filter-studio="filterByStudio"
       @toggle-favorite="toggleEpisodeFavorite"
+    />
+
+    <SeriesModal
+      v-if="showAppSeriesModal && seriesModalData"
+      :series="seriesModalData"
+      :z-index="10000"
+      :is-favorite="isFavorite('series', seriesModalData.root_title)"
+      @close="showAppSeriesModal = false"
+      @select-movie="(id) => { showAppSeriesModal = false; openMovieDetailById(id); }"
+      @toggle-favorite="(rootTitle) => toggleFavoriteEntity('series', rootTitle)"
     />
 
     <!--
@@ -3343,5 +3824,14 @@ onUnmounted(() => {
 
     <!-- PSN Fluid Glass Trophy Unlock Toast Notification -->
     <TrophyToast />
+
+    <!-- First launch / Folder permission explanation modal -->
+    <PermissionExplainModal
+      :show="showPermissionModal"
+      :scanning="dbScanning"
+      @close="showPermissionModal = false"
+      @pick-file="handlePickDbFile"
+      @scan-folders="handleScanDatabases"
+    />
   </div>
 </template>

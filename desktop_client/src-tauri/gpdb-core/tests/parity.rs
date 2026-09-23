@@ -1184,8 +1184,8 @@ fn episode_library_parameters_are_not_swapped() {
         count1(
             &tx,
             "SELECT count(*) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id \
-             WHERE (m.title LIKE ?1 ESCAPE '\\' OR e.description LIKE ?1 ESCAPE '\\' \
-             OR e.description_zh LIKE ?1 ESCAPE '\\')",
+             WHERE (m.title LIKE ?1 ESCAPE '\\' OR e.title LIKE ?1 ESCAPE '\\' \
+             OR e.description LIKE ?1 ESCAPE '\\' OR e.description_zh LIKE ?1 ESCAPE '\\')",
             format!("%{}%", q)
         )
     );

@@ -2,7 +2,7 @@
 
 use rusqlite::{params, Connection};
 
-use crate::models::{DirectorRef, FilterArgs, Movie, MoviesResponse, PerformerRef};
+use crate::models::{DirectorRef, FilterArgs, Movie, MoviesResponse, MovieSeriesResponse, PerformerRef};
 use crate::sql::{
     collapse_categories, facet_match_sql, map_episode_row, map_movie_row, CAST_SQL,
     DIRECTOR_MATCH_SQL, DIRECTOR_SEARCH_SQL, EPISODE_SQL, MOVIE_COLUMNS,
@@ -216,3 +216,168 @@ pub fn get_categories(conn: &Connection) -> Result<Vec<String>> {
     let raw: Vec<(String, i64)> = rows.filter_map(|r| r.ok()).collect();
     Ok(collapse_categories(&raw))
 }
+
+/// Helper to extract potential series root title.
+/// e.g. "Fire Island Cruising 2: Boys on Fire" -> "Fire Island Cruising"
+/// "Humungous 1" -> "Humungous"
+/// "Raw Force: Part 1" -> "Raw Force"
+pub fn extract_series_root(title: &str) -> Option<String> {
+    let t = title.trim();
+    if t.len() < 3 {
+        return None;
+    }
+
+    fn is_num_or_roman(token: &str) -> bool {
+        let clean = token.trim_matches(|c: char| !c.is_alphanumeric());
+        if clean.is_empty() {
+            return false;
+        }
+        if clean.chars().all(|c| c.is_ascii_digit()) {
+            return true;
+        }
+        let lower = clean.to_ascii_lowercase();
+        matches!(
+            lower.as_str(),
+            "i" | "ii" | "iii" | "iv" | "v" | "vi" | "vii" | "viii" | "ix" | "x" | "xi" | "xii"
+        )
+    }
+
+    // 1. Check for subtitle / chapter separators: ": ", " - ", " – ", " — ", ", "
+    for sep in &[": ", " - ", " – ", " — ", ", "] {
+        if let Some(pos) = t.find(sep) {
+            let left = t[..pos].trim();
+            let right = t[pos + sep.len()..].trim();
+            
+            let right_lower = right.to_ascii_lowercase();
+            if right_lower.starts_with("part")
+                || right_lower.starts_with("vol")
+                || right_lower.starts_with("pt")
+                || right_lower.starts_with("chapter")
+                || right_lower.starts_with("episode")
+                || right_lower.starts_with("ep")
+            {
+                if left.len() >= 3 {
+                    return Some(left.to_string());
+                }
+            }
+
+            // Left might end with a number (e.g. "Fire Island Cruising 2: Boys on Fire")
+            if let Some(last_space) = left.rfind(' ') {
+                let candidate_num = &left[last_space + 1..];
+                if is_num_or_roman(candidate_num) {
+                    let root = left[..last_space].trim();
+                    if root.len() >= 3 {
+                        return Some(root.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Check if title ends with "Part X", "Vol. X", "Volume X", "Chapter X"
+    let tokens: Vec<&str> = t.split_whitespace().collect();
+    if tokens.len() >= 2 {
+        let last = tokens[tokens.len() - 1];
+        let second_last = tokens[tokens.len() - 2].to_ascii_lowercase();
+        let second_last_clean = second_last.trim_end_matches('.');
+        if (second_last_clean == "part"
+            || second_last_clean == "vol"
+            || second_last_clean == "volume"
+            || second_last_clean == "pt"
+            || second_last_clean == "chapter"
+            || second_last_clean == "episode"
+            || second_last_clean == "ep")
+            && is_num_or_roman(last)
+        {
+            let root = tokens[..tokens.len() - 2].join(" ");
+            let root_clean = root.trim_end_matches(|c: char| c == ':' || c == '-' || c == ',' || c == '–' || c == '—').trim();
+            if root_clean.len() >= 3 {
+                return Some(root_clean.to_string());
+            }
+        }
+
+        // 3. Check if title ends with a number or Roman numeral: e.g. "Humungous 1"
+        if is_num_or_roman(last) {
+            let root = tokens[..tokens.len() - 1].join(" ");
+            let root_clean = root.trim_end_matches(|c: char| c == ':' || c == '-' || c == ',' || c == '–' || c == '—').trim();
+            if root_clean.len() >= 3 {
+                return Some(root_clean.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+pub fn get_movie_series(conn: &Connection, movie_id: i64) -> Result<Option<MovieSeriesResponse>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, title, studio_id, studio_name FROM movies WHERE id = ?1"
+    ).map_err(|e| e.to_string())?;
+
+    let movie_row = stmt.query_row(params![movie_id], |r| {
+        Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<i64>>(2)?, r.get::<_, Option<String>>(3)?))
+    });
+
+    let (_, title, studio_id, studio_name) = match movie_row {
+        Ok(m) => m,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+        Err(e) => return Err(e.into()),
+    };
+
+    let root = match extract_series_root(&title) {
+        Some(r) => r,
+        None => return Ok(None),
+    };
+
+    let like_space = format!("{} %", root);
+    let like_colon = format!("{}:%", root);
+    let like_dash = format!("{}-%", root);
+    let like_comma = format!("{},%", root);
+
+    let query_sql = format!(
+        "SELECT {} FROM movies m \
+         WHERE (m.studio_id = ?1 OR (?1 IS NULL AND (m.studio_name = ?2 OR (?2 IS NULL AND m.studio_name IS NULL)))) \
+           AND (m.title = ?3 OR m.title LIKE ?4 OR m.title LIKE ?5 OR m.title LIKE ?6 OR m.title LIKE ?7) \
+         ORDER BY m.release_year ASC, m.title ASC",
+        MOVIE_COLUMNS
+    );
+
+    let mut list_stmt = conn.prepare(&query_sql).map_err(|e| e.to_string())?;
+    let rows = list_stmt.query_map(
+        params![studio_id, studio_name, root, like_space, like_colon, like_dash, like_comma],
+        map_movie_row
+    ).map_err(|e| e.to_string())?;
+
+    let items: Vec<Movie> = rows.filter_map(|r| r.ok()).collect();
+
+    if items.len() >= 2 {
+        Ok(Some(MovieSeriesResponse {
+            root_title: root,
+            studio_name,
+            items,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_series_root() {
+        assert_eq!(extract_series_root("Humungous 1").as_deref(), Some("Humungous"));
+        assert_eq!(extract_series_root("Humungous 2").as_deref(), Some("Humungous"));
+        assert_eq!(extract_series_root("Fire Island Cruising 1").as_deref(), Some("Fire Island Cruising"));
+        assert_eq!(extract_series_root("Fire Island Cruising 2: Boys on Fire").as_deref(), Some("Fire Island Cruising"));
+        assert_eq!(extract_series_root("To Moscow with Love 1").as_deref(), Some("To Moscow with Love"));
+        assert_eq!(extract_series_root("Breeding Season 1").as_deref(), Some("Breeding Season"));
+        assert_eq!(extract_series_root("Raw Force: Part 1").as_deref(), Some("Raw Force"));
+        assert_eq!(extract_series_root("The Best of Stud Vol. 2").as_deref(), Some("The Best of Stud"));
+        assert_eq!(extract_series_root("Boys Behind Bars 1").as_deref(), Some("Boys Behind Bars"));
+        assert_eq!(extract_series_root("SWEAT 10").as_deref(), Some("SWEAT"));
+        assert_eq!(extract_series_root("Bi-Guy 1").as_deref(), Some("Bi-Guy"));
+    }
+}
+

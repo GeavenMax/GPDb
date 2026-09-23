@@ -61,7 +61,7 @@ pub fn get_favorites(conn: &Connection) -> Result<FavoritesResponse> {
     let mut stmt = conn
         .prepare(
             "SELECT f.entity_key, f.created_at, e.title, e.thumbnail_url, e.movie_id, \
-                    m.title, m.studio_name, e.description_zh IS NOT NULL, m.title_zh \
+                    m.title, COALESCE(m.studio_name, e.studio_name), e.description_zh IS NOT NULL, m.title_zh \
              FROM user_favorites f JOIN episodes e ON e.id = CAST(f.entity_key AS INTEGER) \
              LEFT JOIN movies m ON m.id = e.movie_id \
              WHERE f.entity_type = 'episode' ORDER BY f.created_at DESC",
@@ -144,6 +144,55 @@ pub fn get_favorites(conn: &Connection) -> Result<FavoritesResponse> {
             .map_err(|e| e.to_string())?;
         out.director = rows.filter_map(|r| r.ok()).collect();
         out.counts.insert("director".into(), out.director.len() as i64);
+    }
+
+    // Series collections.
+    {
+        let table_exists: bool = conn
+            .query_row(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='series_collections'",
+                [],
+                |_| Ok(true),
+            )
+            .unwrap_or(false);
+
+        let sql = if table_exists {
+            "SELECT f.entity_key, f.created_at, s.root_title, s.studio_name, s.movie_count, s.cover_url, s.sample_covers \
+             FROM user_favorites f \
+             LEFT JOIN series_collections s ON s.root_title = f.entity_key \
+             WHERE f.entity_type = 'series' \
+             ORDER BY f.created_at DESC"
+        } else {
+            "SELECT f.entity_key, f.created_at, f.entity_key, NULL, 0, NULL, NULL \
+             FROM user_favorites f \
+             WHERE f.entity_type = 'series' \
+             ORDER BY f.created_at DESC"
+        };
+
+        if let Ok(mut stmt) = conn.prepare(sql) {
+            if let Ok(rows) = stmt.query_map([], |r| {
+                let key: String = r.get(0)?;
+                let root_title: Option<String> = r.get(2)?;
+                let studio_name: Option<String> = r.get(3)?;
+                let works_count: Option<i64> = r.get(4)?;
+                let cover_full: Option<String> = r.get(5)?;
+                let covers_raw: Option<String> = r.get(6)?;
+                let covers: Option<Vec<String>> = covers_raw.and_then(|raw| serde_json::from_str(&raw).ok());
+                Ok(FavoriteItem {
+                    key: key.clone(),
+                    created_at: r.get(1)?,
+                    title: root_title.or(Some(key.clone())),
+                    studio_name,
+                    works_count,
+                    cover_full,
+                    covers,
+                    ..Default::default()
+                })
+            }) {
+                out.series = rows.filter_map(|r| r.ok()).collect();
+            }
+        }
+        out.counts.insert("series".into(), out.series.len() as i64);
     }
 
     // Wishlist: movies where status = 'wishlist' in user_movie_data

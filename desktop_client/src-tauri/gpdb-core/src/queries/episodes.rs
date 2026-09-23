@@ -28,19 +28,15 @@ pub fn get_episode_library(conn: &Connection,
     if let Some(q) = query {
         let q = q.trim().to_string();
         if !q.is_empty() {
-            // e.title is not searched. It only ever holds a placeholder for a film's
-            // scene (the movie page's scene list carries no title, so we store "").
-            // Standalone episodes do get a real title from the `coep` endpoint, but they
-            // are reachable through `m.title`/description for now — adding `e.title` here
-            // is a deliberate follow-up, not an oversight.
             conditions.push(
-                "(m.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\' \
-                 OR e.description_zh LIKE ? ESCAPE '\\')"
+                "(m.title LIKE ? ESCAPE '\\' OR e.title LIKE ? ESCAPE '\\' \
+                 OR e.description LIKE ? ESCAPE '\\' OR e.description_zh LIKE ? ESCAPE '\\')"
                     .to_string(),
             );
             // ESCAPE so a literal % or _ typed into the search box stays literal.
             let escaped = q.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
             let like = format!("%{}%", escaped);
+            params_vec.push(Box::new(like.clone()));
             params_vec.push(Box::new(like.clone()));
             params_vec.push(Box::new(like.clone()));
             params_vec.push(Box::new(like));
@@ -92,7 +88,8 @@ pub fn get_episode_library(conn: &Connection,
                 (SELECT count(*) FROM episodes e2 \
                   WHERE e2.movie_id = e.movie_id AND e2.id <= e.id), \
                 (SELECT count(*) FROM episodes e2 WHERE e2.movie_id = e.movie_id), \
-                m.title_zh \
+                m.title_zh, \
+                e.release_date \
          {} {} ORDER BY {} LIMIT ? OFFSET ?",
         from_clause, where_clause, sort_clause
     );
@@ -117,6 +114,7 @@ pub fn get_episode_library(conn: &Connection,
                 movie_title_zh: r.get(12)?,
                 studio_name: r.get(8)?,
                 release_year: r.get(9)?,
+                release_date: r.get(13)?,
                 episode_ordinal: r.get(10)?,
                 episode_count: r.get(11)?,
                 performers: Vec::new(),
@@ -163,4 +161,61 @@ pub fn get_episode_library(conn: &Connection,
     }
 
     Ok(EpisodeLibrary { items, total })
+}
+
+/// Retrieve full summary for a single episode by ID (including standalone episodes).
+pub fn get_episode_detail(conn: &Connection, episode_id: i64) -> Result<EpisodeSummary> {
+    let sql = "SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh, \
+               e.action_notes, m.title, \
+               COALESCE(m.studio_name, e.studio_name), \
+               COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)), \
+               (SELECT count(*) FROM episodes e2 \
+                 WHERE e2.movie_id = e.movie_id AND e2.id <= e.id), \
+               (SELECT count(*) FROM episodes e2 WHERE e2.movie_id = e.movie_id), \
+               m.title_zh, \
+               e.release_date \
+        FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id \
+        WHERE e.id = ?";
+
+    let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+    let mut ep = stmt
+        .query_row([episode_id], |r| {
+            Ok(EpisodeSummary {
+                id: r.get(0)?,
+                movie_id: r.get(1)?,
+                title: r.get(2)?,
+                thumbnail_url: r.get(3)?,
+                description: r.get(4)?,
+                description_zh: r.get(5)?,
+                action_notes: r.get(6)?,
+                movie_title: r.get(7)?,
+                movie_title_zh: r.get(12)?,
+                studio_name: r.get(8)?,
+                release_year: r.get(9)?,
+                release_date: r.get(13)?,
+                episode_ordinal: r.get(10)?,
+                episode_count: r.get(11)?,
+                performers: Vec::new(),
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut cast_stmt = conn
+        .prepare(
+            "SELECT performer_id, performer_name FROM episode_performers \
+             WHERE episode_id = ? ORDER BY performer_id",
+        )
+        .map_err(|e| e.to_string())?;
+    let cast_rows = cast_stmt
+        .query_map([episode_id], |r| {
+            Ok(EpisodeCastRef {
+                id: r.get(0)?,
+                name: r.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    ep.performers = cast_rows.filter_map(|r| r.ok()).collect();
+
+    Ok(ep)
 }

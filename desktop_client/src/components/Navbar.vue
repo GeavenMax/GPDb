@@ -4,6 +4,8 @@ import { Search, SlidersHorizontal, RefreshCw, X, LayoutGrid, List, Clock, Trash
 import { privacySettings } from '../services/privacy';
 import { analytics, recordSearch, removeSearchHistoryItem, clearSearchHistory } from '../services/analytics';
 import { t } from '../i18n';
+import AppIcon from './AppIcon.vue';
+import { currentIconScheme } from '../utils/appIcon';
 
 const props = defineProps<{
   modelValue: string;
@@ -88,12 +90,7 @@ onUnmounted(() => {
   <header class="chrome-bar h-16 border-b border-line sticky top-0 z-30 px-6 flex items-center justify-between gap-4">
     <!-- Brand -->
     <div class="flex items-center gap-3 select-none">
-      <!-- Same light as the app icon: lit from the top-left, deepening to the bottom-right.
-           The gradient used to run to-tr, which put the darkest tone top-right — the exact
-           opposite of the icon, so the two G's read as unrelated marks. -->
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-2 via-accent-fill to-accent-deep flex items-center justify-center shadow-lg shadow-accent-fill/20 font-black text-on-fill tracking-tighter text-lg">
-        G
-      </div>
+      <AppIcon :scheme="currentIconScheme" :size="36" class="rounded-xl shadow-md shrink-0" />
       <div>
         <div class="font-bold text-fg text-base tracking-wide">
           GPDb
@@ -201,7 +198,7 @@ onUnmounted(() => {
         ]"
       >
         <SlidersHorizontal class="w-3.5 h-3.5" />
-        <span>筛选</span>
+        <span>{{ t('common.filter', '筛选') }}</span>
         <span v-if="filterActive" class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
       </button>
 

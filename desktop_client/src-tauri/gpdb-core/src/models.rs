@@ -65,6 +65,7 @@ pub struct Episode {
     pub movie_title_zh: Option<String>,
     pub studio_name: Option<String>,
     pub release_year: Option<i64>,
+    pub release_date: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -99,6 +100,32 @@ pub struct Movie {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MoviesResponse {
     pub items: Vec<Movie>,
+    pub total: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct MovieSeriesResponse {
+    pub root_title: String,
+    pub studio_name: Option<String>,
+    pub items: Vec<Movie>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SeriesCollectionItem {
+    pub id: i64,
+    pub root_title: String,
+    pub studio_name: Option<String>,
+    pub movie_count: i64,
+    pub cover_url: Option<String>,
+    pub sample_covers: Option<Vec<String>>,
+    pub year_start: Option<i64>,
+    pub year_end: Option<i64>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SeriesCollectionsResponse {
+    pub items: Vec<SeriesCollectionItem>,
     pub total: i64,
 }
 
@@ -161,6 +188,7 @@ pub struct EpisodeSummary {
     pub movie_title_zh: Option<String>,
     pub studio_name: Option<String>,
     pub release_year: Option<i64>,
+    pub release_date: Option<String>,
     /// Rank of this scene inside its own film, 1-based, by id order — the site names
     /// every episode "Episode #<its own row id>", so the title carries no position.
     pub episode_ordinal: i64,
@@ -319,6 +347,7 @@ pub struct FavoriteItem {
     pub movie_id: Option<i64>,
     pub movie_title: Option<String>,
     pub works_count: Option<i64>,
+    pub covers: Option<Vec<String>>,
     pub rating: Option<f64>,
     pub status: Option<String>,
 }
@@ -330,6 +359,7 @@ pub struct FavoritesResponse {
     pub studio: Vec<FavoriteItem>,
     pub director: Vec<FavoriteItem>,
     pub episode: Vec<FavoriteItem>,
+    pub series: Vec<FavoriteItem>,
     pub wishlist: Vec<FavoriteItem>,
     pub watched: Vec<FavoriteItem>,
     pub counts: HashMap<String, i64>,
@@ -346,3 +376,54 @@ pub struct Glossaries {
     pub terms: HashMap<String, String>,
     pub categories: HashMap<String, String>,
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HomeSpotlightMovie {
+    pub id: i64,
+    pub title: String,
+    pub title_zh: Option<String>,
+    pub studio_name: Option<String>,
+    pub director_name: Option<String>,
+    pub release_year: Option<i64>,
+    pub cover_full: Option<String>,
+    pub cover_back: Option<String>,
+    pub description_zh: Option<String>,
+    pub description: Option<String>,
+    pub rating: Option<String>,
+    pub category: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HomeAnniversaryItem {
+    pub episode_id: i64,
+    pub episode_title: String,
+    pub release_date: String,
+    pub movie_id: Option<i64>,
+    pub movie_title: Option<String>,
+    pub movie_title_zh: Option<String>,
+    pub cover_full: Option<String>,
+    pub studio_name: Option<String>,
+    pub years_ago: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HomeFeaturedPerformer {
+    pub id: i64,
+    pub name: String,
+    pub image_url: Option<String>,
+    pub build: Option<String>,
+    pub hair: Option<String>,
+    pub works_count: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HomeFeedData {
+    pub spotlight_movies: Vec<HomeSpotlightMovie>,
+    pub on_this_day: Vec<HomeAnniversaryItem>,
+    pub star_spotlight: Vec<HomeFeaturedPerformer>,
+    pub total_movies: i64,
+    pub total_episodes: i64,
+    pub total_performers: i64,
+    pub total_studios: i64,
+}
+

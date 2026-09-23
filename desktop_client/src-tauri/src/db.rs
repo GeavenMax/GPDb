@@ -221,13 +221,29 @@ pub fn find_db_path() -> Option<PathBuf> {
         }
     }
 
-    // 5. Intelligent auto-detection across system
-    let candidates = scan_candidate_databases();
-    if let Some(best) = candidates.into_iter().next() {
-        let mut cfg = load_db_config();
-        cfg.custom_db_path = Some(best.to_string_lossy().to_string());
-        let _ = save_db_config(&cfg);
-        return Some(best);
+    // 5. Check Spotlight index via mdfind (macOS specific, fast, no folder TCC prompt)
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(output) = std::process::Command::new("mdfind")
+            .args(["kMDItemFSName == 'gevi.db'"])
+            .output()
+        {
+            if output.status.success() {
+                let text = String::from_utf8_lossy(&output.stdout);
+                for line in text.lines() {
+                    let trimmed = line.trim();
+                    if !trimmed.is_empty() {
+                        let p = PathBuf::from(trimmed);
+                        if is_valid_gevi_db(&p) {
+                            let mut cfg = load_db_config();
+                            cfg.custom_db_path = Some(p.to_string_lossy().to_string());
+                            let _ = save_db_config(&cfg);
+                            return Some(p);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     None
@@ -272,6 +288,7 @@ pub fn open_db() -> Result<Connection, String> {
         gpdb_core::migrate::ensure_schema(&conn).map_err(|e| {
             format!("Failed to upgrade the schema of {:?}: {}", path, e)
         })?;
+        let _ = gpdb_core::queries::series::ensure_series_index(&conn);
         migrated_paths().lock().unwrap().insert(key);
     }
 

@@ -133,10 +133,10 @@ function onRowClick() {
         <span class="text-sm font-bold text-accent-soft">{{ title }}</span>
         <div class="flex items-center gap-2 shrink-0">
           <span
-            v-if="showYear && episode.release_year"
+            v-if="showYear && (episode.release_date || episode.release_year)"
             class="text-[10px] text-fg-4 font-mono flex items-center gap-1"
           >
-            <Calendar class="w-2.5 h-2.5" /> {{ episode.release_year }}
+            <Calendar class="w-2.5 h-2.5" /> {{ episode.release_date || episode.release_year }}
           </span>
           <button
             v-if="pluginsConfig.btSearchEnabled && (episode.movie_title || episode.title)"

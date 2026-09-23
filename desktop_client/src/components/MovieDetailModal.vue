@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown, ExternalLink } from '@lucide/vue';
-import type { Movie, UserTag, FavoriteType } from '../types';
+import type { Movie, UserTag, FavoriteType, MovieSeriesResponse } from '../types';
 import EpisodeRow from './EpisodeRow.vue';
+import SeriesModal from './SeriesModal.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { titlePrimary, titleSecondary } from '../utils/bilingual';
 import { trCategory } from '../utils/glossary';
 import { api, IS_TAURI } from '../api';
-import { pluginsConfig, openBtSearch } from '../services/pluginManager';
+import { pluginsConfig, openBtSearch, openBftvMovie, openGoogleSearch } from '../services/pluginManager';
 
 const props = defineProps<{
   movie: Movie | null;
@@ -39,6 +40,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void;
+  (e: 'select-movie', movieId: number): void;
   (e: 'select-performer', performerId: number): void;
   (e: 'filter-studio', studioName: string): void;
   (e: 'filter-director', directorName: string): void;
@@ -70,6 +72,23 @@ const activeCoverIndex = ref(0);
 const showRatingCard = ref(false);
 const showPrivateNotes = ref(false);
 
+const seriesData = ref<MovieSeriesResponse | null>(null);
+const showSeriesModal = ref(false);
+
+async function loadSeries(id: number) {
+  seriesData.value = null;
+  try {
+    seriesData.value = await api.getMovieSeries(id);
+  } catch {
+    seriesData.value = null;
+  }
+}
+
+function onSelectSeriesMovie(id: number) {
+  showSeriesModal.value = false;
+  emit('select-movie', id);
+}
+
 // Synopses carry both the original English and (once translated) the Chinese text.
 const zhDescription = ref<string | null>(null);
 /**
@@ -98,6 +117,13 @@ watch(() => props.movie, (m) => {
   translateError.value = '';
   showRatingCard.value = false;
   showPrivateNotes.value = false;
+
+  if (m?.id) {
+    loadSeries(m.id);
+  } else {
+    seriesData.value = null;
+    showSeriesModal.value = false;
+  }
 
   // Single-translation mode: fill in this one film's synopsis as it is opened,
   // together with any episode synopses that came back with it.
@@ -172,6 +198,21 @@ const titleAlt = computed(() =>
 );
 /** Category, term by term — the column holds "Wrestling<br />J/O" as one value. */
 const categoryLabel = computed(() => trCategory(props.movie?.category));
+
+const displayReleaseDate = computed(() => {
+  if (!props.movie) return null;
+  if (props.movie.release_date) return props.movie.release_date;
+  if (props.movie.episodes && props.movie.episodes.length > 0) {
+    const dates = props.movie.episodes
+      .map(e => e.release_date)
+      .filter((d): d is string => Boolean(d && d.trim()));
+    if (dates.length > 0) {
+      dates.sort();
+      return dates[0];
+    }
+  }
+  return null;
+});
 
 // Hint for long synopses: they scroll inside their own box, which is not obvious
 // without a scrollbar, so the hint stays visible until the user reaches the end.
@@ -470,8 +511,8 @@ onUnmounted(() => {
           <!-- Metadata -->
           <div class="flex-1 space-y-4">
             <div class="flex items-center gap-2 flex-wrap">
-              <span v-if="movie.release_year" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-accent-fill/10 text-accent border border-accent-fill/30">
-                {{ movie.release_year }}
+              <span v-if="displayReleaseDate || movie.release_year" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-accent-fill/10 text-accent border border-accent-fill/30 font-mono">
+                {{ displayReleaseDate || movie.release_year }}
               </span>
               <span v-if="movie.duration_mins" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong flex items-center gap-1.5">
                 <Clock class="w-3.5 h-3.5" />
@@ -498,6 +539,20 @@ onUnmounted(() => {
               {{ titleMain }}
             </h1>
             <p v-if="titleAlt" class="text-sm text-fg-4 mt-0.5">{{ titleAlt }}</p>
+
+            <!-- Series Franchise Entry Badge / Button -->
+            <div v-if="seriesData && seriesData.items.length >= 2" class="pt-1">
+              <button
+                @click="showSeriesModal = true"
+                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-accent-fill/15 border border-accent-fill/30 text-accent hover:bg-accent-fill/25 transition text-xs font-semibold shadow-sm group cursor-pointer"
+                :title="`查看「${seriesData.root_title}」全系列共 ${seriesData.items.length} 部作品`"
+              >
+                <Film class="w-3.5 h-3.5 text-accent" />
+                <span>查看全系列作品 ({{ seriesData.items.length }}部)</span>
+                <span class="text-[10px] text-fg-4 font-normal">· {{ seriesData.root_title }}</span>
+                <span class="text-accent group-hover:translate-x-0.5 transition-transform">→</span>
+              </button>
+            </div>
 
             <!-- Studio & Director Pills (each filterable and favoritable) -->
             <div class="flex items-center gap-3 flex-wrap">
@@ -665,22 +720,43 @@ onUnmounted(() => {
                   <span>{{ userRating.toFixed(1) }} 星</span>
                 </button>
 
-                <!-- BT Search Plugin Button -->
-                <button
-                  v-if="pluginsConfig.btSearchEnabled"
-                  @click="openBtSearch(movie.title)"
-                  class="ml-auto py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
-                  :title="`在 BT 站检索「${movie.title}」资源`"
-                >
-                  <ExternalLink class="w-3.5 h-3.5" />
-                  <span>BT 搜索</span>
-                </button>
+                <!-- Resource Search Plugin Button Group -->
+                <div v-if="pluginsConfig.resourceSearchEnabled" class="flex items-center gap-1.5 flex-wrap ml-auto">
+                  <button
+                    @click="openBtSearch(movie.title)"
+                    class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
+                    :title="`在 BT 站检索「${movie.title}」资源`"
+                  >
+                    <ExternalLink class="w-3.5 h-3.5" />
+                    <span>BT 搜索</span>
+                  </button>
+
+                  <button
+                    v-if="pluginsConfig.webJumpConfig.bftvMovieEnabled"
+                    @click="openBftvMovie(movie.title)"
+                    class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
+                    :title="`在 BFTV 检索「${movie.title}」影片资料`"
+                  >
+                    <ExternalLink class="w-3.5 h-3.5 text-amber-400" />
+                    <span>在BFTV搜索影片资料</span>
+                  </button>
+
+                  <button
+                    v-if="pluginsConfig.webJumpConfig.googleSearchEnabled"
+                    @click="openGoogleSearch(movie.title)"
+                    class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
+                    :title="`在 Google 检索「${movie.title}」`"
+                  >
+                    <ExternalLink class="w-3.5 h-3.5 text-blue-400" />
+                    <span>Google 搜索</span>
+                  </button>
+                </div>
 
                 <!-- Subordinate feature: Tags & Notes toggle button -->
                 <button
                   @click="showPrivateNotes = !showPrivateNotes"
                   :class="[
-                    pluginsConfig.btSearchEnabled ? '' : 'ml-auto',
+                    pluginsConfig.resourceSearchEnabled ? '' : 'ml-auto',
                     'py-1.5 px-2.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition',
                     showPrivateNotes
                       ? 'bg-accent-fill/20 text-accent-soft border-accent-fill/40'
@@ -902,6 +978,18 @@ onUnmounted(() => {
       </div>
     </div>
   </div>
+
+  <!-- Series Franchise Modal -->
+  <SeriesModal
+    v-if="showSeriesModal && seriesData && movie"
+    :series="seriesData"
+    :current-movie-id="movie.id"
+    :z-index="(zIndex ?? 50) + 20"
+    :is-favorite="isFav('series', seriesData.root_title)"
+    @close="showSeriesModal = false"
+    @select-movie="onSelectSeriesMovie"
+    @toggle-favorite="(rootTitle) => emit('toggle-entity-favorite', 'series', rootTitle)"
+  />
 </template>
 
 <style scoped>

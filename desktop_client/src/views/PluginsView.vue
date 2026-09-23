@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import {
-  pluginsConfig, savePluginsConfig, type BtSearchConfig
+  pluginsConfig, savePluginsConfig, type BtSearchConfig, DEFAULT_TRANSLATION_PROMPT
 } from '../services/pluginManager';
 import { TARGET_TRANSLATION_LANGUAGES, t } from '../i18n';
-import { trophyStats, resetUnlockedTrophies } from '../services/trophySystem';
+import { trophyStats } from '../services/trophySystem';
 import { api, IS_TAURI } from '../api';
 import type {
   TranslationStats, TranslationProfile, TranslationPreset
@@ -12,13 +12,26 @@ import type {
 import {
   Blocks, Compass, RefreshCw, Languages, Trophy,
   AlertCircle, CheckCircle2, ChevronRight, Loader2,
-  Sparkles, Trash2, Volume2, VolumeX, RotateCcw
+  Sparkles, Trash2, Volume2, VolumeX, RotateCcw,
+  Download, SlidersHorizontal
 } from '@lucide/vue';
+import {
+  activeAiReport,
+  isAiAnalyzing,
+  aiAnalysisError,
+  generateAiPersonaInsight,
+  exportAiReportMarkdown,
+  clearAiReport,
+} from '../services/aiAnalysis';
+import AiAnalysisModal from '../components/AiAnalysisModal.vue';
 
 const emit = defineEmits<{
   (e: 'open-trophies'): void;
   (e: 'refresh-movies'): void;
 }>();
+
+type PluginSubTab = 'all' | 'ai' | 'bt' | 'scraper' | 'translate' | 'trophy';
+const activePluginTab = ref<PluginSubTab>('all');
 
 // --- 1. Scraper state ---
 const isScraping = ref(false);
@@ -53,13 +66,60 @@ function updateBtEngine(engine: BtSearchConfig['engine']) {
   });
 }
 
-function updateBtCustomUrl(e: Event) {
-  const target = e.target as HTMLInputElement;
+const newBtTemplateName = ref('');
+const newBtTemplateUrl = ref('');
+
+function selectCustomBtTemplate(id: string) {
   savePluginsConfig({
     btSearchConfig: {
       ...pluginsConfig.value.btSearchConfig,
-      customUrlTemplate: target.value
+      activeCustomId: id,
     }
+  });
+}
+
+function addCustomBtTemplate() {
+  const name = newBtTemplateName.value.trim();
+  const template = newBtTemplateUrl.value.trim();
+  if (!name || !template) return;
+  const newTmpl = {
+    id: `custom-${Date.now()}`,
+    name,
+    template: template.includes('{query}') ? template : `${template}{query}`,
+  };
+  const list = [...(pluginsConfig.value.btSearchConfig.customTemplates || []), newTmpl];
+  savePluginsConfig({
+    btSearchConfig: {
+      ...pluginsConfig.value.btSearchConfig,
+      customTemplates: list,
+      activeCustomId: newTmpl.id,
+    }
+  });
+  newBtTemplateName.value = '';
+  newBtTemplateUrl.value = '';
+}
+
+function deleteCustomBtTemplate(id: string) {
+  const list = (pluginsConfig.value.btSearchConfig.customTemplates || []).filter(t => t.id !== id);
+  let activeId = pluginsConfig.value.btSearchConfig.activeCustomId;
+  if (activeId === id) {
+    activeId = list[0]?.id || '';
+  }
+  savePluginsConfig({
+    btSearchConfig: {
+      ...pluginsConfig.value.btSearchConfig,
+      customTemplates: list,
+      activeCustomId: activeId,
+    }
+  });
+}
+
+function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googleSearchEnabled') {
+  savePluginsConfig({
+    webJumpConfig: {
+      ...pluginsConfig.value.webJumpConfig,
+      [key]: !pluginsConfig.value.webJumpConfig[key],
+    },
   });
 }
 
@@ -92,6 +152,15 @@ function updateTranslationPrompt(e: Event) {
     translationConfig: {
       ...pluginsConfig.value.translationConfig,
       customPromptTemplate: target.value
+    }
+  });
+}
+
+function resetTranslationPrompt() {
+  savePluginsConfig({
+    translationConfig: {
+      ...pluginsConfig.value.translationConfig,
+      customPromptTemplate: DEFAULT_TRANSLATION_PROMPT
     }
   });
 }
@@ -261,15 +330,65 @@ async function handleRunGlossary(dryRun: boolean) {
 }
 
 // --- 4. Trophies Plugin ---
+import TrophyResetModal from '../components/TrophyResetModal.vue';
+
+const showTrophyResetModal = ref(false);
+
 function toggleTrophySound() {
   savePluginsConfig({ trophiesSoundEnabled: !pluginsConfig.value.trophiesSoundEnabled });
 }
 
 function handleResetTrophies() {
-  if (window.confirm(t('plugins.resetTrophiesConfirm') || '确认清空所有已解锁的成就奖杯吗？所有成就记录将归零从头开始。')) {
-    resetUnlockedTrophies();
+  showTrophyResetModal.value = true;
+}
+
+// --- 5. AI Taste & Persona Insight Plugin ---
+const showAiPromptCustomizer = ref(false);
+const customAiPromptSuffix = ref('');
+const isReportExpanded = ref(true);
+const aiSuccessMsg = ref('');
+
+const activeProfile = computed(() => providerList.value.find(p => p.active));
+const showAiModal = ref(false);
+
+async function handleRunAiAnalysis() {
+  aiSuccessMsg.value = '';
+  showAiModal.value = true;
+  try {
+    await generateAiPersonaInsight(customAiPromptSuffix.value);
+    aiSuccessMsg.value = '影迷偏好洞察已生成并同步至本地！';
+    setTimeout(() => {
+      showAiModal.value = false;
+      isReportExpanded.value = true;
+    }, 1000);
+  } catch (err: any) {
+    // Error details are displayed inside the modal
   }
 }
+
+function handleExportAiReport() {
+  if (activeAiReport.value) {
+    exportAiReportMarkdown(activeAiReport.value);
+  }
+}
+
+function handleClearAiReport() {
+  clearAiReport();
+  aiSuccessMsg.value = '';
+}
+
+const reportSections = computed(() => {
+  if (!activeAiReport.value?.fullMarkdown) return [];
+  const cleanMd = activeAiReport.value.fullMarkdown.replace(/```json[\s\S]*?```/, '').trim();
+  const rawSections = cleanMd.split(/(?=###\s+)/g);
+  return rawSections.map(s => {
+    const lines = s.trim().split('\n');
+    const titleMatch = lines[0].match(/^###\s+(.*)/);
+    const title = titleMatch ? titleMatch[1].trim() : '';
+    const body = titleMatch ? lines.slice(1).join('\n').trim() : lines.join('\n').trim();
+    return { title, body };
+  }).filter(s => s.title || s.body);
+});
 
 onMounted(() => {
   loadTranslationStats();
@@ -296,21 +415,56 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Subcategory Capsule Switcher -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <button
+        v-for="tab in [
+          { id: 'all', label: '全部插件', count: 5, icon: Blocks },
+          { id: 'ai', label: 'AI 影迷偏好洞察', count: 1, icon: Sparkles },
+          { id: 'bt', label: t('plugins.resourceSearch', '资源搜索与扩展'), count: 1, icon: Compass },
+          { id: 'scraper', label: '数据搜刮', count: 1, icon: RefreshCw },
+          { id: 'translate', label: 'AI 翻译引擎', count: 1, icon: Languages },
+          { id: 'trophy', label: '典藏成就奖杯', count: 1, icon: Trophy },
+        ]"
+        :key="tab.id"
+        @click="activePluginTab = (tab.id as PluginSubTab)"
+        :class="[
+          'px-3.5 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-2 cursor-pointer shadow-xs',
+          activePluginTab === tab.id
+            ? 'bg-accent-fill text-on-fill border-accent shadow-sm'
+            : 'bg-surface-2/70 text-fg-3 border-line hover:text-fg hover:bg-surface-2'
+        ]"
+      >
+        <component :is="tab.icon" class="w-3.5 h-3.5" />
+        <span>{{ tab.label }}</span>
+        <span
+          v-if="tab.id === 'all'"
+          class="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-extrabold"
+          :class="activePluginTab === tab.id ? 'bg-black/20 text-on-fill' : 'bg-surface-3 text-fg-4'"
+        >
+          {{ tab.count }}
+        </span>
+      </button>
+    </div>
+
     <!-- Plugins List -->
     <div class="space-y-6">
-      <!-- 1. BT / Magnet Search Plugin -->
-      <div class="p-6 rounded-3xl bg-surface/80 border border-line space-y-4 shadow-sm">
+      <!-- 0. AI Persona & Taste Insight Plugin -->
+      <div
+        v-if="activePluginTab === 'all' || activePluginTab === 'ai'"
+        class="p-6 rounded-3xl bg-surface/80 border border-line space-y-5 shadow-sm"
+      >
         <div class="flex items-start justify-between gap-4">
           <div class="flex items-center gap-3.5">
-            <div class="p-3 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
-              <Compass class="w-6 h-6" />
+            <div class="p-3 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-400 border border-indigo-500/30">
+              <Sparkles class="w-6 h-6" />
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <h3 class="text-base font-bold text-fg">{{ t('plugins.btSearch') }}</h3>
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 font-bold border border-sky-500/20">v1.2</span>
+                <h3 class="text-base font-bold text-fg">大模型 AI 影迷偏好洞察</h3>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-bold border border-indigo-500/20">AI Persona v1.0</span>
               </div>
-              <p class="text-xs text-fg-4 mt-0.5">{{ t('plugins.btSearchDesc') }}</p>
+              <p class="text-xs text-fg-4 mt-0.5">将本地收藏、标记和评分记录转化为深层影视流派洞察，生成专属影迷艺术画像报告</p>
             </div>
           </div>
 
@@ -318,8 +472,174 @@ onMounted(() => {
           <label class="relative inline-flex items-center cursor-pointer">
             <input
               type="checkbox"
-              v-model="pluginsConfig.btSearchEnabled"
-              @change="savePluginsConfig({ btSearchEnabled: pluginsConfig.btSearchEnabled })"
+              v-model="pluginsConfig.aiInsightEnabled"
+              @change="savePluginsConfig({ aiInsightEnabled: pluginsConfig.aiInsightEnabled })"
+              class="sr-only peer"
+            />
+            <div class="w-11 h-6 bg-surface-3 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-fill"></div>
+          </label>
+        </div>
+
+        <div v-if="pluginsConfig.aiInsightEnabled" class="space-y-4 pt-2 border-t border-line/60">
+          <!-- Active model profile info / warning -->
+          <div v-if="!activeProfile" class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <AlertCircle class="w-4 h-4 shrink-0 text-amber-400" />
+              <span>尚未激活大模型服务。请在下方「大模型 AI 翻译引擎」中配置并激活 API 来源（支持 OpenAI、DeepSeek、Claude、Gemini 等）。</span>
+            </div>
+            <button
+              @click="activePluginTab = 'translate'"
+              class="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/30 transition shrink-0 cursor-pointer"
+            >
+              前往配置
+            </button>
+          </div>
+          <div v-else class="flex items-center justify-between text-xs px-3.5 py-2 rounded-xl bg-surface-2/60 border border-line/40 text-fg-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>已绑定活跃大模型：<strong class="text-fg font-medium">{{ activeProfile.label || activeProfile.name }}</strong> ({{ activeProfile.model || activeProfile.type }})</span>
+            </div>
+            <button
+              @click="showAiPromptCustomizer = !showAiPromptCustomizer"
+              class="text-xs text-accent hover:underline flex items-center gap-1 font-medium cursor-pointer"
+            >
+              <SlidersHorizontal class="w-3.5 h-3.5" />
+              <span>{{ showAiPromptCustomizer ? '收起自定义关注点' : '自定义偏好提示词' }}</span>
+            </button>
+          </div>
+
+          <!-- Custom prompt drawer -->
+          <div v-if="showAiPromptCustomizer" class="p-3.5 rounded-2xl bg-surface-2 border border-line/60 space-y-2 text-xs animate-fade-in">
+            <label class="block font-medium text-fg-2">自定义分析侧重或特别偏好（可选）：</label>
+            <input
+              type="text"
+              v-model="customAiPromptSuffix"
+              placeholder="例如：特别关注我对黄金年代复古欧美制片厂或小众剧情片的偏好，以及推荐偏好..."
+              class="w-full px-3 py-2 rounded-xl bg-surface-3/80 border border-line text-fg text-xs focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          <!-- Actions & Status -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div class="flex items-center gap-2">
+              <button
+                @click="handleRunAiAnalysis"
+                :disabled="isAiAnalyzing"
+                class="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold text-xs flex items-center gap-2 shadow-md transition disabled:opacity-50 cursor-pointer"
+              >
+                <Loader2 v-if="isAiAnalyzing" class="w-4 h-4 animate-spin" />
+                <Sparkles v-else class="w-4 h-4" />
+                <span>{{ isAiAnalyzing ? '正在深度研判全库观影数据...' : (activeAiReport ? '重新生成偏好画像' : '一键生成影迷偏好画像') }}</span>
+              </button>
+
+              <button
+                v-if="activeAiReport"
+                @click="handleExportAiReport"
+                class="px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 border border-line text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Download class="w-3.5 h-3.5" />
+                <span>导出报告 (.md)</span>
+              </button>
+
+              <button
+                v-if="activeAiReport"
+                @click="handleClearAiReport"
+                class="px-3 py-2 rounded-xl text-xs text-fg-4 hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer"
+              >
+                清空画像
+              </button>
+            </div>
+
+            <div v-if="activeAiReport" class="text-[11px] text-fg-4">
+              上次生成于 {{ new Date(activeAiReport.generatedAt).toLocaleString() }}
+            </div>
+          </div>
+
+          <!-- Error or success banner -->
+          <div v-if="aiAnalysisError" class="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 flex items-center gap-2">
+            <AlertCircle class="w-4 h-4 shrink-0" />
+            <span>{{ aiAnalysisError }}</span>
+          </div>
+          <div v-if="aiSuccessMsg" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
+            <CheckCircle2 class="w-4 h-4 shrink-0" />
+            <span>{{ aiSuccessMsg }}</span>
+          </div>
+
+          <!-- Generated AI Persona Report Card -->
+          <div v-if="activeAiReport" class="rounded-2xl bg-surface-2/60 border border-line p-5 space-y-4">
+            <!-- Archetype Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-line/40">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs px-2.5 py-0.5 rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 font-extrabold border border-indigo-500/30">
+                    影迷专属原型
+                  </span>
+                  <h4 class="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400">
+                    {{ activeAiReport.archetype }}
+                  </h4>
+                </div>
+                <p class="text-xs text-fg-3 italic">
+                  “{{ activeAiReport.summary }}”
+                </p>
+              </div>
+
+              <!-- Keyword chips -->
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span
+                  v-for="kw in activeAiReport.keywords"
+                  :key="kw"
+                  class="text-[11px] px-2 py-0.5 rounded-lg bg-surface-3 text-fg-2 border border-line/60 font-medium"
+                >
+                  #{{ kw }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Report Sections Accordion / Container -->
+            <div class="space-y-3 pt-1">
+              <div
+                v-for="(sec, idx) in reportSections"
+                :key="idx"
+                class="p-4 rounded-xl bg-surface-3/40 border border-line/40 space-y-2"
+              >
+                <h5 class="text-sm font-bold text-fg flex items-center gap-2">
+                  <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                  {{ sec.title || `分析版块 ${idx + 1}` }}
+                </h5>
+                <div class="text-xs text-fg-2 leading-relaxed whitespace-pre-line pl-3.5 border-l border-indigo-500/20">
+                  {{ sec.body }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 1. BT / Magnet Search Plugin -->
+      <div
+        v-if="activePluginTab === 'all' || activePluginTab === 'bt'"
+        class="p-6 rounded-3xl bg-surface/80 border border-line space-y-4 shadow-sm"
+      >
+        <div class="flex items-start justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="p-3 rounded-2xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+              <Compass class="w-6 h-6" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold text-fg">{{ t('plugins.resourceSearch', '资源搜索与外部扩展') }}</h3>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 font-bold border border-sky-500/20">v2.0</span>
+              </div>
+              <p class="text-xs text-fg-4 mt-0.5">{{ t('plugins.resourceSearchDesc', '在影片、演员及分集页面一键跳转至主流 BT 磁力站点或外部资料网站检索相关资源') }}</p>
+            </div>
+          </div>
+
+          <!-- Switch -->
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              v-model="pluginsConfig.resourceSearchEnabled"
+              @change="savePluginsConfig({ resourceSearchEnabled: pluginsConfig.resourceSearchEnabled })"
               class="sr-only peer"
             />
             <div class="w-11 h-6 bg-surface-3 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-fill"></div>
@@ -327,44 +647,203 @@ onMounted(() => {
         </div>
 
         <!-- Configuration options (if enabled) -->
-        <div v-if="pluginsConfig.btSearchEnabled" class="pt-4 border-t border-line/60 space-y-3 animate-fade-in">
-          <div class="text-xs font-semibold text-fg-3">预设搜索引擎模板：</div>
-          <div class="flex gap-2 flex-wrap">
-            <button
-              v-for="eng in [
-                { id: 'sukebei', label: 'Sukebei (Nyaa)' },
-                { id: '1337x', label: '1337x' },
-                { id: 'torrentgalaxy', label: 'TorrentGalaxy' },
-                { id: 'google', label: 'Google Search' },
-                { id: 'custom', label: '自定义 URL 模板' }
-              ]"
-              :key="eng.id"
-              @click="updateBtEngine(eng.id as any)"
-              :class="[
-                'px-3 py-1.5 rounded-xl text-xs font-semibold border transition',
-                pluginsConfig.btSearchConfig.engine === eng.id
-                  ? 'bg-accent-fill text-on-fill border-accent shadow'
-                  : 'bg-surface-2/80 text-fg-3 border-line hover:bg-surface-3 hover:text-fg'
-              ]"
-            >
-              {{ eng.label }}
-            </button>
+        <div v-if="pluginsConfig.resourceSearchEnabled" class="pt-4 border-t border-line/60 space-y-6 animate-fade-in">
+          <!-- 1. BT Magnet Search Engines -->
+          <div class="space-y-3">
+            <div class="flex items-center gap-2">
+              <Compass class="w-4 h-4 text-sky-400" />
+              <div class="text-xs font-bold text-fg">BT 磁力搜索引擎预设：</div>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <button
+                v-for="eng in [
+                  { id: 'bt4g', label: 'BT4G (默认推荐)' },
+                  { id: 'btsearch', label: 'BTSearch (love)' },
+                  { id: 'sukebei', label: 'Sukebei (Nyaa)' },
+                  { id: '1337x', label: '1337x' },
+                  { id: 'torrentgalaxy', label: 'TorrentGalaxy' },
+                  { id: 'custom', label: '自定义多模版库' }
+                ]"
+                :key="eng.id"
+                @click="updateBtEngine(eng.id as any)"
+                :class="[
+                  'px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer',
+                  pluginsConfig.btSearchConfig.engine === eng.id
+                    ? 'bg-accent-fill text-on-fill border-accent shadow'
+                    : 'bg-surface-2/80 text-fg-3 border-line hover:bg-surface-3 hover:text-fg'
+                ]"
+              >
+                {{ eng.label }}
+              </button>
+            </div>
+
+            <!-- Multiple Custom Templates Management -->
+            <div v-if="pluginsConfig.btSearchConfig.engine === 'custom'" class="pt-2 space-y-3">
+              <div class="text-[11px] text-fg-4">
+                已保存的自定义检索模板列表（支持点击选中作为当前默认，搜索时将把 {query} 自动替换为影片名）：
+              </div>
+
+              <div class="space-y-2">
+                <div
+                  v-for="tmpl in (pluginsConfig.btSearchConfig.customTemplates || [])"
+                  :key="tmpl.id"
+                  @click="selectCustomBtTemplate(tmpl.id)"
+                  class="p-3 rounded-2xl border transition flex items-center justify-between gap-3 cursor-pointer"
+                  :class="pluginsConfig.btSearchConfig.activeCustomId === tmpl.id
+                    ? 'bg-accent-fill/10 border-accent text-fg shadow-sm'
+                    : 'bg-surface-2/70 border-line hover:border-line-strong text-fg-3 hover:text-fg'"
+                >
+                  <div class="flex items-center gap-3 min-w-0">
+                    <div
+                      class="w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0"
+                      :class="pluginsConfig.btSearchConfig.activeCustomId === tmpl.id
+                        ? 'border-accent bg-accent'
+                        : 'border-line-strong bg-transparent'"
+                    >
+                      <div v-if="pluginsConfig.btSearchConfig.activeCustomId === tmpl.id" class="w-1.5 h-1.5 rounded-full bg-white"></div>
+                    </div>
+                    <div class="min-w-0">
+                      <div class="text-xs font-bold truncate">{{ tmpl.name }}</div>
+                      <div class="text-[10px] text-fg-4 font-mono truncate mt-0.5">{{ tmpl.template }}</div>
+                    </div>
+                  </div>
+
+                  <button
+                    @click.stop="deleteCustomBtTemplate(tmpl.id)"
+                    class="p-1.5 rounded-lg text-fg-4 hover:text-danger hover:bg-danger-fill/10 transition shrink-0 cursor-pointer"
+                    title="删除该模板"
+                  >
+                    <Trash2 class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <!-- Add new template form -->
+              <div class="p-4 rounded-2xl bg-sunken/60 border border-line-strong/60 space-y-3">
+                <div class="text-xs font-bold text-fg-2">添加新的自定义搜索站点：</div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    v-model="newBtTemplateName"
+                    placeholder="站点名称 (如: RuTracker)"
+                    class="bg-surface border border-line rounded-xl px-3 py-2 text-xs text-fg outline-none focus:border-accent"
+                  />
+                  <input
+                    v-model="newBtTemplateUrl"
+                    placeholder="检索 URL 模版 (含 {query})"
+                    class="sm:col-span-2 bg-surface border border-line rounded-xl px-3 py-2 text-xs text-fg font-mono outline-none focus:border-accent"
+                  />
+                </div>
+                <div class="flex justify-end">
+                  <button
+                    @click="addCustomBtTemplate"
+                    :disabled="!newBtTemplateName.trim() || !newBtTemplateUrl.trim()"
+                    class="px-4 py-1.5 rounded-xl bg-accent-fill text-on-fill text-xs font-bold hover:bg-accent-fill/90 transition disabled:opacity-40 cursor-pointer"
+                  >
+                    添加模版
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div v-if="pluginsConfig.btSearchConfig.engine === 'custom'" class="pt-1">
-            <div class="text-[11px] text-fg-4 mb-1">自定义搜索 URL（包含 {query} 占位符）：</div>
-            <input
-              :value="pluginsConfig.btSearchConfig.customUrlTemplate"
-              @input="updateBtCustomUrl"
-              placeholder="https://example.com/search?q={query}"
-              class="w-full bg-sunken/80 border border-line-strong rounded-xl px-3 py-2 text-xs text-fg font-mono outline-none focus:border-accent"
-            />
+          <!-- 2. Web Jump External Sites -->
+          <div class="space-y-3 pt-3 border-t border-line/60">
+            <div class="flex items-center gap-2">
+              <Blocks class="w-4 h-4 text-amber-400" />
+              <div class="text-xs font-bold text-fg">外部网站资料跳转与直达按钮：</div>
+            </div>
+            <p class="text-xs text-fg-4">
+              启用后将在对应条目（影片或演员）页面展示一键直达按钮，与 BT 搜索按钮同排展示。各按钮可独立启用或关闭，互不干扰。
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+              <!-- BFTV Performer Jump -->
+              <div class="p-4 rounded-2xl bg-surface-2/60 border border-line flex flex-col justify-between gap-3">
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-fg flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                      在 BFTV 搜索演员资料
+                    </span>
+                    <input
+                      type="checkbox"
+                      :checked="pluginsConfig.webJumpConfig.bftvPerformerEnabled"
+                      @change="toggleWebJump('bftvPerformerEnabled')"
+                      class="rounded accent-accent cursor-pointer"
+                    />
+                  </div>
+                  <p class="text-[11px] text-fg-4 leading-relaxed">
+                    在演员档案页展示按钮，直达 BoyfriendTV 对应艺名的专页与高级搜索页。
+                  </p>
+                </div>
+                <div class="text-[10px] text-fg-5 font-mono truncate">
+                  boyfriendtv.com/pornstars/?q={name}
+                </div>
+              </div>
+
+              <!-- BFTV Movie Jump -->
+              <div class="p-4 rounded-2xl bg-surface-2/60 border border-line flex flex-col justify-between gap-3">
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-fg flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-orange-400"></span>
+                      在 BFTV 搜索影片资料
+                    </span>
+                    <input
+                      type="checkbox"
+                      :checked="pluginsConfig.webJumpConfig.bftvMovieEnabled"
+                      @change="toggleWebJump('bftvMovieEnabled')"
+                      class="rounded accent-accent cursor-pointer"
+                    />
+                  </div>
+                  <p class="text-[11px] text-fg-4 leading-relaxed">
+                    在影片详情页展示按钮，自动提取影片主标题（剥离序号与副标题）后精准检索。
+                  </p>
+                </div>
+                <div class="text-[10px] text-fg-5 font-mono truncate">
+                  boyfriendtv.com/search/?q={clean_title}
+                </div>
+              </div>
+
+              <!-- Google Web Jump -->
+              <div class="p-4 rounded-2xl bg-surface-2/60 border border-line flex flex-col justify-between gap-3">
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-fg flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                      Google 快速全网搜索
+                    </span>
+                    <input
+                      type="checkbox"
+                      :checked="pluginsConfig.webJumpConfig.googleSearchEnabled"
+                      @change="toggleWebJump('googleSearchEnabled')"
+                      class="rounded accent-accent cursor-pointer"
+                    />
+                  </div>
+                  <p class="text-[11px] text-fg-4 leading-relaxed">
+                    以条目原名直接在 Google 进行全网检索，方便查找第三方影评与演员履历。
+                  </p>
+                </div>
+                <div class="text-[10px] text-fg-5 font-mono truncate">
+                  google.com/search?q={query}
+                </div>
+              </div>
+            </div>
+
+            <!-- Future Roadmap Notice -->
+            <div class="p-3 rounded-xl bg-accent-fill/5 border border-accent-fill/15 flex items-center gap-2 text-xs text-fg-3">
+              <Sparkles class="w-4 h-4 text-accent shrink-0" />
+              <span>待办清单：后续版本将持续支持接入更多垂直百科站点（如 IAFD、AEBN、Radar 等）。</span>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- 2. Custom Scraper Plugin -->
-      <div class="p-6 rounded-3xl bg-surface/80 border border-line space-y-4 shadow-sm">
+      <div
+        v-if="activePluginTab === 'all' || activePluginTab === 'scraper'"
+        class="p-6 rounded-3xl bg-surface/80 border border-line space-y-4 shadow-sm"
+      >
         <div class="flex items-start justify-between gap-4">
           <div class="flex items-center gap-3.5">
             <div class="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -419,7 +898,10 @@ onMounted(() => {
       </div>
 
       <!-- 3. AI Translation Plugin (Merged Full Capabilities) -->
-      <div class="p-6 rounded-3xl bg-surface/80 border border-line space-y-4 shadow-sm">
+      <div
+        v-if="activePluginTab === 'all' || activePluginTab === 'translate'"
+        class="p-6 rounded-3xl bg-surface/80 border border-line space-y-4 shadow-sm"
+      >
         <div class="flex items-start justify-between gap-4">
           <div class="flex items-center gap-3.5">
             <div class="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -704,14 +1186,28 @@ onMounted(() => {
 
           <!-- Custom Prompt -->
           <div>
-            <div class="text-xs font-semibold text-fg-3 mb-1.5">自定义 System / Translation Prompt 提示词：</div>
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="text-xs font-semibold text-fg-3">自定义 System / Translation Prompt 提示词：</div>
+              <button
+                type="button"
+                @click="resetTranslationPrompt"
+                class="text-[11px] text-accent hover:underline flex items-center gap-1 cursor-pointer transition"
+                title="重置为 translate.py 专职译者规范提示词"
+              >
+                <RotateCcw class="w-3 h-3" />
+                <span>恢复规范默认词</span>
+              </button>
+            </div>
             <textarea
               :value="pluginsConfig.translationConfig.customPromptTemplate"
               @blur="updateTranslationPrompt"
-              rows="3"
-              class="w-full bg-sunken/80 border border-line-strong rounded-xl p-3 text-xs text-fg outline-none focus:border-accent resize-none leading-relaxed"
+              rows="6"
+              class="w-full bg-sunken/80 border border-line-strong rounded-xl p-3 text-xs text-fg outline-none focus:border-accent resize-y font-mono leading-relaxed"
               placeholder="请输入自定义翻译指示..."
             ></textarea>
+            <div class="text-[11px] text-fg-4 mt-1 leading-relaxed">
+              提示：遵循项目根目录 <code class="font-mono">translate.py</code> 专职译者规范：逐句忠于原文、直白如实按原露骨程度翻译、保留外文人名片名厂牌名、不美化不淡化。
+            </div>
           </div>
 
           <!-- Actions -->
@@ -775,7 +1271,10 @@ onMounted(() => {
       </div>
 
       <!-- 4. Exploration Trophy System (77 Trophies, Clean & Configurable) -->
-      <div class="p-6 rounded-3xl bg-surface/80 border border-line space-y-4 shadow-sm">
+      <div
+        v-if="activePluginTab === 'all' || activePluginTab === 'trophy'"
+        class="p-6 rounded-3xl bg-surface/80 border border-line space-y-4 shadow-sm"
+      >
         <div class="flex items-start justify-between gap-4">
           <div class="flex items-center gap-3.5">
             <div class="p-3 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
@@ -843,5 +1342,19 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Trophy Reset Modal -->
+    <TrophyResetModal
+      v-if="showTrophyResetModal"
+      @close="showTrophyResetModal = false"
+    />
+
+    <!-- AI Persona Analysis Progress Modal -->
+    <AiAnalysisModal
+      :show="showAiModal"
+      :profile-name="activeProfile?.label || activeProfile?.name"
+      :model-name="activeProfile?.model || activeProfile?.type"
+      @close="showAiModal = false"
+    />
   </div>
 </template>

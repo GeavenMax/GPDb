@@ -34,13 +34,29 @@ const MOVIE_COLUMNS: &[(&str, &str)] = &[
     ("title_attempts", "INTEGER DEFAULT 0"),
 ];
 
-/// Tables this crate reads. Verbatim from `schema.sql` §12.
+/// Tables this crate reads. Verbatim from `schema.sql` §11 and §12.
 const TABLES: &str = "
 CREATE TABLE IF NOT EXISTS category_glossary (
     term       TEXT PRIMARY KEY,
     zh         TEXT NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);";
+);
+CREATE TABLE IF NOT EXISTS directors (
+    id INTEGER PRIMARY KEY,
+    site_id INTEGER UNIQUE,
+    name TEXT NOT NULL UNIQUE,
+    works_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS movie_directors (
+    movie_id INTEGER NOT NULL,
+    director_id INTEGER NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (movie_id, director_id)
+);
+CREATE INDEX IF NOT EXISTS idx_movie_directors_director ON movie_directors(director_id);
+CREATE INDEX IF NOT EXISTS idx_directors_name ON directors(name);
+";
 
 /// Bring an existing database up to what this crate's queries expect. Idempotent.
 ///

@@ -121,10 +121,10 @@ const shownDescription = computed(
             <span v-if="filmAlt" class="truncate text-fg-4 font-normal">{{ filmAlt }}</span>
           </button>
           <span
-            v-if="episode.release_year"
-            class="px-1.5 py-0.5 rounded-md font-semibold bg-accent-fill/10 text-accent border border-accent-fill/20"
+            v-if="episode.release_date || episode.release_year"
+            class="px-1.5 py-0.5 rounded-md font-semibold bg-accent-fill/10 text-accent border border-accent-fill/20 font-mono"
           >
-            {{ episode.release_year }}
+            {{ episode.release_date || episode.release_year }}
           </span>
           <button
             v-if="episode.studio_name"

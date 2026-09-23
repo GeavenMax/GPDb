@@ -1,5 +1,6 @@
 import type {
   Movie,
+  MovieSeriesResponse,
   Performer,
   FilterState,
   DatabaseStats,
@@ -21,7 +22,10 @@ import type {
   EpisodeFilterState,
   EpisodeLibraryResponse,
   EpisodeSortBy,
+  EpisodeSummary,
   DatabaseInfo,
+  HomeFeedData,
+  SeriesCollectionsResponse,
 } from './types';
 import { FAVORITE_TYPES } from './types';
 
@@ -83,11 +87,11 @@ async function tauriProviderAction(
 }
 
 function emptyFavoriteGroups(): Record<FavoriteType, FavoriteItem[]> {
-  return { movie: [], performer: [], studio: [], director: [], episode: [] };
+  return { movie: [], performer: [], studio: [], director: [], episode: [], series: [] };
 }
 
 function emptyFavoriteKeys(): Record<FavoriteType, string[]> {
-  return { movie: [], performer: [], studio: [], director: [], episode: [] };
+  return { movie: [], performer: [], studio: [], director: [], episode: [], series: [] };
 }
 
 /** Add the per-type counts the server computes, for the groups Rust hands back. */
@@ -336,6 +340,46 @@ export const api = {
     return null;
   },
 
+  async getMovieSeries(id: number): Promise<MovieSeriesResponse | null> {
+    if (isTauri) {
+      return tauriInvoke<MovieSeriesResponse | null>('get_movie_series', { id });
+    }
+    try {
+      const res = await fetch(`/api/movies/${id}/series`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return null;
+  },
+
+  async getMovieSeriesByRoot(rootTitle: string, studioName?: string | null): Promise<MovieSeriesResponse | null> {
+    if (isTauri) {
+      return tauriInvoke<MovieSeriesResponse | null>('get_movie_series_by_root', {
+        rootTitle,
+        studioName: studioName || null,
+      });
+    }
+    return null;
+  },
+
+  async getSeriesCollections(
+    query?: string,
+    studio?: string,
+    sortBy?: string,
+    page: number = 1,
+    pageSize: number = 24
+  ): Promise<SeriesCollectionsResponse> {
+    if (isTauri) {
+      return tauriInvoke<SeriesCollectionsResponse>('get_series_collections', {
+        query: query || null,
+        studio: studio || null,
+        sortBy: sortBy || null,
+        page,
+        pageSize,
+      });
+    }
+    return { items: [], total: 0 };
+  },
+
   async getPerformers(
     filters: Partial<PerformerFilterState> = {},
     page: number = 1,
@@ -474,6 +518,17 @@ export const api = {
       if (res.ok) return await res.json();
     } catch {}
     return { items: [], total: 0 };
+  },
+
+  async getEpisodeDetail(id: number): Promise<EpisodeSummary | null> {
+    if (isTauri) {
+      return tauriInvoke<EpisodeSummary>('get_episode_detail', { id });
+    }
+    try {
+      const res = await fetch(`/api/episodes/${id}`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return null;
   },
 
   async getCategories(): Promise<string[]> {
@@ -635,6 +690,14 @@ export const api = {
 
   // Import / Export
   async exportUserData(): Promise<any> {
+    if (isTauri) {
+      try {
+        return await tauriInvoke('export_user_data');
+      } catch (e) {
+        console.warn('tauri export_user_data failed', e);
+        return null;
+      }
+    }
     try {
       const res = await fetch('/api/user/export');
       if (res.ok) return await res.json();
@@ -642,7 +705,22 @@ export const api = {
     return null;
   },
 
+  async exportUserDataFile(): Promise<string | null> {
+    if (isTauri) {
+      return tauriInvoke<string | null>('export_user_data_file');
+    }
+    return null;
+  },
+
   async importUserData(data: any): Promise<any> {
+    if (isTauri) {
+      try {
+        return await tauriInvoke('import_user_data', { data });
+      } catch (e: any) {
+        console.warn('tauri import_user_data failed', e);
+        throw e;
+      }
+    }
     try {
       const res = await fetch('/api/user/import', {
         method: 'POST',
@@ -1008,6 +1086,52 @@ export const api = {
       return tauriInvoke<string | null>('pick_database_file');
     }
     return null;
+  },
+
+  async exportDatabaseFile(): Promise<string | null> {
+    if (isTauri) {
+      return tauriInvoke<string | null>('export_database_file');
+    }
+    return null;
+  },
+
+  async setDockIcon(schemeId: string): Promise<boolean> {
+    if (isTauri) {
+      try {
+        await tauriInvoke('set_dock_icon', { schemeId });
+        return true;
+      } catch (e) {
+        console.warn('set_dock_icon failed', e);
+        return false;
+      }
+    }
+    return false;
+  },
+
+  async runAiAnalysis(prompt: string): Promise<string> {
+    if (isTauri) {
+      return tauriInvoke<string>('run_ai_analysis', { prompt });
+    }
+    throw new Error('大模型分析功能需在桌面端环境下运行');
+  },
+
+  async getHomeFeed(monthDay?: string): Promise<HomeFeedData> {
+    if (isTauri) {
+      return tauriInvoke<HomeFeedData>('get_home_feed', { monthDay: monthDay || null });
+    }
+    try {
+      const res = await fetch(`/api/home-feed${monthDay ? `?monthDay=${monthDay}` : ''}`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return {
+      spotlight_movies: [],
+      on_this_day: [],
+      star_spotlight: [],
+      total_movies: 0,
+      total_episodes: 0,
+      total_performers: 0,
+      total_studios: 0,
+    };
   },
 };
 

@@ -2,6 +2,8 @@ use crate::db;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::RwLock;
+use std::time::{Duration, Instant};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CacheStats {
@@ -9,6 +11,9 @@ pub struct CacheStats {
     pub size_mb: f64,
     pub path: String,
 }
+
+static CACHED_STATS: RwLock<Option<(Instant, CacheStats)>> = RwLock::new(None);
+const STATS_TTL: Duration = Duration::from_secs(300); // 5 minutes
 
 pub fn find_cache_dir() -> PathBuf {
     // 1. If gevi.db is found, image_cache is right next to it
@@ -25,6 +30,7 @@ pub fn find_cache_dir() -> PathBuf {
     let candidates = [
         PathBuf::from("image_cache"),
         PathBuf::from("../image_cache"),
+        PathBuf::from("../../image_cache"),
     ];
     for c in candidates {
         if c.exists() {
@@ -43,15 +49,14 @@ pub fn find_cache_dir() -> PathBuf {
     PathBuf::from("image_cache")
 }
 
-#[tauri::command]
-pub fn get_cache_stats() -> Result<CacheStats, String> {
+fn compute_cache_stats() -> CacheStats {
     let cache_dir = find_cache_dir();
     if !cache_dir.exists() {
-        return Ok(CacheStats {
+        return CacheStats {
             count: 0,
             size_mb: 0.0,
             path: cache_dir.to_string_lossy().to_string(),
-        });
+        };
     }
 
     let mut count = 0;
@@ -60,15 +65,17 @@ pub fn get_cache_stats() -> Result<CacheStats, String> {
     fn walk_dir(dir: &Path, count: &mut usize, bytes: &mut u64) {
         if let Ok(entries) = fs::read_dir(dir) {
             for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    walk_dir(&path, count, bytes);
-                } else if path.is_file() {
-                    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                    if !name.ends_with(".tmp") && !name.starts_with('.') {
-                        if let Ok(meta) = entry.metadata() {
-                            *bytes += meta.len();
-                            *count += 1;
+                if let Ok(file_type) = entry.file_type() {
+                    if file_type.is_dir() {
+                        walk_dir(&entry.path(), count, bytes);
+                    } else if file_type.is_file() {
+                        let name = entry.file_name();
+                        let name_str = name.to_string_lossy();
+                        if !name_str.ends_with(".tmp") && !name_str.starts_with('.') {
+                            if let Ok(meta) = entry.metadata() {
+                                *bytes += meta.len();
+                                *count += 1;
+                            }
                         }
                     }
                 }
@@ -80,39 +87,167 @@ pub fn get_cache_stats() -> Result<CacheStats, String> {
 
     let size_mb = (total_bytes as f64 / 1_048_576.0 * 100.0).round() / 100.0;
 
-    Ok(CacheStats {
+    CacheStats {
         count,
         size_mb,
         path: cache_dir.to_string_lossy().to_string(),
-    })
+    }
 }
 
 #[tauri::command]
-pub fn clear_cache() -> Result<usize, String> {
-    let cache_dir = find_cache_dir();
-    if !cache_dir.exists() {
-        return Ok(0);
-    }
-
-    let mut cleared = 0;
-    fn walk_remove(dir: &Path, cleared: &mut usize) {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    walk_remove(&path, cleared);
-                    let _ = fs::remove_dir(&path);
-                } else if path.is_file() {
-                    if fs::remove_file(&path).is_ok() {
-                        *cleared += 1;
-                    }
-                }
+pub async fn get_cache_stats() -> Result<CacheStats, String> {
+    // 1. Fast read from memory cache
+    if let Ok(guard) = CACHED_STATS.read() {
+        if let Some((instant, ref stats)) = *guard {
+            if instant.elapsed() < STATS_TTL {
+                return Ok(stats.clone());
             }
         }
     }
 
-    walk_remove(&cache_dir, &mut cleared);
+    // 2. Offload heavy disk walking to background thread
+    let stats = tauri::async_runtime::spawn_blocking(compute_cache_stats)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if let Ok(mut guard) = CACHED_STATS.write() {
+        *guard = Some((Instant::now(), stats.clone()));
+    }
+
+    Ok(stats)
+}
+
+#[tauri::command]
+pub async fn clear_cache() -> Result<usize, String> {
+    let cleared = tauri::async_runtime::spawn_blocking(|| {
+        let cache_dir = find_cache_dir();
+        if !cache_dir.exists() {
+            return 0;
+        }
+
+        let mut cleared = 0;
+        fn walk_remove(dir: &Path, cleared: &mut usize) {
+            if let Ok(entries) = fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        walk_remove(&path, cleared);
+                        let _ = fs::remove_dir(&path);
+                    } else if path.is_file() {
+                        if fs::remove_file(&path).is_ok() {
+                            *cleared += 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        walk_remove(&cache_dir, &mut cleared);
+        cleared
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if let Ok(mut guard) = CACHED_STATS.write() {
+        *guard = None;
+    }
+
     Ok(cleared)
+}
+
+/// Resolves a requested image URL to a local cached file on disk.
+/// Matches folders: Covers, Episodes, Stars, Icons, Logo.
+pub fn resolve_cache_file(url: &str) -> Option<(PathBuf, &'static str)> {
+    let cache_dir = find_cache_dir();
+    if !cache_dir.exists() {
+        return None;
+    }
+
+    let normalized = url.replace('\\', "/");
+    let lower = normalized.to_ascii_lowercase();
+
+    let folder_and_subpath = if let Some(idx) = lower.find("images/covers/") {
+        Some(("Covers", &normalized[idx + "images/covers/".len()..]))
+    } else if let Some(idx) = lower.find("images/episodes/") {
+        Some(("Episodes", &normalized[idx + "images/episodes/".len()..]))
+    } else if let Some(idx) = lower.find("images/stars/") {
+        Some(("Stars", &normalized[idx + "images/stars/".len()..]))
+    } else if let Some(idx) = lower.find("images/icons/") {
+        Some(("Icons", &normalized[idx + "images/icons/".len()..]))
+    } else if let Some(idx) = lower.find("images/logo/") {
+        Some(("Logo", &normalized[idx + "images/logo/".len()..]))
+    } else {
+        None
+    };
+
+    if let Some((folder, rel_path)) = folder_and_subpath {
+        // Strip query string and fragment
+        let clean_rel = rel_path
+            .split('?')
+            .next()
+            .unwrap_or(rel_path)
+            .split('#')
+            .next()
+            .unwrap_or(rel_path);
+
+        let path = cache_dir.join(folder).join(clean_rel);
+        if path.is_file() {
+            let mime = if clean_rel.to_ascii_lowercase().ends_with(".png") {
+                "image/png"
+            } else if clean_rel.to_ascii_lowercase().ends_with(".webp") {
+                "image/webp"
+            } else {
+                "image/jpeg"
+            };
+            return Some((path, mime));
+        }
+    }
+
+    None
+}
+
+/// Custom URI scheme protocol handler for `gpdb-img://`.
+/// Enables ultra-fast local disk image loading directly from `image_cache/`
+/// without needing an external python server.
+pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http::Response<Vec<u8>> {
+    let uri_str = req.uri().to_string();
+    let parsed_url = url::Url::parse(&uri_str).ok();
+
+    // Look for ?url=<target> query parameter, or fall back to uri path
+    let target = parsed_url.as_ref().and_then(|u| {
+        u.query_pairs().find(|(k, _)| k == "url").map(|(_, v)| v.into_owned())
+    }).unwrap_or_else(|| {
+        req.uri().path().trim_start_matches('/').to_string()
+    });
+
+    if let Some((local_path, mime)) = resolve_cache_file(&target) {
+        if let Ok(bytes) = fs::read(&local_path) {
+            return tauri::http::Response::builder()
+                .status(200)
+                .header("Content-Type", mime)
+                .header("Cache-Control", "public, max-age=31536000, immutable")
+                .header("Access-Control-Allow-Origin", "*")
+                .body(bytes)
+                .unwrap();
+        }
+    }
+
+    // Fallback: If not cached locally but target is a remote URL, redirect so WebKit can fetch it
+    if target.starts_with("http://") || target.starts_with("https://") {
+        return tauri::http::Response::builder()
+            .status(302)
+            .header("Location", &target)
+            .header("Access-Control-Allow-Origin", "*")
+            .body(Vec::new())
+            .unwrap();
+    }
+
+    tauri::http::Response::builder()
+        .status(404)
+        .header("Content-Type", "text/plain")
+        .header("Access-Control-Allow-Origin", "*")
+        .body(b"Image not found".to_vec())
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -121,12 +256,20 @@ mod tests {
 
     #[test]
     fn test_cache_stats_finds_dir_or_returns_zero() {
-        let stats = get_cache_stats().expect("cache stats should not error");
+        let stats = compute_cache_stats();
         assert!(!stats.path.is_empty());
-        // If image_cache exists on disk, it should report count and size
         let cache_dir = PathBuf::from(&stats.path);
         if cache_dir.exists() {
             println!("Discovered cache dir: {}, count: {}, size_mb: {}", stats.path, stats.count, stats.size_mb);
+        }
+    }
+
+    #[test]
+    fn test_resolve_cache_file() {
+        let sample = "https://gayeroticvideoindex.com/images/Covers/0/video10.jpg";
+        if let Some((path, mime)) = resolve_cache_file(sample) {
+            assert!(path.is_file());
+            assert_eq!(mime, "image/jpeg");
         }
     }
 }

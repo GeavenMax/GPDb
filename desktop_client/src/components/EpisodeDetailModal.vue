@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { X, Film, Heart, Clapperboard, Calendar, ChevronLeft, ChevronRight, Languages } from '@lucide/vue';
+import { X, Film, Heart, Clapperboard, Calendar, ChevronLeft, ChevronRight, Languages, ExternalLink } from '@lucide/vue';
 import type { EpisodeSummary } from '../types';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { episodeHeading, episodeLabel } from '../utils/episode';
 import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
+import { pluginsConfig, openBtSearch, openGoogleSearch } from '../services/pluginManager';
 
 const props = defineProps<{
   episode: EpisodeSummary | null;
@@ -149,8 +150,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <h1 class="text-xl md:text-2xl font-extrabold text-fg mt-1 break-words">{{ heading }}</h1>
         <p v-if="filmAlt" class="text-xs text-fg-4 mt-0.5 break-words">{{ filmAlt }}</p>
         <div class="text-xs text-fg-2 mt-1.5 flex items-center gap-3 flex-wrap">
-          <span v-if="episode.release_year" class="flex items-center gap-1">
-            <Calendar class="w-3 h-3" /> {{ episode.release_year }}
+          <span v-if="episode.release_date || episode.release_year" class="flex items-center gap-1 font-mono">
+            <Calendar class="w-3 h-3 text-accent" /> {{ episode.release_date || episode.release_year }}
           </span>
           <span v-if="episode.studio_name">{{ episode.studio_name }}</span>
           <span v-if="episode.episode_count > 1" class="text-fg-3">
@@ -190,18 +191,41 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </button>
           </div>
 
-          <button
-            @click="emit('toggle-favorite', episode)"
-            :class="[
-              'mr-10 shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
-              isFavorite
-                ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
-                : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
-            ]"
-          >
-            <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-            <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
-          </button>
+          <div class="mr-10 shrink-0 flex items-center gap-2 flex-wrap">
+            <template v-if="pluginsConfig.resourceSearchEnabled && (episode.title || episode.movie_title)">
+              <button
+                @click="openBtSearch(episode.title || episode.movie_title || '')"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+                :title="`在 BT 站检索「${episode.title || episode.movie_title}」`"
+              >
+                <ExternalLink class="w-3.5 h-3.5" />
+                <span>BT 搜索</span>
+              </button>
+
+              <button
+                v-if="pluginsConfig.webJumpConfig.googleSearchEnabled"
+                @click="openGoogleSearch(episode.title || episode.movie_title || '')"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+                :title="`在 Google 检索「${episode.title || episode.movie_title}」`"
+              >
+                <ExternalLink class="w-3.5 h-3.5 text-blue-400" />
+                <span>Google 搜索</span>
+              </button>
+            </template>
+
+            <button
+              @click="emit('toggle-favorite', episode)"
+              :class="[
+                'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition cursor-pointer',
+                isFavorite
+                  ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
+                  : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
+              ]"
+            >
+              <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
+              <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+            </button>
+          </div>
         </div>
 
         <!-- Synopsis -->

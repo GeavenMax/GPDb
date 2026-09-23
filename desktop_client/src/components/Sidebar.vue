@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Film, Users, Heart, HardDrive, Building2, Clapperboard, Megaphone, BarChart2, Puzzle } from '@lucide/vue';
+import { Home, Film, Users, Heart, HardDrive, Building2, Clapperboard, Megaphone, BarChart2, Puzzle } from '@lucide/vue';
 import type { AppTab } from '../types';
 import { PREFS } from '../utils/prefs';
 import { t } from '../i18n';
@@ -130,7 +130,18 @@ function tabClass(id: AppTab, active: boolean) {
   <aside class="chrome-side w-56 border-r border-line p-4 flex flex-col justify-between select-none">
     <div class="space-y-4">
       <div class="px-2 text-[11px] font-semibold text-fg-4 uppercase tracking-wider">
-        资源检索
+        {{ t('nav.sectionSearch', '资源检索') }}
+      </div>
+      <div class="space-y-1">
+        <button
+          @click="emit('change-tab', 'home')"
+          :class="tabClass('home', currentTab === 'home')"
+          class="w-full text-left cursor-pointer"
+          :title="t('nav.home', '主页')"
+        >
+          <Home class="w-4 h-4 shrink-0" />
+          <span>{{ t('nav.home', '主页') }}</span>
+        </button>
       </div>
       <nav class="space-y-1">
         <div

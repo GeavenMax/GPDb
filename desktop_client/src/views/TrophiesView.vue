@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { TROPHIES, trophyStats, resetUnlockedTrophies, type TrophyTier } from '../services/trophySystem';
+import { TROPHIES, trophyStats, unlockedMap, trophiesVersion, type TrophyTier } from '../services/trophySystem';
 import { pluginsConfig, savePluginsConfig } from '../services/pluginManager';
 import FluidGlassTrophyIcon from '../components/FluidGlassTrophyIcon.vue';
 import { analytics } from '../services/analytics';
@@ -17,7 +17,11 @@ const emit = defineEmits<{
 const selectedTier = ref<'all' | TrophyTier | 'unlocked' | 'locked'>('all');
 
 const filteredTrophies = computed(() => {
-  return TROPHIES.filter(t => {
+  void trophiesVersion.value;
+  return TROPHIES.map(t => ({
+    ...t,
+    unlockedAt: unlockedMap.value[t.id] || null,
+  })).filter(t => {
     const isUnlocked = Boolean(t.unlockedAt);
     if (selectedTier.value === 'all') return true;
     if (selectedTier.value === 'unlocked') return isUnlocked;
@@ -26,14 +30,16 @@ const filteredTrophies = computed(() => {
   });
 });
 
+import TrophyResetModal from '../components/TrophyResetModal.vue';
+
+const showResetModal = ref(false);
+
 function toggleSound() {
   savePluginsConfig({ trophiesSoundEnabled: !pluginsConfig.value.trophiesSoundEnabled });
 }
 
 function confirmReset() {
-  if (window.confirm(t('plugins.resetTrophiesConfirm') || '确认清空所有已解锁的成就奖杯吗？所有成就记录将归零从头开始。')) {
-    resetUnlockedTrophies();
-  }
+  showResetModal.value = true;
 }
 
 function formatDate(ts: number | null): string {
@@ -228,5 +234,11 @@ function tierBadgeClass(tier: TrophyTier): string {
         </div>
       </div>
     </div>
+
+    <!-- Trophy Reset Confirmation Modal with Dual Modes -->
+    <TrophyResetModal
+      v-if="showResetModal"
+      @close="showResetModal = false"
+    />
   </div>
 </template>
