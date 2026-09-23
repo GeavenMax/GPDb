@@ -15,9 +15,9 @@ import urllib.request
 import urllib.parse
 from datetime import datetime
 
-DEFAULT_CHANGELOG_PATH = "/Users/joel/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/CHANGELOG.md"
-DEFAULT_BOT_TOKEN = "8921944755:AAFr1GuPMVBUiogEbjGqgjGZF8p04yp0VF4"
-DEFAULT_CHAT_ID = "@gpdbnews"
+DEFAULT_CHANGELOG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "CHANGELOG.md"))
+DEFAULT_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
+DEFAULT_CHAT_ID = os.environ.get("TG_CHAT_ID", "@gpdbnews")
 STATE_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".changelog_pusher_state.json")
 GITHUB_REPO_URL = "https://github.com/GeavenMax/GPDb"
 
@@ -305,6 +305,10 @@ if __name__ == "__main__":
     parser.add_argument("--interval", type=int, default=10, help="Poll interval in seconds for --watch")
     
     args = parser.parse_args()
+
+    if not args.token and not args.dry_run:
+        print("[ERROR] Telegram Bot Token is missing. Please set TG_BOT_TOKEN env var or pass --token.", file=sys.stderr)
+        sys.exit(1)
     
     if args.watch:
         watch_changelog(args.changelog, args.token, args.chat, args.interval)
