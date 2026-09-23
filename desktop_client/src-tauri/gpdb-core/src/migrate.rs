@@ -34,6 +34,14 @@ const MOVIE_COLUMNS: &[(&str, &str)] = &[
     ("title_attempts", "INTEGER DEFAULT 0"),
 ];
 
+/// Columns on `performers` added after the initial release.
+///
+/// Mirrors `db_manager.MIGRATIONS["performers"]`. `image_url` is in CORE_SCHEMA already,
+/// so only the newer ones go here. Adding a column means adding it in both places.
+const PERFORMER_COLUMNS: &[(&str, &str)] = &[
+    ("bftv_url", "TEXT"),
+];
+
 /// Tables this crate reads. Verbatim from `schema.sql` §11 and §12.
 const TABLES: &str = "
 CREATE TABLE IF NOT EXISTS category_glossary (
@@ -214,7 +222,7 @@ pub fn ensure_schema(conn: &Connection) -> Result<()> {
     // transaction two migrators can both read "column missing" and then collide on the
     // upgrade. (DEFERRED would surface as SQLITE_BUSY, IMMEDIATE just serialises.)
     conn.execute_batch("BEGIN IMMEDIATE")?;
-    let outcome = add_missing_movie_columns(conn);
+    let outcome = add_missing_movie_columns(conn).and_then(|()| add_missing_performer_columns(conn));
     match outcome {
         Ok(()) => {
             conn.execute_batch("COMMIT")?;
@@ -271,6 +279,36 @@ fn add_column_tolerating_race(conn: &Connection, name: &str, ty: &str) -> Result
         Err(e) if e.to_string().contains("duplicate column name") => Ok(()),
         Err(e) => Err(e.into()),
     }
+}
+
+fn add_column_to_table_tolerating_race(conn: &Connection, table: &str, name: &str, ty: &str) -> Result<()> {
+    let sql = format!("ALTER TABLE {table} ADD COLUMN {name} {ty}");
+    match conn.execute(&sql, []) {
+        Ok(_) => Ok(()),
+        Err(e) if e.to_string().contains("duplicate column name") => Ok(()),
+        Err(e) => Err(e.into()),
+    }
+}
+
+fn add_missing_performer_columns(conn: &Connection) -> Result<()> {
+    let existing: Vec<String> = {
+        let mut stmt = conn.prepare("PRAGMA table_info(performers)")?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(1))?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()?
+    };
+
+    // No `performers` table means a fresh or empty file — skip until Python creates it.
+    if existing.is_empty() {
+        return Ok(());
+    }
+
+    for (name, ty) in PERFORMER_COLUMNS {
+        if existing.iter().any(|c| c == name) {
+            continue;
+        }
+        add_column_to_table_tolerating_race(conn, "performers", name, ty)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -6,7 +6,7 @@ import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { episodeHeading, episodeLabel } from '../utils/episode';
 import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
-import { pluginsConfig, openBtSearch, openGoogleSearch } from '../services/pluginManager';
+import { pluginsConfig, openBtMovieSearch, openGoogleSearch } from '../services/pluginManager';
 
 const props = defineProps<{
   episode: EpisodeSummary | null;
@@ -194,7 +194,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <div class="mr-10 shrink-0 flex items-center gap-2 flex-wrap">
             <template v-if="pluginsConfig.resourceSearchEnabled && (episode.title || episode.movie_title)">
               <button
-                @click="openBtSearch(episode.title || episode.movie_title || '')"
+                @click="openBtMovieSearch(episode.title || episode.movie_title || '')"
                 class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
                 :title="`在 BT 站检索「${episode.title || episode.movie_title}」`"
               >

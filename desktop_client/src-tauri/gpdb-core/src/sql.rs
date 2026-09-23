@@ -185,7 +185,7 @@ pub fn map_movie_row(r: &rusqlite::Row) -> rusqlite::Result<Movie> {
 /// Performer columns selected by every Performer query, in map_performer_row order.
 pub const PERFORMER_COLUMNS: &str = "p.id, p.name, p.hair, p.eyes, p.body_hair, p.facial_hair, \
      p.height, p.weight, p.build, p.skin, p.dick_size, p.foreskin, \
-     p.tattoos, p.notes, p.image_url";
+     p.tattoos, p.notes, p.image_url, p.bftv_url";
 
 /// An episode plus its parent film's context, in map_episode_row order.
 ///
@@ -262,9 +262,10 @@ pub fn map_performer_row(r: &rusqlite::Row) -> rusqlite::Result<Performer> {
         tattoos: r.get(12)?,
         notes: r.get(13)?,
         image_url: r.get(14)?,
+        bftv_url: r.get(15)?,
         attributes: Some(attributes),
-        movies_count: r.get(15)?,
-        works_count: r.get(16)?,
+        movies_count: r.get(16)?,
+        works_count: r.get(17)?,
         movies: None,
         episodes: None,
         episodes_count: None,

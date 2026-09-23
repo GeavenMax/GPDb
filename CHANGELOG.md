@@ -71,3 +71,21 @@
 - 建立 GEVI 离线数据库基础框架与 SQLite WAL 模式支持。
 - 完成 60,000+ 电影与 100,000+ 分集基础数据存储。
 - 基于 Tauri + Rust + Vue 3 的跨平台桌面客户端首次上线。
+
+## [2026-09-23] v2.4 — BFTV 演员直达 + BT 搜索主标题净化
+
+### 新增
+- **`scrape_bftv_performers.py`** — 批量爬取演员在 BoyfriendTV 上的个人主页 URL，写入 performers.bftv_url；支持 --db / --limit / --delay / --concurrency / --overwrite；断点续爬
+
+### 优化
+- **BFTV 演员直达**：若 performers.bftv_url 已填充，点击按钮直接打开个人主页；按钮文字动态切换（"打开BFTV主页" / "在BFTV搜索演员资料"）
+- **BT 搜索主标题净化**：影片/分集 BT 搜索只提交主标题，剥离副标题与序号（Vol/Part/Episode/I-IV 等），保留自然大小写
+- extractMovieCleanTitle 补充 em-dash / en-dash 分隔符，不再强制小写
+
+### 数据库迁移
+- performers 表新增 bftv_url TEXT 列（客户端下次启动自动迁移，无需手动操作）
+
+### 变更文件
+- db_manager.py / migrate.rs / models.rs / sql.rs / types.ts / pluginManager.ts
+- MovieDetailModal.vue / EpisodeDetailModal.vue / EpisodeRow.vue / PerformerDetailModal.vue
+- scrape_bftv_performers.py（新建）

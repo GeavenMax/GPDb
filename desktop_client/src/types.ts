@@ -97,6 +97,8 @@ export interface Performer {
   episodes_count?: number;
   /** Credited aliases / alternative stage names across movies and episodes */
   aliases?: string[];
+  /** Direct BoyfriendTV performer profile URL (from scrape_bftv_performers.py). When present, BFTV button jumps directly here. */
+  bftv_url?: string | null;
 }
 
 /** Sort keys accepted by the studio library, on both the HTTP and Tauri paths. */

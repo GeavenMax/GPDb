@@ -179,20 +179,27 @@ export function buildBtSearchUrl(query: string): string {
 }
 
 /**
- * Extracts the clean primary title of a movie (excluding sequence numbers, subtitles, etc.)
- * e.g. "Gangbangapalooza 4" -> "gangbangapalooza"
- * e.g. "Lucas Kazan: The Director's Cut" -> "lucas kazan"
+ * Extracts the clean primary title of a movie for BT/BFTV search.
+ * Strips subtitles (after : — – - ~ ,) and trailing sequence/volume/part labels.
+ * Natural casing is preserved so BT search engines receive a properly-cased query.
+ *
+ * Examples:
+ *   "Men of Odyssey: Volume 1"  -> "Men of Odyssey"
+ *   "Gangbangapalooza 4"        -> "Gangbangapalooza"
+ *   "Hot Boys – The Reunion"    -> "Hot Boys"
+ *   "Lucas Kazan: Director's Cut" -> "Lucas Kazan"
  */
 export function extractMovieCleanTitle(rawTitle: string): string {
   if (!rawTitle) return '';
   let s = rawTitle.trim();
-  const splitIdx = s.search(/[:\-,~]/);
+  // Split on subtitle separators: colon, dash variants, tilde, comma.
+  const splitIdx = s.search(/[:\u2013\u2014\-,~]/);
   if (splitIdx > 0) {
     s = s.slice(0, splitIdx).trim();
   }
-  // Strip trailing sequence numbers / volume descriptors
+  // Strip trailing sequence numbers / volume descriptors (case-insensitive).
   s = s.replace(/\s+(?:vol(?:ume)?\.?|part|episode|ep\.?|#)?\s*(?:\d+|[ivxldcm]+)\b/gi, '').trim();
-  return (s || rawTitle.trim()).toLowerCase();
+  return s || rawTitle.trim();
 }
 
 /**
@@ -237,9 +244,26 @@ export async function openBtSearch(query: string) {
   await openUrlExternal(buildBtSearchUrl(query.trim()));
 }
 
-export async function openBftvPerformer(name: string) {
-  if (!name || !name.trim()) return;
-  await openUrlExternal(buildBftvPerformerUrl(name));
+/**
+ * BT search for a movie — uses the clean primary title only.
+ */
+export async function openBtMovieSearch(rawTitle: string) {
+  const clean = extractMovieCleanTitle(rawTitle);
+  if (!clean) return;
+  await openUrlExternal(buildBtSearchUrl(clean));
+}
+
+/**
+ * Open a performer's BFTV page.
+ * If a direct profile URL (bftvUrl) is already stored in the DB, jump straight there.
+ * Otherwise fall back to the BFTV search page.
+ */
+export async function openBftvPerformer(name: string, bftvUrl?: string | null) {
+  if (bftvUrl && bftvUrl.trim()) {
+    await openUrlExternal(bftvUrl.trim());
+  } else if (name && name.trim()) {
+    await openUrlExternal(buildBftvPerformerUrl(name));
+  }
 }
 
 export async function openBftvMovie(title: string) {

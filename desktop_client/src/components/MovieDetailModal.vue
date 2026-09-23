@@ -9,7 +9,7 @@ import { claimEscape } from '../utils/escape';
 import { titlePrimary, titleSecondary } from '../utils/bilingual';
 import { trCategory } from '../utils/glossary';
 import { api, IS_TAURI } from '../api';
-import { pluginsConfig, openBtSearch, openBftvMovie, openGoogleSearch } from '../services/pluginManager';
+import { pluginsConfig, openBtMovieSearch, openBftvMovie, openGoogleSearch } from '../services/pluginManager';
 
 const props = defineProps<{
   movie: Movie | null;
@@ -723,7 +723,7 @@ onUnmounted(() => {
                 <!-- Resource Search Plugin Button Group -->
                 <div v-if="pluginsConfig.resourceSearchEnabled" class="flex items-center gap-1.5 flex-wrap ml-auto">
                   <button
-                    @click="openBtSearch(movie.title)"
+                    @click="openBtMovieSearch(movie.title)"
                     class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition"
                     :title="`在 BT 站检索「${movie.title}」资源`"
                   >

@@ -261,12 +261,12 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
               <button
                 v-if="pluginsConfig.webJumpConfig.bftvPerformerEnabled"
-                @click="openBftvPerformer(performer.name)"
+                @click="openBftvPerformer(performer.name, performer.bftv_url)"
                 class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
-                :title="`在 BFTV 检索「${performer.name}」演员资料`"
+                :title="performer.bftv_url ? `直接打开「${performer.name}」的 BFTV 主页` : `在 BFTV 检索「${performer.name}」演员资料`"
               >
                 <ExternalLink class="w-3.5 h-3.5 text-amber-400" />
-                <span>在BFTV搜索演员资料</span>
+                <span>{{ performer.bftv_url ? '打开BFTV主页' : '在BFTV搜索演员资料' }}</span>
               </button>
 
               <button

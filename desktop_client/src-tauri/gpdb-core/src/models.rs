@@ -255,6 +255,9 @@ pub struct Performer {
     pub episodes_count: Option<i64>,
     /// Known aliases / credited alternative stage names across movies and episodes.
     pub aliases: Option<Vec<String>>,
+    /// Direct BoyfriendTV performer profile URL, populated by scrape_bftv_performers.py.
+    /// If present, clicking BFTV button opens this URL directly instead of a search page.
+    pub bftv_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

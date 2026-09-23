@@ -18,7 +18,7 @@ import type { Episode } from '../types';
 import { getImageUrl } from '../utils/image';
 import { episodeOrdinalLabel } from '../utils/episode';
 import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
-import { pluginsConfig, openBtSearch } from '../services/pluginManager';
+import { pluginsConfig, openBtMovieSearch } from '../services/pluginManager';
 
 const props = withDefaults(defineProps<{
   episode: Episode;
@@ -140,7 +140,7 @@ function onRowClick() {
           </span>
           <button
             v-if="pluginsConfig.btSearchEnabled && (episode.movie_title || episode.title)"
-            @click.stop="openBtSearch(episode.movie_title || episode.title)"
+            @click.stop="openBtMovieSearch(episode.movie_title || episode.title)"
             :title="`在 BT 站检索「${episode.movie_title || episode.title}」`"
             class="text-fg-5 hover:text-accent p-0.5 rounded transition"
           >
