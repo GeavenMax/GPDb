@@ -63,7 +63,7 @@ export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin
 - 验证在 Android Studio 模拟器中启动空白宿主并成功执行 Rust 返回的 SQLite 版本号测试。
 
 ### 阶段二：SAF (Storage Access Framework) 驱动与本地数据库挂载
-- 实现 Android 原生系统文件/文件夹选取器（`ACTION_OPEN_DOCUMENT_TREE`），获取包含 `gevi.db` 与 `image_cache/` 的目录授权。
+- 实现 Android 原生系统文件/文件夹选取器（`ACTION_OPEN_DOCUMENT_TREE`），获取包含 `GPDb.db` 与 `image_cache/` 的目录授权。
 - 使用 `rusqlite` 与 Android Scoped Storage fd 桥接，支持直接读取外部存储中的 63,000+ 电影库数据。
 - 保证只读访问安全，杜绝误删用户数据库。
 

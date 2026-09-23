@@ -1,4 +1,4 @@
-# GEVI Offline Database - 项目开发规范与铁律 (Project Rules)
+# GPDb Offline Database - 项目开发规范与铁律 (Project Rules)
 
 > 本文件根据 `HANDOVER.md` 提取了本项目的核心规则。**任何大模型或开发者在进行代码修改前，必须严格遵守以下规范。**
 
@@ -14,13 +14,13 @@
 
 ## 2. 数据安全与数据库操作 (Database & Data Safety)
 
-*   **数据备份**: 备份数据库时**必须**使用 SQLite 专用备份命令（如 `sqlite3 gevi.db ".backup '/tmp/gevi-backup.db'"`），**严禁使用 `cp` 命令**，因为 WAL 日志中的数据会丢失导致数据库损坏。
-*   **测试环境**: 测试或调试时，**一律使用 `/tmp` 目录下的数据库副本**，绝不允许直接在真实的 `gevi.db` 上运行破坏性测试。
+*   **数据备份**: 备份数据库时**必须**使用 SQLite 专用备份命令（如 `sqlite3 GPDb.db ".backup '/tmp/gpdb-backup.db'"`），**严禁使用 `cp` 命令**，因为 WAL 日志中的数据会丢失导致数据库损坏。
+*   **测试环境**: 测试或调试时，**一律使用 `/tmp` 目录下的数据库副本**，绝不允许直接在真实的 `GPDb.db` 上运行破坏性测试。
 *   **保留字与命名约定**: 以下名称/路径在前后端共享，**严禁修改**，否则会导致连接断裂：
-    *   `gevi.db`
-    *   环境变量 `GEVI_DB`
-    *   `sync_gevi.py`, `gevi_cli.py`
-    *   所有以 `GEVI_LLM_` 开头的环境变量名
+    *   `GPDb.db`
+    *   环境变量 `GPDB_DB`
+    *   `sync_gpdb.py`, `gpdb_cli.py`
+    *   所有以 `GPDB_LLM_` 开头的环境变量名
 *   **账本安全 (Voids)**: **绝不使用空参数的 `--forget-voids`** (`scraper_v2.py --forget-voids`)。这会清空“确认抓不到”的黑名单账本，导致系统重新去尝试抓取数万条永远抓不到的死链。仅允许在图片重试场景下使用限定范围的 `--forget-image-voids`。
 
 ## 3. 并发与限流 (Rate Limiting)
@@ -30,7 +30,7 @@
 
 ## 4. 安全与密钥管理 (Security)
 
-*   **密钥隔离**: LLM 翻译 API Key（存在于 `translate_config.json` 或环境变量 `GEVI_LLM_API_KEY` 中）**绝对不允许下发给前端**。前端接口 `/api/translate/*` 只能返回布尔值 `has_key` 和打码处理后的 `key_hint`。
+*   **密钥隔离**: LLM 翻译 API Key（存在于 `translate_config.json` 或环境变量 `GPDB_LLM_API_KEY` 中）**绝对不允许下发给前端**。前端接口 `/api/translate/*` 只能返回布尔值 `has_key` 和打码处理后的 `key_hint`。
 
 ## 5. 关键业务逻辑设计模式 (Key Domain Logic)
 

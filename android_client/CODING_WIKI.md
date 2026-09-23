@@ -48,7 +48,7 @@ UI 渲染层      Vue 3 + Tailwind CSS + Lucide        Vue 3 (Capacitor/Tauri) �
 ### 3.1 目录结构与隔离规范
 
 ```
-GEVI_Offline_Database/
+GPDb_Offline_Database/
 ├── desktop_client/           # macOS 桌面端专属工程（独立 Git 变更集）
 │   ├── src/                  # Vue 3 前端代码
 │   ├── src-tauri/            # Tauri 桌面端 Rust 壳工程
@@ -67,7 +67,7 @@ GEVI_Offline_Database/
 │   ├── COMPILATION_PLAN.md   # 编译与构建计划书
 │   └── README.md             # 快速入门与环境指引
 │
-├── gevi.db                   # 主库数据文件（只读参考或开发测试使用）
+├── GPDb.db                   # 主库数据文件（只读参考或开发测试使用）
 └── image_cache/              # 媒体图片资源库（移动端采用 SAF 关联或分包测试）
 ```
 
@@ -77,8 +77,8 @@ GEVI_Offline_Database/
    - 桌面端配置存放于 `~/Library/Application Support/com.gpdb.app/`；
    - Android 端配置存放于 `context.filesDir` 或 `EncryptedSharedPreferences`（包名：`com.gpdb.android`），互不穿透。
 2. **数据库文件隔离**：
-   - Android 端不强制将桌面庞大的 `gevi.db` 硬编码打包入 APK（否则 APK 将超 1GB）；
-   - 采用 **SAF (Storage Access Framework)** 允许用户点选手机内部存储、SD 卡或 OTG U 盘中的 `gevi.db` 与 `image_cache` 目录，或者支持一键从局域网与 Mac 客户端同步。
+   - Android 端不强制将桌面庞大的 `GPDb.db` 硬编码打包入 APK（否则 APK 将超 1GB）；
+   - 采用 **SAF (Storage Access Framework)** 允许用户点选手机内部存储、SD 卡或 OTG U 盘中的 `GPDb.db` 与 `image_cache` 目录，或者支持一键从局域网与 Mac 客户端同步。
 3. **编译产物隔离**：
    - 桌面构建产物严格输出至 `desktop_client/src-tauri/target/`；
    - Android 构建产物严格输出至 `android_client/app/build/` 或 `android_client/target/`，两端 `Cargo.lock` / `node_modules` 保持独立。

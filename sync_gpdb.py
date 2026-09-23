@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GEVI Incremental Sync & Auto-Integration Module
+GPDb Incremental Sync & Auto-Integration Module
 - Scans /newm for recent movie releases.
 - Scans /newp for new performers.
 - Scans /newe for latest episode updates.
@@ -150,9 +150,9 @@ def parse_episode_details(ep_id: int) -> dict | None:
         "performers": performers,
     }
 
-def run_sync(db_path: str = "gevi.db", probe_depth: int = 50):
+def run_sync(db_path: str = "GPDb.db", probe_depth: int = 50):
     print("=" * 70)
-    print("🔄 GEVI 数据库增量同步与自动整合")
+    print("🔄 GPDb 数据库增量同步与自动整合")
     print(f"   目标数据库: {Path(db_path).resolve()}")
     print("=" * 70)
 
@@ -273,7 +273,7 @@ def run_sync(db_path: str = "gevi.db", probe_depth: int = 50):
         for eid in to_scrape_eps:
             ep_details = parse_episode_details(eid)
             if ep_details:
-                db.save_company_episodes([ep_details])
+                db.save_standalone_episodes([ep_details])
                 new_eps_added += 1
                 db.record_progress("episode", eid, status=200)
                 print(f"  + 新增分集 #{eid}: 《{ep_details['title']}》 ({ep_details.get('studio_name') or '独立发布'})")
@@ -299,7 +299,7 @@ def run_sync(db_path: str = "gevi.db", probe_depth: int = 50):
 
 def main():
     detected_db = find_default_db_path()
-    parser = argparse.ArgumentParser(description="GEVI Incremental Sync & Auto-Integration Tool")
+    parser = argparse.ArgumentParser(description="GPDb Incremental Sync & Auto-Integration Tool")
     parser.add_argument("--db", type=str, default=str(detected_db), help=f"Path to SQLite database (default: {detected_db})")
     parser.add_argument("--probe", type=int, default=30, help="Forward probe depth above MAX(id) (default: 30)")
     args = parser.parse_args()

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ══════════════════════════════════════════════════════════════
+         权限声明
+         MANAGE_EXTERNAL_STORAGE 是 Android 11+ 的"所有文件访问"权限。
+         这是我们绕过 SAF 性能瓶颈、直接以绝对路径打开 GPDb.db 与
+         GPDb_Images.zip 的核心前提，必须在 manifest 中声明。
+
+         Google Play 审核政策要求此权限须提交声明表格，私有侧加载 APK
+         则无此限制。
+    ══════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!-- 网络访问（演员图片网络降级 Coil L3 层使用） -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 振动（触觉反馈，可选） -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:name=".GpdbApplication"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GPDb"
+        android:largeHeap="true"
+        tools:targetApi="31">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.GPDb.SplashScreen">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>

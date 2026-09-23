@@ -17,6 +17,6 @@
    - 移动端所有的 Gradle 构建配置、Android 资源清单 (`AndroidManifest.xml`)、移动专属触控 UI 及 NDK 脚本均存放于此目录，严禁向外污染 `desktop_client/`。
 2. **数据与存储隔离**：
    - Android 遵循严格的 Scoped Storage（分区存储）与 Storage Access Framework (SAF) 权限模型；
-   - 运行阶段支持挂载外部存储中已有的 `gevi.db` 与 `image_cache/`，或单机独立创建私有数据库。
+   - 运行阶段支持挂载外部存储中已有的 `GPDb.db` 与 `image_cache/`，或单机独立创建私有数据库。
 3. **Rust 核心复用**：
    - 核心 SQLite 查询算法复用根目录的 `gpdb-core`，通过 NDK 交叉编译生成 `.so` 动态库。

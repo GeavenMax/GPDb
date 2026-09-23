@@ -11,12 +11,12 @@ scrape_bftv_performers.py
   python scrape_bftv_performers.py --name "Alex Kof"       # 只精准处理指定的演员
   python scrape_bftv_performers.py --delay 1.0             # 请求间隔秒数（默认 1.0）
   python scrape_bftv_performers.py --overwrite             # 重新爬取已有 bftv_url 的演员
-  python scrape_bftv_performers.py --db /path/to/gevi.db   # 手动指定数据库文件
+  python scrape_bftv_performers.py --db /path/to/GPDb.db   # 手动指定数据库文件
 
 工作原理
 --------
 1. 数据库路径自动侦测：优先从客户端配置 (~/Library/Application Support/com.gpdb.app/db_config.json)、
-   环境变量 GEVI_DB、~/.gevi_db_path 或当前目录获取。
+   环境变量 GPDB_DB、~/.gpdb_db_path 或当前目录获取。
 2. 自动化浏览器反反爬：使用 Playwright Chromium Stealth 模式轻松穿透 Cloudflare，
    获取真实渲染后的页面。若未安装 Playwright，自动降级为标准 HTTP 客户端。
 3. 正则提取演员主页卡片直链（/pornstars/<slug>-<digits>/），例如：
@@ -247,7 +247,7 @@ def run(args: argparse.Namespace) -> None:
             f"❌ 数据库不存在: {db_path}\n"
             f"💡 提示：客户端当前未记录有效数据库路径。\n"
             f"   请先打开客户端指定或创建数据库，或通过 --db 参数手动指定，例如：\n"
-            f"   python scrape_bftv_performers.py --db /path/to/gevi.db"
+            f"   python scrape_bftv_performers.py --db /path/to/GPDb.db"
         )
 
     conn = sqlite3.connect(str(db_path))

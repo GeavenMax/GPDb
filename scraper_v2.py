@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GEVI Offline Database - Scraper v2
+GPDb Offline Database - Scraper v2
 
 A re-scrape-safe, anti-blocking replacement for batch_scraper.py. It exists to fix
 three problems the v1 scraper has in practice:
@@ -862,7 +862,7 @@ class ScraperV2:
         total = len(targets)
 
         print("=" * 74)
-        print(f"🕷️  GEVI Scraper v2 | 模式: {self.args.mode} | 目标: {total:,} 条")
+        print(f"🕷️  GPDb Scraper v2 | 模式: {self.args.mode} | 目标: {total:,} 条")
         print(f"   并发: {self.args.concurrency} | 起始速率: {self.args.rate} req/s "
               f"(上限 {self.args.max_rate}) | 重试: {self.args.max_retries}")
         print("=" * 74)
@@ -1192,7 +1192,7 @@ def prune_backups(db_path: str, keep: int) -> None:
       compared as the *oldest* of the set and was the first one deleted. The caller
       prints "已备份数据库" before this runs, so the run announced a backup and then
       destroyed it, leaving a batch write with no way back.
-    - Touch hand-named backups. `gevi.db.backup-before-titles` is a checkpoint someone
+    - Touch hand-named backups. `GPDb.db.backup-before-titles` is a checkpoint someone
       chose to keep, not a run artifact to rotate; under the old name sort it was one
       of the files that outlived the real one.
     """
@@ -1270,7 +1270,7 @@ def run_fix_years(db: DatabaseManager, db_path: str, apply: bool,
     nulls = conn.execute("SELECT COUNT(*) FROM movies WHERE release_year IS NULL").fetchone()[0]
     print(f"\n✅ 已清除 {cur.rowcount:,} 条错误年份，改为「未知」。")
     print(f"   残留不可能年份: {left} (应为 0) | 库中无年份影片共 {nulls:,} 条")
-    print("   回滚办法：用本次生成的 backups/gevi.db.backup-* 覆盖 gevi.db。")
+    print("   回滚办法：用本次生成的 backups/GPDb.db.backup-* 覆盖 GPDb.db。")
 
 
 # --------------------------------------------------------------------------
@@ -1696,7 +1696,7 @@ def run_audit(db: DatabaseManager) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="GEVI Scraper v2 — 不重复、不破坏数据、不被反爬拦截",
+        description="GPDb Scraper v2 — 不重复、不破坏数据、不被反爬拦截",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -1706,7 +1706,7 @@ def main() -> None:
                                  "fix-years", "audit", "directors"],
                         help="抓取模式 (默认 gaps: 只补齐缺失字段；episode-sync: 抓片商分集表里的"
                              "独立分集；directors: 离线拆分粘连的导演名)")
-    parser.add_argument("--db", default="gevi.db", help="SQLite 数据库路径")
+    parser.add_argument("--db", default="GPDb.db", help="SQLite 数据库路径")
     parser.add_argument("--gaps", help="--mode gaps 时检查哪些字段, 逗号分隔 "
                                       "(description,year,duration,cover,cover_variants,cast,studio,director)。"
                                       "cover_variants = 有封面但没记录封面变体(即封底未确认)")

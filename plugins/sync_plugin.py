@@ -13,7 +13,7 @@ class SyncPlugin:
 def handle_sync(self):
     # Trigger incremental sync
     import subprocess
-    sync_script = BASE_DIR / "sync_gevi.py"
+    sync_script = BASE_DIR / "sync_gpdb.py"
     try:
         res = subprocess.run(
             ["python3", str(sync_script), "--probe-count", "15"],

@@ -9,7 +9,7 @@ BoyfriendTV (BFTV) 演员档案逆向极速同步引擎。
    直接从 BFTV 提取全部演员主页 URL 与演员 Slug / 编号，再批量快速映射进本地 SQLite 数据库！
 2. 零 Cloudflare 阻断：优先直连 CDN Sitemap (cdn77.boyfriendtv.com)，3 秒内下载全网 12,000+ 演员档案列表；
    若遇网络异常则自动无缝降级为 Playwright 隐身浏览器翻页抓取。
-3. 智能模糊匹配算法：自动剥离 GEVI 数据库中演员后缀如 (dp)、(white)、(asian)、(aka Kenny) 等，
+3. 智能模糊匹配算法：自动剥离 GPDb 数据库中演员后缀如 (dp)、(white)、(asian)、(aka Kenny) 等，
    并支持连字符 Slug 格式还原与标准化去重匹配。
 4. 毫秒级内存索引与批量写入：千万级比对在内存中 0.1 秒完成，SQLite 事务批量秒级入库。
 """

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GEVI Industrial Batch Scraper & Offline DB Builder
+GPDb Industrial Batch Scraper & Offline DB Builder
 Features:
 - Checkpoint / Resume: Never re-downloads already processed IDs.
 - Concurrency with ThreadPool + Single DB Writer Queue (Zero database lock contention).
@@ -125,7 +125,7 @@ def to_path(url: str) -> str:
 class BatchScraper:
     def __init__(
         self,
-        db_path: str = "gevi.db",
+        db_path: str = "GPDb.db",
         concurrency: int = 8,
         delay: float = 0.02,
         max_retries: int = 4
@@ -576,7 +576,7 @@ class BatchScraper:
             mode_label = "【仅抓取数据库中已知的演员 ID】"
         else:
             mode_label = f"[{start_id} -> {end_id}]"
-        print(f"🚀 GEVI 批量刮削启动 | 目标: {item_type.upper()} | 范围: {mode_label}")
+        print(f"🚀 GPDb 批量刮削启动 | 目标: {item_type.upper()} | 范围: {mode_label}")
         print(f"   并发工作池: {self.concurrency} 线程 | 数据库: {self.db_path}")
         print("=" * 70)
 
@@ -652,7 +652,7 @@ class BatchScraper:
         print(f"\n✨ 本轮抓取完成！耗时: {elapsed:.2f}秒 | 成功写入: {self.ok_count} | 404不存在: {self.not_found_count}")
 
 def main():
-    parser = argparse.ArgumentParser(description="GEVI Industrial Batch Scraper & SQLite FTS5 Builder")
+    parser = argparse.ArgumentParser(description="GPDb Industrial Batch Scraper & SQLite FTS5 Builder")
     parser.add_argument("--mode", choices=["movies", "performers"], default="movies", help="Scrape movies or performers")
     parser.add_argument("--start", type=int, default=1, help="Start ID (default: 1)")
     parser.add_argument("--end", type=int, default=76000, help="End ID (default: 76000 for movies, 150000 for performers)")
@@ -673,7 +673,7 @@ def main():
     if args.stats:
         db = DatabaseManager(db_path)
         stats = db.get_stats()
-        print(f"\n📊 【GEVI 离线数据库当前状态统计】({db_path})")
+        print(f"\n📊 【GPDb 离线数据库当前状态统计】({db_path})")
         print(f"  - 影片总数 (Movies):             {stats.get('movies', 0):,}")
         print(f"  - 演员总数 (Performers):         {stats.get('performers', 0):,}")
         print(f"  - 场景总数 (Episodes):           {stats.get('episodes', 0):,}")

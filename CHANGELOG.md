@@ -1,7 +1,48 @@
 # 更新日志 (Changelog)
 
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
-本文件记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
+本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
+
+## [v2.6.2] - 2026-09-23
+
+### 🐛 修复 (Fixed)
+- **「增量极速同步」启动失败：真正根因定位与完整修复（两阶段）**：
+  - **第一阶段（误判）**：最初误判为 Tauri build 目录下资源镜像残留旧文件名 `sync_gevi.py` 所致，向 `target/release/bundle/` 及 `target/debug/` 内的 `_up_/_up_/` 目录补入 `sync_gpdb.py` 并删除旧文件，客户端重启后错误依旧。
+  - **第二阶段（真正根因）**：通过 `strings` 命令检查 `/Applications/GPDb.app/Contents/MacOS/gpdb` 二进制文件，发现二进制内部仍硬编码 `sync_gevi.py`。这说明用户实际运行的 `/Applications/GPDb.app` 是**源码改名之前编译的旧版二进制**，与 `target/release/bundle/` 里的 bundle 完全独立，替换资源文件对其无效。
+  - **最终修复**：
+    1. 执行 `npm run tauri build -- --no-bundle` 重新编译 Rust 二进制（23 秒完成）；
+    2. 将新二进制 `target/release/gpdb` 覆盖安装至 `/Applications/GPDb.app/Contents/MacOS/gpdb`；
+    3. 同步更新 `/Applications/GPDb.app/Contents/Resources/_up_/_up_/` 下全部 Python 脚本，删除残留的 `sync_gevi.py`，写入 `sync_gpdb.py`、`sync_bftv_catalog.py` 等最新版本；
+    4. `strings` 验证确认新二进制内只含 `sync_gpdb.py`，`sync_gevi.py` 彻底消失。
+
+### ⚡ 优化 (Changed)
+- **`tauri.conf.json` 资源清单补全**：
+  - 发现 `bundle.resources` 列表中遗漏了 `sync_bftv_catalog.py`，导致正式 `tauri build` 打包时「BFTV Catalog 同步」模式所需脚本不会被纳入应用包。已补充该条目，确保下次构建所有脚本均正确随包分发：
+    ```json
+    "../../sync_gpdb.py",
+    "../../sync_bftv_catalog.py",   // 新增
+    "../../batch_scraper.py",
+    "../../db_manager.py",
+    "../../scrape_bftv_performers.py",
+    "../../cache_images.py"
+    ```
+
+## [v2.6.1] - 2026-09-23
+
+### 🐛 修复 (Fixed)
+- **奖杯自动复活与无法清空故障**：
+  - 修复 `trophySystem.ts` 中 `bronze_plugin_toggle`、`bronze_db_scanned`、`bronze_lang_switch`、`bronze_grid_adjust` 触发条件硬编码为 `condition: () => true` 以及 `bronze_plugin_bt` 默认状态为 true 的设计缺陷。修复前每次专注计时刷新（每15秒）或产生交互都会自动重新点亮这些奖杯，导致清空操作失效。
+  - 在 `UserAnalytics` 中引入了真实的行为指标统计（`pluginsVisitedCount`、`settingsVisitedCount`、`langSwitchedCount`、`gridAdjustedCount`、`btUsedCount`），所有奖杯成就仅在满足实际操作阈值后才可解锁，数据为 0 时严格锁定。
+- **重置弹窗选项缺失与连环解锁死循环**：
+  - 重写 `TrophyResetModal.vue`，彻底解决先前“方式 1”默认触发连续解锁队列导致奖杯无法保持清空的问题；新增“仅清空已获成就奖杯（重置奖杯数据）”专属选项，并提供“彻底抹除全部数据”与“重新检定连环解锁”三种清晰独立的操作模式。
+- **跨视图奖杯统计状态脱节**：
+  - 修复 `PluginsView.vue` 中 `trophyStats` 使用未同步的独立 ref 导致的统计数字不更新问题，统一导入响应式 `trophyStats`。
+  - 修复 `AnalyticsView.vue`“清空所有统计”时未联动重置 `resetUnlockedTrophies()` 的问题。
+
+### ⚡ 优化 (Changed)
+- **奖杯重置机制与即时清空**：
+  - 彻底清空并重置本地已获得奖杯数据（`gpdb_unlocked_trophies`），将奖杯系统恢复为初始未解锁状态（0/77）。
+  - 在多语言切换（`setLocale`）、网格列数调节（`decreaseCols`/`increaseCols`）、页面 Tab 切换以及 BT 磁力搜索时建立精准的埋点追踪。
 
 ## [v2.6.0] - 2026-09-23
 
@@ -55,8 +96,8 @@
 - **BoyfriendTV (BFTV) 演员档案逆向极速同步引擎 (`sync_bftv_catalog.py`)**：
   - **全网目录逆向关联突破性策略**：针对传统单人逐一向 BFTV 搜索匹配耗时数小时且易触发 Cloudflare 质询的性能瓶颈，反向利用 BFTV 全站演员数量远少于本地影库的特性，从 BFTV 官方 CDN Sitemap 瞬时下载解析全站 12,436+ 位男星/模特的官方主页 URL 与专属编号。
   - **零 Cloudflare 阻断极速拉取**：直连 CDN 节点，2.6 秒内完成全站演员列表下载解析，彻底摆脱反爬拦截限制。
-  - **智能别名净化与内存倒排索引匹配**：自动剥离 GEVI 数据库中演员后缀如 `(dp)`、`(white)`、`(asian)`、`(aka Kenny)`，并支持连字符 Slug 格式还原与标准化去重匹配。10.8 万演员内存哈希比对仅耗时 0.1 秒，单次批量更新事务仅耗时 3.05 秒，一次性为本地数据库关联新增 16,950+ 位演员的官方 BFTV 直达主页。
-  - **无缝集成增量同步流**：在 `sync_gevi.py` 增量发现新入库演员时自动触发逆向匹配，确保新入库演员立即具备 BFTV 资料直达能力。
+  - **智能别名净化与内存倒排索引匹配**：自动剥离 GPDb 数据库中演员后缀如 `(dp)`、`(white)`、`(asian)`、`(aka Kenny)`，并支持连字符 Slug 格式还原与标准化去重匹配。10.8 万演员内存哈希比对仅耗时 0.1 秒，单次批量更新事务仅耗时 3.05 秒，一次性为本地数据库关联新增 16,950+ 位演员的官方 BFTV 直达主页。
+  - **无缝集成增量同步流**：在 `sync_gpdb.py` 增量发现新入库演员时自动触发逆向匹配，确保新入库演员立即具备 BFTV 资料直达能力。
 
 ### ⚡ 优化 (Changed)
 - **自动化刮削更新插件高度自定义执行选项面板**：
@@ -92,7 +133,7 @@
   - 新增 Rust 端 `check_runtime_environment` 诊断命令，全面探测系统环境健康状况：
     - Python 3 解释器安装状态、版本号及执行路径（自动化刮削更新核心基石）；
     - Python 内置 SQLite 模块健康度；
-    - 本地 `gevi.db` 核心数据库连接与有效性；
+    - 本地 `GPDb.db` 核心数据库连接与有效性；
     - 进阶 Playwright 浏览器反爬自动化引擎就绪状态（用于 BoyfriendTV Cloudflare 穿透）。
   - 全新设计并上线 `EnvironmentCheckModal.vue` 诊断向导：
     - 首次安装或核心环境未就绪时自动温和提醒用户；
@@ -101,12 +142,12 @@
     - 在“功能外挂”控制台常驻“运行环境自检”入口，支持随时重新发起体检诊断。
 
 - **增量同步时自动下载并持久化封面与剧照 (Auto-Download Images to Cache)**：
-  - 针对增量同步（`sync_gevi.py`）后新入库条目仅存 URL 无本地图片缓存的问题，新增 `download_image_to_cache()` 离线缓存下载引擎。
+  - 针对增量同步（`sync_gpdb.py`）后新入库条目仅存 URL 无本地图片缓存的问题，新增 `download_image_to_cache()` 离线缓存下载引擎。
   - 在同步新电影、新演员、新分集元数据时，同步将海报大图（`Covers/`）、缩略图（`Icons/`）、分集剧照（`Episodes/`）以及演员写真（`Stars/`）持久化至 `image_cache/`。
   - 默认注入防盗链请求头（`Referer: https://gayeroticvideoindex.com/`）与 `curl` 双重重试机制，有效规避 Cloudflare TLS 异常，确保 macOS 客户端即时以 `gpdb-img://` 协议丝滑秒开高清封面。
 - **macOS 27 规范 Dock 栏图标原生热切换与双轨同步引擎**：
   - **遵循 macOS 27 HIG 规范**：全套图标统一遵循 macOS 连续曲率超椭圆（Squircle）网格、824px 画布安全边距、环境落影（Ambient Drop-Shadow）与微透晶体材质规范，由新版 `generate-app-icons.py` 自动化管线生成包含 16x16 至 1024x1024 全像素阶梯的 `AppIcon.icns` 与现代化 Asset Catalog `Assets.car`。
-  - **用户自选方案双轨持久化**：新增 `~/.gevi_icon_scheme` 配置持久化层；Rust 原生 `setup` 启动钩子与前端 `initAppIcon()` 双重加载生效，确保冷启动、热重启或系统唤醒时 Dock 图标均精确保持用户自选方案。
+  - **用户自选方案双轨持久化**：新增 `~/.gpdb_icon_scheme` 配置持久化层；Rust 原生 `setup` 启动钩子与前端 `initAppIcon()` 双重加载生效，确保冷启动、热重启或系统唤醒时 Dock 图标均精确保持用户自选方案。
 
 ### 🐛 修复 (Fixed)
 - **彻底删除旧版 Dock 栏硬编码图标与冷启动重置缺陷**：
@@ -115,13 +156,13 @@
   - 重构 `commands/system.rs` 中的 `set_dock_icon_macos`，接入 `[NSApp setApplicationIconImage:]` 并协同 `[[NSApp dockTile] display]` 强制刷新 Dock Tile，修复切换后偶发延迟重绘问题，并补齐 `release` 内存管理。
 - **BoyfriendTV 演员爬虫 Cloudflare Turnstile 质询拦截与别名干扰修复**：
   - **动态穿透 Turnstile 质询盾**：针对 BoyfriendTV 搜索网关 (`/searchgate/`) 部署的 Cloudflare Turnstile 人机质询，升级 Playwright 隐身指纹注入（抹除 `navigator.webdriver` 特征、模拟真实 Chrome 插件及英文语言环境），并引入自适应轮询等待机制（最长 8 秒自动检测并等待 Turnstile 盾解除），彻底根治此前仅等待 2.5 秒导致质询未完成即被判为“未找到”的卡点。
-  - **搜索关键词智能净化 (Query Normalization)**：针对 GEVI 数据库中超 26% 演员带有括号别名或年代标注（例如 `(white)`、`(80s)`、`(aka Kenny)`）导致 BFTV 模糊匹配失效的问题，新增 `clean_performer_name()` 正则净化引擎，自动剔除注释字符，大幅提升现代活跃演员的检索命中率。
-  - **收录状态精细化提示**：控制台输出细化区分“✓ 匹配成功”与“(BFTV未收录)”，避免混淆网络反爬拦截与平台数据源收录范围差异（BFTV 主打近 20 年活跃模特，GEVI 跨越 50 年历史）。
+  - **搜索关键词智能净化 (Query Normalization)**：针对 GPDb 数据库中超 26% 演员带有括号别名或年代标注（例如 `(white)`、`(80s)`、`(aka Kenny)`）导致 BFTV 模糊匹配失效的问题，新增 `clean_performer_name()` 正则净化引擎，自动剔除注释字符，大幅提升现代活跃演员的检索命中率。
+  - **收录状态精细化提示**：控制台输出细化区分“✓ 匹配成功”与“(BFTV未收录)”，避免混淆网络反爬拦截与平台数据源收录范围差异（BFTV 主打近 20 年活跃模特，GPDb 跨越 50 年历史）。
 
 ### ⚡ 优化 (Changed)
 - **数据库路径全生态自动识别与双轨持久化**：
-  - 客户端成功打开数据库时，自动将规范化绝对路径双轨写入 macOS 标准配置 `com.gpdb.app/db_config.json` 与便利标记文件 `~/.gevi_db_path`。
-  - Python 端重构 `find_default_db_path()` 算法，按序从环境变量 `GEVI_DB`、客户端配置文件、快捷标记文件及本地工作区自动定位数据库，`scrape_bftv_performers.py`、`sync_gevi.py`、`batch_scraper.py`、`cache_images.py` 无需再手动加 `--db` 参数即可零配置运行。
+  - 客户端成功打开数据库时，自动将规范化绝对路径双轨写入 macOS 标准配置 `com.gpdb.app/db_config.json` 与便利标记文件 `~/.gpdb_db_path`。
+  - Python 端重构 `find_default_db_path()` 算法，按序从环境变量 `GPDB_DB`、客户端配置文件、快捷标记文件及本地工作区自动定位数据库，`scrape_bftv_performers.py`、`sync_gpdb.py`、`batch_scraper.py`、`cache_images.py` 无需再手动加 `--db` 参数即可零配置运行。
 - **BoyfriendTV 演员主页直链批量抓取能力增强**：
   - `scrape_bftv_performers.py` 优化抓取调度排序，优先遍历有肖像头像的活跃演员，支持 `--name` 单演员精准测试与秒级落库更新。
 
@@ -131,10 +172,10 @@
 
 ### 🐛 修复 (Fixed)
 - **自动化刮削更新插件历史 404 误判修复**：
-  - 修复 `sync_gevi.py` 中因历史全量探测导致大量新 ID（75191..76000）被记录为 404 而被 `get_completed_ids` 判定为“已完成”进而 100% 误杀过滤新片的问题。
+  - 修复 `sync_gpdb.py` 中因历史全量探测导致大量新 ID（75191..76000）被记录为 404 而被 `get_completed_ids` 判定为“已完成”进而 100% 误杀过滤新片的问题。
   - 重构增量待抓取列表计算逻辑：官网 `/newm`、`/newp` 确认发现的新片/新星条目不受历史 404 阻断，仅对本地数据库已收录记录去重；前向探测引入时效保护机制，并自动清除超前 404 占位缓存。
 - **官网最新分集（/newe）增量接入与自动解析**：
-  - 在 `sync_gevi.py` 中接入 `/newe` 实时更新流，新增 `get_latest_ids_from_pages` 与 `parse_episode_details` 专用解析器。
+  - 在 `sync_gpdb.py` 中接入 `/newe` 实时更新流，新增 `get_latest_ids_from_pages` 与 `parse_episode_details` 专用解析器。
   - 自动抓取新分集标题、高清预览剧照、所属片商（Studio/Company）、发布日期以及关联出演演员表，并通过 `save_company_episodes` 深度入库。
 - **macOS 客户端环境下的 Python 路径与独立安装包资源寻址**：
   - 在 Tauri 核心 `commands/sync.rs` 中引入 `resolve_python()` 路径降级解析器，按序探测 `/opt/homebrew/bin/python3`、`/usr/local/bin/python3`、`/usr/bin/python3`，解决 macOS GUI 进程无终端环境变量导致的启动失败。
@@ -196,7 +237,7 @@
 - **全语种多语言文档矩阵 (Multi-language Documentation)**：
   - 为客户端支持的全部 7 种语言独立编写并发布原生文档：简体中文 (`README.md`)、English (`README_EN.md`)、繁體中文 (`README_ZH_TW.md`)、日本語 (`README_JA.md`)、Deutsch (`README_DE.md`)、Español (`README_ES.md`)、Italiano (`README_IT.md`)。
 - **一键创建全新空白数据库与冷启动引导 (Zero-Friction DB Initializer)**：
-  - 在 `gpdb-core/src/migrate.rs` 提供原生零依赖的独立建表与迁移脚本，无缝在 `~/Documents/GPDb/gevi.db` 建立包含 14 张核心表结构、全文检索索引与视图的标准库。
+  - 在 `gpdb-core/src/migrate.rs` 提供原生零依赖的独立建表与迁移脚本，无缝在 `~/Documents/GPDb/GPDb.db` 建立包含 14 张核心表结构、全文检索索引与视图的标准库。
   - 在权限引导模态窗 `PermissionExplainModal.vue` 与“缓存与设置”页顶置高奢渐变“✨ 一键创建全新空白影库（首次使用推荐）”按钮，支持创建中加载态与防重保护，创建后自动引导进入数据同步中心。
 - **未缓存图片边看边自动离线下载与本地持久化 (On-Demand Image Caching Engine)**：
   - 在 Tauri 宿主层启用非阻塞异步协议 `register_asynchronous_uri_scheme_protocol("gpdb-img")`，实现多图并发多线程请求。
@@ -236,7 +277,7 @@
 ## [v1.0.0] - 2026-09-20
 
 ### 🚀 初始版本
-- 建立 GEVI 离线数据库基础框架与 SQLite WAL 模式支持。
+- 建立 GPDb 离线数据库基础框架与 SQLite WAL 模式支持。
 - 完成 60,000+ 电影与 100,000+ 分集基础数据存储。
 - 基于 Tauri + Rust + Vue 3 的跨平台桌面客户端首次上线。
 

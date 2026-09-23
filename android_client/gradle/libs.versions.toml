@@ -1,0 +1,80 @@
+[versions]
+# ── Kotlin & 核心 ─────────────────────────────────────────────────────────
+kotlin                   = "2.1.21"
+ksp                      = "2.1.21-2.0.1"
+kotlinxCoroutines        = "1.10.2"
+
+# ── AGP ───────────────────────────────────────────────────────────────────
+agp                      = "8.7.3"
+
+# ── Compose BOM (统一管理 Compose 全家桶版本) ─────────────────────────────
+composeBom               = "2025.05.01"
+
+# ── Jetpack ───────────────────────────────────────────────────────────────
+activityCompose          = "1.10.1"
+navigationCompose        = "2.9.0"
+lifecycleRuntimeKtx      = "2.9.1"
+room                     = "2.7.1"
+datastorePreferences     = "1.1.4"
+coreSplashscreen         = "1.0.1"
+
+# ── Coil ──────────────────────────────────────────────────────────────────
+coil                     = "2.7.0"
+
+# ── Accompanist ───────────────────────────────────────────────────────────
+accompanist              = "0.37.3"
+
+# ── 测试 ──────────────────────────────────────────────────────────────────
+junit                    = "4.13.2"
+androidxJunit            = "1.2.1"
+espressoCore             = "3.6.1"
+
+[libraries]
+# Kotlin
+kotlin-stdlib                         = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlinx-coroutines-android            = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+
+# Compose BOM
+androidx-compose-bom                  = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+androidx-compose-ui                   = { module = "androidx.compose.ui:ui" }
+androidx-compose-ui-graphics          = { module = "androidx.compose.ui:ui-graphics" }
+androidx-compose-ui-tooling-preview   = { module = "androidx.compose.ui:ui-tooling-preview" }
+androidx-compose-ui-tooling           = { module = "androidx.compose.ui:ui-tooling" }
+androidx-compose-ui-test-manifest     = { module = "androidx.compose.ui:ui-test-manifest" }
+androidx-compose-ui-test-junit4       = { module = "androidx.compose.ui:ui-test-junit4" }
+androidx-material3                    = { module = "androidx.compose.material3:material3" }
+androidx-material-icons-extended      = { module = "androidx.compose.material:material-icons-extended" }
+
+# Jetpack
+androidx-activity-compose             = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-navigation-compose           = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+androidx-lifecycle-runtime-ktx        = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-viewmodel-compose  = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
+
+# Room
+androidx-room-runtime                 = { module = "androidx.room:room-runtime", version.ref = "room" }
+androidx-room-ktx                     = { module = "androidx.room:room-ktx", version.ref = "room" }
+androidx-room-compiler                = { module = "androidx.room:room-compiler", version.ref = "room" }
+
+# DataStore & Splashscreen
+androidx-datastore-preferences        = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
+androidx-core-splashscreen            = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
+
+# Coil
+coil-compose                          = { module = "io.coil-kt:coil-compose", version.ref = "coil" }
+coil-core                             = { module = "io.coil-kt:coil", version.ref = "coil" }
+
+# Accompanist
+accompanist-permissions               = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
+accompanist-systemuicontroller        = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanist" }
+
+# 测试
+junit                                 = { module = "junit:junit", version.ref = "junit" }
+androidx-junit                        = { module = "androidx.test.ext:junit", version.ref = "androidxJunit" }
+androidx-espresso-core                = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCore" }
+
+[plugins]
+android-application                   = { id = "com.android.application", version.ref = "agp" }
+kotlin-android                        = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose                        = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp                                   = { id = "com.google.devtools.ksp", version.ref = "ksp" }

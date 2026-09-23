@@ -16,7 +16,7 @@ set -uo pipefail
 
 cd "$(dirname "$0")" || exit 1
 
-DB="${DB:-gevi.db}"
+DB="${DB:-GPDb.db}"
 END="${END:-76000}"                 # 影片 ID 上界，实测 76,000 之后全是 404
 LIMIT="${LIMIT:-0}"                 # 0 = 不限。设成 20 可先小跑一批看看效果
 CONCURRENCY="${CONCURRENCY:-4}"
@@ -85,4 +85,4 @@ run python3 scraper_v2.py --db "$DB" --audit
 
 echo
 echo "✅ 全部完成。日志: $LOG"
-echo "   备份（保留最近 5 份）: gevi.db.backup-*"
+echo "   备份（保留最近 5 份）: GPDb.db.backup-*"

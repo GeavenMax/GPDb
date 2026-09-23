@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GEVI Offline Database - High-Performance Offline Image Disk Cache System
+GPDb Offline Database - High-Performance Offline Image Disk Cache System
 Downloads and caches covers, back covers, and episode thumbnails to local disk.
 Provides CLI batch downloading with progress tracking and connection pooling.
 """
@@ -76,7 +76,7 @@ def get_cache_path(url: str, cache_dir: Path = DEFAULT_CACHE_DIR) -> Path:
     if not url:
         return cache_dir / "unknown.jpg"
     
-    # Check for GEVI standard paths: images/Covers/..., images/Episodes/..., images/Stars/...
+    # Check for GPDb standard paths: images/Covers/..., images/Episodes/..., images/Stars/...
     m = re.search(r"images/(Covers|Episodes|Stars|icons|logo)/([^?#]+)", url, re.IGNORECASE)
     if m:
         folder = m.group(1).capitalize()
@@ -175,7 +175,7 @@ def clear_cache(cache_dir: Path = DEFAULT_CACHE_DIR) -> int:
 
 def run_batch_download(mode: str = "all", limit: int | None = None, concurrency: int = 6,
                        void_after: int = DEFAULT_VOID_AFTER):
-    """Batch download all covers and episode thumbnails in gevi.db."""
+    """Batch download all covers and episode thumbnails in GPDb.db."""
     conn = sqlite3.connect(str(DB_PATH))
     cur = conn.cursor()
 
@@ -222,7 +222,7 @@ def run_batch_download(mode: str = "all", limit: int | None = None, concurrency:
         unique_urls = unique_urls[:limit]
 
     total = len(unique_urls)
-    print(f"=== GEVI Offline Image Cache Downloader ===")
+    print(f"=== GPDb Offline Image Cache Downloader ===")
     print(f"Target Cache Folder: {DEFAULT_CACHE_DIR}")
     print(f"Discovered Unique Images: {total} items (Mode: {mode})")
     print(f"Worker Concurrency: {concurrency}")
@@ -423,7 +423,7 @@ def run_hd_upgrade(apply: bool = False, limit: int | None = None, concurrency: i
     print("=== Episode Thumbnail HD Upgrade ===")
     print(f"Database:    {DB_PATH}")
     print(f"Rows:        {len(rows)} episodes | already HD: {already:,} | to probe: {len(todo):,}")
-    print(f"Mode:        {'APPLY (writes to gevi.db)' if apply else 'dry run (no writes)'}")
+    print(f"Mode:        {'APPLY (writes to GPDb.db)' if apply else 'dry run (no writes)'}")
     print(f"Batch:       {batch} | Concurrency: {concurrency}")
     print(f"Method:      {'probe each URL, then rewrite' if probe else 'rewrite all, verify by download'}")
     print("(interrupt freely — each batch is committed; rerun to continue)", flush=True)
@@ -617,7 +617,7 @@ def run_prune_orphans(apply: bool = False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="GEVI Offline Image Disk Cache Downloader")
+    parser = argparse.ArgumentParser(description="GPDb Offline Image Disk Cache Downloader")
     parser.add_argument("--mode", choices=["all", "covers", "episodes", "performers"], default="all")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--concurrency", type=int, default=6)

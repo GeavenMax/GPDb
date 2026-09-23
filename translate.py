@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GEVI Offline Database - Batch Machine Translation of Movie Synopses (EN -> ZH)
+GPDb Offline Database - Batch Machine Translation of Movie Synopses (EN -> ZH)
 
 Translates the English `description` of every movie into Chinese and stores the
 result in `movies.description_zh`, so the offline library stays fully usable in
@@ -13,7 +13,7 @@ Supported LLM backends (bring your own API key):
 
 Configuration (first match wins):
   1. CLI flags      --provider --api-key --model --base-url --profile
-  2. Environment    GEVI_LLM_PROVIDER / GEVI_LLM_API_KEY / GEVI_LLM_MODEL / GEVI_LLM_BASE_URL
+  2. Environment    GPDB_LLM_PROVIDER / GPDB_LLM_API_KEY / GPDB_LLM_MODEL / GPDB_LLM_BASE_URL
   3. Config file    translate_config.json next to this script
 
 The config file holds several named sources, so you can keep a cheap model for bulk
@@ -684,7 +684,7 @@ def resolve_settings(args, profile: str | None = None) -> dict:
 
     Precedence: CLI flag > environment variable > the named profile > the active
     profile. Environment variables still win over the file so that a one-off
-    `GEVI_LLM_API_KEY=... python3 translate.py` keeps working.
+    `GPDB_LLM_API_KEY=... python3 translate.py` keeps working.
     """
     cfg = migrate_config(load_config())
     profiles = cfg.get("profiles") or {}
@@ -697,10 +697,10 @@ def resolve_settings(args, profile: str | None = None) -> dict:
 
     return {
         "profile": name,
-        "provider": pick("provider", "GEVI_LLM_PROVIDER", "type"),
-        "api_key": pick("api_key", "GEVI_LLM_API_KEY", "api_key"),
-        "model": pick("model", "GEVI_LLM_MODEL", "model"),
-        "base_url": pick("base_url", "GEVI_LLM_BASE_URL", "base_url"),
+        "provider": pick("provider", "GPDB_LLM_PROVIDER", "type"),
+        "api_key": pick("api_key", "GPDB_LLM_API_KEY", "api_key"),
+        "model": pick("model", "GPDB_LLM_MODEL", "model"),
+        "base_url": pick("base_url", "GPDB_LLM_BASE_URL", "base_url"),
     }
 
 
@@ -720,14 +720,14 @@ def build_provider(settings: dict, system_prompt: str | None = None,
     if not name:
         raise SystemExit(
             "❌ 未指定翻译服务商。请用 --provider 指定 anthropic / openai / gemini，\n"
-            "   或设置环境变量 GEVI_LLM_PROVIDER。\n"
+            "   或设置环境变量 GPDB_LLM_PROVIDER。\n"
             f"   例: python3 translate.py --provider openai --api-key sk-..."
         )
     if name not in PROVIDERS:
         raise SystemExit(f"❌ 未知的服务商 '{name}'，可选: {', '.join(PROVIDERS)}")
     if not settings["api_key"] and not is_local_endpoint(settings["base_url"]):
         raise SystemExit(
-            "❌ 缺少 API Key。请用 --api-key 传入，或设置环境变量 GEVI_LLM_API_KEY，\n"
+            "❌ 缺少 API Key。请用 --api-key 传入，或设置环境变量 GPDB_LLM_API_KEY，\n"
             "   或在 translate_config.json 中写入 {\"api_key\": \"...\"}。"
         )
     cls = PROVIDERS[name]
@@ -891,7 +891,7 @@ def translate_glossary(db: DatabaseManager, dry_run: bool = False,
     pending = [t for t in terms if t not in existing]
 
     print("=" * 70)
-    print("📖 GEVI 演员属性术语表翻译")
+    print("📖 GPDb 演员属性术语表翻译")
     print(f"   词表共 {len(terms)} 条 | 已译 {len(existing)} 条 | 本次待译 {len(pending)} 条")
     if dry_run:
         print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
@@ -982,7 +982,7 @@ def translate_categories(db: DatabaseManager, dry_run: bool = False,
     pending = [t for t in terms if t not in existing]
 
     print("=" * 70)
-    print("🏷️  GEVI 影片分类术语表翻译")
+    print("🏷️  GPDb 影片分类术语表翻译")
     print(f"   词表共 {len(terms)} 条 | 已译 {len(existing)} 条 | 本次待译 {len(pending)} 条")
     if dry_run:
         print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
@@ -1147,7 +1147,7 @@ def run_translation(
     n_movies = sum(1 for r in rows if r["kind"] == "movie")
     batches = [rows[i:i + batch_size] for i in range(0, total, batch_size)]
     print("=" * 70)
-    print(f"🌐 GEVI 剧情简介批量翻译 | 服务商: {provider.__class__.__name__} | 模型: {provider.model}")
+    print(f"🌐 GPDb 剧情简介批量翻译 | 服务商: {provider.__class__.__name__} | 模型: {provider.model}")
     print(f"   待翻译: {total:,} 条 (影片 {n_movies:,} + 片段 {total - n_movies:,}) | "
           f"批次大小: {batch_size} | 批次数: {len(batches)} | 并发: {workers}")
     if dry_run:
@@ -1221,7 +1221,7 @@ def run_title_translation(
     stats = db.get_title_translation_stats()
     batches = [tasks[i:i + batch_size] for i in range(0, total, batch_size)]
     print("=" * 70)
-    print(f"🎬 GEVI 片名批量翻译 | 服务商: {provider.__class__.__name__} | 模型: {provider.model}")
+    print(f"🎬 GPDb 片名批量翻译 | 服务商: {provider.__class__.__name__} | 模型: {provider.model}")
     print(f"   全库片名: {stats['translatable']:,} 条 | 已译: {stats['translated']:,} 条 | "
           f"本次待译: {total:,} 条")
     print(f"   批次大小: {batch_size} | 批次数: {len(batches)} | 并发: {workers} | "
@@ -1277,14 +1277,14 @@ def run_title_translation(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="GEVI 影片简介批量翻译 (EN -> ZH)")
+    parser = argparse.ArgumentParser(description="GPDb 影片简介批量翻译 (EN -> ZH)")
     parser.add_argument("--provider", choices=list(PROVIDERS), help="翻译服务商")
     parser.add_argument("--profile", help="使用 translate_config.json 中哪一套服务配置 "
                                           "(默认用 active)")
     parser.add_argument("--api-key", help="API Key")
     parser.add_argument("--model", help="模型名（留空则用服务商默认模型）")
     parser.add_argument("--base-url", help="自定义 API 端点")
-    parser.add_argument("--db", type=str, default="gevi.db", help="SQLite 数据库路径")
+    parser.add_argument("--db", type=str, default="GPDb.db", help="SQLite 数据库路径")
     parser.add_argument("--limit", type=int, default=None, help="本次最多翻译多少条")
     parser.add_argument("--batch-size", type=int, default=None,
                         help="每批翻译多少条（默认：简介 20，片名 50）")

@@ -40,8 +40,12 @@
       "../../cache_images.py"
     ],
     "icon": [
-      "gen/icons/AppIcon.icns",
-      "icons/icon.ico"
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico",
+      "gen/icons/AppIcon.icns"
     ],
     "windows": {
       "certificateThumbprint": null,

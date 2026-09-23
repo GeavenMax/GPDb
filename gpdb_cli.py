@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GEVI macOS Offline Search CLI
+GPDb macOS Offline Search CLI
 Instant sub-millisecond retrieval on SQLite FTS5.
 """
 
@@ -158,12 +158,12 @@ def show_performer_detail(conn: sqlite3.Connection, performer_id: int):
         print(f"  - #{mid:<6d} 《{mtitle}》 ({myear or '未知'}) [{mstudio or '未知'}]")
 
 def main():
-    parser = argparse.ArgumentParser(description="GEVI macOS Offline Search CLI")
+    parser = argparse.ArgumentParser(description="GPDb macOS Offline Search CLI")
     parser.add_argument("query", nargs="?", default="", help="Search query (movie title or keywords)")
     parser.add_argument("-p", "--performer", type=str, default="", help="Search performer by name")
     parser.add_argument("-m", "--movie-id", type=int, default=None, help="Show detailed movie info by ID")
     parser.add_argument("--performer-id", type=int, default=None, help="Show detailed performer info by ID")
-    parser.add_argument("--db", type=str, default="gevi.db", help="Path to SQLite database")
+    parser.add_argument("--db", type=str, default="GPDb.db", help="Path to SQLite database")
     parser.add_argument("--stats", action="store_true", help="Show database overview statistics")
 
     args = parser.parse_args()
@@ -177,14 +177,14 @@ def main():
 
     if not db_file.exists():
         print(f"❌ 数据库文件不存在: {args.db}")
-        print("   请先运行 batch_scraper.py 抓取数据生成 gevi.db！")
+        print("   请先运行 batch_scraper.py 抓取数据生成 GPDb.db！")
         return
 
     conn = sqlite3.connect(str(db_file.resolve()))
 
     if args.stats:
         cur = conn.cursor()
-        print(f"\n📊 【GEVI 离线数据库状态统计】({db_file.resolve()})")
+        print(f"\n📊 【GPDb 离线数据库状态统计】({db_file.resolve()})")
         for tbl in ["movies", "performers", "episodes", "movie_performers"]:
             cur.execute(f"SELECT count(*) FROM {tbl}")
             print(f"  • {tbl:<18}: {cur.fetchone()[0]:,}")

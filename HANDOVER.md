@@ -1,4 +1,4 @@
-# GEVI 离线影视库 — 项目交接说明
+# GPDb 离线影视库 — 项目交接说明
 
 > 最后更新：2026-09-22 夜间。写给接手的人或模型：先读这一份，再动代码。
 > 文中所有数字都是当时实测值，不是估计值。
@@ -12,9 +12,9 @@
 把 `gayeroticvideoindex.com` 的影片, 演员, 分集数据刮下来, 存进本地 SQLite,
 配一个**完全离线**可用的桌面客户端（GPDb）。
 
-- 项目根：`/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database`
-- 主库：`gevi.db`（约 313 MB）
-- 分支：`gevi-plus`。最新提交序列见 §5.1。
+- 项目根：`/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GPDb_Offline_Database`
+- 主库：`GPDb.db`（约 313 MB）
+- 分支：`gpdb-plus`。最新提交序列见 §5.1。
 - 后端：Python 3 **纯标准库**，`python3 server.py` 起在 **8787** 端口
 - 桌面端：Tauri v2 + Vue 3，Rust 侧核心逻辑在 `desktop_client/src-tauri/gpdb-core/`
 
@@ -33,8 +33,8 @@
    `cp` 出来的库是坏的。（`scraper_v2.py` 里的 `backup_database()` 已经做对了。）
 5. **测试一律用 `/tmp` 里的库副本，绝不动真库。**
 6. **翻译 API Key 绝不下发前端。** Key 存在 `translate_config.json`（已 gitignore），
-   或环境变量 `GEVI_LLM_API_KEY`。`/api/translate/*` 只许回 `has_key` 和打码的 `key_hint`。
-7. **这些名字不许改**：`gevi.db`、`GEVI_DB`、`sync_gevi.py`、`gevi_cli.py`、`GEVI_LLM_*`。
+   或环境变量 `GPDB_LLM_API_KEY`。`/api/translate/*` 只许回 `has_key` 和打码的 `key_hint`。
+7. **这些名字不许改**：`GPDb.db`、`GPDB_DB`、`sync_gpdb.py`、`gpdb_cli.py`、`GPDB_LLM_*`。
    Python 侧和桌面端共用，改名直接连不上。
 8. **站点按 IP 限吞吐，约 1.4–1.7 req/s 是它的舒适区。** 实测跑 8 req/s 也能过，
    但**并发拉到 24 并持续几小时，站点会开始拒绝连接**（`ssl.SSLEOFError:
@@ -202,13 +202,13 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 
 用户在实机启动应用后反馈两个核心问题：
 1. **界面未出现「导演库」菜单入口**：排查发现上一轮（`67676c3`）只完成了代码和测试对拍，但**未运行过 `npm run build` 和 `tauri build`**，导致应用内嵌的前端资源依然是 9-21 旧产物；且 `Sidebar.vue` 旧版 `loadOrder()` 在读取本地 localStorage 缓存时，将新增的 `directors` 生硬追加至末尾（掉出屏幕或排在「我的收藏」下方）。
-2. **提示「找不到 gevi.db」**：当应用被移动至系统 `/Applications/GPDb.app` 启动时，工作目录为 `/` 且 GUI 启动无 `GEVI_DB` 环境变量，原有向上相对查找机制无法跨多层定位到真实数据库。
+2. **提示「找不到 GPDb.db」**：当应用被移动至系统 `/Applications/GPDb.app` 启动时，工作目录为 `/` 且 GUI 启动无 `GPDB_DB` 环境变量，原有向上相对查找机制无法跨多层定位到真实数据库。
 
 **成果**
 
 - **侧栏新菜单智能插槽 (`Sidebar.vue`)**：改造 `loadOrder()`，当用户本地存在旧版导航顺序缓存时，不再盲目 push 到末尾，而是通过比对 `NAV_ITEMS` 相对顺序，**自动将 `directors` 插入到「片商库」之后、「分集库」之前的正确位置**。
 - **全局毫秒级数据库智能识别 (`db.rs`)**：
-  - 启动查找链条中加入 Spotlight 快速检索：通过 macOS 原生 `mdfind "kMDItemFSName == 'gevi.db'"`（< 0.05 秒）定位系统所有候选库文件。
+  - 启动查找链条中加入 Spotlight 快速检索：通过 macOS 原生 `mdfind "kMDItemFSName == 'GPDb.db'"`（< 0.05 秒）定位系统所有候选库文件。
   - 递归扫描用户常见目录（`~/iCloud Drive (Archive)/Documents/...`、`~/Documents`、桌面、下载等）。
   - 读取前 16 字节校验 SQLite 魔法头（`SQLite format 3\0`，不加锁极速判断）以及检验 `movies` 表存在。
   - 命中后**自动连接并持久化记住路径**（写入 `~/Library/Application Support/com.gpdb.app/db_config.json`），用户首次或后续从任何地方打开 App 无需手动配置即可直接识别。
@@ -216,10 +216,10 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
   - 实时展示当前连接路径（支持点选复制）、连接状态指示灯（带呼吸灯）、文件大小（MB）。
   - 支持手动输入/粘贴绝对路径（支持 `~` 自动展开展开为主目录），带保存并连接校验与「恢复自动」按钮。
   - 接入 macOS 原生文件选取器：点击「浏览…」通过 `osascript` 唤起系统原生 Finder 文件选取窗口，零额外 crate 依赖，选完自动填入并热连接。
-  - 智能扫描列表展示：点击「智能扫描系统中的数据库」，列出全盘探测到的所有有效 `gevi.db` 候选文件，提供「切换至此库」一键秒换。
+  - 智能扫描列表展示：点击「智能扫描系统中的数据库」，列出全盘探测到的所有有效 `GPDb.db` 候选文件，提供「切换至此库」一键秒换。
 - **顶部报错横条一键救援**：若因文件挪动报错，错误条直接提供「智能识别数据库」、「浏览选择文件」和「前往设置」按钮，彻底避免死锁。
 - **全栈对齐**：Rust Tauri commands (`commands/database.rs`)、Vue 前端与 Python `server.py`（新增 `/api/database/info`、`/api/database/scan`、`/api/database/set-path` 并热重启）全部对齐。
-- **测试**：Rust 单元测试扩充至 **68 passed / 0 failed**（新增 `tilde_expansion_replaces_home`、`validates_sqlite_magic_header`、`validates_gevi_schema_requires_movies_table`）。
+- **测试**：Rust 单元测试扩充至 **68 passed / 0 failed**（新增 `tilde_expansion_replaces_home`、`validates_sqlite_magic_header`、`validates_gpdb_schema_requires_movies_table`）。
 - **完整打包同步**：执行 `npm run build`、`npx tauri build`，产物覆盖同步至 `/Applications/GPDb.app`。用户真机测试通过。
 
 ### 4.2 上一轮（2026-09-22 下午）：导演库
@@ -348,7 +348,7 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 | `models.rs` | `Episode.movie_id: i64` → `Option<i64>`（否则 `r.get(1)?` 遇 NULL 报 `InvalidType`，被 `filter_map(ok)` 静默吞掉） |
 | `sql.rs` / `queries/episodes.rs` | 下标 8/9 改 `COALESCE(m.studio_name, e.studio_name)` 与 `COALESCE(m.release_year, CAST(substr(e.release_date,1,4) AS INTEGER))`；片商筛选同样 COALESCE |
 | `tests/parity.rs` | 新增 `standalone_episodes_survive_the_row_mapper`（内存库，独立分集不被丢） |
-| `sync_gevi.py` | docstring 删掉从未实现的 `/newe` |
+| `sync_gpdb.py` | docstring 删掉从未实现的 `/newe` |
 
 **验证过的事**
 
@@ -380,7 +380,7 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
   分类折叠成 53 个原子词、词元匹配筛选、搜索加中文片名
 - `bcff731` 桌面版可直接管理翻译接口与模型
 - `270d3bf` 查询层拆成 `gpdb-core`
-- `d08e3af` 改名 GEVI+
+- `d08e3af` 改名 GPDb+
 - `52d05da` 修六项缺陷：分集板块空白、分集剧照过大、导演名粘连、一级菜单、片商 chip、作品计数
 
 ### 4.4 历史结论（别重复踩）
@@ -404,7 +404,7 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 
 ### 5.1 提交状态：工作区干净
 
-- **最新提交（图片下载接入 void 账本）**：`36c4a3f`（在 `gevi-plus` 分支）
+- **最新提交（图片下载接入 void 账本）**：`36c4a3f`（在 `gpdb-plus` 分支）
   - `cache_images.py` 把「源头没有这张图」记进 `scrape_voids`（新命名空间
     `item_type='episode'`），并把 `#164539` 的假图当「没有图」处理。
   - 数据侧结论见 §5.2；新增 flag 见 §6；踩坑见 §7.16 与 §7.18。
@@ -437,7 +437,7 @@ python3 -u scraper_v2.py --mode episode-sync --concurrency 3 --sweep-companies 1
 **第二步 — 高清图全量预下载：✅ 已完成（2026-09-22 20:36 收尾，共跑四遍）。**
 
 ```bash
-cd "/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database"
+cd "/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GPDb_Offline_Database"
 python3 -u cache_images.py --mode episodes --concurrency 32 >> /tmp/img_dl.log 2>&1
 ```
 
@@ -472,7 +472,7 @@ python3 -u cache_images.py --mode episodes --concurrency 32 >> /tmp/img_dl.log 2
 - **回滚实测**：干跑报 `No HD file on disk: 4`，与第四遍的失败数**完全对上**（这是它判得准的
   一个证据）。带 `--apply` 改写 4 行 `thumbnail_url`；随后补一遍下载，**2 条真修好**
   （#170577 → 5,245 B、#177141 → 7,063 B 落盘），**2 条证实是站点侧死条目**。
-  备份：`gevi.db.backup-20260922-203629`（328,466,432 字节，`integrity_check` = ok）；
+  备份：`GPDb.db.backup-20260922-203629`（328,466,432 字节，`integrity_check` = ok）；
   改动前的 4 条 URL 存在 `/tmp/revert_before.txt`。
 - **清孤儿实测**：1,735 个文件、12.7 MB，**全部是低清遗留**（`b.jpg` 一个都没有，
   中位数 7,246 字节），删完目录 120,979 → 119,244。
@@ -491,7 +491,7 @@ python3 -u cache_images.py --mode episodes --concurrency 32 >> /tmp/img_dl.log 2
 （全库现在 15,244 条分集没有图，NULL 是正常状态，客户端本来就处理这个状态），
 而不是像 #110529/#202277 那样回滚到同样死掉的低清 URL。
 
-备份 `gevi.db.backup-20260922-205629`（328,466,432 字节，`integrity_check` = ok），
+备份 `GPDb.db.backup-20260922-205629`（328,466,432 字节，`integrity_check` = ok），
 改动前的行存在 `/tmp/fix164539_before.txt`。
 
 **本轮新增：图片下载器接上 `scrape_voids` 账本（提交 `36c4a3f`）**
@@ -609,7 +609,7 @@ PNG 368、WebP 151、GIF 3——站点在 `.jpg` 这个 URL 下会回别的格�
 ## 6. 常用命令
 
 ```bash
-cd "/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database"
+cd "/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GPDb_Offline_Database"
 
 # 起后端（改完 server.py / db_manager.py 必须重启）
 python3 server.py                     # 8787
@@ -619,7 +619,7 @@ python3 scraper_v2.py --mode episode-sync --concurrency 3
 # 探针也一样扫完了，加 --sweep-companies 不会有新目标（见 §5.2）
 
 # 备份（库很大，别用 cp）
-sqlite3 gevi.db ".backup '/tmp/gevi-backup.db'"
+sqlite3 GPDb.db ".backup '/tmp/gpdb-backup.db'"
 
 # 图片缓存
 python3 cache_images.py --stats
