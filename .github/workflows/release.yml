@@ -26,8 +26,10 @@ jobs:
         include:
           - platform: macOS
             os: macos-latest
+            bundles: app,dmg
           - platform: Windows
             os: windows-latest
+            bundles: nsis
 
     steps:
       # ── 1. 检出代码 ──────────────────────────────────────────────────────────
@@ -66,7 +68,7 @@ jobs:
       # ── 6. 构建 Tauri 应用 ─────────────────────────────────────────────────
       - name: Build Tauri app
         working-directory: desktop_client
-        run: npm run tauri build
+        run: npx tauri build --bundles ${{ matrix.bundles }}
 
       # ── 7. 整理产物并按规范重命名 ─────────────────────────────────────────
       - name: Prepare build artifacts
@@ -81,19 +83,22 @@ jobs:
           mkdir -p dist_release
 
           if [ "${{ runner.os }}" == "macOS" ]; then
-            DMG_PATH=$(find desktop_client/src-tauri/target/release/bundle/dmg -name "*.dmg" | head -1)
+            DMG_PATH=$(find desktop_client/src-tauri/target/release/bundle/dmg -name "*.dmg" 2>/dev/null | head -1)
             if [ -n "$DMG_PATH" ]; then
               NEW_NAME="GPDb-macOS-${TAG_NAME}.dmg"
               cp "$DMG_PATH" "dist_release/$NEW_NAME"
+              echo "✅ macOS package: dist_release/$NEW_NAME"
             fi
           elif [ "${{ runner.os }}" == "Windows" ]; then
-            SETUP_PATH=$(find desktop_client/src-tauri/target/release/bundle/nsis desktop_client/src-tauri/target/release/bundle/msi -name "*.exe" -o -name "*.msi" 2>/dev/null | head -1)
+            SETUP_PATH=$(find desktop_client/src-tauri/target/release/bundle/nsis -name "*.exe" 2>/dev/null | head -1)
             if [ -n "$SETUP_PATH" ]; then
-              EXT="${SETUP_PATH##*.}"
-              NEW_NAME="GPDb-Windows-${TAG_NAME}.${EXT}"
+              NEW_NAME="GPDb-Windows-${TAG_NAME}.exe"
               cp "$SETUP_PATH" "dist_release/$NEW_NAME"
+              echo "✅ Windows package: dist_release/$NEW_NAME"
             fi
           fi
+
+          ls -la dist_release
 
       # ── 8. 发布 / 附加到 GitHub Release ─────────────────────────────────────
       - name: Upload to GitHub Release

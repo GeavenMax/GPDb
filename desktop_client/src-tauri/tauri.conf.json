@@ -30,7 +30,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg", "nsis"],
+    "targets": "all",
     "resources": [
       "../../sync_gpdb.py",
       "../../sync_bftv_catalog.py",
