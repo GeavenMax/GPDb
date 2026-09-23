@@ -3,6 +3,7 @@ import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { Search, SlidersHorizontal, RefreshCw, X, LayoutGrid, List, Clock, Trash2 } from '@lucide/vue';
 import { privacySettings } from '../services/privacy';
 import { analytics, recordSearch, removeSearchHistoryItem, clearSearchHistory } from '../services/analytics';
+import { isScrapingRunning, newlyScrapedCount } from '../services/scraper';
 import { t } from '../i18n';
 import AppIcon from './AppIcon.vue';
 import { currentIconScheme } from '../utils/appIcon';
@@ -202,11 +203,23 @@ onUnmounted(() => {
         <span v-if="filterActive" class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
       </button>
 
-      <!-- Sync Button -->
+      <!-- Background Scraping Status Pill (Active) -->
       <button
+        v-if="isScrapingRunning"
         @click="emit('toggle-sync')"
-        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-surface hover:bg-surface-2 border border-line text-fg-2 hover:text-fg transition"
-        title="增量同步官方最新影片"
+        class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border border-amber-500/40 text-amber-300 shadow-lg shadow-orange-500/10 hover:border-amber-400 transition cursor-pointer active:scale-98 animate-pulse"
+        title="正在后台抓取中，点击查看进度控制面板"
+      >
+        <RefreshCw class="w-3.5 h-3.5 animate-spin text-amber-300" />
+        <span>同步中 +{{ newlyScrapedCount }}</span>
+      </button>
+
+      <!-- Sync Button (Idle) -->
+      <button
+        v-else
+        @click="emit('toggle-sync')"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-surface hover:bg-surface-2 border border-line text-fg-2 hover:text-fg transition cursor-pointer"
+        title="打开自动化数据同步与搜刮中心"
       >
         <RefreshCw class="w-3.5 h-3.5 text-fg-3" />
         <span>{{ t('common.sync', '同步') }}</span>

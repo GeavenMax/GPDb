@@ -75,6 +75,7 @@ import {
   clearSearchHistory, clearBrowseHistory, resetAllAnalytics,
   recordFavoriteToggle, recordRating
 } from './services/analytics';
+import { initScraperService, onScraperDataChange } from './services/scraper';
 
 type SettingsSubTab = 'all' | 'appearance' | 'localization' | 'data' | 'privacy';
 const settingsSubTab = ref<SettingsSubTab>('all');
@@ -1544,6 +1545,15 @@ onMounted(async () => {
   await fetchMovies(true);
   loadPerformerFacets();
   nextTick(() => fillViewport());
+
+  // Initialize background scraper event listener and live auto-refresh
+  initScraperService();
+  onScraperDataChange(async () => {
+    loadStats();
+    if (currentTab.value === 'home' || currentTab.value === 'movies') {
+      reloadCurrentTab();
+    }
+  });
 });
 
 onUnmounted(() => {

@@ -33,6 +33,13 @@
 - **未缓存图片边看边自动离线下载与本地持久化 (On-Demand Image Caching Engine)**：
   - 在 Tauri 宿主层启用非阻塞异步协议 `register_asynchronous_uri_scheme_protocol("gpdb-img")`，实现多图并发多线程请求。
   - 在 `commands/cache.rs` 实现原子写入与智能路由机制：命中本地缓存时亚毫秒极速直读；未命中缓存时由后台通过伪装 User-Agent 与防盗链 Referer 头按需自动下载，落盘校验后原子重命名至 `image_cache/`，实现“边看边下载，下次全离线”。
+- **后台异步自动化刮削与数据流式同步中心 (Asynchronous Scraping Engine & Live Center)**：
+  - 在 `commands/sync.rs` 打造全异步生命周期引擎：支持增量极速同步、最新精选快速建库（1,000 部）、全量电影建库与演员档案补齐 4 大模式。
+  - 通过 `PYTHONUNBUFFERED=1` 与即时流解析器，将子进程标准输出通过 Tauri Event (`scraper-progress`, `scraper-finished`, `scraper-stopped`) 实时广播到前端。
+  - 支持优雅停机控制（SIGINT 安全存盘，零数据库损坏风险）。
+  - 全新升级 `SyncModal.vue`：引入毛玻璃流体仪表盘、渐变进度条、动态速度与耗时计算、终端实时滚屏日志与“后台静默运行”快捷切换。
+  - 顶栏导航 `Navbar.vue` 增加活动呼吸状态胶囊（`⚡ 同步中 +N`），点击可随时唤回控制台；前端通过 `onScraperDataChange` 驱动片库和主页在抓取过程中实时热更新。
+
 
 ### ⚡ 优化 (Changed)
 - **男同成人影视专业管理定位确立**：

@@ -26,6 +26,8 @@ import type {
   DatabaseInfo,
   HomeFeedData,
   SeriesCollectionsResponse,
+  ScraperStatus,
+  ScraperMode,
 } from './types';
 import { FAVORITE_TYPES } from './types';
 
@@ -552,6 +554,55 @@ export const api = {
     } catch {}
     return { newMovies: 0, newPerformers: 0 };
   },
+
+  // Asynchronous Scraper & Sync Engine
+  async startScraper(
+    mode: ScraperMode,
+    limit?: number,
+    startId?: number,
+    endId?: number
+  ): Promise<ScraperStatus> {
+    if (isTauri) {
+      return tauriInvoke<ScraperStatus>('start_scraper', {
+        mode,
+        limit: limit ?? null,
+        startId: startId ?? null,
+        endId: endId ?? null,
+      });
+    }
+    throw new Error('后台异步刮削引擎仅在桌面端可用');
+  },
+
+  async stopScraper(): Promise<ScraperStatus> {
+    if (isTauri) {
+      return tauriInvoke<ScraperStatus>('stop_scraper');
+    }
+    throw new Error('后台异步刮削引擎仅在桌面端可用');
+  },
+
+  async getScraperStatus(): Promise<ScraperStatus> {
+    if (isTauri) {
+      return tauriInvoke<ScraperStatus>('get_scraper_status');
+    }
+    return {
+      running: false,
+      mode: 'idle',
+      current_id: 0,
+      target_total: 0,
+      processed_count: 0,
+      percent: 0,
+      current_title: '',
+      new_movies: 0,
+      new_performers: 0,
+      speed_fps: 0,
+      eta_minutes: 0,
+      message: '就绪',
+      logs: [],
+      elapsed_secs: 0,
+      finished: false,
+    };
+  },
+
 
   // Image Disk Cache Management
   async getCacheStats(): Promise<{ count: number; size_mb: number; path: string }> {

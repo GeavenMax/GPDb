@@ -502,4 +502,26 @@ export interface HomeFeedData {
   total_studios: number;
 }
 
+export type ScraperMode = 'incremental' | 'movies_boost' | 'movies_full' | 'performers_full';
+
+export interface ScraperStatus {
+  running: boolean;
+  mode: string;
+  current_id: number;
+  target_total: number;
+  processed_count: number;
+  percent: number;
+  current_title: string;
+  new_movies: number;
+  new_performers: number;
+  speed_fps: number;
+  eta_minutes: number;
+  message: string;
+  logs: string[];
+  elapsed_secs: number;
+  finished: boolean;
+  error?: string | null;
+}
+
+
 
