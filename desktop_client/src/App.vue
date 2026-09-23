@@ -3386,6 +3386,21 @@ onUnmounted(() => {
                 </div>
               </div>
 
+              <!-- Create new blank database action for settings -->
+              <div class="pt-2 border-t border-line/60 flex items-center justify-between">
+                <div class="text-[11px] text-fg-4">
+                  首次使用或新建独立库？系统将在“文稿”目录创建全新标准数据库：
+                </div>
+                <button
+                  @click="handleCreateNewDatabase"
+                  :disabled="dbSwitching"
+                  class="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-rose-500/15 hover:from-amber-500/25 hover:to-rose-500/25 border border-amber-500/30 text-amber-300 text-[11px] font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer shrink-0"
+                >
+                  <Sparkles class="w-3.5 h-3.5 text-amber-400" />
+                  <span>{{ dbSwitching ? '创建建表中…' : '一键创建全新空白影库' }}</span>
+                </button>
+              </div>
+
               <!-- Intelligent detection scanner -->
               <div class="pt-2 border-t border-line/60 flex flex-col gap-2">
                 <div class="flex items-center justify-between">
@@ -3851,6 +3866,7 @@ onUnmounted(() => {
     <PermissionExplainModal
       :show="showPermissionModal"
       :scanning="dbScanning"
+      :creating="dbSwitching"
       @close="showPermissionModal = false"
       @pick-file="handlePickDbFile"
       @scan-folders="handleScanDatabases"

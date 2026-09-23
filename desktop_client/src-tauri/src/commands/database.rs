@@ -270,3 +270,25 @@ pub fn export_database_file() -> Result<Option<String>, String> {
     Ok(Some(dest_str))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_new_database_creates_all_tables() {
+        let temp_dir = std::env::temp_dir().join(format!("gpdb_test_{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        let db_path = temp_dir.join("test_gevi.db");
+        let result = create_new_database(Some(db_path.to_string_lossy().to_string()));
+        assert!(result.is_ok(), "create_new_database failed: {:?}", result.err());
+
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        let count: i64 = conn.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='movies'", [], |r| r.get(0)).unwrap();
+        assert_eq!(count, 1);
+        let count_p: i64 = conn.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='performers'", [], |r| r.get(0)).unwrap();
+        assert_eq!(count_p, 1);
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+}
+
+

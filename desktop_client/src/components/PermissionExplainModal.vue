@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { FolderCheck, ShieldCheck, HardDrive, FileSearch, X, Sparkles } from '@lucide/vue';
+import { ShieldCheck, HardDrive, FileSearch, X, Sparkles, Loader2, Database } from '@lucide/vue';
 
 defineProps<{
   show: boolean;
   scanning?: boolean;
+  creating?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -51,7 +52,8 @@ const emit = defineEmits<{
             </div>
             <button
               @click="emit('close')"
-              class="p-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg transition cursor-pointer"
+              :disabled="creating"
+              class="p-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg transition cursor-pointer disabled:opacity-30"
             >
               <X class="w-4 h-4" />
             </button>
@@ -76,41 +78,51 @@ const emit = defineEmits<{
             </div>
 
             <div class="p-3.5 rounded-2xl bg-surface-2/60 border border-line flex items-start gap-3">
-              <FolderCheck class="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+              <Database class="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <strong class="text-fg block mb-0.5">两种方式，由您决定</strong>
-                您可以点击<strong>“手动选取数据库”</strong>仅对单个文件授权（系统不会申请整目录权限）；也可以点击<strong>“授权并扫描常用目录”</strong>快速自动定位。
+                <strong class="text-fg block mb-0.5">初次使用？推荐一键建库</strong>
+                若您还没有影库文件，推荐直接点击下方金色按钮。系统将在“文稿”目录为您建立标准空影库，并自动引导您开启数据同步！
               </div>
             </div>
           </div>
 
           <!-- Actions -->
-          <div class="space-y-3 pt-2 relative z-10">
+          <div class="space-y-3 pt-1 relative z-10">
             <!-- 1-Click Create New Blank Database (First-time user onboarding) -->
             <button
               @click="emit('createDatabase')"
-              class="w-full px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-white font-bold text-xs shadow-lg shadow-orange-500/20 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+              :disabled="creating || scanning"
+              class="w-full px-5 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-white font-bold text-xs shadow-lg shadow-orange-500/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed active:scale-98"
             >
-              <Sparkles class="w-4 h-4 text-amber-200" />
-              <span>✨ 一键创建全新空白影库（首次使用推荐）</span>
+              <Loader2 v-if="creating" class="w-4 h-4 animate-spin text-white" />
+              <Sparkles v-else class="w-4 h-4 text-amber-200" />
+              <span>{{ creating ? '正在初始化影库表结构与索引…' : '✨ 一键创建全新空白影库（首次使用推荐）' }}</span>
             </button>
+
+            <div class="relative flex items-center justify-center my-1">
+              <div class="border-t border-line w-full"></div>
+              <span class="bg-surface px-3 text-[11px] text-fg-4 shrink-0 font-medium">已有现成数据库？</span>
+              <div class="border-t border-line w-full"></div>
+            </div>
 
             <div class="flex items-center gap-3">
               <!-- Pick file button -->
               <button
                 @click="emit('pickFile')"
-                class="flex-1 px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                :disabled="creating || scanning"
+                class="flex-1 px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-98"
               >
                 <FileSearch class="w-4 h-4" />
-                <span>手动选取数据库文件</span>
+                <span>手动选取现有数据库</span>
               </button>
 
               <!-- Scan folders button -->
               <button
                 @click="emit('scanFolders')"
-                :disabled="scanning"
+                :disabled="creating || scanning"
                 class="px-4 py-3 rounded-2xl bg-surface-2 hover:bg-surface-3 border border-line text-fg font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-98"
               >
+                <Loader2 v-if="scanning" class="w-3.5 h-3.5 animate-spin" />
                 <span>{{ scanning ? '扫描检索中…' : '授权并自动扫描' }}</span>
               </button>
             </div>
@@ -118,7 +130,8 @@ const emit = defineEmits<{
             <div class="text-center pt-1">
               <button
                 @click="emit('close')"
-                class="text-[11px] text-fg-4 hover:text-fg-3 transition cursor-pointer"
+                :disabled="creating"
+                class="text-[11px] text-fg-4 hover:text-fg-3 transition cursor-pointer disabled:opacity-30"
               >
                 稍后在“应用设置”中手动配置
               </button>
