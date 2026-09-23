@@ -118,7 +118,7 @@
 ### 一般ユーザー向け（推奨）
 
 [Releases ページ](https://github.com/GeavenMax/GPDb/releases) からビルド済みのインストーラーをダウンロードしてください：
-- **macOS**：`GPDb-macOS-v2.4.0.dmg` をダウンロードし、マウント後に `GPDb.app` を `Applications` フォルダへドラッグ＆ドロップします。
+- **macOS**：`GPDb-macOS-v2.5.0.dmg` をダウンロードし、マウント後に `GPDb.app` を `Applications` フォルダへドラッグ＆ドロップします。
 - **Android**（開発進行中）：`.apk` パッケージを端末にダウンロードしてインストールします。
 
 ### 開発者向けローカルビルド手順

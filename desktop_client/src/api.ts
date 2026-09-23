@@ -1192,6 +1192,8 @@ export const api = {
       total_performers: 0,
       total_studios: 0,
     };
+  },
+
   async checkRuntimeEnvironment(): Promise<RuntimeEnvironmentInfo> {
     if (isTauri) {
       return tauriInvoke<RuntimeEnvironmentInfo>('check_runtime_environment');

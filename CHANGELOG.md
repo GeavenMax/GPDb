@@ -25,13 +25,23 @@
     - 支持一键“重新检测环境”与“去配置数据库”；
     - 在“功能外挂”控制台常驻“运行环境自检”入口，支持随时重新发起体检诊断。
 
+- **增量同步时自动下载并持久化封面与剧照 (Auto-Download Images to Cache)**：
+  - 针对增量同步（`sync_gevi.py`）后新入库条目仅存 URL 无本地图片缓存的问题，新增 `download_image_to_cache()` 离线缓存下载引擎。
+  - 在同步新电影、新演员、新分集元数据时，同步将海报大图（`Covers/`）、缩略图（`Icons/`）、分集剧照（`Episodes/`）以及演员写真（`Stars/`）持久化至 `image_cache/`。
+  - 默认注入防盗链请求头（`Referer: https://gayeroticvideoindex.com/`）与 `curl` 双重重试机制，有效规避 Cloudflare TLS 异常，确保 macOS 客户端即时以 `gpdb-img://` 协议丝滑秒开高清封面。
+
+### 🐛 修复 (Fixed)
+- **BoyfriendTV 演员爬虫 Cloudflare Turnstile 质询拦截与别名干扰修复**：
+  - **动态穿透 Turnstile 质询盾**：针对 BoyfriendTV 搜索网关 (`/searchgate/`) 部署的 Cloudflare Turnstile 人机质询，升级 Playwright 隐身指纹注入（抹除 `navigator.webdriver` 特征、模拟真实 Chrome 插件及英文语言环境），并引入自适应轮询等待机制（最长 8 秒自动检测并等待 Turnstile 盾解除），彻底根治此前仅等待 2.5 秒导致质询未完成即被判为“未找到”的卡点。
+  - **搜索关键词智能净化 (Query Normalization)**：针对 GEVI 数据库中超 26% 演员带有括号别名或年代标注（例如 `(white)`、`(80s)`、`(aka Kenny)`）导致 BFTV 模糊匹配失效的问题，新增 `clean_performer_name()` 正则净化引擎，自动剔除注释字符，大幅提升现代活跃演员的检索命中率。
+  - **收录状态精细化提示**：控制台输出细化区分“✓ 匹配成功”与“(BFTV未收录)”，避免混淆网络反爬拦截与平台数据源收录范围差异（BFTV 主打近 20 年活跃模特，GEVI 跨越 50 年历史）。
+
 ### ⚡ 优化 (Changed)
 - **数据库路径全生态自动识别与双轨持久化**：
   - 客户端成功打开数据库时，自动将规范化绝对路径双轨写入 macOS 标准配置 `com.gpdb.app/db_config.json` 与便利标记文件 `~/.gevi_db_path`。
   - Python 端重构 `find_default_db_path()` 算法，按序从环境变量 `GEVI_DB`、客户端配置文件、快捷标记文件及本地工作区自动定位数据库，`scrape_bftv_performers.py`、`sync_gevi.py`、`batch_scraper.py`、`cache_images.py` 无需再手动加 `--db` 参数即可零配置运行。
 - **BoyfriendTV 演员主页直链批量抓取能力增强**：
-  - `scrape_bftv_performers.py` 升级内置 Playwright Chromium Stealth 引擎，无感穿透 Cloudflare 质询盾，毫秒级提取真实演员个人页直链。
-  - 优化优先度排序，优先遍历有肖像头像的活跃演员，并支持 `--name` 单演员精准测试。
+  - `scrape_bftv_performers.py` 优化抓取调度排序，优先遍历有肖像头像的活跃演员，支持 `--name` 单演员精准测试与秒级落库更新。
 
 ---
 

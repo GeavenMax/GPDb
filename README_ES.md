@@ -118,7 +118,7 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
 ### Para usuarios finales (Recomendado)
 
 Descargue el instalador precompilado desde la sección de [Releases](https://github.com/GeavenMax/GPDb/releases):
-- **macOS**: Descargue `GPDb-macOS-v2.4.0.dmg`, abra el archivo y arrastre `GPDb.app` a la carpeta `Aplicaciones`.
+- **macOS**: Descargue `GPDb-macOS-v2.5.0.dmg`, abra el archivo y arrastre `GPDb.app` a la carpeta `Aplicaciones`.
 - **Android** (Aplicación independiente en desarrollo): Descargue el archivo `.apk` e instálelo en su dispositivo.
 
 ### Para desarrolladores (Compilación local)

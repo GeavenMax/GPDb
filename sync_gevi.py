@@ -32,6 +32,47 @@ def fetch_html(url: str, retries: int = 3) -> str:
                 time.sleep(0.5 * (attempt + 1))
     return ""
 
+def download_image_to_cache(url: str, cache_dir: Path) -> bool:
+    """Download an image into local image_cache/ directly during sync."""
+    if not url:
+        return False
+    lower = url.lower()
+    folder_and_rel = None
+    if "images/covers/" in lower:
+        idx = lower.find("images/covers/")
+        folder_and_rel = ("Covers", url[idx + len("images/covers/"):].lstrip("/"))
+    elif "images/episodes/" in lower:
+        idx = lower.find("images/episodes/")
+        folder_and_rel = ("Episodes", url[idx + len("images/episodes/"):].lstrip("/"))
+    elif "images/stars/" in lower:
+        idx = lower.find("images/stars/")
+        folder_and_rel = ("Stars", url[idx + len("images/stars/"):].lstrip("/"))
+
+    if not folder_and_rel:
+        return False
+
+    dest = cache_dir / folder_and_rel[0] / folder_and_rel[1]
+    if dest.exists() and dest.stat().st_size > 0:
+        return True
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    full_url = url if url.startswith("http") else f"{BASE_URL}/{url.lstrip('/')}"
+    import subprocess
+    cmd = [
+        "curl", "-s", "-L", "-f", "--connect-timeout", "4", "--max-time", "12",
+        "-A", USER_AGENT, "-e", "https://gayeroticvideoindex.com/",
+        "-o", str(dest), full_url
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, timeout=15)
+        if res.returncode == 0 and dest.is_file() and dest.stat().st_size > 0:
+            return True
+        if dest.exists() and dest.stat().st_size == 0:
+            dest.unlink(missing_ok=True)
+    except Exception:
+        pass
+    return False
+
 def get_latest_ids_from_pages() -> tuple[set[int], set[int], list[dict]]:
     """Scrape /newm, /newp, and /newe to discover featured updates."""
     print("🌐 正在抓取官网最新更新页 (/newm, /newp, /newe)...")
@@ -184,6 +225,8 @@ def run_sync(db_path: str = "gevi.db", probe_depth: int = 50):
     new_perfs_added = 0
     new_eps_added = 0
 
+    cache_dir = Path(db_path).resolve().parent / "image_cache"
+
     # 4. Scrape & save movies
     if to_scrape_movies:
         print("\n📥 正在增量同步新电影与场景...")
@@ -196,6 +239,11 @@ def run_sync(db_path: str = "gevi.db", probe_depth: int = 50):
                     new_movies_added += 1
                     ep_cnt = len(m_data.get("episodes", []))
                     print(f"  + 新增电影 #{mid}: 《{m_data['title']}》 ({m_data['release_year']}) [含分集 {ep_cnt}]")
+                    # Auto-cache cover images to local disk
+                    download_image_to_cache(m_data.get("cover_full"), cache_dir)
+                    download_image_to_cache(m_data.get("cover_icon"), cache_dir)
+                    for ep in m_data.get("episodes", []):
+                        download_image_to_cache(ep.get("thumbnail_url"), cache_dir)
                 else:
                     db.record_progress("movie", mid, status=404)
             else:
@@ -212,6 +260,8 @@ def run_sync(db_path: str = "gevi.db", probe_depth: int = 50):
                     db.save_performer(p_data, status=200)
                     new_perfs_added += 1
                     print(f"  + 新增演员 #{pid}: {p_data['name']}")
+                    # Auto-cache portrait image
+                    download_image_to_cache(p_data.get("image_url"), cache_dir)
                 else:
                     db.record_progress("performer", pid, status=404)
             else:
@@ -227,6 +277,8 @@ def run_sync(db_path: str = "gevi.db", probe_depth: int = 50):
                 new_eps_added += 1
                 db.record_progress("episode", eid, status=200)
                 print(f"  + 新增分集 #{eid}: 《{ep_details['title']}》 ({ep_details.get('studio_name') or '独立发布'})")
+                # Auto-cache episode thumbnail
+                download_image_to_cache(ep_details.get("thumbnail_url"), cache_dir)
             else:
                 db.record_progress("episode", eid, status=404)
 

@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import {
   Terminal, CheckCircle2, AlertTriangle, X, RefreshCw,
-  ExternalLink, Copy, Check, Database, Sparkles, Cpu, HardDrive, ShieldCheck
+  Copy, Check, Database, Sparkles, Cpu
 } from '@lucide/vue';
 import { api } from '../api';
 import type { RuntimeEnvironmentInfo } from '../types';

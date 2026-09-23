@@ -53,8 +53,16 @@ SEARCH_URL = (
 PROFILE_RE = re.compile(r'href=[\"\'](/pornstars/[a-z0-9\-]+-\d+/)[\"\']', re.IGNORECASE)
 
 
+def clean_performer_name(name: str) -> str:
+    """清理演员名称中的注释与别名干扰，如 (white)、(80s)、(aka Kenny) 等。"""
+    cleaned = re.sub(r'\(.*?\)', '', name).strip()
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned or name
+
+
 def build_search_url(name: str) -> str:
-    parts = name.strip().split()
+    cleaned = clean_performer_name(name)
+    parts = cleaned.strip().split()
     q = urllib.parse.quote("+".join(parts), safe="+")
     return SEARCH_URL.format(q=q)
 
@@ -111,14 +119,16 @@ def run_with_playwright(performers: list[tuple[int, str]], conn: sqlite3.Connect
     found = 0
     not_found = 0
 
-    print("🤖 正在启动 Playwright 浏览器引擎（已配置 Cloudflare 无感穿透）...", flush=True)
+    print("🤖 正在启动 Playwright 隐身浏览器引擎（已配置 Cloudflare 无感穿透与 Turnstile 自适应等待）...", flush=True)
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
             args=[
                 "--disable-blink-features=AutomationControlled",
+                "--disable-infobars",
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
+                "--window-size=1920,1080",
             ],
         )
         context = browser.new_context(
@@ -127,8 +137,16 @@ def run_with_playwright(performers: list[tuple[int, str]], conn: sqlite3.Connect
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/128.0.0.0 Safari/537.36"
             ),
-            viewport={"width": 1280, "height": 800},
+            viewport={"width": 1920, "height": 1080},
+            locale="en-US",
+            timezone_id="America/New_York",
         )
+        context.add_init_script("""
+            Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+            window.navigator.chrome = { runtime: {} };
+            Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
+            Object.defineProperty(navigator, "languages", { get: () => ["en-US", "en"] });
+        """)
         page = context.new_page()
 
         for idx, (pid, name) in enumerate(performers, start=1):
@@ -136,12 +154,13 @@ def run_with_playwright(performers: list[tuple[int, str]], conn: sqlite3.Connect
             profile_url = None
             try:
                 page.goto(url, timeout=30000, wait_until="domcontentloaded")
-                # 等待 1~1.5 秒让脚本加载或过盾
-                page.wait_for_timeout(int(delay * 1000) if delay > 1.0 else 1200)
+                # 动态自适应等待 Cloudflare Turnstile 质询完成（通常耗时 2~4 秒）
+                for _ in range(8):
+                    if "Just a moment" not in page.title():
+                        break
+                    page.wait_for_timeout(1000)
 
-                # 检查标题是否依然处于 Cloudflare 质询
-                if "Just a moment" in page.title():
-                    page.wait_for_timeout(2500)
+                page.wait_for_timeout(int(delay * 1000) if delay > 1.0 else 1000)
 
                 html = page.content()
                 profile_url = extract_profile_url_from_html(html)
@@ -151,7 +170,7 @@ def run_with_playwright(performers: list[tuple[int, str]], conn: sqlite3.Connect
             status_icon = "✓" if profile_url else "✗"
             pct = (idx / total) * 100
             print(
-                f"[{idx:>5}/{total}] {pct:5.1f}%  {status_icon} {name:<28}  {profile_url or '(未找到)'}",
+                f"[{idx:>5}/{total}] {pct:5.1f}%  {status_icon} {name:<28}  {profile_url or '(BFTV未收录)'}",
                 flush=True,
             )
 
@@ -167,7 +186,7 @@ def run_with_playwright(performers: list[tuple[int, str]], conn: sqlite3.Connect
 
         browser.close()
 
-    print(f"\n🎉 爬取完成！成功匹配: {found} 位 | 未找到: {not_found} 位", flush=True)
+    print(f"\n🎉 爬取完成！成功匹配: {found} 位 | BFTV未收录: {not_found} 位", flush=True)
 
 
 def run_with_urllib(performers: list[tuple[int, str]], conn: sqlite3.Connection, delay: float) -> None:

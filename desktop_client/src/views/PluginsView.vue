@@ -13,7 +13,7 @@ import {
   Blocks, Compass, RefreshCw, Languages, Trophy,
   AlertCircle, CheckCircle2, ChevronRight, Loader2,
   Sparkles, Trash2, Volume2, VolumeX, RotateCcw,
-  Download, SlidersHorizontal, Clock, Calendar, Cpu
+  Download, SlidersHorizontal, Clock, Cpu
 } from '@lucide/vue';
 import {
   activeAiReport,
