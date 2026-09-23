@@ -3,6 +3,16 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.7.0] - 2026-09-23
+
+### ✨ 新功能与平台扩展 (Features & Multi-Platform)
+- **Windows 桌面客户端全新支持**：
+  - 构建架构全面适配 Windows 平台，支持一键安装 `.exe` (NSIS) 与 `.msi` 安装包。
+- **云端双端并行 CI/CD 自动化打包流水线**：
+  - 升级 GitHub Actions 工作流 `.github/workflows/release.yml` 为矩阵构建（Matrix Build），实现 **macOS (Universal - Apple Silicon & Intel)** 与 **Windows (x64)** 双平台自动化编译、打包与 Release 直传挂载。
+- **Telegram 频道显要嵌入**：
+  - 全语种 7 份 README 顶部全面嵌入大尺寸醒目 Badge 与官方 Telegram 频道（https://t.me/gpdbnews）链接及高亮公告框。
+
 ## [v2.6.2] - 2026-09-23
 
 ### 🐛 修复 (Fixed)

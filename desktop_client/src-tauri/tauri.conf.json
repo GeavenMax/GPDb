@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "GPDb",
   "mainBinaryName": "gpdb",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "identifier": "com.gpdb.app",
   "build": {
     "frontendDist": "../dist",
@@ -30,7 +30,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app", "dmg", "nsis"],
     "resources": [
       "../../sync_gpdb.py",
       "../../sync_bftv_catalog.py",

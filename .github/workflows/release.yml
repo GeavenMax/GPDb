@@ -1,7 +1,7 @@
-name: Build & Release macOS DMG
+name: Build & Release GPDb (macOS & Windows)
 
 # 触发条件：
-#   1. 推送 v* 格式的 Tag（如 v2.0.0、v2.1.0）→ 自动编译并发布 GitHub Release
+#   1. 推送 v* 格式的 Tag（如 v2.7.0）→ 自动编译并发布 GitHub Release
 #   2. workflow_dispatch → 在 GitHub Actions 页面手动触发，用于测试构建
 on:
   push:
@@ -10,34 +10,35 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: '发布 Tag 名（仅手动触发时用，如 v2.0.0）'
+        description: '发布 Tag 名（仅手动触发时用，如 v2.7.0）'
         required: false
         default: 'manual-build'
 
-env:
-  # Tauri 构建产物路径（相对于 desktop_client/src-tauri/target/release/bundle/）
-  DMG_GLOB: desktop_client/src-tauri/target/release/bundle/dmg/*.dmg
-
 jobs:
-  build-macos:
-    name: Build macOS DMG (Apple Silicon + Intel Universal)
-    runs-on: macos-latest   # GitHub 托管的 macOS runner（Apple Silicon M1）
+  build-release:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macOS
+            os: macos-latest
+          - platform: Windows
+            os: windows-latest
 
     steps:
       # ── 1. 检出代码 ──────────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. 安装 Rust 工具链（版本与 Cargo.toml 的 rust-version 字段一致）──
+      # ── 2. 安装 Rust 工具链 ───────────────────────────────────────────────
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: '1.77.2'
-          targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
 
-      # ── 3. 缓存 Cargo 依赖（大幅提速，rusqlite bundled 编译时间约 5 分钟）──
+      # ── 3. 缓存 Cargo 依赖 ──────────────────────────────────────────────────
       - name: Cache Cargo registry & build artifacts
         uses: actions/cache@v4
         with:
@@ -49,7 +50,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      # ── 4. 安装 Node.js（与本地开发环境保持一致）──────────────────────────
+      # ── 4. 安装 Node.js ────────────────────────────────────────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -62,72 +63,64 @@ jobs:
         working-directory: desktop_client
         run: npm ci
 
-      # ── 5.5 生成 App 图标与 Assets.car ──────────────────────────────────
-      - name: Build application icons
+      # ── 6. 构建 Tauri 应用 ─────────────────────────────────────────────────
+      - name: Build Tauri app
         working-directory: desktop_client
-        run: npm run build:icon
+        run: npm run tauri build
 
-      # ── 6. 构建 Tauri 应用（前端 + Rust 后端 + 打包 .app & .dmg）─────────
-      #    注意：此步骤不做代码签名，产物为未签名 DMG
-      #    用户安装后需在「系统设置 → 隐私与安全」允许，或运行：
-      #      sudo xattr -cr /Applications/GPDb.app
-      - name: Build Tauri app (unsigned)
-        working-directory: desktop_client
-        run: npm run tauri build -- --bundles app,dmg
-
-      # ── 7. 找到 DMG 文件并重命名为规范格式 ──────────────────────────────
-      - name: Locate and rename DMG
-        id: dmg
+      # ── 7. 整理产物并按规范重命名 ─────────────────────────────────────────
+      - name: Prepare build artifacts
+        id: artifacts
+        shell: bash
         run: |
-          # 找到构建产物目录下的第一个 .dmg 文件
-          DMG_PATH=$(find desktop_client/src-tauri/target/release/bundle/dmg -name "*.dmg" | head -1)
-          if [ -z "$DMG_PATH" ]; then
-            echo "::error::No .dmg file found in bundle output!"
-            exit 1
-          fi
-          # 用 Tag 名重命名（手动触发时用 inputs.tag_name）
           TAG_NAME="${{ github.ref_name }}"
-          if [ "$TAG_NAME" == "" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          if [ -z "$TAG_NAME" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             TAG_NAME="${{ inputs.tag_name }}"
           fi
-          NEW_NAME="GPDb-macOS-${TAG_NAME}.dmg"
-          cp "$DMG_PATH" "$NEW_NAME"
-          echo "path=$NEW_NAME" >> "$GITHUB_OUTPUT"
-          echo "name=$NEW_NAME" >> "$GITHUB_OUTPUT"
-          echo "✅ DMG ready: $NEW_NAME ($(du -sh $NEW_NAME | cut -f1))"
 
-      # ── 8. 发布 GitHub Release（仅 Tag 推送触发时执行）──────────────────
-      - name: Create GitHub Release
+          mkdir -p dist_release
+
+          if [ "${{ runner.os }}" == "macOS" ]; then
+            DMG_PATH=$(find desktop_client/src-tauri/target/release/bundle/dmg -name "*.dmg" | head -1)
+            if [ -n "$DMG_PATH" ]; then
+              NEW_NAME="GPDb-macOS-${TAG_NAME}.dmg"
+              cp "$DMG_PATH" "dist_release/$NEW_NAME"
+            fi
+          elif [ "${{ runner.os }}" == "Windows" ]; then
+            SETUP_PATH=$(find desktop_client/src-tauri/target/release/bundle/nsis desktop_client/src-tauri/target/release/bundle/msi -name "*.exe" -o -name "*.msi" 2>/dev/null | head -1)
+            if [ -n "$SETUP_PATH" ]; then
+              EXT="${SETUP_PATH##*.}"
+              NEW_NAME="GPDb-Windows-${TAG_NAME}.${EXT}"
+              cp "$SETUP_PATH" "dist_release/$NEW_NAME"
+            fi
+          fi
+
+      # ── 8. 发布 / 附加到 GitHub Release ─────────────────────────────────────
+      - name: Upload to GitHub Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           name: "GPDb ${{ github.ref_name }}"
-          # Release Body 从 CHANGELOG.md 中提取对应版本章节
           body: |
             ## GPDb ${{ github.ref_name }}
 
             > 详细更新日志见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
 
-            ### 📦 安装说明（macOS）
+            ### 📦 安装说明
 
+            ####  macOS (Universal - Apple Silicon & Intel)
             1. 下载下方附件 `GPDb-macOS-${{ github.ref_name }}.dmg`
-            2. 双击挂载，将 `GPDb.app` 拖入 `Applications`（应用程序）文件夹
-            3. **首次启动**：macOS 会提示"来自未知开发者"（因为当前版本暂未做 Apple 公证）
-               - 在「系统设置 → 隐私与安全性」找到 GPDb 的屏蔽提示，点击「仍要打开」
-               - 或在终端运行：`sudo xattr -cr /Applications/GPDb.app`
+            2. 双击挂载，将 `GPDb.app` 拖入 `Applications` 文件夹
+            3. **首次启动提示未公证**：在「系统设置 → 隐私与安全性」点击「仍要打开」，或终端运行：`sudo xattr -cr /Applications/GPDb.app`
+
+            #### 🪟 Windows (x64)
+            1. 下载下方附件 `GPDb-Windows-${{ github.ref_name }}.exe` (或 `.msi`)
+            2. 双击运行安装程序完成安装
 
             ---
             *Built with Tauri 2 · Vue 3 · Rust (rusqlite bundled SQLite)*
           draft: false
           prerelease: false
-          files: ${{ steps.dmg.outputs.path }}
+          files: dist_release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # ── 9. 上传 DMG 为 Artifact（手动触发 或 作为备份）──────────────────
-      - name: Upload DMG as workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.dmg.outputs.name }}
-          path: ${{ steps.dmg.outputs.path }}
-          retention-days: 30
