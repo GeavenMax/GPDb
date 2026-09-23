@@ -34,7 +34,9 @@
     "resources": [
       "../../sync_gevi.py",
       "../../batch_scraper.py",
-      "../../db_manager.py"
+      "../../db_manager.py",
+      "../../scrape_bftv_performers.py",
+      "../../cache_images.py"
     ],
     "icon": [
       "gen/icons/AppIcon.icns",

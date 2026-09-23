@@ -62,6 +62,11 @@ jobs:
         working-directory: desktop_client
         run: npm ci
 
+      # ── 5.5 生成 App 图标与 Assets.car ──────────────────────────────────
+      - name: Build application icons
+        working-directory: desktop_client
+        run: npm run build:icon
+
       # ── 6. 构建 Tauri 应用（前端 + Rust 后端 + 打包 .app & .dmg）─────────
       #    注意：此步骤不做代码签名，产物为未签名 DMG
       #    用户安装后需在「系统设置 → 隐私与安全」允许，或运行：
