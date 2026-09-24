@@ -89,6 +89,12 @@ jobs:
               cp "$DMG_PATH" "dist_release/$NEW_NAME"
               echo "✅ macOS package: dist_release/$NEW_NAME"
             fi
+            APK_PATH=$(find android_client -name "GPDb_Android_${TAG_NAME}_release_signed.apk" 2>/dev/null | head -1)
+            if [ -n "$APK_PATH" ]; then
+              NEW_APK_NAME="GPDb-Android-${TAG_NAME}-signed.apk"
+              cp "$APK_PATH" "dist_release/$NEW_APK_NAME"
+              echo "✅ Android APK package: dist_release/$NEW_APK_NAME"
+            fi
           elif [ "${{ runner.os }}" == "Windows" ]; then
             SETUP_PATH=$(find desktop_client/src-tauri/target/release/bundle/nsis -name "*.exe" 2>/dev/null | head -1)
             if [ -n "$SETUP_PATH" ]; then
