@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Navigation State Loss**: 彻底修复从次级详情页返回时（如演员档案页、片商档案页），页面跳回顶部及 Tab 栏重置的问题。通过采用 `rememberSaveable` 持久化 UI 状态，并在 ViewModels 层拦截冗余的重复加载请求来实现。
+- **Dynamic Icon Switching Crash**: 修复在设置页切换应用图标后，底层 `ActivityManager` 强杀进程导致的闪退黑屏问题。通过安全地绑定 Compose 协程及后台组件延时卸载解决。
+
+### Changed
+- **Adaptive App Icons**: 全面重构并支持 Android 8.0+ 的 `<adaptive-icon>` 自适应图标，消除所有图标白边，完美适配不同手机系统的形状裁切。
+- **Default App Icon**: 重新排列应用图标预设，将「双雄火星图腾」设定为“方案 A”并作为首发默认应用图标。
+- **Settings UI**: 在“设置 - 更换应用图标”弹窗中，新增了直观的图标视觉预览图。
+
+
 ### Added
 - **Locale Support**: The AppPreferences language setting now dynamically applies "zh" or "en" to the application via `AppCompatDelegate.setApplicationLocales`.
 - **Remount Action**: Moved the "Remount Database" action from the Home screen top bar to a dedicated list item in the Settings screen.
