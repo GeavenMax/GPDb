@@ -42,16 +42,31 @@ fun changeAppIcon(context: Context, newIcon: String) {
         "D" to "$packageName.MainActivityAliasD"
     )
     
-    aliases.forEach { (key, componentNameStr) ->
-        val state = if (key == newIcon) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+    // First, immediately enable the new one
+    aliases[newIcon]?.let { componentNameStr ->
         pm.setComponentEnabledSetting(
             ComponentName(packageName, componentNameStr),
-            state,
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
             PackageManager.DONT_KILL_APP
         )
     }
     
-    Toast.makeText(context, "已更新应用图标，桌面图标可能需要几秒钟更新，应用可能重启", Toast.LENGTH_LONG).show()
+    // Then delay the disable of the others to prevent immediate process kill
+    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+        try {
+            aliases.filterKeys { it != newIcon }.forEach { (_, componentNameStr) ->
+                pm.setComponentEnabledSetting(
+                    ComponentName(packageName, componentNameStr),
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }, 5000)
+    
+    Toast.makeText(context, "已更新应用图标，桌面图标将在几秒钟后更新", Toast.LENGTH_LONG).show()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
