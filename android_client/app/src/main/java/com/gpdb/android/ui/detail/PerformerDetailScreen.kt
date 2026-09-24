@@ -10,6 +10,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -94,7 +96,7 @@ fun PerformerDetailScreen(
                     )
                 }
 
-                var showFullImage by remember { mutableStateOf(false) }
+                var showFullImage by rememberSaveable { mutableStateOf(false) }
 
                 if (showFullImage) {
                     com.gpdb.android.ui.components.ZoomableImageDialog(
@@ -103,7 +105,7 @@ fun PerformerDetailScreen(
                     )
                 }
 
-                var isHeaderVisible by remember { mutableStateOf(true) }
+                var isHeaderVisible by rememberSaveable { mutableStateOf(true) }
                 val nestedScrollConnection = remember {
                     object : NestedScrollConnection {
                         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -191,7 +193,7 @@ fun PerformerDetailScreen(
                     ).filter { it.second.isNotBlank() && it.second != "none available" }
 
                     if (advancedDetails.isNotEmpty()) {
-                        var isExpanded by remember { mutableStateOf(false) }
+                        var isExpanded by rememberSaveable { mutableStateOf(false) }
                         
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                             androidx.compose.animation.AnimatedVisibility(visible = isExpanded) {
@@ -276,8 +278,11 @@ fun PerformerDetailScreen(
 
                     HorizontalDivider()
 
-                    var selectedTabIndex by remember { mutableIntStateOf(0) }
+                    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
                     val tabs = listOf("参演作品 (${detail.movies.size})", "参演分集 (${uiState.episodes.size})")
+
+                    val gridState = rememberLazyGridState()
+                    val listState = rememberLazyListState()
 
                     TabRow(selectedTabIndex = selectedTabIndex) {
                         tabs.forEachIndexed { index, title ->
@@ -292,6 +297,7 @@ fun PerformerDetailScreen(
                     if (selectedTabIndex == 0) {
                         // 作品列表
                         LazyVerticalGrid(
+                            state = gridState,
                             columns = GridCells.Adaptive(minSize = 160.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -313,6 +319,7 @@ fun PerformerDetailScreen(
                     } else {
                         // 分集列表
                         androidx.compose.foundation.lazy.LazyColumn(
+                            state = listState,
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.fillMaxSize()
