@@ -321,7 +321,11 @@ fun MovieDetailScreen(
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                items(detail.performers, key = { it.id ?: it.hashCode() }) { performer ->
+                                items(
+                                    items = detail.performers,
+                                    key = { it.id ?: it.hashCode() },
+                                    contentType = { "performer" }
+                                ) { performer ->
                                     val perfRelativePath = performer.imageUrl.toImageCachePath()
                                     val perfImageData = remember(performer.id, physicalRootPath) {
                                         GpdbImageData(
@@ -340,7 +344,6 @@ fun MovieDetailScreen(
                                         AsyncImage(
                                             model = ImageRequest.Builder(context)
                                                 .data(perfImageData)
-                                                .crossfade(true)
                                                 .build(),
                                             contentDescription = performer.name,
                                             contentScale = ContentScale.Crop,

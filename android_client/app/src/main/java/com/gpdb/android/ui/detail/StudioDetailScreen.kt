@@ -85,7 +85,11 @@ fun StudioDetailScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(uiState.movies, key = { it.id ?: it.hashCode() }) { movie ->
+                            items(
+                                items = uiState.movies,
+                                key = { it.id ?: it.hashCode() },
+                                contentType = { "movie" }
+                            ) { movie ->
                                 MovieGridItem(
                                     movie = movie,
                                     physicalRootPath = physicalRootPath,
@@ -99,7 +103,11 @@ fun StudioDetailScreen(
                             contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(uiState.episodes, key = { it.id ?: 0L }) { episode ->
+                            items(
+                                items = uiState.episodes,
+                                key = { it.id ?: 0L },
+                                contentType = { "episode" }
+                            ) { episode ->
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -117,7 +125,7 @@ fun StudioDetailScreen(
                                             )
                                         }
                                         coil.compose.AsyncImage(
-                                            model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current).data(epImageData).crossfade(true).build(),
+                                            model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current).data(epImageData).build(),
                                             contentDescription = episode.title,
                                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                                             modifier = Modifier.width(160.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceVariant)

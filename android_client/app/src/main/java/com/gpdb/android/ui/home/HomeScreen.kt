@@ -143,7 +143,11 @@ fun HomeScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(uiState.movies, key = { it.id ?: it.hashCode() }) { movie ->
+                            items(
+                                items = uiState.movies,
+                                key = { it.id ?: it.hashCode() },
+                                contentType = { "movie" }
+                            ) { movie ->
                                 MovieGridItem(
                                     movie = movie,
                                     physicalRootPath = uiState.physicalRootPath,
@@ -216,7 +220,6 @@ fun MovieGridItem(
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(imageData)
-                        .crossfade(true)
                         .build(),
                     contentDescription = movie.title,
                     contentScale = ContentScale.Crop,

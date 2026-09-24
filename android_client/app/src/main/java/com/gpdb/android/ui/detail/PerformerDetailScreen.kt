@@ -275,7 +275,8 @@ fun PerformerDetailScreen(
                         ) {
                             items(
                                 items = detail.movies,
-                                key = { it.id ?: 0L }
+                                key = { it.id ?: 0L },
+                                contentType = { "movie" }
                             ) { movie ->
                                 MovieGridItem(
                                     movie = movie,
@@ -293,7 +294,8 @@ fun PerformerDetailScreen(
                         ) {
                             items(
                                 items = uiState.episodes,
-                                key = { it.id ?: 0L }
+                                key = { it.id ?: 0L },
+                                contentType = { "episode" }
                             ) { episode ->
                                 // 分集横向卡片 UI
                                 Card(
@@ -316,7 +318,6 @@ fun PerformerDetailScreen(
                                         AsyncImage(
                                             model = ImageRequest.Builder(context)
                                                 .data(epImageData)
-                                                .crossfade(true)
                                                 .build(),
                                             contentDescription = episode.title,
                                             contentScale = ContentScale.Crop,

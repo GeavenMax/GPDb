@@ -94,7 +94,11 @@ fun PerformerListScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(uiState.performers, key = { it.id ?: it.hashCode() }) { performer ->
+                    items(
+                        items = uiState.performers,
+                        key = { it.id ?: it.hashCode() },
+                        contentType = { "performer" }
+                    ) { performer ->
                         PerformerGridItem(
                             performer = performer,
                             physicalRootPath = physicalRootPath,
@@ -146,7 +150,6 @@ fun PerformerGridItem(
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(imageData)
-                .crossfade(true)
                 .build(),
             contentDescription = performer.name,
             contentScale = ContentScale.Crop,

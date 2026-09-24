@@ -46,7 +46,6 @@ object GpdbImageLoader {
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build()
         }
-        .crossfade(true)
-        .crossfade(200)     // 200ms 淡入，流畅不突兀
+
         .build()
 }

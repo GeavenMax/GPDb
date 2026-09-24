@@ -68,7 +68,11 @@ fun FilteredMovieListScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(uiState.movies, key = { it.id ?: it.hashCode() }) { movie ->
+                    items(
+                        items = uiState.movies,
+                        key = { it.id ?: it.hashCode() },
+                        contentType = { "movie" }
+                    ) { movie ->
                         MovieGridItem(
                             movie = movie,
                             physicalRootPath = physicalRootPath,

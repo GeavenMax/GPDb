@@ -95,15 +95,27 @@ fun LibraryScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     if (uiState.currentTab == LibraryTab.FAV_PERFORMERS) {
-                        items(uiState.performers, key = { it.id ?: it.hashCode() }) { p ->
+                        items(
+                            items = uiState.performers,
+                            key = { it.id ?: it.hashCode() },
+                            contentType = { "performer" }
+                        ) { p ->
                             PerformerGridItem(performer = p, physicalRootPath = physicalRootPath, onClick = { onPerformerClick(p.id ?: 0L) })
                         }
                     } else if (uiState.currentTab == LibraryTab.FAV_SERIES) {
-                        items(uiState.series, key = { it.rootTitle }) { s ->
+                        items(
+                            items = uiState.series,
+                            key = { it.rootTitle },
+                            contentType = { "series" }
+                        ) { s ->
                             com.gpdb.android.ui.browse.SeriesGridItem(series = s, physicalRootPath = physicalRootPath, onClick = { onSeriesClick(s.rootTitle) })
                         }
                     } else {
-                        items(uiState.movies, key = { it.id ?: it.hashCode() }) { m ->
+                        items(
+                            items = uiState.movies,
+                            key = { it.id ?: it.hashCode() },
+                            contentType = { "movie" }
+                        ) { m ->
                             MovieGridItem(movie = m, physicalRootPath = physicalRootPath, onClick = { onMovieClick(m.id ?: 0L) },
     onStudioClick = { studio -> onStudioClick(studio) }
 )
