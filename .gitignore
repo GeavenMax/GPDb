@@ -40,9 +40,27 @@ desktop_client/src-tauri/target/
 *.dmg
 
 # --- Android build artifacts & signing keys ---
+android_client/.gradle/
+android_client/.cxx/
+android_client/build/
 android_client/app/build/
 android_client/target/
 android_client/node_modules/
+android_client/local.properties
+android_client/*.patch
+android_client/*.log
+android_client/*.orig
+android_client/*.db
+android_client/*.db-shm
+android_client/*.db-wal
+android_client/*.xml
+android_client/*.py
+.gradle/
+.cxx/
+build/
+local.properties
+*.apk
+*.aab
 *.keystore
 *.jks
 

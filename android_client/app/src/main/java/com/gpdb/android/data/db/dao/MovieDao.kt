@@ -42,7 +42,7 @@ interface MovieDao {
     """)
     suspend fun searchMovies(query: String, limit: Int = 50, offset: Int = 0): List<MovieEntity>
 
-    /** 查询指定影片的所有出演演员 */
+    /** 查询指定影片的所有出演演员 (手动 JOIN 方式) */
     @Query("""
         SELECT p.* FROM performers p
         INNER JOIN movie_performers mp ON p.id = mp.performer_id
@@ -50,4 +50,13 @@ interface MovieDao {
         ORDER BY p.name ASC
     """)
     suspend fun getPerformersForMovie(movieId: Long): List<PerformerEntity>
+    
+    /** 联表查询影片及关联演员 (Room Relation 方式) */
+    @androidx.room.Transaction
+    @Query("SELECT * FROM movies WHERE id = :movieId LIMIT 1")
+    suspend fun getMovieWithPerformers(movieId: Long): com.gpdb.android.data.db.relations.MovieWithPerformers?
+
+    /** 查询指定影片包含的所有分集 */
+    @Query("SELECT * FROM episodes WHERE movie_id = :movieId ORDER BY release_date ASC, id ASC")
+    suspend fun getEpisodesForMovie(movieId: Long): List<com.gpdb.android.data.db.entities.EpisodeEntity>
 }

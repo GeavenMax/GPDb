@@ -8,13 +8,13 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.gpdb.android.data.db.dao.MovieDao
 import com.gpdb.android.data.db.dao.PerformerDao
-import com.gpdb.android.data.db.dao.UserActionDao
-
 import com.gpdb.android.data.db.entities.MovieEntity
 import com.gpdb.android.data.db.entities.MoviePerformerEntity
 import com.gpdb.android.data.db.entities.PerformerEntity
 import com.gpdb.android.data.db.entities.EpisodeEntity
 import com.gpdb.android.data.db.entities.EpisodePerformerEntity
+import com.gpdb.android.data.db.entities.CategoryGlossaryEntity
+import com.gpdb.android.data.db.entities.SeriesCollectionEntity
 import com.gpdb.android.data.db.dao.SearchDao
 import com.gpdb.android.data.db.dao.BrowseDao
 import java.io.File
@@ -37,9 +37,11 @@ import androidx.room.migration.Migration
         PerformerEntity::class,
         MoviePerformerEntity::class,
         EpisodeEntity::class,
-        EpisodePerformerEntity::class
+        EpisodePerformerEntity::class,
+        CategoryGlossaryEntity::class,
+        SeriesCollectionEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class GpdbDatabase : RoomDatabase() {
@@ -49,7 +51,6 @@ abstract class GpdbDatabase : RoomDatabase() {
     abstract fun episodeDao(): com.gpdb.android.data.db.dao.EpisodeDao
     abstract fun searchDao(): SearchDao
     abstract fun browseDao(): BrowseDao
-    abstract fun userActionDao(): UserActionDao
 
     companion object {
         private const val TAG = "GpdbDatabase"
@@ -59,6 +60,12 @@ abstract class GpdbDatabase : RoomDatabase() {
                 // 实体类增加了 EpisodeEntity 和 EpisodePerformerEntity
                 // 物理表已经在外部 SQLite 中存在，无需实际的 SQL ALTER 语句
                 // 留空即可，Room 跑完后会自动更新 room_master_table 的哈希值以通过校验
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // category_glossary and series_collections already exist
             }
         }
 
@@ -78,7 +85,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                 GpdbDatabase::class.java,
                 dbFile.absolutePath // 绝对路径直连，零文件拷贝
             )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 // ★ 关键修复：强制使用 TRUNCATE 日志模式，彻底消除 FUSE 下 WAL 模式的 -shm / -wal ioctl 权限冲突
                 .setJournalMode(JournalMode.TRUNCATE)
                 .addCallback(object : Callback() {

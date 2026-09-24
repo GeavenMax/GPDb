@@ -36,11 +36,12 @@ fun changeAppIcon(context: Context, scope: CoroutineScope, newIcon: String) {
     val pm = context.packageManager
     val packageName = context.packageName
     
+    val baseNamespace = "com.gpdb.android"
     val aliases = mapOf(
-        "A" to "$packageName.MainActivityAliasA",
-        "B" to "$packageName.MainActivityAliasB",
-        "C" to "$packageName.MainActivityAliasC",
-        "D" to "$packageName.MainActivityAliasD"
+        "A" to "$baseNamespace.MainActivityAliasA",
+        "B" to "$baseNamespace.MainActivityAliasB",
+        "C" to "$baseNamespace.MainActivityAliasC",
+        "D" to "$baseNamespace.MainActivityAliasD"
     )
     
     // First, immediately enable the new one
@@ -202,8 +203,8 @@ fun SettingsScreen(appPreferences: AppPreferences, onRemountClick: () -> Unit) {
                                 }
                                 showIconDialog = false
                             })
-                            androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = pair.second),
+                            coil.compose.AsyncImage(
+                                model = pair.second,
                                 contentDescription = null,
                                 modifier = Modifier.size(40.dp).padding(start = 8.dp, end = 12.dp)
                             )

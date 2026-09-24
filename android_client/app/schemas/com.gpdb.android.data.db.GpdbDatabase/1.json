@@ -1,0 +1,539 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "f1eb4fb07db516ac5d25268985dc5869",
+    "entities": [
+      {
+        "tableName": "movies",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER, `title` TEXT NOT NULL, `studio_id` INTEGER, `studio_name` TEXT, `release_year` INTEGER, `duration_mins` INTEGER, `category` TEXT, `rating` TEXT, `movie_type` TEXT, `description` TEXT, `cover_icon` TEXT, `cover_full` TEXT, `cover_back` TEXT, `covers_json` TEXT, `director_id` INTEGER, `director_name` TEXT, `description_zh` TEXT, `translation_attempts` INTEGER DEFAULT 0, `title_zh` TEXT, `title_attempts` INTEGER DEFAULT 0, `scraped_at` TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "studioId",
+            "columnName": "studio_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "studioName",
+            "columnName": "studio_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "releaseYear",
+            "columnName": "release_year",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "durationMins",
+            "columnName": "duration_mins",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "category",
+            "columnName": "category",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "movieType",
+            "columnName": "movie_type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "coverIcon",
+            "columnName": "cover_icon",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "coverFull",
+            "columnName": "cover_full",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "coverBack",
+            "columnName": "cover_back",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "coversJson",
+            "columnName": "covers_json",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "directorId",
+            "columnName": "director_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "directorName",
+            "columnName": "director_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "descriptionZh",
+            "columnName": "description_zh",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "translationAttempts",
+            "columnName": "translation_attempts",
+            "affinity": "INTEGER",
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "titleZh",
+            "columnName": "title_zh",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "titleAttempts",
+            "columnName": "title_attempts",
+            "affinity": "INTEGER",
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "scrapedAt",
+            "columnName": "scraped_at",
+            "affinity": "TEXT",
+            "defaultValue": "CURRENT_TIMESTAMP"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_movies_year",
+            "unique": false,
+            "columnNames": [
+              "release_year"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_movies_year` ON `${TABLE_NAME}` (`release_year`)"
+          },
+          {
+            "name": "idx_movies_studio",
+            "unique": false,
+            "columnNames": [
+              "studio_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_movies_studio` ON `${TABLE_NAME}` (`studio_name`)"
+          },
+          {
+            "name": "idx_movies_category",
+            "unique": false,
+            "columnNames": [
+              "category"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_movies_category` ON `${TABLE_NAME}` (`category`)"
+          },
+          {
+            "name": "idx_movies_director",
+            "unique": false,
+            "columnNames": [
+              "director_name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_movies_director` ON `${TABLE_NAME}` (`director_name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "performers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER, `name` TEXT NOT NULL, `hair` TEXT, `eyes` TEXT, `body_hair` TEXT, `facial_hair` TEXT, `height` TEXT, `weight` TEXT, `build` TEXT, `skin` TEXT, `dick_size` TEXT, `foreskin` TEXT, `tattoos` TEXT, `notes` TEXT, `image_url` TEXT, `bftv_url` TEXT, `scraped_at` TEXT DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hair",
+            "columnName": "hair",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "eyes",
+            "columnName": "eyes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bodyHair",
+            "columnName": "body_hair",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "facialHair",
+            "columnName": "facial_hair",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "height",
+            "columnName": "height",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "weight",
+            "columnName": "weight",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "build",
+            "columnName": "build",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "skin",
+            "columnName": "skin",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dickSize",
+            "columnName": "dick_size",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "foreskin",
+            "columnName": "foreskin",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tattoos",
+            "columnName": "tattoos",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "imageUrl",
+            "columnName": "image_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bftvUrl",
+            "columnName": "bftv_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "scrapedAt",
+            "columnName": "scraped_at",
+            "affinity": "TEXT",
+            "defaultValue": "CURRENT_TIMESTAMP"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_performers_name",
+            "unique": false,
+            "columnNames": [
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_performers_name` ON `${TABLE_NAME}` (`name`)"
+          },
+          {
+            "name": "idx_performers_build",
+            "unique": false,
+            "columnNames": [
+              "build"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_performers_build` ON `${TABLE_NAME}` (`build`)"
+          },
+          {
+            "name": "idx_performers_hair",
+            "unique": false,
+            "columnNames": [
+              "hair"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_performers_hair` ON `${TABLE_NAME}` (`hair`)"
+          },
+          {
+            "name": "idx_performers_eyes",
+            "unique": false,
+            "columnNames": [
+              "eyes"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_performers_eyes` ON `${TABLE_NAME}` (`eyes`)"
+          },
+          {
+            "name": "idx_performers_skin",
+            "unique": false,
+            "columnNames": [
+              "skin"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_performers_skin` ON `${TABLE_NAME}` (`skin`)"
+          },
+          {
+            "name": "idx_performers_body_hair",
+            "unique": false,
+            "columnNames": [
+              "body_hair"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_performers_body_hair` ON `${TABLE_NAME}` (`body_hair`)"
+          },
+          {
+            "name": "idx_performers_facial_hair",
+            "unique": false,
+            "columnNames": [
+              "facial_hair"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_performers_facial_hair` ON `${TABLE_NAME}` (`facial_hair`)"
+          },
+          {
+            "name": "idx_performers_image",
+            "unique": false,
+            "columnNames": [
+              "image_url"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_performers_image` ON `${TABLE_NAME}` (`image_url`)"
+          }
+        ]
+      },
+      {
+        "tableName": "movie_performers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`movie_id` INTEGER NOT NULL, `performer_id` INTEGER NOT NULL, `performer_name` TEXT, PRIMARY KEY(`movie_id`, `performer_id`), FOREIGN KEY(`movie_id`) REFERENCES `movies`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "movieId",
+            "columnName": "movie_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "performerId",
+            "columnName": "performer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "performerName",
+            "columnName": "performer_name",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "movie_id",
+            "performer_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_mp_performer_id",
+            "unique": false,
+            "columnNames": [
+              "performer_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_mp_performer_id` ON `${TABLE_NAME}` (`performer_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "movies",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "movie_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "episodes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER, `movie_id` INTEGER, `title` TEXT, `thumbnail_url` TEXT, `description` TEXT, `action_notes` TEXT, `description_zh` TEXT, `release_date` TEXT, `studio_id` INTEGER, `studio_name` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`movie_id`) REFERENCES `movies`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "movieId",
+            "columnName": "movie_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "thumbnailUrl",
+            "columnName": "thumbnail_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "actionNotes",
+            "columnName": "action_notes",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "descriptionZh",
+            "columnName": "description_zh",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "releaseDate",
+            "columnName": "release_date",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "studioId",
+            "columnName": "studio_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "studioName",
+            "columnName": "studio_name",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_episodes_movie_id",
+            "unique": false,
+            "columnNames": [
+              "movie_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_episodes_movie_id` ON `${TABLE_NAME}` (`movie_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "movies",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "movie_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "episode_performers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`episode_id` INTEGER NOT NULL, `performer_id` INTEGER NOT NULL, `performer_name` TEXT, PRIMARY KEY(`episode_id`, `performer_id`), FOREIGN KEY(`episode_id`) REFERENCES `episodes`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "episodeId",
+            "columnName": "episode_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "performerId",
+            "columnName": "performer_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "performerName",
+            "columnName": "performer_name",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "episode_id",
+            "performer_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "idx_ep_performer",
+            "unique": false,
+            "columnNames": [
+              "performer_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_ep_performer` ON `${TABLE_NAME}` (`performer_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "episodes",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "episode_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f1eb4fb07db516ac5d25268985dc5869')"
+    ]
+  }
+}
