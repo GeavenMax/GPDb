@@ -242,6 +242,24 @@ fun MovieDetailScreen(
                                     )
                                 }
                             }
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                modifier = Modifier.clickable {
+                                    val encodedName = java.net.URLEncoder.encode(movie.title, "UTF-8")
+                                    uriHandler.openUri("https://bt4gprx.com/search?q=$encodedName")
+                                }
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                    Icon(androidx.compose.material.icons.Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "BT4G",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                    )
+                                }
+                            }
                         }
 
                         val displaySummary = movie.descriptionZh?.takeIf { it.isNotBlank() } ?: movie.description
