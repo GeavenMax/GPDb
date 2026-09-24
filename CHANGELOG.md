@@ -11,6 +11,16 @@
   - 在系列专题列表页 (`FilteredMovieListScreen` - `series` 模式) 新增了系列收藏功能，支持将喜欢的系列一键加入收藏。
   - 在“我的库 (`LibraryScreen`)”中新增了“收藏系列” Tab 页，实时查询并展示所有已收藏的系列，支持点击直接跳转至该系列详情页。
 
+
+## [v2.5.3] - 2026-09-24
+
+### ⚡ 优化 (Changed)
+- **应用图标方案默认顺序调整**：
+  - 将「双雄火星图腾」(The Twin Mars Monolith) 由原方案 B 调整为**方案 A（默认）**，成为新用户首次启动时展示的 Dock 图标。
+  - 将「黑曜石棱镜胶片之匣」(The Obsidian Film Vault) 由原方案 A 调整为方案 B。
+  - 同步物理交换 `scheme-a.svg`、`scheme-a.png` 与 `scheme-b.svg`、`scheme-b.png`，确保 Dock 图标、Favicon、图标选择器预览三处展示完全一致。
+  - `appIcon.ts` 元数据（名称、描述、标签、评级、`badge`）随文件同步更新。
+
 ## [v2.7.0] - 2026-09-23
 
 ### ✨ 新功能与平台扩展 (Features & Multi-Platform)

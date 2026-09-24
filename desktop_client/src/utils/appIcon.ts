@@ -17,24 +17,24 @@ export interface IconScheme {
 export const ICON_SCHEMES: IconScheme[] = [
   {
     id: 'scheme-a',
-    name: '方案 A:「黑曜石棱镜胶片之匣」',
-    subtitle: 'The Obsidian Film Vault',
-    style: '现代极简 · 奢华典藏',
-    privacy: '极高（防窥推荐）',
-    stars: 5,
-    badge: '默认推荐',
-    description: '深空灰微曲面黑曜石质感，中央微透 35mm 胶片孔。一道克制幽暗的投影光束穿透微细棱镜，折射出低饱和度彩虹霓虹微光，隐现立体字母「G」。在 Dock 栏外观宛如高端胶片暗房或剪辑软件，私密防窥性极佳。',
-    tags: ['黑曜石质感', '35mm 胶片', '微棱镜色散', '克制防窥']
-  },
-  {
-    id: 'scheme-b',
-    name: '方案 B:「双雄火星图腾」',
+    name: '方案 A:「双雄火星图腾」',
     subtitle: 'The Twin Mars Monolith',
     style: '古典男体神话 · 阳刚神圣',
     privacy: '高（几何艺术）',
-    stars: 4,
+    stars: 5,
+    badge: '默认推荐',
     description: '午夜蓝深渊背景，中心由两个相互交错缠绕连接的火星符号「♂ ♂」（象征双雄、同志社群）构成。24K 缎面拉丝金与冷冽钛合金质感，两环交叠处形成微凸透镜反光，沉稳强韧，极具力量感与自豪感。',
     tags: ['双雄图腾', '24K 缎面金', '冷冽钛金', '神圣几何']
+  },
+  {
+    id: 'scheme-b',
+    name: '方案 B:「黑曜石棱镜胶片之匣」',
+    subtitle: 'The Obsidian Film Vault',
+    style: '现代极简 · 奢华典藏',
+    privacy: '极高（防窥推荐）',
+    stars: 4,
+    description: '深空灰微曲面黑曜石质感，中央微透 35mm 胶片孔。一道克制幽暗的投影光束穿透微细棱镜，折射出低饱和度彩虹霓虹微光，隐现立体字母「G」。在 Dock 栏外观宛如高端胶片暗房或剪辑软件，私密防窥性极佳。',
+    tags: ['黑曜石质感', '35mm 胶片', '微棱镜色散', '克制防窥']
   },
   {
     id: 'scheme-c',
