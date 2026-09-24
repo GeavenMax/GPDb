@@ -21,7 +21,7 @@
 
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
-  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Android%20(In%20Dev)-blue?style=for-the-badge" alt="Platform" />
+  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -82,34 +82,27 @@
 - **7 种全界面可选语言**：简体中文 (`zh-CN`)、繁体中文 (`zh-TW`)、English (`en`)、Italiano (`it`)、日本語 (`ja`)、Español (`es`)、Deutsch (`de`)。
 - **PlayStation 风格成就奖杯**：内置数十种探索、收藏与检索成就，解锁时触发 PSN 风格流体毛玻璃动效弹窗。
 
+### 8. 全平台覆盖与三端数据协同 (macOS / Windows / Android)
+- **桌面双平台原生融合**：通过 Tauri v2 + Rust 架构完美支持 macOS (Universal Apple Silicon & Intel) 与 Windows x64 双端原生客户端。
+- **原生 Android 移动端 (`android_client/`)**：采用 Kotlin + Jetpack Compose + Room 现代化技术栈构建，与桌面端数据模式无缝融合，满足随身随时随地离线查阅与打标收藏的需求。
+
 ---
 
 ## 🛠️ 技术架构 (Technology Stack)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    GPDb 前端表现层 (UI)                     │
-│  Vue 3 + Vite + TypeScript + Tailwind CSS + Lucide Icons   │
-│       (响应式栅格布局、毛玻璃特效、国际化 i18n、状态管理)     │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ (Tauri IPC / 高速二进制通道)
-┌──────────────────────────────▼──────────────────────────────┐
-│                    Tauri v2 宿主适配层                      │
-│     自定义协议 (gpdb-img://)、系统窗口控制、安全文件选择器     │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ (Rust Native 接口)
-┌──────────────────────────────▼──────────────────────────────┐
-│                 Rust 核心服务层 (gpdb-core)                 │
-│ • SQL 查询生成器与模糊索引 (rusqlite)                         │
-│ • 多级本地图片物理校验与安全解析 (Cache Resolver)             │
-│ • 异步大模型交互通道 (Async Runtime)                         │
-│ • 自动化 Schema 迁移与自愈引擎 (Migrate Engine)              │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────┐
-│                    底层持久化存储 (Storage)                 │
-│      GPDb.db (SQLite 3 WAL 模式) + image_cache/ (本地图片)  │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────┐   ┌──────────────────────────────────────┐
+│       GPDb 桌面端 (desktop_client)   │   │     GPDb 移动端 (android_client)     │
+│   Vue 3 + Tauri v2 + Rust (gpdb-core)│   │    Kotlin + Jetpack Compose + Room   │
+│       (macOS .dmg / Windows .exe)    │   │         (Android Signed .apk)        │
+└──────────────────┬───────────────────┘   └──────────────────┬───────────────────┘
+                   │                                          │
+                   └──────────────────┬───────────────────────┘
+                                      │
+┌─────────────────────────────────────▼──────────────────────────────────────────┐
+│                           底层持久化存储 (Storage)                             │
+│          GPDb.db (SQLite 3 WAL 模式) + image_cache/ (本地海报/剧照缓存)        │
+└────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -118,9 +111,10 @@
 
 ### 普通用户（推荐）
 
-直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载已打包编译完成的安装包：
-- **macOS**：下载 `GPDb-macOS-v2.6.0.dmg`，双击后将 `GPDb.app` 拖入 `Applications`（应用程序）即可启动。
-- **Android**（独立工程开发中）：下载 `.apk` 安装包直接安装于手机或平板。
+直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载最新 `v2.8.0` 版本对应的打包编译完成安装包：
+- ** macOS**：下载 `GPDb-macOS-v2.8.0.dmg`，双击挂载后将 `GPDb.app` 拖入 `Applications`（应用程序）即可启动。
+- **🪟 Windows**：下载 `GPDb-Windows-v2.8.0.exe`，双击运行安装程序完成安装。
+- **🤖 Android 手机/平板**：下载已由官方公钥强签名的 `GPDb-Android-v2.8.0-signed.apk`，在手机端直接安装。
 
 ### 开发者本地编译与运行
 
