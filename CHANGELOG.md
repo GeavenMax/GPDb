@@ -3,9 +3,13 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
-## [Unreleased]
+## [v2.8.0] - 2026-09-24
 
-### ✨ 新功能 (Features)
+### ✨ 新功能与安卓原生移动端发布 (Features & Native Android Release)
+- **原生 Android 移动端客户端发布 (Kotlin / Jetpack Compose / Room)**：
+  - 首个全功能原生 Android 客户端正式发布！采用现代化技术栈（Kotlin + Jetpack Compose + Room + Material 3），支持离线数据库查询、极速模糊搜索、演职人员与制片厂牌浏览、打分与收藏足迹等。
+- **Android / macOS / Windows 三端并发支持**：
+  - 项目正式实现全平台覆盖（macOS Universal, Windows x64, Android APK）。
 - **收藏功能全面升级 (Favorites Expansion)**：
   - 在影片详情页 (`MovieDetailScreen`) 与演员详情页 (`PerformerDetailScreen`) 的顶部导航栏恢复了“收藏 (Favorite)”按钮，支持一键加入或取消收藏。
   - 在系列专题列表页 (`FilteredMovieListScreen` - `series` 模式) 新增了系列收藏功能，支持将喜欢的系列一键加入收藏。

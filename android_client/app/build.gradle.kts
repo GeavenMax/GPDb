@@ -17,13 +17,22 @@ android {
         applicationId = "com.gpdb.android"
         minSdk = 26                          // Android 8.0+，覆盖 97%+ 活跃设备
         targetSdk = 35
-        versionCode = 270
-        versionName = "2.7.0"
+        versionCode = 280
+        versionName = "2.8.0"
 
         // Room schema export 目录（方便版本迁移审计）
         ksp {
             arg("room.schemaLocation", "$projectDir/schemas")
             arg("room.incremental", "true")
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("gpdb-release.keystore")
+            storePassword = "gpdb123456"
+            keyAlias = "gpdb"
+            keyPassword = "gpdb123456"
         }
     }
 
@@ -35,6 +44,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             applicationIdSuffix = ".debug"

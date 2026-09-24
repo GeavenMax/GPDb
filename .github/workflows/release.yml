@@ -122,8 +122,12 @@ jobs:
             1. 下载下方附件 `GPDb-Windows-${{ github.ref_name }}.exe` (或 `.msi`)
             2. 双击运行安装程序完成安装
 
+            #### 🤖 Android (Mobile - Kotlin / Compose)
+            1. 下载下方附件 `GPDb-Android-${{ github.ref_name }}-signed.apk`
+            2. 在 Android 手机双击安装包完成安装（如提示允许未知来源安装，请予以允许）
+
             ---
-            *Built with Tauri 2 · Vue 3 · Rust (rusqlite bundled SQLite)*
+            *Built with Tauri 2 · Vue 3 · Rust · Kotlin (Jetpack Compose)*
           draft: false
           prerelease: false
           files: dist_release/*
