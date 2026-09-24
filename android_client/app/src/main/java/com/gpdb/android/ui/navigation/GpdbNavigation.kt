@@ -149,10 +149,10 @@ fun GpdbNavGraph(
                     onMovieClick = { movieId ->
                         navController.navigate(Screen.MovieDetail.createRoute(movieId)) },
                     onStudioClick = { studio -> navController.navigate(Screen.StudioDetail.createRoute(studio)) },
-                    onRemountClick = onRemountClick,
                     onPerformerClick = { perfId ->
                         navController.navigate(Screen.PerformerDetail.createRoute(perfId))
                     },
+                    onRemountClick = onRemountClick,
                     onSearchClick = {
                         navController.navigate(Screen.Search.route)
                     },
@@ -239,7 +239,8 @@ fun GpdbNavGraph(
 
                         composable(Screen.Settings.route) {
                 com.gpdb.android.ui.settings.SettingsScreen(
-                    appPreferences = com.gpdb.android.data.preferences.AppPreferences(androidx.compose.ui.platform.LocalContext.current)
+                    appPreferences = com.gpdb.android.data.preferences.AppPreferences(androidx.compose.ui.platform.LocalContext.current),
+                    onRemountClick = onRemountClick
                 )
             }
 

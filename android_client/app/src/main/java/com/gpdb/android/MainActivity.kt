@@ -56,6 +56,17 @@ class MainActivity : ComponentActivity() {
                     val dbPath by mountPreferences.dbPathFlow.collectAsState(initial = null)
                     val zipPath by mountPreferences.zipPathFlow.collectAsState(initial = null)
 
+                    // Apply locale
+                    val langPref by appPreferences.languageFlow.collectAsState(initial = "system")
+                    LaunchedEffect(langPref) {
+                        val localeList = if (langPref == "system") {
+                            androidx.core.os.LocaleListCompat.getEmptyLocaleList()
+                        } else {
+                            androidx.core.os.LocaleListCompat.forLanguageTags(langPref)
+                        }
+                        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(localeList)
+                    }
+
                     // 当检测到有效配置，交给 ViewModel 在 Dispatchers.IO 异步挂载
                     LaunchedEffect(isMounted, dbPath, zipPath, mountRoot) {
                         if (isMounted && dbPath != null && mountRoot != null) {

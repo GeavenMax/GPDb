@@ -26,7 +26,7 @@ class SettingsViewModel(private val appPreferences: AppPreferences) : ViewModel(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(appPreferences: AppPreferences) {
+fun SettingsScreen(appPreferences: AppPreferences, onRemountClick: () -> Unit) {
     val viewModel = remember { SettingsViewModel(appPreferences) }
     val language by viewModel.language.collectAsState()
     val recordHistory by viewModel.recordHistory.collectAsState()
@@ -59,6 +59,12 @@ fun SettingsScreen(appPreferences: AppPreferences) {
                 headlineContent = { Text("主题外观") },
                 supportingContent = { Text(when(theme) { "light" -> "浅色主题"; "dark" -> "深色主题"; else -> "跟随系统" }) },
                 modifier = Modifier.clickable { showThemeDialog = true }
+            )
+            
+            ListItem(
+                headlineContent = { Text("重新挂载数据库") },
+                supportingContent = { Text("断开当前数据库并重新选择挂载路径") },
+                modifier = Modifier.clickable { onRemountClick() }
             )
         }
     }

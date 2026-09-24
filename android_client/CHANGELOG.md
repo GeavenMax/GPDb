@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Locale Support**: The AppPreferences language setting now dynamically applies "zh" or "en" to the application via `AppCompatDelegate.setApplicationLocales`.
+- **Remount Action**: Moved the "Remount Database" action from the Home screen top bar to a dedicated list item in the Settings screen.
+
+### Fixed
+- **Prevent DB Reload on Theme Change**: Added `android:configChanges="uiMode|locale|layoutDirection"` to `AndroidManifest.xml` to prevent the activity from tearing down and reloading the database when switching themes or languages.
+
+### Added
+- **Locale Support**: The AppPreferences language setting now dynamically applies "zh" or "en" to the application via `AppCompatDelegate.setApplicationLocales`.
+- **Remount Action**: Moved the "Remount Database" action from the Home screen top bar to a dedicated list item in the Settings screen.
 - **Studio Detail**: Added a new tab "发行分集" (Episodes) to the Studio Detail screen to display all episodes produced by the studio alongside movies.
 - **Contextual Search**: Implemented real-time context-specific search within the "演员" (Performers) and "片商" (Studios) tabs via an expandable TopAppBar TextField.
 - **Category & Series Browsing (Milestone 2)**: Completely overhauled the root navigation structure by adding a Material 3 `NavigationBar` (Bottom Tabs). Users can now directly jump between "Movies" (全部影片), "Studios" (片商), "Series" (系列), and "Categories" (分类标签).

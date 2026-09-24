@@ -69,6 +69,7 @@ android {
 }
 
 dependencies {
+    implementation("androidx.appcompat:appcompat:1.6.1")
     // ── Kotlin 核心 ──────────────────────────────────────────
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlinx.coroutines.android)

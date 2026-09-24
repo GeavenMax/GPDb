@@ -1,141 +1,97 @@
 package com.gpdb.android.ui.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Sort
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.gpdb.android.data.db.entities.MovieEntity
 import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
+import com.gpdb.android.ui.browse.SeriesListContent
+import com.gpdb.android.ui.browse.SeriesListViewModel
 
-// ============================================================
-//  HomeScreen — 影库网格主页 (含优雅 Loading 与异常诊断)
-// ============================================================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onMovieClick: (Long) -> Unit = {},
-    onRemountClick: () -> Unit = {}
+    onMovieClick: (Long) -> Unit,
+    onStudioClick: (String) -> Unit = {},
+    onPerformerClick: (Long) -> Unit,
+    onRemountClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onSeriesClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val gridState = rememberLazyGridState()
-
-    // 监听滑动到底部触发分页加载 (Infinite Scroll)
-    val shouldLoadMore = remember {
-        derivedStateOf {
-            val totalItemsCount = gridState.layoutInfo.totalItemsCount
-            val lastVisibleItemIndex = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            totalItemsCount > 0 && lastVisibleItemIndex >= (totalItemsCount - 6)
-        }
-    }
-
-    LaunchedEffect(shouldLoadMore.value) {
-        if (shouldLoadMore.value) {
-            viewModel.loadMoreMovies()
-        }
-    }
+    val seriesViewModel: SeriesListViewModel = viewModel()
 
     Scaffold(
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                // 顶部标题与统计
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "GPDb 掌上影库",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        val subtitle = buildString {
-                            if (uiState.totalCount > 0) append("${uiState.totalCount} 部影片")
-                            if (uiState.zipEntriesCount > 0) append(" · ${uiState.zipEntriesCount} 张离线图")
+            Column {
+                TopAppBar(
+                    title = { Text("GPDb") },
+                    actions = {
+                        var showSortMenu by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showSortMenu = true }) {
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "排序")
                         }
-                        if (subtitle.isNotBlank()) {
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("按收录顺序") },
+                                onClick = {
+                                    showSortMenu = false
+                                    if (uiState.sortByYear) viewModel.toggleSortOrder()
+                                },
+                                trailingIcon = { if (!uiState.sortByYear) Icon(Icons.Default.Check, null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("按发行年份") },
+                                onClick = {
+                                    showSortMenu = false
+                                    if (!uiState.sortByYear) viewModel.toggleSortOrder()
+                                },
+                                trailingIcon = { if (uiState.sortByYear) Icon(Icons.Default.Check, null) }
                             )
                         }
-                    }
-
-                    Row {
-                        IconButton(onClick = { viewModel.toggleSortOrder() }) {
-                            Icon(
-                                imageVector = Icons.Outlined.Sort,
-                                contentDescription = "切换排序",
-                                tint = if (uiState.sortByYear) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                            )
+                        IconButton(onClick = onSearchClick) {
+                            Icon(Icons.Default.Search, contentDescription = "搜索")
                         }
                     }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // 搜索栏
-                OutlinedTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = { viewModel.onSearchQueryChanged(it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("搜索片名、中文名或片商...") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = "搜索")
-                    },
-                    trailingIcon = {
-                        if (uiState.searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
-                                Icon(Icons.Default.Close, contentDescription = "清空")
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(24.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
-                    )
                 )
+                TabRow(selectedTabIndex = uiState.homeTab.ordinal) {
+                    Tab(
+                        selected = uiState.homeTab == HomeTab.ALL_MOVIES,
+                        onClick = { viewModel.setHomeTab(HomeTab.ALL_MOVIES) },
+                        text = { Text("全部影片") }
+                    )
+                    Tab(
+                        selected = uiState.homeTab == HomeTab.SERIES,
+                        onClick = { viewModel.setHomeTab(HomeTab.SERIES) },
+                        text = { Text("系列") }
+                    )
+                }
             }
         }
     ) { innerPadding ->
@@ -145,126 +101,78 @@ fun HomeScreen(
                 .padding(innerPadding)
         ) {
             when (val status = uiState.mountStatus) {
-                // ── 1. 异步挂载 Loading 态 ───────────────────────────
-                is MountStatus.Mounting -> {
+                is MountStatus.Idle, is MountStatus.Mounting -> {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(56.dp),
-                            strokeWidth = 4.dp
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text(
-                            text = "正在就绪影库",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = status.stepText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        val text = if (status is MountStatus.Mounting) status.stepText else "等待挂载..."
+                        Text(text = text, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
-
-                // ── 2. 异常诊断态 ────────────────────────────────────
                 is MountStatus.Error -> {
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                            .align(Alignment.Center)
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.ErrorOutline,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
+                        Text(status.title, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleLarge)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(status.detail, color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = status.title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)
-                            )
-                        ) {
-                            Text(
-                                text = status.detail,
-                                modifier = Modifier.padding(12.dp),
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(20.dp))
                         Button(onClick = onRemountClick) {
-                            Icon(Icons.Outlined.Refresh, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("重新选择挂载目录")
+                            Text("重试")
                         }
                     }
                 }
-
-                // ── 3. 正常网格流态 ──────────────────────────────────
-                else -> {
-                    if (uiState.isLoading && uiState.movies.isEmpty()) {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    } else if (uiState.movies.isEmpty()) {
-                        Text(
-                            text = "未检索到匹配的影视资源",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    } else {
+                is MountStatus.Ready -> {
+                    if (uiState.homeTab == HomeTab.ALL_MOVIES) {
+                        val gridState = androidx.compose.runtime.saveable.rememberSaveable(
+                            saver = androidx.compose.foundation.lazy.grid.LazyGridState.Saver,
+                            key = "home_all_movies_grid"
+                        ) {
+                            androidx.compose.foundation.lazy.grid.LazyGridState()
+                        }
                         LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 160.dp),
-                            state = gridState,
-                            contentPadding = PaddingValues(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            state = gridState,                            columns = GridCells.Fixed(3),
+                            contentPadding = PaddingValues(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(
-                                items = uiState.movies,
-                                key = { it.id ?: 0L }
-                            ) { movie ->
+                            items(uiState.movies, key = { it.id ?: it.hashCode() }) { movie ->
                                 MovieGridItem(
                                     movie = movie,
                                     physicalRootPath = uiState.physicalRootPath,
-                                    onClick = { movie.id?.let { onMovieClick(it) } }
-                                )
+                                    onClick = { onMovieClick(movie.id ?: 0) }
+                                ,
+    onStudioClick = { studio -> onStudioClick(studio) }
+)
                             }
-
                             if (uiState.isLoadingMore) {
                                 item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(28.dp))
+                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+                            } else if (uiState.hasMore) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    LaunchedEffect(Unit) {
+                                        viewModel.loadMoreMovies()
                                     }
                                 }
                             }
                         }
+                    } else {
+                        // Series Tab
+                        SeriesListContent(
+                            viewModel = seriesViewModel,
+                            onSeriesClick = onSeriesClick,
+                            physicalRootPath = uiState.physicalRootPath
+                        )
                     }
                 }
             }
@@ -272,14 +180,13 @@ fun HomeScreen(
     }
 }
 
-// ============================================================
-//  MovieGridItem — 单个影片卡片视图
-// ============================================================
+
 @Composable
 fun MovieGridItem(
     movie: MovieEntity,
     physicalRootPath: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onStudioClick: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
 
@@ -313,6 +220,7 @@ fun MovieGridItem(
                         .build(),
                     contentDescription = movie.title,
                     contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -321,8 +229,8 @@ fun MovieGridItem(
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(androidx.compose.ui.graphics.Color.Transparent, androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.75f))
                             )
                         )
                         .padding(horizontal = 8.dp, vertical = 6.dp)
@@ -336,8 +244,8 @@ fun MovieGridItem(
                             Text(
                                 text = year.toString(),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
+                                color = androidx.compose.ui.graphics.Color.White,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                             )
                         }
 
@@ -345,7 +253,7 @@ fun MovieGridItem(
                             Text(
                                 text = "${mins}分",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.85f)
+                                color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.85f)
                             )
                         }
                     }
@@ -355,15 +263,16 @@ fun MovieGridItem(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(76.dp)
                     .padding(8.dp)
             ) {
                 val displayTitle = movie.titleZh ?: movie.title
                 Text(
                     text = displayTitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
                 )
 
                 if (movie.titleZh != null && movie.title.isNotBlank()) {
@@ -372,19 +281,26 @@ fun MovieGridItem(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE)
                     )
                 }
 
                 movie.studioName?.let { studio ->
-                    Text(
-                        text = studio,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .then(if (onStudioClick != null) Modifier.clickable { onStudioClick(studio) } else Modifier)
+                    ) {
+                        Text(
+                            text = studio,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp).basicMarquee(iterations = Int.MAX_VALUE)
+                        )
+                    }
                 }
             }
         }
