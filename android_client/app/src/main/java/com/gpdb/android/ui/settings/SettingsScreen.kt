@@ -18,6 +18,7 @@ import com.gpdb.android.data.preferences.AppPreferences
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
 
 class SettingsViewModel(private val appPreferences: AppPreferences) : ViewModel() {
     val language = appPreferences.languageFlow.stateIn(viewModelScope, SharingStarted.Lazily, "system")
@@ -31,7 +32,7 @@ class SettingsViewModel(private val appPreferences: AppPreferences) : ViewModel(
     fun setAppIcon(icon: String) = viewModelScope.launch { appPreferences.setAppIcon(icon) }
 }
 
-fun changeAppIcon(context: Context, newIcon: String) {
+fun changeAppIcon(context: Context, scope: CoroutineScope, newIcon: String) {
     val pm = context.packageManager
     val packageName = context.packageName
     
@@ -52,7 +53,8 @@ fun changeAppIcon(context: Context, newIcon: String) {
     }
     
     // Then delay the disable of the others to prevent immediate process kill
-    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+    scope.launch(kotlinx.coroutines.Dispatchers.Main) {
+        kotlinx.coroutines.delay(5000)
         try {
             aliases.filterKeys { it != newIcon }.forEach { (_, componentNameStr) ->
                 pm.setComponentEnabledSetting(
@@ -64,11 +66,10 @@ fun changeAppIcon(context: Context, newIcon: String) {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-    }, 5000)
+    }
     
     Toast.makeText(context, "已更新应用图标，桌面图标将在几秒钟后更新", Toast.LENGTH_LONG).show()
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(appPreferences: AppPreferences, onRemountClick: () -> Unit) {
@@ -83,6 +84,8 @@ fun SettingsScreen(appPreferences: AppPreferences, onRemountClick: () -> Unit) {
     var showIconDialog by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
+
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("设置") }) }
@@ -179,22 +182,32 @@ fun SettingsScreen(appPreferences: AppPreferences, onRemountClick: () -> Unit) {
             title = { Text("选择应用图标") },
             text = {
                 Column {
-                    listOf("A" to "方案 A", "B" to "方案 B", "C" to "方案 C", "D" to "方案 D").forEach { (code, name) ->
+                    listOf(
+                        "A" to Pair("方案 A (双雄火星图腾)", com.gpdb.android.R.mipmap.ic_launcher_a),
+                        "B" to Pair("方案 B (原版标志)", com.gpdb.android.R.mipmap.ic_launcher_b),
+                        "C" to Pair("方案 C", com.gpdb.android.R.mipmap.ic_launcher_c),
+                        "D" to Pair("方案 D", com.gpdb.android.R.mipmap.ic_launcher_d)
+                    ).forEach { (code, pair) ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable {
                             if (appIcon != code) {
                                 viewModel.setAppIcon(code)
-                                changeAppIcon(context, code)
+                                changeAppIcon(context, scope, code)
                             }
                             showIconDialog = false
-                        }) {
+                        }.padding(vertical = 8.dp)) {
                             RadioButton(selected = appIcon == code, onClick = {
                                 if (appIcon != code) {
                                     viewModel.setAppIcon(code)
-                                    changeAppIcon(context, code)
+                                    changeAppIcon(context, scope, code)
                                 }
                                 showIconDialog = false
                             })
-                            Text(name, modifier = Modifier.padding(start = 8.dp))
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(id = pair.second),
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp).padding(start = 8.dp, end = 12.dp)
+                            )
+                            Text(pair.first)
                         }
                     }
                 }

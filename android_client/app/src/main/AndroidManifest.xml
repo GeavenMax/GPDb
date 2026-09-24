@@ -42,9 +42,9 @@
 
         <activity-alias
             android:name=".MainActivityAliasA"
-            android:enabled="false"
+            android:enabled="true"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_a" android:roundIcon="@mipmap/ic_launcher_a_round"
+            android:icon="@mipmap/ic_launcher_b" android:roundIcon="@mipmap/ic_launcher_b_round"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -54,9 +54,9 @@
 
         <activity-alias
             android:name=".MainActivityAliasB"
-            android:enabled="true"
+            android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_b" android:roundIcon="@mipmap/ic_launcher_b_round"
+            android:icon="@mipmap/ic_launcher_a" android:roundIcon="@mipmap/ic_launcher_a_round"
             android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

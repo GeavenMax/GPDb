@@ -26,6 +26,9 @@ class FilteredMovieListViewModel : ViewModel() {
     val uiState: StateFlow<FilteredMovieListUiState> = _uiState.asStateFlow()
 
     fun load(filterType: String, filterValue: String) {
+        if (_uiState.value.filterType == filterType && _uiState.value.title == filterValue && _uiState.value.movies.isNotEmpty()) {
+            return
+        }
         val db = DatabaseHolder.db ?: return
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, title = filterValue, filterType = filterType, error = null) }

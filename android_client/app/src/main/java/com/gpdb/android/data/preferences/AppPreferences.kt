@@ -26,7 +26,7 @@ class AppPreferences(private val context: Context) {
     }
 
     val appIconFlow: Flow<String> = context.appDataStore.data.map { prefs ->
-        prefs[KEY_APP_ICON] ?: "B"
+        prefs[KEY_APP_ICON] ?: "A"
     }
 
     val recordSearchHistoryFlow: Flow<Boolean> = context.appDataStore.data.map { prefs ->

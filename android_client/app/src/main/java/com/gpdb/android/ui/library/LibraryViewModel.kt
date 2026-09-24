@@ -51,7 +51,16 @@ class LibraryViewModel : ViewModel() {
     fun refresh() {
         val tab = _uiState.value.currentTab
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            val isCurrentlyEmpty = when (tab) {
+                LibraryTab.FAV_PERFORMERS -> _uiState.value.performers.isEmpty()
+                LibraryTab.FAV_SERIES -> _uiState.value.series.isEmpty()
+                else -> _uiState.value.movies.isEmpty()
+            }
+            if (isCurrentlyEmpty) {
+                _uiState.update { it.copy(isLoading = true, error = null) }
+            } else {
+                _uiState.update { it.copy(error = null) }
+            }
             
             var db = DatabaseHolder.db
             var retries = 0
@@ -62,7 +71,9 @@ class LibraryViewModel : ViewModel() {
             }
             
             if (db == null) {
-                _uiState.update { it.copy(isLoading = false, error = "数据库挂载未完成，请返回主页等待完成") }
+                if (isCurrentlyEmpty) {
+                    _uiState.update { it.copy(isLoading = false, error = "数据库挂载未完成，请返回主页等待完成") }
+                }
                 return@launch
             }
             
