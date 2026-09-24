@@ -229,22 +229,23 @@ fun PerformerDetailScreen(
                             }
                         }
                         
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.tertiaryContainer,
-                            modifier = Modifier.clickable {
-                                val encodedName = java.net.URLEncoder.encode(performer.name, "UTF-8")
-                                uriHandler.openUri("https://boyfriendtv.com/search/video/?q=$encodedName") // Assuming this URL or just "https://boyfriendtv.com/search/?q="
-                            }
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "BoyfriendTV",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                )
+                        if (!performer.bftvUrl.isNullOrBlank()) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                modifier = Modifier.clickable {
+                                    uriHandler.openUri(performer.bftvUrl)
+                                }
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                    Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "BoyfriendTV",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    )
+                                }
                             }
                         }
                     }
