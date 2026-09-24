@@ -79,4 +79,9 @@ class BrowseRepository(private val browseDao: BrowseDao) {
         val query = SimpleSQLiteQuery("SELECT * FROM movies WHERE title LIKE ? || '%' OR title LIKE '%' || ? || '%' ORDER BY release_year DESC, id DESC LIMIT ? OFFSET ?", arrayOf(seriesRoot, seriesRoot, limit, offset))
         return browseDao.getMoviesBySeries(query)
     }
+
+    suspend fun getMoviesByDirector(director: String, limit: Int = 50, offset: Int = 0): List<MovieEntity> {
+        val query = SimpleSQLiteQuery("SELECT m.* FROM movies m JOIN movie_directors md ON m.id = md.movie_id JOIN directors d ON d.id = md.director_id WHERE d.name = ? ORDER BY m.release_year DESC, m.id DESC LIMIT ? OFFSET ?", arrayOf(director, limit, offset))
+        return browseDao.getMoviesByDirector(query)
+    }
 }

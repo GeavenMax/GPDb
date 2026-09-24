@@ -280,6 +280,9 @@ fun GpdbNavGraph(
                     },
                     onDirectorClick = { director ->
                         navController.navigate(Screen.FilteredMovieList.createRoute("director", director))
+                    },
+                    onSeriesClick = { series ->
+                        navController.navigate(Screen.FilteredMovieList.createRoute("series", series))
                     }
                 )
             }

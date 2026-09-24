@@ -52,7 +52,8 @@ fun MovieDetailScreen(
     onPerformerClick: (Long) -> Unit,
     onEpisodeClick: (Long) -> Unit,
     onDirectorClick: (String) -> Unit,
-    onStudioClick: (String) -> Unit
+    onStudioClick: (String) -> Unit,
+    onSeriesClick: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -190,7 +191,7 @@ fun MovieDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                                                @OptIn(ExperimentalLayoutApi::class)
+                        @OptIn(ExperimentalLayoutApi::class)
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -209,16 +210,16 @@ fun MovieDetailScreen(
                                     )
                                 }
                             }
-                            if (uiState.directors.isNotEmpty()) {
+                            uiState.directors.forEach { director ->
                                 Surface(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.secondaryContainer,
                                     modifier = Modifier.clickable {
-                                        uiState.directors.firstOrNull()?.let { onDirectorClick(it) }
+                                        onDirectorClick(director)
                                     }
                                 ) {
                                     Text(
-                                        text = "导演: ${uiState.directors.joinToString(", ")}",
+                                        text = "导演: $director",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -238,6 +239,23 @@ fun MovieDetailScreen(
                                         text = "片商: $studio",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            uiState.seriesName?.let { series ->
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.clickable {
+                                        onSeriesClick(series)
+                                    }
+                                ) {
+                                    Text(
+                                        text = "属于 $series 系列",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }

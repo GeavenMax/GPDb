@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -118,17 +119,28 @@ fun PerformerDetailScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             
-                            val basicDetails = buildString {
-                                performer.height?.takeIf { it.isNotBlank() && it != "none available" }?.let { append("身高 $it   ") }
-                                performer.weight?.takeIf { it.isNotBlank() && it != "none available" }?.let { append("体重 $it   ") }
-                                performer.build?.takeIf { it.isNotBlank() && it != "none available" }?.let { append("体型 $it") }
-                            }
-                            if (basicDetails.isNotBlank()) {
-                                Text(
-                                    text = basicDetails.trimEnd(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                            val basicDetails = listOfNotNull(
+                                performer.height?.takeIf { it.isNotBlank() && it != "none available" }?.let { "身高 $it" },
+                                performer.weight?.takeIf { it.isNotBlank() && it != "none available" }?.let { "体重 $it" },
+                                performer.build?.takeIf { it.isNotBlank() && it != "none available" }?.let { "体型 $it" }
+                            )
+                            
+                            @OptIn(ExperimentalLayoutApi::class)
+                            if (basicDetails.isNotEmpty()) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    basicDetails.forEach { detail ->
+                                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                                            Text(
+                                                text = detail,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -150,21 +162,18 @@ fun PerformerDetailScreen(
                         
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                             androidx.compose.animation.AnimatedVisibility(visible = isExpanded) {
-                                Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                                @OptIn(ExperimentalLayoutApi::class)
+                                FlowRow(
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
                                     advancedDetails.forEach { (label, value) ->
-                                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
                                             Text(
-                                                text = label, 
-                                                modifier = Modifier.weight(1f), 
-                                                style = MaterialTheme.typography.bodyMedium, 
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Text(
-                                                text = value, 
-                                                modifier = Modifier.weight(1.5f), 
-                                                style = MaterialTheme.typography.bodyMedium, 
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onSurface
+                                                text = "$label: $value",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                             )
                                         }
                                     }
@@ -177,6 +186,53 @@ fun PerformerDetailScreen(
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
                             ) {
                                 Text(if (isExpanded) "收起详细特征 ▲" else "展开详细生理特征 ▼")
+                            }
+                        }
+                    }
+                    
+                    // Buttons: BT4G 搜索 and BoyfriendTV
+                    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.clickable {
+                                val encodedName = java.net.URLEncoder.encode(performer.name, "UTF-8")
+                                uriHandler.openUri("https://bt4gprx.com/search?q=$encodedName")
+                            }
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "BT4G 搜索",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                )
+                            }
+                        }
+                        
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            modifier = Modifier.clickable {
+                                val encodedName = java.net.URLEncoder.encode(performer.name, "UTF-8")
+                                uriHandler.openUri("https://boyfriendtv.com/search/video/?q=$encodedName") // Assuming this URL or just "https://boyfriendtv.com/search/?q="
+                            }
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "BoyfriendTV",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
                             }
                         }
                     }

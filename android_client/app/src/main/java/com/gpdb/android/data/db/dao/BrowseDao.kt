@@ -32,6 +32,9 @@ interface BrowseDao {
     suspend fun getMoviesBySeries(query: SupportSQLiteQuery): List<MovieEntity>
 
     @RawQuery
+    suspend fun getMoviesByDirector(query: SupportSQLiteQuery): List<MovieEntity>
+
+    @RawQuery
     suspend fun getAllPerformers(query: SupportSQLiteQuery): List<PerformerEntity>
 
     @RawQuery
