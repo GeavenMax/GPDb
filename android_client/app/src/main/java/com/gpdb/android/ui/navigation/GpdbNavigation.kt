@@ -66,7 +66,8 @@ fun GpdbNavGraph(
         Screen.Home.route,
         Screen.Performers.route,
         Screen.Studios.route,
-        Screen.Library.route
+        Screen.Library.route,
+        Screen.Settings.route
     )
 
     Scaffold(
@@ -115,6 +116,18 @@ fun GpdbNavGraph(
                         selected = currentDestination?.hierarchy?.any { it.route == Screen.Library.route } == true,
                         onClick = {
                             navController.navigate(Screen.Library.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                        label = { Text("设置") },
+                        selected = currentDestination?.hierarchy?.any { it.route == Screen.Settings.route } == true,
+                        onClick = {
+                            navController.navigate(Screen.Settings.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
