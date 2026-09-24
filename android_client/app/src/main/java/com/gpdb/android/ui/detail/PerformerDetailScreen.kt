@@ -25,6 +25,11 @@ import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
 import com.gpdb.android.ui.home.MovieGridItem
 
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 
@@ -98,8 +103,24 @@ fun PerformerDetailScreen(
                     )
                 }
 
-                Column(modifier = Modifier.fillMaxSize()) {
+                var isHeaderVisible by remember { mutableStateOf(true) }
+                val nestedScrollConnection = remember {
+                    object : NestedScrollConnection {
+                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                            if (available.y < -15f) {
+                                isHeaderVisible = false
+                            } else if (available.y > 15f) {
+                                isHeaderVisible = true
+                            }
+                            return Offset.Zero
+                        }
+                    }
+                }
+
+                Column(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
                     // 头部档案卡
+                    androidx.compose.animation.AnimatedVisibility(visible = isHeaderVisible) {
+                        Column {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -247,6 +268,9 @@ fun PerformerDetailScreen(
                                     )
                                 }
                             }
+                        }
+                    }
+
                         }
                     }
 
