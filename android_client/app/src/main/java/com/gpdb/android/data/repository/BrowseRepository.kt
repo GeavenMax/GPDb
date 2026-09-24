@@ -74,7 +74,12 @@ class BrowseRepository(private val browseDao: BrowseDao) {
         return browseDao.getFavoritePerformers(SimpleSQLiteQuery(sql, args))
     }
 
-
+    suspend fun getFavoriteSeries(limit: Int = 50, offset: Int = 0, search: String? = null): List<SeriesCollectionEntity> {
+        val searchCondition = if (!search.isNullOrBlank()) "AND s.root_title LIKE ?" else ""
+        val args = if (!search.isNullOrBlank()) arrayOf("%${search}%", limit, offset) else arrayOf(limit, offset)
+        val sql = "SELECT s.* FROM series_collections s JOIN user_favorites f ON s.root_title = f.entity_key WHERE f.entity_type = 'series' $searchCondition ORDER BY f.created_at DESC LIMIT ? OFFSET ?"
+        return browseDao.getFavoriteSeries(SimpleSQLiteQuery(sql, args))
+    }
     suspend fun getMoviesBySeries(seriesRoot: String, limit: Int = 50, offset: Int = 0): List<MovieEntity> {
         val query = SimpleSQLiteQuery("SELECT * FROM movies WHERE title LIKE ? || '%' OR title LIKE '%' || ? || '%' ORDER BY release_year DESC, id DESC LIMIT ? OFFSET ?", arrayOf(seriesRoot, seriesRoot, limit, offset))
         return browseDao.getMoviesBySeries(query)

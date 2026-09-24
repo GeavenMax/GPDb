@@ -41,5 +41,8 @@ interface BrowseDao {
     suspend fun getFavoritePerformers(query: SupportSQLiteQuery): List<PerformerEntity>
 
     @RawQuery
+    suspend fun getFavoriteSeries(query: SupportSQLiteQuery): List<SeriesCollectionEntity>
+
+    @RawQuery
     suspend fun getEpisodesByStudio(query: SupportSQLiteQuery): List<com.gpdb.android.data.db.entities.EpisodeEntity>
 }

@@ -25,6 +25,9 @@ import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
 import com.gpdb.android.ui.home.MovieGridItem
 
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerformerDetailScreen(
@@ -49,6 +52,15 @@ fun PerformerDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.toggleFavorite() }) {
+                        Icon(
+                            imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = "收藏",
+                            tint = if (uiState.isFavorite) Color.Red else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             )

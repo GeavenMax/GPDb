@@ -191,6 +191,7 @@ fun GpdbNavGraph(
                     onMovieClick = { movieId ->
                         navController.navigate(Screen.MovieDetail.createRoute(movieId)) },
                     onStudioClick = { studio -> navController.navigate(Screen.StudioDetail.createRoute(studio)) },
+                    onSeriesClick = { series -> navController.navigate(Screen.FilteredMovieList.createRoute("series", series)) },
                     onPerformerClick = { performerId ->
                         navController.navigate(Screen.PerformerDetail.createRoute(performerId))
                     }

@@ -3,6 +3,14 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [Unreleased]
+
+### ✨ 新功能 (Features)
+- **收藏功能全面升级 (Favorites Expansion)**：
+  - 在影片详情页 (`MovieDetailScreen`) 与演员详情页 (`PerformerDetailScreen`) 的顶部导航栏恢复了“收藏 (Favorite)”按钮，支持一键加入或取消收藏。
+  - 在系列专题列表页 (`FilteredMovieListScreen` - `series` 模式) 新增了系列收藏功能，支持将喜欢的系列一键加入收藏。
+  - 在“我的库 (`LibraryScreen`)”中新增了“收藏系列” Tab 页，实时查询并展示所有已收藏的系列，支持点击直接跳转至该系列详情页。
+
 ## [v2.7.0] - 2026-09-23
 
 ### ✨ 新功能与平台扩展 (Features & Multi-Platform)

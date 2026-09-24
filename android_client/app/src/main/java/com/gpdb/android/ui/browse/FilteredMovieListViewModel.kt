@@ -15,8 +15,10 @@ import kotlinx.coroutines.launch
 data class FilteredMovieListUiState(
     val isLoading: Boolean = true,
     val title: String = "",
+    val filterType: String = "",
     val movies: List<MovieEntity> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val isFavorite: Boolean = false
 )
 
 class FilteredMovieListViewModel : ViewModel() {
@@ -26,7 +28,7 @@ class FilteredMovieListViewModel : ViewModel() {
     fun load(filterType: String, filterValue: String) {
         val db = DatabaseHolder.db ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, title = filterValue, error = null) }
+            _uiState.update { it.copy(isLoading = true, title = filterValue, filterType = filterType, error = null) }
             try {
                 val repo = BrowseRepository(db.browseDao())
                 val list = when (filterType) {
@@ -35,10 +37,29 @@ class FilteredMovieListViewModel : ViewModel() {
                     "director" -> repo.getMoviesByDirector(filterValue, limit = 500)
                     else -> emptyList()
                 }
-                _uiState.update { it.copy(isLoading = false, movies = list) }
+                
+                var isFav = false
+                if (filterType == "series") {
+                    val userRepo = com.gpdb.android.data.repository.UserRepository(db, db.userActionDao())
+                    isFav = userRepo.isFavorite("series", filterValue)
+                }
+
+                _uiState.update { it.copy(isLoading = false, movies = list, isFavorite = isFav) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
             }
+        }
+    }
+
+    fun toggleFavorite() {
+        if (_uiState.value.filterType != "series") return
+        val seriesName = _uiState.value.title
+        if (seriesName.isBlank()) return
+        val db = DatabaseHolder.db ?: return
+        val newFav = !_uiState.value.isFavorite
+        viewModelScope.launch(Dispatchers.IO) {
+            com.gpdb.android.data.repository.UserRepository(db, db.userActionDao()).toggleFavorite("series", seriesName, newFav)
+            _uiState.update { it.copy(isFavorite = newFav) }
         }
     }
 }
