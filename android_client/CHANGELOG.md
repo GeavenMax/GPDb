@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.8.0] - 2026-09-24
+
+### Added
+- **Release Build**: 自动集成专属发布密钥库，并在 `build.gradle.kts` 中配置 `signingConfigs`，支持一键编译受完整签名的 Release APK。
+
+### Changed
+- **Version Synchronization**: 将 Android 客户端版本号与 macOS/Windows 桌面端统一同步更新至 `2.8.0` (versionCode 280)。
+- **Project Cleanup**: 彻底清理 `android_client` 目录下 90 余个历史自动化调试脚本（`fix_*.py`、`patch_*.py` 等）及冗余日志文件，大幅净化工程结构。
+- **Database Cleanup**: 移除了项目根目录下遗留的多份废弃数据库备份分卷压缩包，释放了数百兆磁盘空间。
+
+### Fixed
+- **App Icon Settings Crash**: 修复了设置页“更换应用图标”弹窗因 Compose 原生的 `painterResource` 无法解析 Android 8.0+ 自适应图标（Adaptive Icon）而导致的闪退问题（已替换为基于 Coil 的 `AsyncImage`）。
+- **Debug Build Alias Resolution**: 修复了在 Debug 模式下，带有 `.debug` 包名后缀时，动态切换桌面图标引发“类未找到 (Class Not Found)”闪退崩溃的问题。
+
 
 ### Fixed
 - **Navigation State Loss**: 彻底修复从次级详情页返回时（如演员档案页、片商档案页），页面跳回顶部及 Tab 栏重置的问题。通过采用 `rememberSaveable` 持久化 UI 状态，并在 ViewModels 层拦截冗余的重复加载请求来实现。
