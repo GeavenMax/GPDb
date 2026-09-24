@@ -1,6 +1,7 @@
 package com.gpdb.android
 
 import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -12,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.gpdb.android.data.db.DatabaseHolder
 import com.gpdb.android.data.preferences.MountPreferences
+import com.gpdb.android.data.preferences.AppPreferences
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.gpdb.android.image.ZipHolder
 import com.gpdb.android.ui.home.HomeScreen
 import com.gpdb.android.ui.home.HomeViewModel
@@ -27,13 +30,23 @@ class MainActivity : ComponentActivity() {
 
     private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var mountPreferences: MountPreferences
+    private lateinit var appPreferences: AppPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         mountPreferences = MountPreferences(this)
+        appPreferences = AppPreferences(this)
 
         setContent {
-            GPDbTheme {
+            val themePref by appPreferences.themeFlow.collectAsState(initial = "system")
+            val isSystemDark = isSystemInDarkTheme()
+            val useDarkTheme = when (themePref) {
+                "light" -> false
+                "dark" -> true
+                else -> isSystemDark
+            }
+            GPDbTheme(darkTheme = useDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -58,15 +71,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (isMounted) {
-                        HomeScreen(
-                            viewModel = homeViewModel,
-                            onMovieClick = { movieId ->
-                                android.widget.Toast.makeText(
-                                    this@MainActivity,
-                                    "点击了影视资源 ID: $movieId，详情页敬请期待",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
-                            },
+                        com.gpdb.android.ui.navigation.GpdbNavGraph(
+                            homeViewModel = homeViewModel,
+                            physicalRootPath = mountRoot ?: "",
                             onRemountClick = {
                                 lifecycleScope.launch {
                                     mountPreferences.clearMount()
