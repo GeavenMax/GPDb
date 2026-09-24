@@ -29,6 +29,9 @@ class StudioDetailViewModel : ViewModel() {
     val uiState: StateFlow<StudioDetailUiState> = _uiState.asStateFlow()
 
     fun loadStudio(studioName: String) {
+        if (_uiState.value.studioName == studioName && !_uiState.value.isLoading) {
+            return
+        }
         val db = DatabaseHolder.db ?: return
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true, studioName = studioName, error = null) }
