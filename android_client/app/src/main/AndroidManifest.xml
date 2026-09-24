@@ -38,12 +38,55 @@
             android:windowSoftInputMode="adjustResize"
             android:configChanges="uiMode|locale|layoutDirection"
             android:theme="@style/Theme.GPDb.SplashScreen">
+        </activity>
 
+        <activity-alias
+            android:name=".MainActivityAliasA"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_a"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasB"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_b"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasC"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_c"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivityAliasD"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_d"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
     </application>
 

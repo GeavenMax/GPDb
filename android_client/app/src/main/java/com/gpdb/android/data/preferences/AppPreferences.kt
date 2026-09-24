@@ -18,10 +18,15 @@ class AppPreferences(private val context: Context) {
         private val KEY_RECORD_SEARCH_HISTORY = booleanPreferencesKey("record_search_history")
         private val KEY_SEARCH_HISTORY = stringPreferencesKey("search_history")
         private val KEY_THEME = stringPreferencesKey("app_theme")
+        private val KEY_APP_ICON = stringPreferencesKey("app_icon")
     }
 
     val languageFlow: Flow<String> = context.appDataStore.data.map { prefs ->
         prefs[KEY_LANGUAGE] ?: "system"
+    }
+
+    val appIconFlow: Flow<String> = context.appDataStore.data.map { prefs ->
+        prefs[KEY_APP_ICON] ?: "B"
     }
 
     val recordSearchHistoryFlow: Flow<Boolean> = context.appDataStore.data.map { prefs ->
@@ -40,6 +45,10 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setTheme(theme: String) {
         context.appDataStore.edit { prefs -> prefs[KEY_THEME] = theme }
+    }
+
+    suspend fun setAppIcon(icon: String) {
+        context.appDataStore.edit { prefs -> prefs[KEY_APP_ICON] = icon }
     }
 
     suspend fun setLanguage(lang: String) {
