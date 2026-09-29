@@ -232,7 +232,7 @@ fun AnalyticsScreen(
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
-                    title = "导演与片商库",
+                    title = "导演与片商",
                     value = "${data.directorViewsCount} 导 / ${data.studioViewsCount} 厂",
                     subtitle = "深入幕后制作脉络",
                     icon = Icons.Default.Business,

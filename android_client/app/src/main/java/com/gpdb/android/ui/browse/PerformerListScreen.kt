@@ -29,7 +29,7 @@ fun PerformerListScreen(
     Scaffold(
         topBar = {
             SearchTopAppBar(
-                title = "演员库",
+                title = com.gpdb.android.util.I18n.string("nav.performers"),
                 searchQuery = uiState.searchQuery,
                 onSearchQueryChange = { viewModel.loadPerformers(query = it) },
                 placeholder = "搜索演员..."

@@ -25,7 +25,7 @@ import androidx.compose.material3.Surface
  * 统一的影片网格卡片组件
  *
  * 用于：
- * - HomeScreen / MovieBrowseScreen (全部影片)
+ * - HomeScreen / MovieBrowseScreen (长片)
  * - LibraryScreen (收藏/想看/已看)
  * - FilteredMovieListScreen (分类/厂牌/系列影片列表)
  * - SearchScreen (影片搜索结果)

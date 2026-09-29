@@ -35,7 +35,7 @@ fun StudioListScreen(
             var showSortMenu by remember { mutableStateOf(false) }
 
             SearchTopAppBar(
-                title = "全部片商",
+                title = com.gpdb.android.util.I18n.string("nav.studios"),
                 searchQuery = uiState.searchQuery,
                 onSearchQueryChange = { viewModel.loadStudios(query = it) },
                 placeholder = "搜索片商...",

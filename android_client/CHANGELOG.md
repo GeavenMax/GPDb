@@ -33,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 坚持 100% 本地 SQLite / DataStore 存储，不向任何第三方或云端发送任何遥测字节；提供一键抹除重置数据功能。
 
 ### Changed
+- **导航标签文案深度对齐 macOS 规范 (Navigation Tab Labels macOS Alignment)**：
+  - 一级导航栏中将“影片库”、“演员库”、“片商库”精简为“影片”、“演员”、“片商”（去掉“库”字）。
+  - 一级导航栏中将原“我的库”更名为“我的收藏”（对齐 macOS 客户端 `nav.favorites`）。
+  - “影片”主频道内部二级 Tab 菜单中将“全部影片”正式更名为“长片”（对应分集与系列，分类层级更清晰严谨）。
 - **设置页卡片化极简重构 (Streamlined & Categorized Settings Screen)**：
   - 针对原有设置页条目繁杂冗长的问题，重构为 5 个清晰有序的聚合功能卡片：
     1. 视觉外观与主题语言（主题选择器、迷你色样预览、多语言切换、封面展示风格）。

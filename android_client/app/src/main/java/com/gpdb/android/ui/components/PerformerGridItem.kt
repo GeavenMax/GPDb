@@ -19,7 +19,7 @@ import com.gpdb.android.data.db.entities.PerformerEntity
  * 统一的演员网格卡片组件
  *
  * 用于：
- * - PerformerListScreen (演员库)
+ * - PerformerListScreen (演员)
  * - SearchScreen (演员搜索结果)
  * - LibraryScreen (收藏演员)
  */

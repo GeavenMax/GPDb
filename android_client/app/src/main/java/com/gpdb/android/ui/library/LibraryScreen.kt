@@ -45,10 +45,10 @@ fun LibraryScreen(
         topBar = {
             Column {
                 SearchTopAppBar(
-                    title = "我的库",
+                    title = com.gpdb.android.util.I18n.string("nav.library"),
                     searchQuery = uiState.searchQuery,
                     onSearchQueryChange = { viewModel.updateSearch(it) },
-                    placeholder = "在当前库中搜索...",
+                    placeholder = "在我的收藏中搜索...",
                     actions = {
                         IconButton(onClick = onSettingsClick) {
                             Icon(Icons.Default.Settings, contentDescription = "设置")

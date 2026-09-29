@@ -44,7 +44,7 @@ fun HomeScreen(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text("影库") },
+                    title = { Text(com.gpdb.android.util.I18n.string("nav.movies")) },
                     actions = {
                         var showSortMenu by remember { mutableStateOf(false) }
                         IconButton(onClick = { showSortMenu = true }) {
@@ -80,17 +80,17 @@ fun HomeScreen(
                     Tab(
                         selected = uiState.homeTab == HomeTab.ALL_MOVIES,
                         onClick = { viewModel.setHomeTab(HomeTab.ALL_MOVIES) },
-                        text = { Text("全部影片") }
+                        text = { Text(com.gpdb.android.util.I18n.string("nav.featureMovies")) }
                     )
                     Tab(
                         selected = uiState.homeTab == HomeTab.EPISODES,
                         onClick = { viewModel.setHomeTab(HomeTab.EPISODES) },
-                        text = { Text("分集") }
+                        text = { Text(com.gpdb.android.util.I18n.string("nav.episodes")) }
                     )
                     Tab(
                         selected = uiState.homeTab == HomeTab.SERIES,
                         onClick = { viewModel.setHomeTab(HomeTab.SERIES) },
-                        text = { Text("系列") }
+                        text = { Text(com.gpdb.android.util.I18n.string("nav.series")) }
                     )
                 }
 
