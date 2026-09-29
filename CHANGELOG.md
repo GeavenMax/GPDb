@@ -3,6 +3,68 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.11.1] - 2026-09-29
+
+### 🚀 移动端搜索核心修复与视觉优化 (Android Search Engine Fix & Visual Polish)
+- **“影片”Tab 与全局搜索结果为空彻底修复 (Multi-Field Resilient Search Engine)**：
+  - **根因排查**：原移动端搜索直接依赖 SQLite FTS5 虚拟表（`movies_fts` 与 `performers_fts`）。在部分 Android 设备环境或沙盒初始化数据库中，缺少 FTS5 虚拟表直接导致抛出 `SQLiteException: no such module/table: movies_fts`，静默被拦截后致使影片搜索结果恒为空；且 FTS5 原 unicode61 分词器无法识别连续中文词句，且未涵盖出演演员与片商维度。
+  - **三级降级防御检索架构**：FTS5 高速召回 -> 异常无缝自动降级至标准 SQL 多字段联合检索 -> Room DAO 终极兜底，100% 杜绝因虚拟表缺失或分词异常造成的空结果。
+  - **全维度深度检索匹配**：单次检索同时跨越英文原名 (`title`)、中文译名 (`title_zh`)、片商名 (`studio_name`)、导演名 (`director_name`)、中文简介 (`description_zh`)、出演演员关系表 (`movie_performers.performer_name`) 以及影片 ID。
+  - **响应式仓库生命周期管理**：`SearchViewModel` 接入 `DatabaseHolder.isReadyFlow`，彻底杜绝数据源未就绪时的空指针悬挂。
+- **“主页”频道 TopBar 移除搜索按钮 (Home Feed TopBar Streamline)**：
+  - “主页”(`HomeFeedScreen`) 顶部操作栏正式移除搜索放大镜图标按钮，保留刷新控制；搜索职责收归各对应专属频道（影片、演员、片商、导演、我的收藏），主页浏览交互更加聚焦沉浸。
+- **最新版签名发布 APK 编译就绪**：
+  - 编译最新 Release 签名包并部署至项目根目录：`GPDb_Release.apk`（4.3MB）与 `GPDb_Android_v2.11.1_release.apk`，通过 APK Signature Scheme v2 正式签名与 R8 代码混淆优化。
+
+## [v2.11.0] - 2026-09-29
+
+### ✨ 新功能与双端生态全面对齐 (Cross-Platform Alignment & Features)
+- **多维度时间与入库批次时效筛选 (Multi-Dimensional Date Filters)**：
+  - 双端全面统一支持 6 大时间范围过滤：`全部 (All)`、`上次入库 (Last Scraped)`、`最近7天 (Recent 7 Days)`、`最近30天 (Recent 30 Days)`、`最近90天 (Recent 90 Days)` 以及 `本年度 (Recent Year)`。
+  - macOS 客户端在影片与分集主界面新增快速时间筛选胶囊栏，在高级筛选抽屉 (`FilterDrawer.vue`) 与活动筛选标签栏 (`ActiveFilterBar.vue`) 全面挂载时间胶囊交互，Rust 底层查询引擎 (`gpdb-core`) 与 Android SQL 筛选规则完全对齐。
+  - 影片卡片 (`MovieCard.vue`) 与分集卡片 (`EpisodeCard.vue`) 新增 2026 及最新入库批次条目的动态渐变 `NEW` 高亮微标。
+- **海报双排版方案与全屏手势/滚轮缩放灯箱 (Poster Schemes & Zoomable Lightbox)**：
+  - macOS 客户端详情页全面对齐移动端的海报呈现范式：支持“自适应高清画廊 (`adaptive_pager`)”与“3D 拟真实体卡片 (`flip_3d`)”，具备 60fps CSS 3D 景深物理透视、实体翻转胶囊按键与环境泛光。
+  - 全屏灯箱 (`ImageLightbox.vue`) 全面重构：支持鼠标滚轮平滑缩放 (1.0x ~ 5.0x)、按住拖拽平移、双击智能缩放/复位、键盘快捷键 (+/-/0/Esc) 与悬浮操作工具栏。
+- **macOS 桌面端系统级隐私安全套件 (Desktop Privacy & Security Suite)**：
+  - **PIN 码安全应用锁**：新增数字 PIN 锁与全屏玻璃拟态锁屏界面 (`AppLockOverlay.vue`)，支持自定义自动锁定策略（失焦立即锁定、离开 1/5/15/30 分钟后自动锁定）。
+  - **窗口失焦高斯毛玻璃防窥遮罩**：失焦或切换其他应用时瞬间覆盖高斯毛玻璃防窥层（对齐 Android `FLAG_SECURE` 防录屏与防窥探）。
+  - **全功能伪装计算器 & 紧急脱身 (Panic Switch)**：一键瞬间伪装为 Apple 标准深色计算器 (`FakeCalculatorModal.vue`)，支持真实四则运算；按下全局快捷键 <kbd>Cmd + Shift + P</kbd> 极速呼出；在计算器中输入 PIN 码并按 `=`，或连击顶部标题 4 次即可安全解锁返回。
+  - **应用窗口伪装标题**：支持自定义窗口标题（如 "Calculator", "Notes"），防止任务切换器或窗口列表中暴露应用属性。
+- **大模型翻译数据双向导入导出与动态探测 (JSON Translations & Model Discovery)**：
+  - 在插件中心新增“导出翻译 (JSON)”与“导入翻译”功能，通过 Rust 底层直接读取/写入 SQLite，支持跨平台（Android / macOS / CLI）无缝合并沉淀的已翻译影片与分集简介。
+  - 在翻译服务配置面板中新增“探测可用模型”一键检测按钮，调用标准 OpenAI 兼容 `/models` 接口自动提取账号可用模型并填入建议列表。
+  - 翻译服务商新增字节跳动豆包 (`doubao`) 预设。
+- **导演频道与全库深度对齐 (Directors System Alignment)**：
+  - 完善导演维度索引、导演作品多维度关联计算与收藏闭环，Android 客户端与 macOS 桌面端实现 100% 交互与数据结构统一。
+- **版本号全生态同步升级 (Ecosystem Version Parity)**：
+  - Android 客户端 (`app/build.gradle.kts` versionCode 310, versionName 2.11.0) 与桌面客户端（`package.json`, `tauri.conf.json`, `Cargo.toml`, `gpdb-core`）统一同步跃升至 `v2.11.0`。
+
+## [v2.10.0] - 2026-09-29
+
+### 🛡️ 隐私安防套件与展示增强 (Privacy & Security Suite & Visual Enhancements)
+- **海报多方案展示与全屏手势缩放灯箱 (Poster Display Schemes & Zoomable Lightbox)**：
+  - Android 移动端支持 3D 拟真翻转卡片与自适应画廊轮播双方案，并内置多点触控全屏缩放灯箱。
+- **进阶系统级隐私安全套件 (Advanced Privacy & Security Suite)**：
+  - 移动端引入系统级 `FLAG_SECURE` 防多任务截屏与防窥探防护。
+  - 接入生物识别与独立 4~6 位数字 PIN 码应用锁，超时切后台自动锁定。
+  - 引入紧急一键脱身手势（正面朝下扣桌/剧烈摇晃），瞬间呼出真实可用暗黑高仿计算器伪装页面，输入专属 PIN 码安全重返影库。
+  - 支持桌面图标与应用标题无害化伪装（极简便签、常用计算器、收支记账）。
+- **物理沙盒与 .nomedia 递归隔离**：
+  - 强制应用内部沙盒存储机制，相册与第三方 App 物理绝缘，递归注入 `.nomedia` 防护。
+
+## [v2.9.0] - 2026-09-29
+
+### 🚀 移动端架构大版本迁移与生态融合 (Mobile Architecture & Feature Parity)
+- **macOS「主页」发现流完整迁移至 Android (Home Feed Discovery Tab)**：
+  - 移动端全面上线镇馆之选 (Hero Carousel)、往年今日 (On This Day)、今日星光 (Star Spotlight)、经典系列 (Series)、随心探索 (Lucky Discovery) 及影库全景统计。
+- **分集频道独立扩展 (Dedicated Episodes Tab)**：
+  - 移动端主界面与桌面端全面对齐，新增专属分集流，支持全库数万分集瀑布流与剧照海报联动。
+- **原生增量网络刮削与反爬绕过 (Native Incremental Scraper Engine)**：
+  - 移动端原生实现 `/newm`, `/newe`, `/newp` 增量数据解析与事务写入，解决移动端免 ZIP 大包按需图片离线缓存。
+- **AI 智能大模型翻译与翻译统计持久化**：
+  - 移动端原生接入 OpenAI / DeepSeek / Claude / Gemini 协议大模型翻译，翻译结果持久化落库。
+
 ## [v2.8.0] - 2026-09-24
 
 ### ✨ 新功能与安卓原生移动端发布 (Features & Native Android Release)

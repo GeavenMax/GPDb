@@ -48,7 +48,7 @@ fun HomeFeedScreen(
     onEpisodeClick: (Long) -> Unit,
     onPerformerClick: (Long) -> Unit,
     onSeriesClick: (String) -> Unit,
-    onSearchClick: () -> Unit,
+    onSearchClick: () -> Unit = {},
     onNavigateToMovies: () -> Unit = {},
     onNavigateToEpisodes: () -> Unit = {},
     onNavigateToPerformers: () -> Unit = {},
@@ -71,9 +71,6 @@ fun HomeFeedScreen(
                 actions = {
                     IconButton(onClick = { viewModel.loadFeed() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                    }
-                    IconButton(onClick = onSearchClick) {
-                        Icon(Icons.Default.Search, contentDescription = "搜索")
                     }
                 }
             )

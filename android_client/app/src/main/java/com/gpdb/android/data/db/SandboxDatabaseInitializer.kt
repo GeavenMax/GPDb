@@ -201,6 +201,31 @@ object SandboxDatabaseInitializer {
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS idx_ep_performer ON episode_performers(performer_id);")
 
+                try {
+                    db.execSQL("""
+                        CREATE VIRTUAL TABLE IF NOT EXISTS movies_fts USING fts5(
+                            id UNINDEXED,
+                            title,
+                            studio_name,
+                            category,
+                            description,
+                            performers,
+                            tokenize = 'unicode61'
+                        );
+                    """.trimIndent())
+                    db.execSQL("""
+                        CREATE VIRTUAL TABLE IF NOT EXISTS performers_fts USING fts5(
+                            id UNINDEXED,
+                            name,
+                            tattoos,
+                            notes,
+                            tokenize = 'unicode61'
+                        );
+                    """.trimIndent())
+                } catch (e: Exception) {
+                    Log.w(TAG, "平台未启用 FTS5 或模块缺失，已跳过虚拟表创建: ${e.message}")
+                }
+
                 db.setTransactionSuccessful()
                 Log.i(TAG, "沙盒基础数据库结构建表完成！")
             } finally {

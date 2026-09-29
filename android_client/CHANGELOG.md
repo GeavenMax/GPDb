@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.1] - 2026-09-29
+
+### Fixed
+- **“影片”Tab 与全局搜索结果为空彻底修复 (Multi-Field Resilient Search Engine)**：
+  - 根因定位：此前 `SearchRepository` 直接依赖 FTS5 虚拟表（`movies_fts` 与 `performers_fts`）。在部分 Android 设备环境、模块未启用的 SQLite 或沙盒初始化数据库中，因缺少 FTS5 虚拟表直接抛出 `SQLiteException: no such module/table: movies_fts`，被 ViewModel 捕获后导致影片和演员列表始终返回为空；且 unicode61 分词机制对中文支持有限，且原逻辑未检索出演演员及片商。
+  - 核心修复：
+    1. 实现 **三级防御降级检索架构**：FTS5 高速召回 -> 自动捕获异常并无缝降级至标准 SQL 多字段联合检索 -> Room DAO 兜底。
+    2. 深度多维度联合召回：单次搜索同时跨越英文原名 (`title`)、中文译名 (`title_zh`)、片商名 (`studio_name`)、导演名 (`director_name`)、中文简介 (`description_zh`)、出演演员名 (`movie_performers.performer_name`) 及影片 ID 检索。
+    3. `SearchViewModel` 升级为响应式动态绑定，监听 `DatabaseHolder.isReadyFlow`，彻底解决数据库连接与仓库未就绪造成的检索悬挂与空结果。
+
+### Changed
+- **“主页”探索频道移除搜索按钮 (Home Feed TopBar Streamline)**：
+  - “主页”(`HomeFeedScreen`) 顶部操作栏正式移除搜索放大镜按钮，保留刷新控制；搜索职责收归各对应专属频道（影片、演员、片商、导演、我的收藏），主页浏览交互更加聚焦沉浸。
+
 ## [2.11.0] - 2026-09-29
 
 ### Added
