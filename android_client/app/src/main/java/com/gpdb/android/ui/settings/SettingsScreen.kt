@@ -112,10 +112,24 @@ fun SettingsScreen(
     val llmTargetLanguage by viewModel.llmTargetLanguage.collectAsState()
     val llmSystemPrompt by viewModel.llmSystemPrompt.collectAsState()
 
+    val flagSecureEnabled by viewModel.flagSecureEnabled.collectAsState()
+    val appLockEnabled by viewModel.appLockEnabled.collectAsState()
+    val appLockPin by viewModel.appLockPin.collectAsState()
+    val appLockBiometricEnabled by viewModel.appLockBiometricEnabled.collectAsState()
+    val appLockTimeoutSeconds by viewModel.appLockTimeoutSeconds.collectAsState()
+
+    val panicSwitchEnabled by viewModel.panicSwitchEnabled.collectAsState()
+    val panicFaceDownEnabled by viewModel.panicFaceDownEnabled.collectAsState()
+    val panicShakeEnabled by viewModel.panicShakeEnabled.collectAsState()
+    val panicAction by viewModel.panicAction.collectAsState()
+
     var showLangDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showIconDialog by remember { mutableStateOf(false) }
     var showLlmDialog by remember { mutableStateOf(false) }
+    var showPinDialog by remember { mutableStateOf(false) }
+    var showTimeoutDialog by remember { mutableStateOf(false) }
+    var showPanicActionDialog by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
@@ -465,9 +479,189 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("隐私防护与沙盒安全", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Text("高级隐私安全与沙盒防护", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // 1. 多任务防窥与防截屏
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("多任务防窥与防截屏 (FLAG_SECURE)", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "在最近任务切换器中隐藏应用缩略图，防止身边他人窥屏；同时禁止系统截屏与录屏。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = flagSecureEnabled,
+                            onCheckedChange = { viewModel.setFlagSecureEnabled(it) }
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                    // 2. 应用锁与生物识别
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("应用安全锁 (PIN / 生物识别)", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                if (appLockPin.isBlank()) "未设置独立密码。开启将引导设置 4-6 位安全 PIN 码。"
+                                else "已启用安全锁。冷启动或切到后台超时后需验证进入。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = appLockEnabled,
+                            onCheckedChange = { enable ->
+                                if (enable && appLockPin.isBlank()) {
+                                    showPinDialog = true
+                                } else {
+                                    viewModel.setAppLockEnabled(enable)
+                                }
+                            }
+                        )
+                    }
+
+                    if (appLockEnabled) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showPinDialog = true }
+                                .padding(vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("修改独立 PIN 码", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                            Text("点击修改", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("指纹 / 面容快速解锁", style = MaterialTheme.typography.bodyMedium)
+                                Text("支持调用设备生物识别传感器一键解锁", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = appLockBiometricEnabled,
+                                onCheckedChange = { viewModel.setAppLockBiometricEnabled(it) }
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showTimeoutDialog = true }
+                                .padding(vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("自动锁定超时", style = MaterialTheme.typography.bodyMedium)
+                                Text("应用退至后台超过此时长自动锁定", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(
+                                when (appLockTimeoutSeconds) {
+                                    0 -> "立即锁定"
+                                    30 -> "30 秒"
+                                    60 -> "1 分钟"
+                                    300 -> "5 分钟"
+                                    else -> "${appLockTimeoutSeconds} 秒"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                    // 3. 紧急一键脱身 (Panic Switch)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("紧急一键脱身 (Panic Switch)", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "感知设备姿态异常时，瞬间执行紧急隐蔽或伪装逃逸。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = panicSwitchEnabled,
+                            onCheckedChange = { viewModel.setPanicSwitchEnabled(it) }
+                        )
+                    }
+
+                    if (panicSwitchEnabled) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("正面朝下快速扣桌触发 (Face Down)", style = MaterialTheme.typography.bodyMedium)
+                            Switch(
+                                checked = panicFaceDownEnabled,
+                                onCheckedChange = { viewModel.setPanicFaceDownEnabled(it) }
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("剧烈晃动手机触发 (Shake)", style = MaterialTheme.typography.bodyMedium)
+                            Switch(
+                                checked = panicShakeEnabled,
+                                onCheckedChange = { viewModel.setPanicShakeEnabled(it) }
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showPanicActionDialog = true }
+                                .padding(vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("脱身响应动作", style = MaterialTheme.typography.bodyMedium)
+                                Text("触发脱身后执行的具体行为", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(
+                                when (panicAction) {
+                                    "CALCULATOR" -> "伪装计算器"
+                                    "HOME" -> "退回桌面"
+                                    "KILL" -> "彻底结束"
+                                    else -> "伪装计算器"
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                    // 4. 沙盒与外部存储隔离
                     val saveExternal by viewModel.saveImagesToExternal.collectAsState()
 
                     Row(
@@ -826,17 +1020,151 @@ fun SettingsScreen(
     }
 
     
-    if (showIconDialog) {
+    if (showPinDialog) {
+        var inputPin by remember { mutableStateOf(appLockPin) }
+        var confirmPin by remember { mutableStateOf("") }
+        var pinError by remember { mutableStateOf<String?>(null) }
+
         AlertDialog(
-            onDismissRequest = { showIconDialog = false },
-            title = { Text("选择应用图标") },
+            onDismissRequest = { showPinDialog = false },
+            title = { Text("设置独立 PIN 码") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("请输入 4 至 6 位纯数字密码，用于解锁 App 与伪装计算器脱出。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        value = inputPin,
+                        onValueChange = { if (it.length <= 6 && it.all { ch -> ch.isDigit() }) inputPin = it },
+                        label = { Text("PIN 码 (4-6 位数字)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = confirmPin,
+                        onValueChange = { if (it.length <= 6 && it.all { ch -> ch.isDigit() }) confirmPin = it },
+                        label = { Text("确认 PIN 码") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (pinError != null) {
+                        Text(pinError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (inputPin.length !in 4..6) {
+                        pinError = "PIN 码必须为 4 至 6 位数字"
+                    } else if (inputPin != confirmPin) {
+                        pinError = "两次输入的 PIN 码不一致"
+                    } else {
+                        viewModel.setAppLockPin(inputPin)
+                        viewModel.setAppLockEnabled(true)
+                        Toast.makeText(context, "已成功设置应用锁密码", Toast.LENGTH_SHORT).show()
+                        showPinDialog = false
+                    }
+                }) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPinDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showTimeoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showTimeoutDialog = false },
+            title = { Text("自动锁定超时时间") },
             text = {
                 Column {
                     listOf(
-                        "A" to Pair("方案 A (双雄火星图腾)", com.gpdb.android.R.mipmap.ic_launcher_a),
-                        "B" to Pair("方案 B (原版标志)", com.gpdb.android.R.mipmap.ic_launcher_b),
-                        "C" to Pair("方案 C", com.gpdb.android.R.mipmap.ic_launcher_c),
-                        "D" to Pair("方案 D", com.gpdb.android.R.mipmap.ic_launcher_d)
+                        0 to "立即锁定 (退出即锁)",
+                        30 to "30 秒 (推荐)",
+                        60 to "1 分钟",
+                        300 to "5 分钟"
+                    ).forEach { (seconds, label) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setAppLockTimeoutSeconds(seconds)
+                                    showTimeoutDialog = false
+                                }
+                                .padding(vertical = 10.dp)
+                        ) {
+                            RadioButton(
+                                selected = appLockTimeoutSeconds == seconds,
+                                onClick = {
+                                    viewModel.setAppLockTimeoutSeconds(seconds)
+                                    showTimeoutDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showPanicActionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPanicActionDialog = false },
+            title = { Text("脱身响应动作") },
+            text = {
+                Column {
+                    listOf(
+                        "CALCULATOR" to Pair("伪装跳转至高仿计算器 (推荐)", "极具迷惑性，可进行真实四则运算，输入密码加等号即可退出"),
+                        "HOME" to Pair("极速退回手机主屏幕", "立即将 App 置于后台并隐藏界面"),
+                        "KILL" to Pair("彻底结束 App 进程", "清退进程与所有活动任务栈")
+                    ).forEach { (actionKey, pair) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setPanicAction(actionKey)
+                                    showPanicActionDialog = false
+                                }
+                                .padding(vertical = 8.dp)
+                        ) {
+                            RadioButton(
+                                selected = panicAction == actionKey,
+                                onClick = {
+                                    viewModel.setPanicAction(actionKey)
+                                    showPanicActionDialog = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(pair.first, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                Text(pair.second, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showIconDialog) {
+        AlertDialog(
+            onDismissRequest = { showIconDialog = false },
+            title = { Text("选择应用图标与名称伪装") },
+            text = {
+                Column {
+                    listOf(
+                        "A" to Pair("原版标识 (GPDb)", com.gpdb.android.R.mipmap.ic_launcher_b),
+                        "B" to Pair("伪装图标 1 (极简便签)", com.gpdb.android.R.mipmap.ic_launcher_a),
+                        "C" to Pair("伪装图标 2 (常用计算器)", com.gpdb.android.R.mipmap.ic_launcher_c),
+                        "D" to Pair("伪装图标 3 (收支记账)", com.gpdb.android.R.mipmap.ic_launcher_d)
                     ).forEach { (code, pair) ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable {
                             if (appIcon != code) {

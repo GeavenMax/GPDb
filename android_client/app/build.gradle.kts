@@ -106,6 +106,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // ── Room Database（SQLite WAL 外挂模式）──────────────────
     implementation(libs.androidx.room.runtime)

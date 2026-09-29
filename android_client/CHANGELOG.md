@@ -21,7 +21,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Linux UID 权限物理沙盒**：强制将图片缓存与网络刮削下载目录完全限定在应用专属内部沙盒目录：`/data/user/0/<package_name>/files/image_cache/`。
   - **系统相册与第三方 App 物理绝缘**：得益于 Android Linux 内核 UID 权限机制，系统 MediaScanner 绝对不会扫描应用私有 `filesDir`，微信、QQ、系统相册、第三方图库及文件选取器完全无权访问，杜绝任何成人图片外泄。
   - **递归 `.nomedia` 动态全覆盖防护**：新增 `PrivacyHelper` 工具集，在应用冷启动及任意图片落盘时，自动对根目录及 `Covers/`、`Episodes/`、`Performers/` 等所有子目录递归注入 `.nomedia` 屏蔽文件。
-  - **外部存储权限强管控开关**：在“设置 -> 隐私防护与沙盒安全”中新增“允许将图库保存至外部存储”开关，**默认严格保持关闭**；支持手动一键“全量注入 .nomedia 保护”。
+  - **外部存储权限强管控开关**：在“设置 -> 高级隐私安全与沙盒防护”中新增“允许将图库保存至外部存储”开关，**默认严格保持关闭**；支持手动一键“全量注入 .nomedia 保护”。
+- **进阶隐私与安防套件 (Advanced Privacy & Security Suite)**：
+  - **防多任务截屏与防窥探 (`FLAG_SECURE`)**：
+    - 支持在“设置 -> 高级隐私安全与沙盒防护”中一键开启多任务防窥与防截屏开关。
+    - 动态设置 Android 窗口标志位 `WindowManager.LayoutParams.FLAG_SECURE`。
+    - 系统多任务切换器（Recent Apps）中只显示黑屏或空白卡片，杜绝身边他人一瞥窥屏；同时在系统层级彻底阻断截屏与录屏。
+  - **生物识别与独立 PIN 码应用锁 (Biometric & PIN App Lock)**：
+    - 支持设置 4 至 6 位独立数字 PIN 码与指纹/面容生物识别双轨验证体系（集成 `androidx.biometric.BiometricPrompt`）。
+    - 支持自定义切出后台超时锁定时间（立即锁定 / 30 秒 / 1 分钟 / 5 分钟），冷启动与超时切回自动触发全屏密码锁遮罩（`AppLockOverlay`）。
+    - 包含优雅的 Material 3 拟真键盘、数字圆点指示器、防爆破抖动与触觉振动反馈。
+  - **紧急一键脱身与高仿计算器伪装 (Panic Switch & Fake Calculator)**：
+    - 引入基于硬件加速度与距离传感器的 `PanicSensorManager`，支持正面朝下扣桌（Face Down）与剧烈晃动（Shake）双姿态手势识别。
+    - 提供三级脱身策略可选：
+      1. **高仿计算器伪装（推荐）**：瞬间无缝跳转至内置全功能暗黑计算器（`FakeCalculatorScreen`），可进行真实加减乘除运算，他人拿取手机无法察觉异常；用户输入“专属 PIN 码 + 等号”或长按 `C` 键 1.5 秒即可安全解除伪装重返影库。
+      2. **极速退回系统桌面**：瞬间调用 `moveTaskToBack(true)` 将应用退至后台并隐藏。
+      3. **彻底清退 App 进程**：立即调用 `finishAffinity()` 清退所有活动任务栈。
+  - **图标与应用名称伪装 (Launcher Icon & Name Alias)**：
+    - 全面激活 4 组 `activity-alias` 与动态包名组件切换机制，支持在设置中一键将桌面 App 图标与应用标题伪装为日常无害工具应用：
+      - 原版标识：`GPDb`
+      - 伪装方案 1：`极简便签`
+      - 伪装方案 2：`常用计算器`
+      - 伪装方案 3：`收支记账`
 
 ### Fixed
 - **首页「主页」发现流空白与异步挂载时序修复 (Home Feed Async Database Race Condition)**：

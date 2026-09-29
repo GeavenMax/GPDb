@@ -29,6 +29,18 @@ class AppSettingsRepository(private val context: Context) {
 
         val POSTER_DISPLAY_MODE = stringPreferencesKey("poster_display_mode") // "adaptive_pager" or "flip_3d"
         val SAVE_IMAGES_TO_EXTERNAL = booleanPreferencesKey("save_images_to_external") // default = false (strictly sandboxed)
+
+        val FLAG_SECURE_ENABLED = booleanPreferencesKey("flag_secure_enabled") // default = false
+
+        val APP_LOCK_ENABLED = booleanPreferencesKey("app_lock_enabled") // default = false
+        val APP_LOCK_PIN = stringPreferencesKey("app_lock_pin") // 4-6 digits, default = ""
+        val APP_LOCK_BIOMETRIC_ENABLED = booleanPreferencesKey("app_lock_biometric_enabled") // default = true
+        val APP_LOCK_TIMEOUT_SECONDS = intPreferencesKey("app_lock_timeout_seconds") // default = 30
+
+        val PANIC_SWITCH_ENABLED = booleanPreferencesKey("panic_switch_enabled") // default = false
+        val PANIC_TRIGGER_FACE_DOWN = booleanPreferencesKey("panic_trigger_face_down") // default = true
+        val PANIC_TRIGGER_SHAKE = booleanPreferencesKey("panic_trigger_shake") // default = true
+        val PANIC_ACTION = stringPreferencesKey("panic_action") // "CALCULATOR", "HOME", "KILL"
     }
 
     val themeModeFlow: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
@@ -126,5 +138,80 @@ class AppSettingsRepository(private val context: Context) {
 
     suspend fun setSaveImagesToExternal(enabled: Boolean) {
         context.dataStore.edit { it[SAVE_IMAGES_TO_EXTERNAL] = enabled }
+    }
+
+    // ── 1. FLAG_SECURE 防截屏与多任务防窥 ─────────────────────
+    val flagSecureEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[FLAG_SECURE_ENABLED] ?: false
+    }
+
+    suspend fun setFlagSecureEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[FLAG_SECURE_ENABLED] = enabled }
+    }
+
+    // ── 2. 应用锁与生物识别 ───────────────────────────────────
+    val appLockEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[APP_LOCK_ENABLED] ?: false
+    }
+
+    suspend fun setAppLockEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[APP_LOCK_ENABLED] = enabled }
+    }
+
+    val appLockPinFlow: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[APP_LOCK_PIN] ?: ""
+    }
+
+    suspend fun setAppLockPin(pin: String) {
+        context.dataStore.edit { it[APP_LOCK_PIN] = pin }
+    }
+
+    val appLockBiometricEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[APP_LOCK_BIOMETRIC_ENABLED] ?: true
+    }
+
+    suspend fun setAppLockBiometricEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[APP_LOCK_BIOMETRIC_ENABLED] = enabled }
+    }
+
+    val appLockTimeoutSecondsFlow: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[APP_LOCK_TIMEOUT_SECONDS] ?: 30
+    }
+
+    suspend fun setAppLockTimeoutSeconds(seconds: Int) {
+        context.dataStore.edit { it[APP_LOCK_TIMEOUT_SECONDS] = seconds }
+    }
+
+    // ── 3. 紧急脱身 (Panic Switch) ────────────────────────────
+    val panicSwitchEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PANIC_SWITCH_ENABLED] ?: false
+    }
+
+    suspend fun setPanicSwitchEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[PANIC_SWITCH_ENABLED] = enabled }
+    }
+
+    val panicFaceDownEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PANIC_TRIGGER_FACE_DOWN] ?: true
+    }
+
+    suspend fun setPanicFaceDownEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[PANIC_TRIGGER_FACE_DOWN] = enabled }
+    }
+
+    val panicShakeEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PANIC_TRIGGER_SHAKE] ?: true
+    }
+
+    suspend fun setPanicShakeEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[PANIC_TRIGGER_SHAKE] = enabled }
+    }
+
+    val panicActionFlow: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[PANIC_ACTION] ?: "CALCULATOR"
+    }
+
+    suspend fun setPanicAction(action: String) {
+        context.dataStore.edit { it[PANIC_ACTION] = action }
     }
 }

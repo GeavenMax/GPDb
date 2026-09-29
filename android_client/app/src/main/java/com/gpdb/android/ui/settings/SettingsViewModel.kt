@@ -41,6 +41,17 @@ class SettingsViewModel(
     val posterDisplayMode = appSettingsRepository.posterDisplayModeFlow.stateIn(viewModelScope, SharingStarted.Lazily, "adaptive_pager")
     val saveImagesToExternal = appSettingsRepository.saveImagesToExternalFlow.stateIn(viewModelScope, SharingStarted.Lazily, false)
 
+    val flagSecureEnabled = appSettingsRepository.flagSecureEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, false)
+    val appLockEnabled = appSettingsRepository.appLockEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, false)
+    val appLockPin = appSettingsRepository.appLockPinFlow.stateIn(viewModelScope, SharingStarted.Lazily, "")
+    val appLockBiometricEnabled = appSettingsRepository.appLockBiometricEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
+    val appLockTimeoutSeconds = appSettingsRepository.appLockTimeoutSecondsFlow.stateIn(viewModelScope, SharingStarted.Lazily, 30)
+
+    val panicSwitchEnabled = appSettingsRepository.panicSwitchEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, false)
+    val panicFaceDownEnabled = appSettingsRepository.panicFaceDownEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
+    val panicShakeEnabled = appSettingsRepository.panicShakeEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
+    val panicAction = appSettingsRepository.panicActionFlow.stateIn(viewModelScope, SharingStarted.Lazily, "CALCULATOR")
+
     private val _translatableMovies = MutableStateFlow(0)
     val translatableMovies: StateFlow<Int> = _translatableMovies
     
@@ -192,6 +203,60 @@ class SettingsViewModel(
                     com.gpdb.android.util.PrivacyHelper.ensureNoMedia(java.io.File(root))
                 }
             }
+        }
+    }
+
+    fun setFlagSecureEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setFlagSecureEnabled(enabled)
+        }
+    }
+
+    fun setAppLockEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setAppLockEnabled(enabled)
+        }
+    }
+
+    fun setAppLockPin(pin: String) {
+        viewModelScope.launch {
+            appSettingsRepository.setAppLockPin(pin)
+        }
+    }
+
+    fun setAppLockBiometricEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setAppLockBiometricEnabled(enabled)
+        }
+    }
+
+    fun setAppLockTimeoutSeconds(seconds: Int) {
+        viewModelScope.launch {
+            appSettingsRepository.setAppLockTimeoutSeconds(seconds)
+        }
+    }
+
+    fun setPanicSwitchEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setPanicSwitchEnabled(enabled)
+        }
+    }
+
+    fun setPanicFaceDownEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setPanicFaceDownEnabled(enabled)
+        }
+    }
+
+    fun setPanicShakeEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setPanicShakeEnabled(enabled)
+        }
+    }
+
+    fun setPanicAction(action: String) {
+        viewModelScope.launch {
+            appSettingsRepository.setPanicAction(action)
         }
     }
 }
