@@ -36,7 +36,12 @@ class FilteredMovieListViewModel : ViewModel() {
                 val repo = BrowseRepository(db.browseDao())
                 val list = when (filterType) {
                     "category" -> repo.getMoviesByCategory(filterValue, limit = 500)
-                    "series" -> repo.getMoviesBySeries(filterValue, limit = 500)
+                    "series" -> {
+                        val parts = filterValue.split("|||")
+                        val studio = if (parts.size > 1 && parts[0].isNotBlank()) parts[0] else null
+                        val root = if (parts.size > 1) parts[1] else filterValue
+                        repo.getMoviesBySeries(studio, root, limit = 500)
+                    }
                     "director" -> repo.getMoviesByDirector(filterValue, limit = 500)
                     else -> emptyList()
                 }
@@ -61,6 +66,7 @@ class FilteredMovieListViewModel : ViewModel() {
         val db = DatabaseHolder.db ?: return
         val newFav = !_uiState.value.isFavorite
         viewModelScope.launch(Dispatchers.IO) {
+            // Save the exact identifier (Studio|||SeriesRoot) so different studios are not mixed
             com.gpdb.android.data.repository.UserRepository(db, db.userActionDao()).toggleFavorite("series", seriesName, newFav)
             _uiState.update { it.copy(isFavorite = newFav) }
         }

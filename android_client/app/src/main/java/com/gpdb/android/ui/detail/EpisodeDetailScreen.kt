@@ -7,11 +7,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material3.*
@@ -21,15 +18,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
+import com.gpdb.android.ui.components.GpdbAsyncImage
+import com.gpdb.android.ui.components.TranslationSection
+import com.gpdb.android.ui.components.ZoomableImageDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,26 +47,21 @@ fun EpisodeDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("分集详情") },
-                actions = {
-                    IconButton(onClick = { viewModel.toggleFavorite() }) {
-                        Icon(
-                            imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (uiState.isFavorite) androidx.compose.ui.graphics.Color.Red else androidx.compose.material3.LocalContentColor.current
-                        )
-                    }
-                },
-
+                title = { Text("分集档案") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.error != null) {
@@ -79,24 +71,16 @@ fun EpisodeDetailScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
-                val detail = uiState.episodeDetail!!
+                val detail = uiState.episodeDetail ?: return@Box
                 val episode = detail.episode
                 val parentMovie = uiState.parentMovie
-                val context = LocalContext.current
-
-                val relativePath = episode.thumbnailUrl?.toImageCachePath()
-                val imageData = remember(episode.id, physicalRootPath) {
-                    GpdbImageData(
-                        relativePath = relativePath ?: "image_cache/Episodes/${episode.id}.jpg",
-                        physicalRoot = physicalRootPath,
-                        fallbackUrl = episode.thumbnailUrl
-                    )
-                }
 
                 var showFullImage by remember { mutableStateOf(false) }
 
                 if (showFullImage) {
-                    com.gpdb.android.ui.components.ZoomableImageDialog(
+                    val relPath = episode.thumbnailUrl.toImageCachePath() ?: "image_cache/Episodes/${episode.id}.jpg"
+                    val imageData = GpdbImageData(relPath, physicalRootPath, episode.thumbnailUrl)
+                    ZoomableImageDialog(
                         images = listOf(imageData),
                         onDismiss = { showFullImage = false }
                     )
@@ -107,13 +91,13 @@ fun EpisodeDetailScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // 大图
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(imageData)
-                            .crossfade(true)
-                            .build(),
+                    // 分集缩略大图
+                    GpdbAsyncImage(
+                        url = episode.thumbnailUrl,
+                        physicalRootPath = physicalRootPath,
                         contentDescription = episode.title,
+                        fallbackEntityId = episode.id,
+                        defaultFolder = "Episodes",
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -129,7 +113,7 @@ fun EpisodeDetailScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        
+
                         episode.releaseDate?.let { date ->
                             Text(
                                 text = "发布日期: $date",
@@ -138,7 +122,7 @@ fun EpisodeDetailScreen(
                             )
                         }
 
-                        // 母影片入口
+                        // 所属影片卡片
                         if (parentMovie != null) {
                             Spacer(modifier = Modifier.height(16.dp))
                             Card(
@@ -169,38 +153,37 @@ fun EpisodeDetailScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        // 分集简介与 AI 翻译 (统一组件)
+                        val summary = episode.descriptionZh?.takeIf { it.isNotBlank() } ?: episode.description
+                        if (!summary.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(20.dp))
+                            TranslationSection(
+                                originalSummary = summary,
+                                translatedSummary = uiState.translatedSummary,
+                                isLoading = uiState.translationLoading,
+                                errorMessage = uiState.translationError,
+                                title = "分集简介",
+                                onTranslateClick = { viewModel.translateSummary(it) }
+                            )
+                        }
 
-                        // 简介
-                        if (!episode.descriptionZh.isNullOrBlank() || !episode.description.isNullOrBlank()) {
+                        // 动作短评
+                        episode.actionNotes?.takeIf { it.isNotBlank() }?.let { notes ->
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "简介",
+                                text = "动作短评",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = episode.descriptionZh ?: episode.description ?: "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        
-                        if (!episode.actionNotes.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "演出备注",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = episode.actionNotes,
+                                text = notes,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
-                        // 演员列表区
+                        // 参演演员列表
                         if (detail.performers.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
@@ -209,35 +192,25 @@ fun EpisodeDetailScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(modifier = Modifier.height(12.dp))
-                            
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
+
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                 items(
                                     items = detail.performers,
                                     key = { it.id ?: it.hashCode() },
                                     contentType = { "performer" }
                                 ) { performer ->
-                                    val perfRelativePath = performer.imageUrl.toImageCachePath()
-                                    val perfImageData = remember(performer.id, physicalRootPath) {
-                                        GpdbImageData(
-                                            relativePath = perfRelativePath ?: "image_cache/Performers/${performer.id}.jpg",
-                                            physicalRoot = physicalRootPath,
-                                            fallbackUrl = performer.imageUrl
-                                        )
-                                    }
-                                    
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier
                                             .width(80.dp)
                                             .clickable { performer.id?.let { onPerformerClick(it) } }
                                     ) {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(context)
-                                                .data(perfImageData)
-                                                .build(),
+                                        GpdbAsyncImage(
+                                            url = performer.imageUrl,
+                                            physicalRootPath = physicalRootPath,
                                             contentDescription = performer.name,
+                                            fallbackEntityId = performer.id,
+                                            defaultFolder = "Performers",
                                             contentScale = ContentScale.Crop,
                                             alignment = Alignment.TopCenter,
                                             modifier = Modifier
@@ -256,8 +229,9 @@ fun EpisodeDetailScreen(
                                     }
                                 }
                             }
-                            Spacer(modifier = Modifier.height(32.dp))
                         }
+
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
             }

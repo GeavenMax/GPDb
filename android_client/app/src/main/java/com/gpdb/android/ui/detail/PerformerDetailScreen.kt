@@ -25,7 +25,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
-import com.gpdb.android.ui.home.MovieGridItem
+import com.gpdb.android.ui.components.EpisodeListItem
+import com.gpdb.android.ui.components.MovieGridItem
 
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -329,53 +330,14 @@ fun PerformerDetailScreen(
                                 key = { it.id ?: 0L },
                                 contentType = { "episode" }
                             ) { episode ->
-                                // 分集横向卡片 UI
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { 
-                                            episode.id?.let { onEpisodeClick(it) }
-                                        },
-                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-                                ) {
-                                    Row(modifier = Modifier.fillMaxWidth().height(100.dp)) {
-                                        val epRelPath = episode.thumbnailUrl?.toImageCachePath()
-                                        val epImageData = remember(episode.id, physicalRootPath) {
-                                            GpdbImageData(
-                                                relativePath = epRelPath ?: "image_cache/Episodes/${episode.id}.jpg",
-                                                physicalRoot = physicalRootPath,
-                                                fallbackUrl = episode.thumbnailUrl
-                                            )
-                                        }
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(context)
-                                                .data(epImageData)
-                                                .build(),
-                                            contentDescription = episode.title,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .width(160.dp)
-                                                .fillMaxHeight()
-                                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        )
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Text(
-                                                text = episode.title ?: "未知分集",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                maxLines = 2,
-                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                            )
-                                            episode.releaseDate?.let { date ->
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = date,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
+                                EpisodeListItem(
+                                    episodeId = episode.id,
+                                    title = episode.title,
+                                    thumbnailUrl = episode.thumbnailUrl,
+                                    physicalRootPath = physicalRootPath,
+                                    releaseDate = episode.releaseDate,
+                                    onClick = { episode.id?.let { onEpisodeClick(it) } }
+                                )
                             }
                         }
                     }

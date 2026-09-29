@@ -1,8 +1,13 @@
 package com.gpdb.android.ui.detail
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
@@ -14,10 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.background
-import androidx.compose.foundation.lazy.items
-import com.gpdb.android.data.db.entities.toImageCachePath
-import com.gpdb.android.ui.home.MovieGridItem
+import com.gpdb.android.ui.components.EpisodeListItem
+import com.gpdb.android.ui.components.MovieGridItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,7 +30,7 @@ fun StudioDetailScreen(
     viewModel: StudioDetailViewModel,
     onBackClick: () -> Unit,
     onMovieClick: (Long) -> Unit,
-    onEpisodeClick: (Long) -> Unit = {},
+    onEpisodeClick: (Long) -> Unit,
     onStudioClick: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -36,10 +39,13 @@ fun StudioDetailScreen(
         viewModel.loadStudio(studioName)
     }
 
+    val movieGridState = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
+    val episodeListState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.studioName) },
+                title = { Text(studioName) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
@@ -49,8 +55,8 @@ fun StudioDetailScreen(
                     IconButton(onClick = { viewModel.toggleFavorite() }) {
                         Icon(
                             imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = "Favorite",
-                            tint = if (uiState.isFavorite) Color.Red else LocalContentColor.current
+                            contentDescription = "收藏",
+                            tint = if (uiState.isFavorite) Color.Red else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -61,25 +67,29 @@ fun StudioDetailScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.error != null) {
-                Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+                Text(
+                    text = uiState.error ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
                     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+                    val tabs = listOf("发行作品 (${uiState.movies.size})", "发行分集 (${uiState.episodes.size})")
+
                     TabRow(selectedTabIndex = selectedTabIndex) {
-                        Tab(
-                            selected = selectedTabIndex == 0,
-                            onClick = { selectedTabIndex = 0 },
-                            text = { Text("发行影片 (${uiState.movies.size})") }
-                        )
-                        Tab(
-                            selected = selectedTabIndex == 1,
-                            onClick = { selectedTabIndex = 1 },
-                            text = { Text("发行分集 (${uiState.episodes.size})") }
-                        )
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                text = { Text(title) }
+                            )
+                        }
                     }
-                    
+
                     if (selectedTabIndex == 0) {
                         LazyVerticalGrid(
+                            state = movieGridState,
                             columns = GridCells.Fixed(3),
                             contentPadding = PaddingValues(8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -100,8 +110,10 @@ fun StudioDetailScreen(
                             }
                         }
                     } else {
-                        androidx.compose.foundation.lazy.LazyColumn(
+                        LazyColumn(
+                            state = episodeListState,
                             contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(
@@ -109,42 +121,15 @@ fun StudioDetailScreen(
                                 key = { it.id ?: 0L },
                                 contentType = { "episode" }
                             ) { episode ->
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                                        .clickable { episode.id?.let { onEpisodeClick(it) } },
-                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
-                                ) {
-                                    Row(modifier = Modifier.fillMaxWidth().height(100.dp)) {
-                                        val epRelPath = episode.thumbnailUrl?.toImageCachePath()
-                                        val epImageData = remember(episode.id, physicalRootPath) {
-                                            com.gpdb.android.image.GpdbImageData(
-                                                relativePath = epRelPath ?: "image_cache/Episodes/${episode.id}.jpg",
-                                                physicalRoot = physicalRootPath,
-                                                fallbackUrl = episode.thumbnailUrl
-                                            )
-                                        }
-                                        coil.compose.AsyncImage(
-                                            model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current).data(epImageData).build(),
-                                            contentDescription = episode.title,
-                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                            modifier = Modifier.width(160.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceVariant)
-                                        )
-                                        Column(modifier = Modifier.padding(12.dp)) {
-                                            Text(
-                                                text = episode.title ?: "未知分集",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                maxLines = 2,
-                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                            )
-                                            episode.releaseDate?.let { date ->
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(date, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                        }
-                                    }
-                                }
+                                EpisodeListItem(
+                                    episodeId = episode.id,
+                                    title = episode.title,
+                                    thumbnailUrl = episode.thumbnailUrl,
+                                    physicalRootPath = physicalRootPath,
+                                    releaseDate = episode.releaseDate,
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    onClick = { episode.id?.let { onEpisodeClick(it) } }
+                                )
                             }
                         }
                     }

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 import com.gpdb.android.data.db.entities.EpisodeEntity
@@ -23,10 +24,16 @@ data class MovieDetailUiState(
     val status: String? = null,
     val isFavorite: Boolean = false,
     val seriesName: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val translationLoading: Boolean = false,
+    val translatedSummary: String? = null,
+    val translationError: String? = null
 )
 
-class MovieDetailViewModel : ViewModel() {
+class MovieDetailViewModel(
+    private val translationService: com.gpdb.android.data.ai.LLMTranslationService,
+    private val appSettingsRepository: com.gpdb.android.data.settings.AppSettingsRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieDetailUiState())
     val uiState: StateFlow<MovieDetailUiState> = _uiState.asStateFlow()
@@ -62,7 +69,12 @@ class MovieDetailViewModel : ViewModel() {
                 var seriesName: String? = null
                 if (detail != null) {
                     val title = detail.movie.title
-                    val sCursor = db.openHelper.readableDatabase.query("SELECT root_title FROM series_collections WHERE ? LIKE root_title || '%' OR ? LIKE '%' || root_title || '%' ORDER BY LENGTH(root_title) DESC LIMIT 1", arrayOf(title, title))
+                    val studio = detail.movie.studioName
+                    val sCursor = if (studio != null) {
+                        db.openHelper.readableDatabase.query("SELECT root_title FROM series_collections WHERE studio_name = ? AND (? LIKE root_title || '%' OR ? LIKE '%' || root_title || '%') ORDER BY LENGTH(root_title) DESC LIMIT 1", arrayOf(studio, title, title))
+                    } else {
+                        db.openHelper.readableDatabase.query("SELECT root_title FROM series_collections WHERE ? LIKE root_title || '%' OR ? LIKE '%' || root_title || '%' ORDER BY LENGTH(root_title) DESC LIMIT 1", arrayOf(title, title))
+                    }
                     if (sCursor.moveToFirst()) {
                         seriesName = sCursor.getString(0)
                     }
@@ -80,6 +92,12 @@ class MovieDetailViewModel : ViewModel() {
                         isFavorite = isFav,
                         seriesName = seriesName
                     ) }
+
+                    // Check for auto-translate
+                    val autoTranslate = appSettingsRepository.llmAutoTranslateFlow.first()
+                    if (autoTranslate && detail.movie.descriptionZh.isNullOrBlank() && !detail.movie.description.isNullOrBlank()) {
+                        translateSummary(detail.movie.description)
+                    }
                 } else {
                     _uiState.update { it.copy(isLoading = false, error = "未找到该影片记录") }
                 }
@@ -114,6 +132,25 @@ class MovieDetailViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             UserRepository(db, db.userActionDao()).toggleFavorite("movie", movieId.toString(), newFav)
             _uiState.update { it.copy(isFavorite = newFav) }
+        }
+    }
+
+    fun translateSummary(text: String) {
+        if (_uiState.value.translationLoading) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(translationLoading = true, translationError = null) }
+            try {
+                val translated = translationService.translate(text)
+                _uiState.update { it.copy(translationLoading = false, translatedSummary = translated) }
+                
+                // Save to DB
+                val movieId = _uiState.value.movieDetail?.movie?.id
+                if (movieId != null) {
+                    DatabaseHolder.db?.browseDao()?.updateMovieDescriptionZh(movieId, translated)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(translationLoading = false, translationError = e.message ?: "翻译失败") }
+            }
         }
     }
 }

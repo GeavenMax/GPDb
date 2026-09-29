@@ -1,0 +1,7 @@
+*.zip
+*.orig
+*.rej
+.gradle/
+build/
+app/build/
+local.properties

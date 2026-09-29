@@ -158,7 +158,7 @@ fun SeriesListContent(
                     SeriesGridItem(
                         series = series,
                         physicalRootPath = physicalRootPath, // Needs to be passed
-                        onClick = { onSeriesClick(series.rootTitle) }
+                        onClick = { onSeriesClick("${series.studioName ?: ""}|||${series.rootTitle}") }
                     )
                 }
             }

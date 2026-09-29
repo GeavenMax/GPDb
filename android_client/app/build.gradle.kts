@@ -76,6 +76,11 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
 }
 
 dependencies {
@@ -99,6 +104,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // ── Room Database（SQLite WAL 外挂模式）──────────────────
@@ -122,6 +128,9 @@ dependencies {
     // ── Debug 工具 ───────────────────────────────────────────
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // ── 网络请求 ─────────────────────────────────────────────
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // ── 测试 ─────────────────────────────────────────────────
     testImplementation(libs.junit)

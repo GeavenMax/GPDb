@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **统一多端共享数据库兼容 (Shared GPDb.db Migration)**：
+  - 彻底打通与 macOS 桌面端使用同一份原生数据库文件（`GPDb.db`）的能力，消除 Android 端专用的魔改版数据库 `GPDb_Android.db`。
+  - 在 `GpdbDatabase` 中引入 `MIGRATION_0_1` 与 `MIGRATION_0_2` 双阶迁移规则，桌面端 `user_version = 0` 且未初始化的数据库挂载时自动补充 Room 校验标识与索引，杜绝 `IllegalStateException: A migration from 0 to 2 was required but not found` 崩溃。
+- **高频通用组件库 (`ui/components`)**：
+  - `GpdbAsyncImage`：统一多级图片寻址与缓存加载引擎，支持相对路径转换 (`toImageCachePath()`)、直接挂载并解析离线图片 ZIP 包、实体 ID 智能推断与三级兜底降级。
+  - `MovieGridItem`：标准化影片海报网格卡片，统一圆角、阴影、顶部/居中裁切、年份/时长渐变遮罩以及片商 Tag 交互。
+  - `EpisodeListItem`：标准化 84dp 横向分集卡片，统一缩略图转换与标题、排片日期等元数据渲染。
+  - `SearchTopAppBar`：标准化带有平活动画的上下文展开式搜索顶栏，集成清除按钮与焦点管理。
+  - `TranslationSection`：标准化可复用 AI 翻译展示组件，内置原文/译文无缝切换与翻译状态指示。
+- **架构解耦 (Architecture Decoupling)**：
+  - 将原先深层嵌套在 UI 文件中的 `SettingsViewModel` 剥离至独立架构层，清晰划分“核心存储与挂载设置”与“AI引擎/增量导出”业务模块。
+- **全链路页面进度保留 (Scroll & Navigation State Preservation)**：
+  - 为 `HomeScreen`、`SearchScreen`、`FilteredMovieListScreen`、`LibraryScreen`、`PerformerListScreen`、`StudioListScreen`、`StudioDetailScreen` 等所有网格与列表全面接入 `rememberSaveable(saver = LazyGridState.Saver)` 与 `rememberSaveable(saver = LazyListState.Saver)`，彻底解决点击进入详情再返回上一级菜单时页面进度重置、强制跳顶的顽疾。
+- **Import Translations Data**: 在“设置 -> 翻译统计”模块新增了“导入翻译数据”按钮功能，支持一键读取包含结构化翻译信息的 JSON 文件，并自动将译文还原写入对应影片与分集的本地数据库。同时会自动刷新顶部的全库翻译统计进度。
+- **Export Translations Data**: 在“设置”页面的翻译统计面板中，新增了“导出翻译数据 (JSON)”功能，支持一键将本地已沉淀的所有外文到中文（或目标语言）的元数据（包含所属 Movie ID/Episode ID）完整导出，方便多端同步或外部使用。
+- **LLM Provider Presets**: 在设置页的“AI翻译引擎配置”中，新增了主流大模型接口的下拉预设一键填入功能，涵盖了 Claude、Gemini (原生兼容接口)、Kimi (月之暗面)、通义千问、智谱清言、豆包等国内外第一梯队模型。
+- **Smart Model Discovery**: 在 API Key 输入框旁新增了“验证并获取模型”探测功能。点击后可实时验证 Key 的有效性，并自动拉取账号下可用的模型列表，将 Model Name 智能转换为下拉菜单供用户快速选择。
+- **Native LLM Translate Engine**: 引入强大的原生 AI 大模型翻译引擎，支持在影片和分集详情页一键直白翻译外文简介。
+  - 支持在设置中完全自定义大模型接口（兼容 OpenAI / DeepSeek / Claude / Ollama 协议）。
+  - 支持完全自定义 System Prompt 与目标语言（内置专业的无删减忠实翻译提示词为默认值）。
+  - 支持“进入条目时自动触发后台翻译”选项。
+- **Translation Persistence & Statistics**: 大模型翻译结果现已支持永久持久化写入本地 `GPDb.db` 的 `description_zh` 字段。同时在“设置”页面顶部新增“翻译统计”数据看板，直观展示全库的可翻译与已翻译进度。
+- **Dynamic Theme (Material You)**: 深度整合 Material 3 动态主题系统，支持 Android 12+ 系统壁纸自适应取色，以及手动强制锁定暗色/亮色模式。
+
+### Changed
+- **数据库日志模式调优 (TRUNCATE Journal Mode)**：
+  - 将 Room 数据库的 JournalMode 显式锁定为 `TRUNCATE`，杜绝 Android 外部存储 / SAF / FUSE 挂载点下由于不支持 POSIX `mmap` 对 `.db-shm` / `.db-wal` 文件引发的 I/O 权限异常，实现移动端与 macOS 间随意拷贝热插拔。
+- **页面过度复杂性重构与极致瘦身 (Screen Streamlining & Deduplication)**：
+  - `MovieDetailScreen`：从 536 行精简至 345 行（减少 36% 冗余代码），剔除内联图片加载与已废弃的浮动操作栏死代码，全面接入统一组件。
+  - `EpisodeDetailScreen`：从 308 行精简至 225 行（减少 27% 冗余代码），接入 `TranslationSection` 与 `GpdbAsyncImage`。
+  - `PerformerListScreen`：从 170 行精简至 88 行（减少 48% 冗余代码），接入 `SearchTopAppBar` 与 `PerformerGridItem`。
+  - `StudioListScreen`：接入 `SearchTopAppBar` 并精简过滤逻辑。
+  - `StudioDetailScreen`：全面接入 `EpisodeListItem` 与 `MovieGridItem`，并为双 Tab 建立独立进度持久化。
+  - `SearchScreen`：重构无搜索词时的状态布局，修复搜索历史与热门标签层叠问题，接入统一网格卡片与滚动状态记忆。
+- **Export Translations Data Enhanced**: 大幅扩充了 JSON 翻译数据导出的底层元数据信息。现在除原有的 ID 和中文翻译外，对于每一条记录还会详细追加原片名、片商名、发行年份、分类、外文原简介等辅助字段。这样即便在外部平台进行清洗、查阅或未来重新导入时，都能获得更完善的上下文支撑，避免了纯 ID 造成的映射混淆。
+- **Library Tab Layout**: 优化了“我的库”中众多二级分类的展示布局，摒弃了需要水平滑动的滚动条样式，改为全局自动换行的 `FlowRow` 标签云样式，现在进入页面即可一眼纵览并点击所有分类。
+- **Translate Toggle UI**: 优化了影片与分集详情页的 AI 翻译体验，现在“AI翻译”在完成输出后，右上角的魔法按钮会智能转变为“显示原文” / “显示译文”的双向无缝切换按钮，保持界面高度整洁。
+- **LLM Prompt Generalization**: 修改了内置的大模型专属系统提示词（System Prompt）。将其中的“中文成人语境”泛化重构为“目标语言成人语境”，完美解耦了固定语种限制，为向繁体、英文、日文等多语种的直白翻译提供了更强的兼容性。
+- **Immersive Edge-to-Edge UI**: 全面开启系统级沉浸式视图（Edge-to-Edge），打破状态栏与底部手势区黑边，瀑布流及海报展示更具现代高级感。
+- **My Library Tabs**: 重新设计“我的库”二级分类导航栏。废除极易被忽略的水平滑动标签栏（`ScrollableTabRow`），替换为自适应折行包裹展示的胶囊按钮簇（`FlowRow` + `FilterChip`）。现在进入“我的库”即可一览所有分类（收藏、想看、已看、等），免去了任何滑动操作。
+
+### Removed
+- **Library Watched Tab**: 移除了“我的库”中已看选项卡及其冗余加载代码。
+- **Duplicate UI Code Blocks**: 彻底消除了分散在 4 处界面的影片海报卡片代码、4 处界面的分集卡片代码以及各二级列表各自实现的搜索顶栏代码。
+- **Dead Code**: 移除了 `MovieDetailScreen` 中的私有 `MovieUserActionBar` 废弃代码以及构建残留文件。
+
+### Fixed
+- **FTS5 虚表语法兼容性与中文搜索修复 (FTS5 Query Crash & CJK Fallback)**：
+  - 修复此前硬编码 `"$query"*` 导致 SQLite FTS5 解析报错（`near "query": syntax error`）的问题，采用跨平台安全的 `id IN (SELECT id FROM movies_fts WHERE movies_fts MATCH ?)` 子查询语法。
+  - 新增 CJK 中文标题与中文简介的 `LIKE` 兜底匹配机制，彻底解决 FTS5 分词器无法识别无空格中文词汇导致搜索无结果的问题。
+- **Release 构建 LintVital 崩溃修复**：
+  - 修复在 AGP 8+ 与 Kotlin 2.x 环境下运行 `./gradlew assembleRelease` 时由于 `lintVitalAnalyzeRelease` 引发的构建中断异常。
+
+### Fixed
+- **Export Translations Crash**: 修复了“导出翻译数据”功能在导出影片表时，因查询了实际不存在的 `original_title` 与 `action_notes` 列导致底层 SQLite 抛出异常并中断导出的严重 Bug。现已精简并严格对齐了实际存在的元数据字段。
+- **Movie Detail Avatar Cropping**: 修复了“影片详情页”横向演员列表中演员圆角头像未能正确露脸的问题，将原有的居中裁切修正为 `Alignment.TopCenter` 顶端对齐裁切。
+- **Movie Detail Episode Thumbnails**: 修复了影片详情页下方“相关分集”卡片不显示封面预览图的问题。补充了缺失的 `.toImageCachePath()` 转换映射，使底层框架能正确寻址离线图片缓存。
+- **Movie Details Episodes Missing**: 修复了“影片档案页不显示其相关分集信息”的遗漏问题。现在影片详情页在展示演员列表下方，会正常遍历并用卡片形式渲染该影片包含的所有分集列表，点击对应分集即可直接无缝跳转至对应的分集档案页。
+- **Series Mixed Studios Bug**: 修复了“对系列影片的判断方式导致多家片商的作品混合在一起”的严重逻辑缺陷，现在收藏和查询系列影片时，采用 `[片商名]|||[系列名]` 的联合主键进行隔离判断，彻底杜绝了同名系列被错误聚合的问题。
+- **Episode Translate Button Missing**: 补齐了遗漏的“分集详情页”的 AI 翻译功能入口，现在单独点开分集也能对其简介内容独立触发翻译并落盘持久化。
+- **Library Favorite Episodes Blank**: 修复了“我的库 -> 收藏分集”明明有数据却显示空白的严重缺陷，重写了底层 UI 路由分发逻辑使其能正确使用沉浸式卡片渲染独立的分集条目。
+- **Studio Episode Count Mismatch**: 彻底修复了片商档案页“发行分集”数量与 macOS 客户端显示不一致（严重少算）的问题。重构了底层的 SQL 联合查询逻辑，加入了向 `movies` 表的回退推断 (`LEFT JOIN`)，成功捞回了自身未打片商标签但其所属影片确属于该片商的数千个隐藏分集数据（如 BelAmi 遗漏的 138 个分集）。
+- **Series Identification Bug**: 彻底重写了系列影片的标识匹配逻辑。此前仅通过前缀字符（`title LIKE`）检索会导致多家不同片商（Studio）下的同名系列被错误糅合在一起。现已通过前端路由组合键与后端 SQL 双重复合校验（`studio_name = ? AND title LIKE ?`），完美修复此乱入 Bug。
+
 ## [2.8.0] - 2026-09-24
 
 ### Added

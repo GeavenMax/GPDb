@@ -1,19 +1,19 @@
 package com.gpdb.android.ui.browse
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.gpdb.android.ui.home.MovieGridItem
-
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.gpdb.android.ui.components.MovieGridItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +32,8 @@ fun FilteredMovieListScreen(
         viewModel.load(filterType, filterValue)
     }
 
+    val gridState = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -47,7 +49,7 @@ fun FilteredMovieListScreen(
                             Icon(
                                 imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
                                 contentDescription = "收藏",
-                                tint = if (uiState.isFavorite) androidx.compose.ui.graphics.Color.Red else MaterialTheme.colorScheme.onSurface
+                                tint = if (uiState.isFavorite) Color.Red else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -59,9 +61,14 @@ fun FilteredMovieListScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.error != null) {
-                Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+                Text(
+                    text = uiState.error ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             } else {
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Fixed(3),
                     contentPadding = PaddingValues(8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -76,10 +83,9 @@ fun FilteredMovieListScreen(
                         MovieGridItem(
                             movie = movie,
                             physicalRootPath = physicalRootPath,
-                            onClick = { onMovieClick(movie.id ?: return@MovieGridItem) }
-                        ,
-    onStudioClick = { studio -> onStudioClick(studio) }
-)
+                            onClick = { onMovieClick(movie.id ?: return@MovieGridItem) },
+                            onStudioClick = { studio -> onStudioClick(studio) }
+                        )
                     }
                 }
             }

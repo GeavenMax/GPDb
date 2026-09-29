@@ -22,31 +22,34 @@ import com.gpdb.android.ui.setup.SetupScreen
 import com.gpdb.android.ui.theme.GPDbTheme
 import kotlinx.coroutines.launch
 import java.io.File
-
-// ============================================================
-//  MainActivity — 核心主 Activity (全异步响应版)
-// ============================================================
+import com.gpdb.android.data.settings.AppSettingsRepository
+import com.gpdb.android.data.settings.ThemeMode
 class MainActivity : ComponentActivity() {
 
     private val homeViewModel: HomeViewModel by viewModels()
     private lateinit var mountPreferences: MountPreferences
     private lateinit var appPreferences: AppPreferences
+    private lateinit var appSettingsRepository: AppSettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         mountPreferences = MountPreferences(this)
         appPreferences = AppPreferences(this)
+        appSettingsRepository = AppSettingsRepository(this)
 
         setContent {
-            val themePref by appPreferences.themeFlow.collectAsState(initial = "system")
+            val themeMode by appSettingsRepository.themeModeFlow.collectAsState(initial = ThemeMode.SYSTEM)
+            val dynamicColor by appSettingsRepository.dynamicColorFlow.collectAsState(initial = true)
             val isSystemDark = isSystemInDarkTheme()
-            val useDarkTheme = when (themePref) {
-                "light" -> false
-                "dark" -> true
-                else -> isSystemDark
+            
+            val useDarkTheme = when (themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemDark
             }
-            GPDbTheme(darkTheme = useDarkTheme) {
+            
+            GPDbTheme(darkTheme = useDarkTheme, dynamicColor = dynamicColor) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

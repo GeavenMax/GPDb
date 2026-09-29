@@ -45,4 +45,25 @@ interface BrowseDao {
 
     @RawQuery
     suspend fun getEpisodesByStudio(query: SupportSQLiteQuery): List<com.gpdb.android.data.db.entities.EpisodeEntity>
+
+    @RawQuery
+    suspend fun getFavoriteEpisodes(query: SupportSQLiteQuery): List<com.gpdb.android.data.db.entities.EpisodeEntity>
+
+    @androidx.room.Query("SELECT COUNT(id) FROM movies WHERE description IS NOT NULL AND description != ''")
+    suspend fun getTotalTranslatableMovies(): Int
+
+    @androidx.room.Query("SELECT COUNT(id) FROM movies WHERE description_zh IS NOT NULL AND description_zh != ''")
+    suspend fun getTranslatedMovies(): Int
+
+    @androidx.room.Query("UPDATE movies SET description_zh = :zh WHERE id = :id")
+    suspend fun updateMovieDescriptionZh(id: Long, zh: String)
+
+    @androidx.room.Query("SELECT COUNT(id) FROM episodes WHERE description IS NOT NULL AND description != ''")
+    suspend fun getTotalTranslatableEpisodes(): Int
+
+    @androidx.room.Query("SELECT COUNT(id) FROM episodes WHERE description_zh IS NOT NULL AND description_zh != ''")
+    suspend fun getTranslatedEpisodes(): Int
+
+    @androidx.room.Query("UPDATE episodes SET description_zh = :zh WHERE id = :id")
+    suspend fun updateEpisodeDescriptionZh(id: Long, zh: String)
 }

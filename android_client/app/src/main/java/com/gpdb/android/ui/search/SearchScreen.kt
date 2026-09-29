@@ -1,34 +1,23 @@
 package com.gpdb.android.ui.search
-import com.gpdb.android.ui.browse.PerformerGridItem
-import androidx.compose.foundation.lazy.grid.*
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.gpdb.android.data.db.entities.toImageCachePath
-import com.gpdb.android.image.GpdbImageData
-import com.gpdb.android.ui.home.MovieGridItem
+import androidx.lifecycle.viewModelScope
+import com.gpdb.android.ui.components.MovieGridItem
+import com.gpdb.android.ui.components.PerformerGridItem
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +31,6 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchHistory by viewModel.searchHistory.collectAsState()
-    val context = LocalContext.current
 
     LaunchedEffect(physicalRootPath) {
         viewModel.initRepository()
@@ -86,9 +74,18 @@ fun SearchScreen(
                 CircularProgressIndicator()
             }
         } else if (uiState.query.isEmpty()) {
-                        if (searchHistory.isNotEmpty()) {
-                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp)
+            ) {
+                if (searchHistory.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text("搜索历史", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         TextButton(onClick = { 
                             viewModel.viewModelScope.launch { viewModel.appPreferences.clearSearchHistory() }
@@ -108,11 +105,14 @@ fun SearchScreen(
                         }
                     }
                 }
-            }
 
-            if (uiState.categories.isNotEmpty()) {
-                Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp)) {
-                    Text("热门分类标签", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                if (uiState.categories.isNotEmpty()) {
+                    Text(
+                        "热门分类标签",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                     @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -127,10 +127,10 @@ fun SearchScreen(
                             )
                         }
                     }
-                }
-            } else {
-                Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                    Text("输入关键字开始检索", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else if (searchHistory.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("输入关键字开始检索", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         } else if (uiState.movies.isEmpty() && uiState.performers.isEmpty()) {
@@ -138,7 +138,14 @@ fun SearchScreen(
                 Text("未找到相关结果", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
+            val gridState = rememberSaveable(
+                saver = LazyGridState.Saver,
+                key = "search_grid_state"
+            ) {
+                LazyGridState()
+            }
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Fixed(3),
                 modifier = Modifier
                     .fillMaxSize()

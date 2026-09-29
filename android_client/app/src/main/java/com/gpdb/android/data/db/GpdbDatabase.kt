@@ -54,6 +54,19 @@ abstract class GpdbDatabase : RoomDatabase() {
     companion object {
         private const val TAG = "GpdbDatabase"
 
+        private val MIGRATION_0_2 = object : Migration(0, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // 当从 macOS 外部导入原始 GPDb.db (user_version = 0) 时触发：
+                // 物理表已由 macOS/Python 建好，无需实际 SQL ALTER 语句。
+                // 留空即可，Room 跑完后会自动建立 room_master_table 并将 user_version 升至 2。
+                Log.i(TAG, "检测到外部 macOS GPDb.db (version 0)，已自动平滑挂载并建立 Room 元数据索引")
+            }
+        }
+
+        private val MIGRATION_0_1 = object : Migration(0, 1) {
+            override fun migrate(database: SupportSQLiteDatabase) {}
+        }
+
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 // 实体类增加了 EpisodeEntity 和 EpisodePerformerEntity
@@ -78,7 +91,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                 GpdbDatabase::class.java,
                 dbFile.absolutePath // 绝对路径直连，零文件拷贝
             )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_0_1, MIGRATION_0_2, MIGRATION_1_2)
                 // ★ 关键修复：强制使用 TRUNCATE 日志模式，彻底消除 FUSE 下 WAL 模式的 -shm / -wal ioctl 权限冲突
                 .setJournalMode(JournalMode.TRUNCATE)
                 .addCallback(object : Callback() {

@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class LibraryTab {
-    FAV_MOVIES, WISHLIST, WATCHED, FAV_PERFORMERS, FAV_SERIES
+    FAV_MOVIES, FAV_PERFORMERS, FAV_SERIES, FAV_EPISODES
 }
 
 data class LibraryUiState(
@@ -25,6 +25,7 @@ data class LibraryUiState(
     val movies: List<MovieEntity> = emptyList(),
     val performers: List<PerformerEntity> = emptyList(),
     val series: List<com.gpdb.android.data.db.entities.SeriesCollectionEntity> = emptyList(),
+    val episodes: List<com.gpdb.android.data.db.entities.EpisodeEntity> = emptyList(),
     val hasMore: Boolean = false,
     val error: String? = null
 )
@@ -54,6 +55,7 @@ class LibraryViewModel : ViewModel() {
             val isCurrentlyEmpty = when (tab) {
                 LibraryTab.FAV_PERFORMERS -> _uiState.value.performers.isEmpty()
                 LibraryTab.FAV_SERIES -> _uiState.value.series.isEmpty()
+                LibraryTab.FAV_EPISODES -> _uiState.value.episodes.isEmpty()
                 else -> _uiState.value.movies.isEmpty()
             }
             if (isCurrentlyEmpty) {
@@ -88,11 +90,13 @@ class LibraryViewModel : ViewModel() {
                     val sList = repo.getFavoriteSeries(pageSize, 0, _uiState.value.searchQuery)
                     currentOffset = sList.size
                     _uiState.update { it.copy(isLoading = false, series = sList, performers = emptyList(), movies = emptyList(), hasMore = sList.size >= pageSize) }
+                } else if (tab == LibraryTab.FAV_EPISODES) {
+                    val eList = repo.getFavoriteEpisodes(pageSize, 0, _uiState.value.searchQuery)
+                    currentOffset = eList.size
+                    _uiState.update { it.copy(isLoading = false, episodes = eList, performers = emptyList(), movies = emptyList(), series = emptyList(), hasMore = eList.size >= pageSize) }
                 } else {
                     val mList = when (tab) {
                         LibraryTab.FAV_MOVIES -> repo.getLibraryMovies("fav", pageSize, 0, _uiState.value.searchQuery)
-                        LibraryTab.WISHLIST -> repo.getLibraryMovies("wishlist", pageSize, 0, _uiState.value.searchQuery)
-                        LibraryTab.WATCHED -> repo.getLibraryMovies("watched", pageSize, 0, _uiState.value.searchQuery)
                         else -> emptyList()
                     }
                     currentOffset = mList.size
@@ -122,11 +126,13 @@ class LibraryViewModel : ViewModel() {
                     val nextList = repo.getFavoriteSeries(pageSize, currentOffset, _uiState.value.searchQuery)
                     currentOffset += nextList.size
                     _uiState.update { it.copy(isLoadingMore = false, series = it.series + nextList, hasMore = nextList.size >= pageSize) }
+                } else if (state.currentTab == LibraryTab.FAV_EPISODES) {
+                    val nextList = repo.getFavoriteEpisodes(pageSize, currentOffset, _uiState.value.searchQuery)
+                    currentOffset += nextList.size
+                    _uiState.update { it.copy(isLoadingMore = false, episodes = it.episodes + nextList, hasMore = nextList.size >= pageSize) }
                 } else {
                     val nextMovies = when (state.currentTab) {
                         LibraryTab.FAV_MOVIES -> repo.getLibraryMovies("fav", pageSize, currentOffset, _uiState.value.searchQuery)
-                        LibraryTab.WISHLIST -> repo.getLibraryMovies("wishlist", pageSize, currentOffset, _uiState.value.searchQuery)
-                        LibraryTab.WATCHED -> repo.getLibraryMovies("watched", pageSize, currentOffset, _uiState.value.searchQuery)
                         else -> emptyList()
                     }
                     currentOffset += nextMovies.size

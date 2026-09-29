@@ -20,7 +20,7 @@ class BrowseRepository(private val browseDao: BrowseDao) {
         val queryStr = if (sortBy == "name") {
             "SELECT studio_name FROM movies m WHERE studio_name IS NOT NULL AND studio_name != '' $searchCondition GROUP BY studio_name ORDER BY studio_name ASC"
         } else {
-            "SELECT m.studio_name FROM movies m LEFT JOIN (SELECT studio_name, COUNT(*) as ep_count FROM episodes WHERE studio_name IS NOT NULL GROUP BY studio_name) e ON m.studio_name = e.studio_name WHERE m.studio_name IS NOT NULL AND m.studio_name != '' $searchCondition GROUP BY m.studio_name ORDER BY (COUNT(m.id) + IFNULL(MAX(e.ep_count), 0)) DESC, m.studio_name ASC"
+            "SELECT m.studio_name FROM movies m LEFT JOIN (SELECT IFNULL(NULLIF(e.studio_name, ''), m2.studio_name) as eff_studio, COUNT(e.id) as ep_count FROM episodes e LEFT JOIN movies m2 ON e.movie_id = m2.id GROUP BY eff_studio) e_counts ON m.studio_name = e_counts.eff_studio WHERE m.studio_name IS NOT NULL AND m.studio_name != '' $searchCondition GROUP BY m.studio_name ORDER BY (COUNT(m.id) + IFNULL(MAX(e_counts.ep_count), 0)) DESC, m.studio_name ASC"
         }
         val query = SimpleSQLiteQuery(queryStr, args)
         return browseDao.getAllStudios(query)
@@ -42,7 +42,7 @@ class BrowseRepository(private val browseDao: BrowseDao) {
     }
 
     suspend fun getEpisodesByStudio(studio: String, limit: Int = 50, offset: Int = 0): List<com.gpdb.android.data.db.entities.EpisodeEntity> {
-        val query = SimpleSQLiteQuery("SELECT * FROM episodes WHERE studio_name = ? ORDER BY release_date DESC, id DESC LIMIT ? OFFSET ?", arrayOf(studio, limit, offset))
+        val query = SimpleSQLiteQuery("SELECT e.* FROM episodes e LEFT JOIN movies m ON e.movie_id = m.id WHERE IFNULL(NULLIF(e.studio_name, ''), m.studio_name) = ? ORDER BY e.release_date DESC, e.id DESC LIMIT ? OFFSET ?", arrayOf(studio, limit, offset))
         return browseDao.getEpisodesByStudio(query)
     }
 
@@ -52,7 +52,6 @@ class BrowseRepository(private val browseDao: BrowseDao) {
         val searchCondition = if (!search.isNullOrBlank()) "AND m.title LIKE ?" else ""
         val args = if (!search.isNullOrBlank()) arrayOf("%${search}%", limit, offset) else arrayOf(limit, offset)
         val sql = when(type) {
-            "wishlist" -> "SELECT m.* FROM movies m JOIN user_movie_data d ON m.id = d.movie_id WHERE d.status = 'wishlist' $searchCondition ORDER BY d.updated_at DESC LIMIT ? OFFSET ?"
             "watched" -> "SELECT m.* FROM movies m JOIN user_movie_data d ON m.id = d.movie_id WHERE d.status = 'watched' $searchCondition ORDER BY d.updated_at DESC LIMIT ? OFFSET ?"
             else -> "SELECT m.* FROM movies m JOIN user_favorites f ON CAST(m.id AS TEXT) = f.entity_key WHERE f.entity_type = 'movie' $searchCondition ORDER BY f.created_at DESC LIMIT ? OFFSET ?"
         }
@@ -74,14 +73,27 @@ class BrowseRepository(private val browseDao: BrowseDao) {
         return browseDao.getFavoritePerformers(SimpleSQLiteQuery(sql, args))
     }
 
+    
+    suspend fun getFavoriteEpisodes(limit: Int = 50, offset: Int = 0, search: String? = null): List<com.gpdb.android.data.db.entities.EpisodeEntity> {
+        val searchCondition = if (!search.isNullOrBlank()) "AND e.title LIKE ?" else ""
+        val args = if (!search.isNullOrBlank()) arrayOf("%${search}%", limit, offset) else arrayOf(limit, offset)
+        val sql = "SELECT e.* FROM episodes e JOIN user_favorites f ON CAST(e.id AS TEXT) = f.entity_key WHERE f.entity_type = 'episode' $searchCondition ORDER BY f.created_at DESC LIMIT ? OFFSET ?"
+        return browseDao.getFavoriteEpisodes(SimpleSQLiteQuery(sql, args))
+    }
+
     suspend fun getFavoriteSeries(limit: Int = 50, offset: Int = 0, search: String? = null): List<SeriesCollectionEntity> {
         val searchCondition = if (!search.isNullOrBlank()) "AND s.root_title LIKE ?" else ""
         val args = if (!search.isNullOrBlank()) arrayOf("%${search}%", limit, offset) else arrayOf(limit, offset)
-        val sql = "SELECT s.* FROM series_collections s JOIN user_favorites f ON s.root_title = f.entity_key WHERE f.entity_type = 'series' $searchCondition ORDER BY f.created_at DESC LIMIT ? OFFSET ?"
+        // Match either the full identifier or fallback to root_title for backward compatibility
+        val sql = "SELECT s.* FROM series_collections s JOIN user_favorites f ON (IFNULL(s.studio_name, '') || '|||' || s.root_title = f.entity_key OR s.root_title = f.entity_key) WHERE f.entity_type = 'series' $searchCondition ORDER BY f.created_at DESC LIMIT ? OFFSET ?"
         return browseDao.getFavoriteSeries(SimpleSQLiteQuery(sql, args))
     }
-    suspend fun getMoviesBySeries(seriesRoot: String, limit: Int = 50, offset: Int = 0): List<MovieEntity> {
-        val query = SimpleSQLiteQuery("SELECT * FROM movies WHERE title LIKE ? || '%' OR title LIKE '%' || ? || '%' ORDER BY release_year DESC, id DESC LIMIT ? OFFSET ?", arrayOf(seriesRoot, seriesRoot, limit, offset))
+    suspend fun getMoviesBySeries(studio: String?, seriesRoot: String, limit: Int = 50, offset: Int = 0): List<MovieEntity> {
+        val query = if (!studio.isNullOrBlank()) {
+            SimpleSQLiteQuery("SELECT * FROM movies WHERE studio_name = ? AND (title LIKE ? || '%' OR title LIKE '%' || ? || '%') ORDER BY release_year DESC, id DESC LIMIT ? OFFSET ?", arrayOf(studio, seriesRoot, seriesRoot, limit, offset))
+        } else {
+            SimpleSQLiteQuery("SELECT * FROM movies WHERE title LIKE ? || '%' OR title LIKE '%' || ? || '%' ORDER BY release_year DESC, id DESC LIMIT ? OFFSET ?", arrayOf(seriesRoot, seriesRoot, limit, offset))
+        }
         return browseDao.getMoviesBySeries(query)
     }
 
@@ -89,4 +101,12 @@ class BrowseRepository(private val browseDao: BrowseDao) {
         val query = SimpleSQLiteQuery("SELECT m.* FROM movies m JOIN movie_directors md ON m.id = md.movie_id JOIN directors d ON d.id = md.director_id WHERE d.name = ? ORDER BY m.release_year DESC, m.id DESC LIMIT ? OFFSET ?", arrayOf(director, limit, offset))
         return browseDao.getMoviesByDirector(query)
     }
+
+    suspend fun getTotalTranslatableMovies() = browseDao.getTotalTranslatableMovies()
+    suspend fun getTranslatedMovies() = browseDao.getTranslatedMovies()
+    suspend fun updateMovieDescriptionZh(id: Long, zh: String) = browseDao.updateMovieDescriptionZh(id, zh)
+
+    suspend fun getTotalTranslatableEpisodes() = browseDao.getTotalTranslatableEpisodes()
+    suspend fun getTranslatedEpisodes() = browseDao.getTranslatedEpisodes()
+    suspend fun updateEpisodeDescriptionZh(id: Long, zh: String) = browseDao.updateEpisodeDescriptionZh(id, zh)
 }

@@ -1,0 +1,141 @@
+package com.gpdb.android.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.gpdb.android.data.db.entities.MovieEntity
+
+/**
+ * 统一的影片网格卡片组件
+ *
+ * 用于：
+ * - HomeScreen (全部影片)
+ * - LibraryScreen (收藏/想看/已看)
+ * - FilteredMovieListScreen (分类/厂牌/系列影片列表)
+ * - SearchScreen (影片搜索结果)
+ * - PerformerDetailScreen (演员参演作品)
+ */
+@Composable
+fun MovieGridItem(
+    movie: MovieEntity,
+    physicalRootPath: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onStudioClick: ((String) -> Unit)? = null
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.7f)
+            ) {
+                GpdbAsyncImage(
+                    url = movie.coverFull ?: movie.coverIcon,
+                    physicalRootPath = physicalRootPath,
+                    contentDescription = movie.title,
+                    fallbackEntityId = movie.id,
+                    defaultFolder = "Covers",
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // 底部渐变半透明信息栏 (年份 + 时长)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))
+                            )
+                        )
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        movie.releaseYear?.let { year ->
+                            Text(
+                                text = year.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        movie.durationMins?.let { mins ->
+                            Text(
+                                text = "${mins}分",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.85f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 标题与副标题信息区 (统一固定高度，跑马灯滚动)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                Text(
+                    text = movie.titleZh ?: movie.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    modifier = Modifier.basicMarquee()
+                )
+
+                if (movie.titleZh != null && movie.titleZh != movie.title) {
+                    Text(
+                        text = movie.title,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        modifier = Modifier.basicMarquee()
+                    )
+                }
+
+                movie.studioName?.let { studio ->
+                    Text(
+                        text = studio,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .basicMarquee()
+                            .then(
+                                if (onStudioClick != null) Modifier.clickable { onStudioClick(studio) } else Modifier
+                            )
+                    )
+                }
+            }
+        }
+    }
+}

@@ -37,8 +37,8 @@ class StudioDetailViewModel : ViewModel() {
             _uiState.update { it.copy(isLoading = true, studioName = studioName, error = null) }
             try {
                 val repo = BrowseRepository(db.browseDao())
-                val list = repo.getMoviesByStudio(studioName, limit = 500)
-                val epList = repo.getEpisodesByStudio(studioName, limit = 500)
+                val list = repo.getMoviesByStudio(studioName, limit = 100000)
+                val epList = repo.getEpisodesByStudio(studioName, limit = 100000)
                 val userRepo = UserRepository(db, db.userActionDao())
                 val isFav = userRepo.isFavorite("studio", studioName)
                 _uiState.update { it.copy(isLoading = false, movies = list, episodes = epList, isFavorite = isFav) }

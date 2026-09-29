@@ -3,19 +3,18 @@ package com.gpdb.android.ui.browse
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Close
-
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import com.gpdb.android.ui.components.SearchTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,49 +28,18 @@ fun StudioListScreen(
         viewModel.loadStudios()
     }
 
-    var isSearching by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
+    val listState = rememberSaveable(saver = LazyListState.Saver) { LazyListState() }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    if (isSearching) {
-                        TextField(
-                            value = searchQuery,
-                            onValueChange = { 
-                                searchQuery = it 
-                                viewModel.loadStudios(query = it) 
-                            },
-                            placeholder = { Text("搜索片商...") },
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                disabledContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    } else {
-                        Text("全部片商")
-                    }
-                },
-                actions = {
-                    if (isSearching) {
-                        IconButton(onClick = { 
-                            isSearching = false
-                            searchQuery = ""
-                            viewModel.loadStudios(query = "")
-                        }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close Search")
-                        }
-                    } else {
-                        IconButton(onClick = { isSearching = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
-                        }
-                    }
+            var showSortMenu by remember { mutableStateOf(false) }
 
-                    var showSortMenu by remember { mutableStateOf(false) }
+            SearchTopAppBar(
+                title = "全部片商",
+                searchQuery = uiState.searchQuery,
+                onSearchQueryChange = { viewModel.loadStudios(query = it) },
+                placeholder = "搜索片商...",
+                actions = {
                     IconButton(onClick = { showSortMenu = true }) {
                         Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "排序")
                     }
@@ -104,9 +72,16 @@ fun StudioListScreen(
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.error != null) {
-                Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
+                Text(
+                    text = uiState.error ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     items(uiState.studios, key = { it }) { studio ->
                         ListItem(
                             headlineContent = { Text(studio) },

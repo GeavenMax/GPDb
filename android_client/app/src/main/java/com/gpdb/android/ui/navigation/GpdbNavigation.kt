@@ -194,6 +194,9 @@ fun GpdbNavGraph(
                     onSeriesClick = { series -> navController.navigate(Screen.FilteredMovieList.createRoute("series", series)) },
                     onPerformerClick = { performerId ->
                         navController.navigate(Screen.PerformerDetail.createRoute(performerId))
+                    },
+                    onEpisodeClick = { episodeId ->
+                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
                     }
                 )
             }
@@ -241,6 +244,7 @@ fun GpdbNavGraph(
                         composable(Screen.Settings.route) {
                 com.gpdb.android.ui.settings.SettingsScreen(
                     appPreferences = com.gpdb.android.data.preferences.AppPreferences(androidx.compose.ui.platform.LocalContext.current),
+                    appSettingsRepository = com.gpdb.android.data.settings.AppSettingsRepository(androidx.compose.ui.platform.LocalContext.current),
                     onRemountClick = onRemountClick
                 )
             }
@@ -266,7 +270,19 @@ fun GpdbNavGraph(
                 arguments = listOf(navArgument("movieId") { type = NavType.LongType })
             ) { backStackEntry ->
                 val movieId = backStackEntry.arguments?.getLong("movieId") ?: return@composable
-                val viewModel: MovieDetailViewModel = viewModel()
+                
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val appSettingsRepository = remember(context) { com.gpdb.android.data.settings.AppSettingsRepository(context) }
+                val translationService = remember(appSettingsRepository) { com.gpdb.android.data.ai.LLMTranslationService(appSettingsRepository) }
+                val factory = remember(translationService, appSettingsRepository) { 
+                    object : androidx.lifecycle.ViewModelProvider.Factory {
+                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                            @Suppress("UNCHECKED_CAST")
+                            return MovieDetailViewModel(translationService, appSettingsRepository) as T
+                        }
+                    }
+                }
+                val viewModel: MovieDetailViewModel = viewModel(factory = factory)
                 
                 MovieDetailScreen(
                     movieId = movieId,
@@ -316,7 +332,18 @@ fun GpdbNavGraph(
                 arguments = listOf(navArgument("episodeId") { type = NavType.LongType })
             ) { backStackEntry ->
                 val episodeId = backStackEntry.arguments?.getLong("episodeId") ?: return@composable
-                val viewModel: EpisodeDetailViewModel = viewModel()
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val appSettingsRepository = androidx.compose.runtime.remember(context) { com.gpdb.android.data.settings.AppSettingsRepository(context) }
+                val translationService = androidx.compose.runtime.remember(appSettingsRepository) { com.gpdb.android.data.ai.LLMTranslationService(appSettingsRepository) }
+                val factory = androidx.compose.runtime.remember(translationService, appSettingsRepository) { 
+                    object : androidx.lifecycle.ViewModelProvider.Factory {
+                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                            @Suppress("UNCHECKED_CAST")
+                            return com.gpdb.android.ui.detail.EpisodeDetailViewModel(translationService, appSettingsRepository) as T
+                        }
+                    }
+                }
+                val viewModel: com.gpdb.android.ui.detail.EpisodeDetailViewModel = viewModel(factory = factory)
                 
                 EpisodeDetailScreen(
                     episodeId = episodeId,

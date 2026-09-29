@@ -1,0 +1,21 @@
+# GPDb Android 客户端开发规范
+
+本文档是针对本项目 Android 端的开发准则，任何 Agent 或人类开发者在编写、修改代码时必须严格遵守，以确保在不断迭代（添加 LLM、动效、主题）时绝对不破坏核心的读取引擎。
+
+## 1. UI 层设计规范 (Compose Guidelines)
+- **状态提升 (State Hoisting)**：UI 组件（如 Screen, Card）必须是无状态的（Stateless），只通过参数接收 `uiState`，以及暴露事件 `onEvent: () -> Unit`。不要在 Composable 中使用 ViewModel 进行复杂的业务逻辑计算。
+- **重组优化**：禁止在 Composable 的频繁重组代码块中进行对象实例化。集合传递应使用 `List`，并在 ViewModel 层做到数据不可变（Immutable data class）。
+- **Material 3 严格遵循**：禁止在代码中硬编码使用 `Color.Black` 或 `Color.White`，必须全部使用 `MaterialTheme.colorScheme.xxx`（如 `onSurface`, `primaryContainer` 等），以保障动态主题系统（Theme/Skin）切换时不会出现看不清的问题。
+
+## 2. 数据与线程架构 (Data & Threading)
+- **绝对的数据安全**：当前 App 的核心能力是加载巨大的（300MB+）外部 `GPDb.db`。所有的 Room DAO 操作必须包裹在 `viewModelScope.launch(Dispatchers.IO)` 中，绝对不允许在 Main 线程堵塞 UI。
+- **防内存溢出 (OOM Prevention)**：不要对海量数据库表（如拥有数万条记录的 `movies`）执行不带 `LIMIT` 且不带分页的查询。所有列表滚动必须配合 `LazyVerticalGrid` 和 ViewModel 内的 offset/limit 分页逻辑加载。
+- **SAF (Storage Access Framework) 保护**：外部文件的挂载依赖于系统授权，在调用任何 DB 之前，必须安全地校验 `DatabaseHolder.db != null`。
+
+## 3. 新功能扩展边界 (Feature Extension Boundaries)
+- **大模型交互边界**：LLM 相关的网络请求、API Key 读取必须独立于 `ai/` 或是专属的 Package，不可与原生的离线 `BrowseRepository` 耦合。
+- **配置文件**：用户的配置项（Theme、API Key）严禁写入 `GPDb.db`。所有的 App 自身运行设置，必须且只能存在于 Jetpack `DataStore` 中，保持与核心数据的绝对解耦。
+
+## 4. 视觉与可用性 (Premium UI/UX)
+- 遵循边缘到边缘 (Edge-to-Edge) 设计。确保 `TopAppBar` 位于 Scaffold 中，列表内容允许滚动到导航栏/系统手势栏底下（通过 `WindowInsets`）。
+- 交互必须包含 Haptics（震动反馈）和 Loading 骨架屏（或者透明度的平滑过渡 Crossfade），拒绝生硬的数据闪现。
