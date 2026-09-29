@@ -2,6 +2,7 @@ package com.gpdb.android.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Movie
@@ -25,10 +26,13 @@ import com.gpdb.android.ui.browse.*
 import com.gpdb.android.ui.detail.*
 import com.gpdb.android.ui.home.HomeScreen
 import com.gpdb.android.ui.home.HomeViewModel
+import com.gpdb.android.ui.homefeed.HomeFeedScreen
+import com.gpdb.android.ui.homefeed.HomeFeedViewModel
 import com.gpdb.android.ui.library.*
 
 sealed class Screen(val route: String) {
     object Home : Screen("home")
+    object Movies : Screen("movies")
     object Performers : Screen("performers")
     object Studios : Screen("studios")
     object Library : Screen("library")
@@ -64,6 +68,7 @@ fun GpdbNavGraph(
 
     val isBottomBarVisible = currentDestination?.route in listOf(
         Screen.Home.route,
+        Screen.Movies.route,
         Screen.Performers.route,
         Screen.Studios.route,
         Screen.Library.route
@@ -74,11 +79,23 @@ fun GpdbNavGraph(
             if (isBottomBarVisible) {
                 NavigationBar {
                     NavigationBarItem(
-                        icon = { Icon(Icons.Default.Movie, contentDescription = null) },
-                        label = { Text("影片") },
+                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                        label = { Text("主页") },
                         selected = currentDestination?.hierarchy?.any { it.route == Screen.Home.route } == true,
                         onClick = {
                             navController.navigate(Screen.Home.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.Movie, contentDescription = null) },
+                        label = { Text("影片") },
+                        selected = currentDestination?.hierarchy?.any { it.route == Screen.Movies.route } == true,
+                        onClick = {
+                            navController.navigate(Screen.Movies.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
@@ -131,10 +148,53 @@ fun GpdbNavGraph(
             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             composable(Screen.Home.route) {
+                val feedViewModel: HomeFeedViewModel = viewModel()
+                HomeFeedScreen(
+                    viewModel = feedViewModel,
+                    physicalRootPath = physicalRootPath,
+                    onMovieClick = { movieId -> navController.navigate(Screen.MovieDetail.createRoute(movieId)) },
+                    onEpisodeClick = { episodeId -> navController.navigate(Screen.EpisodeDetail.createRoute(episodeId)) },
+                    onPerformerClick = { perfId -> navController.navigate(Screen.PerformerDetail.createRoute(perfId)) },
+                    onSeriesClick = { series -> navController.navigate(Screen.FilteredMovieList.createRoute("series", series)) },
+                    onSearchClick = { navController.navigate(Screen.Search.route) },
+                    onNavigateToMovies = {
+                        navController.navigate(Screen.Movies.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onNavigateToEpisodes = {
+                        homeViewModel.setHomeTab(com.gpdb.android.ui.home.HomeTab.EPISODES)
+                        navController.navigate(Screen.Movies.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onNavigateToPerformers = {
+                        navController.navigate(Screen.Performers.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onNavigateToStudios = {
+                        navController.navigate(Screen.Studios.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+            }
+
+            composable(Screen.Movies.route) {
                 HomeScreen(
                     viewModel = homeViewModel,
                     onMovieClick = { movieId ->
-                        navController.navigate(Screen.MovieDetail.createRoute(movieId)) },
+                        navController.navigate(Screen.MovieDetail.createRoute(movieId))
+                    },
                     onStudioClick = { studio -> navController.navigate(Screen.StudioDetail.createRoute(studio)) },
                     onPerformerClick = { perfId ->
                         navController.navigate(Screen.PerformerDetail.createRoute(perfId))
@@ -143,8 +203,11 @@ fun GpdbNavGraph(
                     onSearchClick = {
                         navController.navigate(Screen.Search.route)
                     },
-                    onSeriesClick = { seriesRoot -> 
-                        navController.navigate(Screen.FilteredMovieList.createRoute("series", seriesRoot))
+                    onSeriesClick = { series ->
+                        navController.navigate(Screen.FilteredMovieList.createRoute("series", series))
+                    },
+                    onEpisodeClick = { episodeId ->
+                        navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
                     }
                 )
             }

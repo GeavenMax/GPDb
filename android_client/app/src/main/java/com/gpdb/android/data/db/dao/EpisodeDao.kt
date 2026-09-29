@@ -30,4 +30,16 @@ interface EpisodeDao {
     /** 查询所有已收录的分集 ID */
     @Query("SELECT id FROM episodes")
     suspend fun getAllEpisodeIds(): List<Long>
+
+    /** 分页查询分集列表（默认按发售日期与 ID 倒序） */
+    @Query("SELECT * FROM episodes ORDER BY release_date DESC, id DESC LIMIT :limit OFFSET :offset")
+    suspend fun getEpisodesPaged(limit: Int, offset: Int): List<EpisodeEntity>
+
+    /** 分页查询指定发布日期之后的分集 */
+    @Query("SELECT * FROM episodes WHERE release_date >= :minDate ORDER BY release_date DESC, id DESC LIMIT :limit OFFSET :offset")
+    suspend fun getEpisodesByMinDate(minDate: String, limit: Int, offset: Int): List<EpisodeEntity>
+
+    /** 获取分集总数 */
+    @Query("SELECT COUNT(*) FROM episodes")
+    suspend fun getEpisodeCount(): Int
 }

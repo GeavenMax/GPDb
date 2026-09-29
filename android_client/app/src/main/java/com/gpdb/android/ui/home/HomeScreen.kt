@@ -16,6 +16,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gpdb.android.ui.browse.SeriesListContent
 import com.gpdb.android.ui.browse.SeriesListViewModel
@@ -30,7 +34,8 @@ fun HomeScreen(
     onPerformerClick: (Long) -> Unit,
     onRemountClick: () -> Unit,
     onSearchClick: () -> Unit,
-    onSeriesClick: (String) -> Unit
+    onSeriesClick: (String) -> Unit,
+    onEpisodeClick: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val seriesViewModel: SeriesListViewModel = viewModel()
@@ -39,7 +44,7 @@ fun HomeScreen(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text("GPDb") },
+                    title = { Text("影库") },
                     actions = {
                         var showSortMenu by remember { mutableStateOf(false) }
                         IconButton(onClick = { showSortMenu = true }) {
@@ -78,10 +83,34 @@ fun HomeScreen(
                         text = { Text("全部影片") }
                     )
                     Tab(
+                        selected = uiState.homeTab == HomeTab.EPISODES,
+                        onClick = { viewModel.setHomeTab(HomeTab.EPISODES) },
+                        text = { Text("分集") }
+                    )
+                    Tab(
                         selected = uiState.homeTab == HomeTab.SERIES,
                         onClick = { viewModel.setHomeTab(HomeTab.SERIES) },
                         text = { Text("系列") }
                     )
+                }
+
+                // 快速时间/入库筛选胶囊条
+                if (uiState.homeTab == HomeTab.ALL_MOVIES || uiState.homeTab == HomeTab.EPISODES) {
+                    LazyRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(DateFilter.entries) { filter ->
+                            FilterChip(
+                                selected = uiState.dateFilter == filter,
+                                onClick = { viewModel.setDateFilter(filter) },
+                                label = { Text(filter.label, style = MaterialTheme.typography.labelSmall) },
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -120,54 +149,100 @@ fun HomeScreen(
                     }
                 }
                 is MountStatus.Ready -> {
-                    if (uiState.homeTab == HomeTab.ALL_MOVIES) {
-                        val gridState = androidx.compose.runtime.saveable.rememberSaveable(
-                            saver = androidx.compose.foundation.lazy.grid.LazyGridState.Saver,
-                            key = "home_all_movies_grid"
-                        ) {
-                            androidx.compose.foundation.lazy.grid.LazyGridState()
-                        }
-                        LazyVerticalGrid(
-                            state = gridState,                            columns = GridCells.Fixed(3),
-                            contentPadding = PaddingValues(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(
-                                items = uiState.movies,
-                                key = { it.id ?: it.hashCode() },
-                                contentType = { "movie" }
-                            ) { movie ->
-                                MovieGridItem(
-                                    movie = movie,
-                                    physicalRootPath = uiState.physicalRootPath,
-                                    onClick = { onMovieClick(movie.id ?: 0) }
-                                ,
-    onStudioClick = { studio -> onStudioClick(studio) }
-)
+                    when (uiState.homeTab) {
+                        HomeTab.ALL_MOVIES -> {
+                            val gridState = androidx.compose.runtime.saveable.rememberSaveable(
+                                saver = androidx.compose.foundation.lazy.grid.LazyGridState.Saver,
+                                key = "home_all_movies_grid"
+                            ) {
+                                androidx.compose.foundation.lazy.grid.LazyGridState()
                             }
-                            if (uiState.isLoadingMore) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                        CircularProgressIndicator()
+                            LazyVerticalGrid(
+                                state = gridState,
+                                columns = GridCells.Fixed(3),
+                                contentPadding = PaddingValues(8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(
+                                    items = uiState.movies,
+                                    key = { it.id ?: it.hashCode() },
+                                    contentType = { "movie" }
+                                ) { movie ->
+                                    MovieGridItem(
+                                        movie = movie,
+                                        physicalRootPath = uiState.physicalRootPath,
+                                        onClick = { onMovieClick(movie.id ?: 0) },
+                                        onStudioClick = { studio -> onStudioClick(studio) },
+                                        isNew = (movie.releaseYear != null && movie.releaseYear >= 2026) || uiState.dateFilter == DateFilter.RECENT_SCRAPED
+                                    )
+                                }
+                                if (uiState.isLoadingMore) {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
+                                } else if (uiState.hasMore) {
+                                    item(span = { GridItemSpan(maxLineSpan) }) {
+                                        LaunchedEffect(Unit) {
+                                            viewModel.loadMoreMovies()
+                                        }
                                     }
                                 }
-                            } else if (uiState.hasMore) {
-                                item(span = { GridItemSpan(maxLineSpan) }) {
-                                    LaunchedEffect(Unit) {
-                                        viewModel.loadMoreMovies()
+                            }
+                        }
+                        HomeTab.EPISODES -> {
+                            val listState = androidx.compose.runtime.saveable.rememberSaveable(
+                                saver = LazyListState.Saver,
+                                key = "home_episodes_list"
+                            ) {
+                                LazyListState()
+                            }
+                            LazyColumn(
+                                state = listState,
+                                contentPadding = PaddingValues(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                items(
+                                    items = uiState.episodes,
+                                    key = { it.id ?: it.hashCode().toLong() }
+                                ) { episode ->
+                                    com.gpdb.android.ui.components.EpisodeListItem(
+                                        episodeId = episode.id,
+                                        title = episode.title,
+                                        thumbnailUrl = episode.thumbnailUrl,
+                                        physicalRootPath = uiState.physicalRootPath,
+                                        releaseDate = episode.releaseDate,
+                                        studioName = episode.studioName,
+                                        isNew = (episode.releaseDate != null && episode.releaseDate.startsWith("2026")) || uiState.dateFilter == DateFilter.RECENT_SCRAPED,
+                                        onClick = { episode.id?.let(onEpisodeClick) }
+                                    )
+                                }
+                                if (uiState.episodesLoadingMore) {
+                                    item {
+                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                        }
+                                    }
+                                } else if (uiState.episodesHasMore) {
+                                    item {
+                                        LaunchedEffect(Unit) {
+                                            viewModel.loadMoreEpisodes()
+                                        }
                                     }
                                 }
                             }
                         }
-                    } else {
-                        // Series Tab
-                        SeriesListContent(
-                            viewModel = seriesViewModel,
-                            onSeriesClick = onSeriesClick,
-                            physicalRootPath = uiState.physicalRootPath
-                        )
+                        HomeTab.SERIES -> {
+                            SeriesListContent(
+                                viewModel = seriesViewModel,
+                                onSeriesClick = onSeriesClick,
+                                physicalRootPath = uiState.physicalRootPath
+                            )
+                        }
                     }
                 }
             }

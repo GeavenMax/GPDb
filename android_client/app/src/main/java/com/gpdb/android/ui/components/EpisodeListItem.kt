@@ -31,8 +31,12 @@ fun EpisodeListItem(
     modifier: Modifier = Modifier,
     releaseDate: String? = null,
     studioName: String? = null,
+    isNew: Boolean = false,
+    badgeText: String? = null,
     onClick: () -> Unit
 ) {
+    val displayBadge = badgeText ?: if (isNew || (releaseDate != null && releaseDate.startsWith("2026"))) "NEW" else null
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -47,18 +51,38 @@ fun EpisodeListItem(
                 .fillMaxWidth()
                 .height(84.dp)
         ) {
-            GpdbAsyncImage(
-                url = thumbnailUrl,
-                physicalRootPath = physicalRootPath,
-                contentDescription = title,
-                fallbackEntityId = episodeId,
-                defaultFolder = "Episodes",
-                contentScale = ContentScale.Crop,
+            Box(
                 modifier = Modifier
                     .width(140.dp)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp))
-            )
+            ) {
+                GpdbAsyncImage(
+                    url = thumbnailUrl,
+                    physicalRootPath = physicalRootPath,
+                    contentDescription = title,
+                    fallbackEntityId = episodeId,
+                    defaultFolder = "Episodes",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                if (displayBadge != null) {
+                    androidx.compose.material3.Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(bottomEnd = 6.dp),
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.TopStart)
+                    ) {
+                        Text(
+                            text = displayBadge,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                        )
+                    }
+                }
+            }
 
             Column(
                 modifier = Modifier

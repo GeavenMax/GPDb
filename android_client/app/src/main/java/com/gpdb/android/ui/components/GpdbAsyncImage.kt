@@ -23,7 +23,7 @@ import com.gpdb.android.image.GpdbImageData
 fun GpdbAsyncImage(
     url: String?,
     physicalRootPath: String,
-    contentDescription: String?,
+    contentDescription: String? = null,
     modifier: Modifier = Modifier,
     fallbackEntityId: Long? = null,
     defaultFolder: String = "Covers", // "Covers" | "Performers" | "Episodes"

@@ -19,11 +19,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.gpdb.android.data.db.entities.MovieEntity
 
+import androidx.compose.material3.Surface
+
 /**
  * 统一的影片网格卡片组件
  *
  * 用于：
- * - HomeScreen (全部影片)
+ * - HomeScreen / MovieBrowseScreen (全部影片)
  * - LibraryScreen (收藏/想看/已看)
  * - FilteredMovieListScreen (分类/厂牌/系列影片列表)
  * - SearchScreen (影片搜索结果)
@@ -35,8 +37,12 @@ fun MovieGridItem(
     physicalRootPath: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isNew: Boolean = false,
+    badgeText: String? = null,
     onStudioClick: ((String) -> Unit)? = null
 ) {
+    val displayBadge = badgeText ?: if (isNew || (movie.releaseYear != null && movie.releaseYear >= 2026)) "NEW" else null
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -60,6 +66,23 @@ fun MovieGridItem(
                     alignment = Alignment.TopCenter,
                     modifier = Modifier.fillMaxSize()
                 )
+
+                if (displayBadge != null) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(topStart = 12.dp, bottomEnd = 8.dp),
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.align(Alignment.TopStart)
+                    ) {
+                        Text(
+                            text = displayBadge,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
 
                 // 底部渐变半透明信息栏 (年份 + 时长)
                 Box(

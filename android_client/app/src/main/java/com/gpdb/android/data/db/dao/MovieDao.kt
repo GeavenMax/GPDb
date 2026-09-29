@@ -28,6 +28,14 @@ interface MovieDao {
     @Query("SELECT * FROM movies ORDER BY release_year DESC, id DESC LIMIT :limit OFFSET :offset")
     suspend fun getMoviesByYear(limit: Int, offset: Int): List<MovieEntity>
 
+    /** 按发行年份筛选并降序分页查询 */
+    @Query("SELECT * FROM movies WHERE release_year >= :minYear ORDER BY release_year DESC, id DESC LIMIT :limit OFFSET :offset")
+    suspend fun getMoviesByMinYear(minYear: Int, limit: Int, offset: Int): List<MovieEntity>
+
+    /** 按入库时间倒序分页（用于最近入库筛选） */
+    @Query("SELECT * FROM movies ORDER BY scraped_at DESC, id DESC LIMIT :limit OFFSET :offset")
+    suspend fun getMoviesByScrapedAt(limit: Int, offset: Int): List<MovieEntity>
+
     /** 根据 ID 获取单部影片详情 */
     @Query("SELECT * FROM movies WHERE id = :movieId LIMIT 1")
     suspend fun getMovieById(movieId: Long): MovieEntity?

@@ -5,9 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.9.0] - 2026-09-29
 
 ### Added
+- **macOS「主页」发现流完整迁移至 Android (macOS Home Feed Discovery Tab Migration)**：
+  - 完美复刻 macOS 桌面端 HomeView 首页发现流体验，新增五大全新高能版块与全新底部首位“主页”Tab。
+  - **镇馆之选 (Hero Spotlight Carousel)**：精选高分典藏影片大图横向滑块，带背景氛围模糊光晕（Ambient Blur）、评分/年份/片商多重徽章、双语标题、剧情简介以及“立即探索”与“换一部”交互。
+  - **往年今日 · 经典首映 (On This Day in History)**：基于当前日期的历史今日首映影片横向流，附带“X年前”首映徽章；当日若无影片自动优雅降级为当月经典。
+  - **今日星光 · 标志面孔 (Star Spotlight)**：精选标志性演员圆形头像流，展示演员代表作部数，支持一键直达演员档案。
+  - **经典系列大放送 (Series & Franchises Showcase)**：热门系列横向展示流，探索各厂牌标志性系列影片。
+  - **随心探索 · 盲盒发现 (Lucky Discovery)**：随机抽取 6 部未探索影片，配备骰子旋转动画的“换一批”换盘按钮。
+  - **影库纵览与快捷探索 (Library Quick Stats)**：影片、分集、演员、片商 4 大核心维度统计磁贴卡片，点击直接无缝跳转至对应模块。
+- **影片二级菜单新增“分集”专属展示页 (Dedicated Episodes Tab in Movies Screen)**：
+  - 在“影片”界面的二级标签“全部影片”与“系列”之间无缝插入“分集”展示页（全部影片 | 分集 | 系列）。
+  - 支持全库数万个分集的分页瀑布流展示，标准化横向卡片布局，包含所属影片海报、分集序号、标题、时长与排片日期。
+- **最近入库/发行高亮徽章与时间多维度筛选 (New Entry Badges & Flexible Date Filtering)**：
+  - 在影片海报网格卡片与分集列表中新增“NEW”/“最新入库”高亮质感徽章，让新近刮削入库的内容在全库中一目了然。
+  - 在影片与分集列表顶部引入多维度时间过滤胶囊栏（全部、最新入库、最近30天、最近90天、最近一年），支持用户快速按发行时间或入库时间溯源。
 - **原生增量网络刮削引擎 (Native Incremental Scraper Engine)**：
   - 在 Android 移动端原生实现对官方数据源（`/newm` 影片, `/newe` 分集, `/newp` 演员 及对应详情页）的高效增量抓取与 HTML 解析引擎（`GpdbScraperEngine`）。
   - 智能比对本地数据库已有条目 ID，只抓取最新发布的条目，实现毫秒级快速增量检测。
