@@ -44,7 +44,7 @@ fun FilteredMovieListScreen(
                     }
                 },
                 actions = {
-                    if (filterType == "series") {
+                    if (filterType == "series" || filterType == "director") {
                         IconButton(onClick = { viewModel.toggleFavorite() }) {
                             Icon(
                                 imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,

@@ -47,9 +47,9 @@ class FilteredMovieListViewModel : ViewModel() {
                 }
                 
                 var isFav = false
-                if (filterType == "series") {
+                if (filterType == "series" || filterType == "director") {
                     val userRepo = com.gpdb.android.data.repository.UserRepository(db, db.userActionDao())
-                    isFav = userRepo.isFavorite("series", filterValue)
+                    isFav = userRepo.isFavorite(filterType, filterValue)
                 }
 
                 _uiState.update { it.copy(isLoading = false, movies = list, isFavorite = isFav) }
@@ -60,14 +60,14 @@ class FilteredMovieListViewModel : ViewModel() {
     }
 
     fun toggleFavorite() {
-        if (_uiState.value.filterType != "series") return
-        val seriesName = _uiState.value.title
-        if (seriesName.isBlank()) return
+        val type = _uiState.value.filterType
+        if (type != "series" && type != "director") return
+        val entityKey = _uiState.value.title
+        if (entityKey.isBlank()) return
         val db = DatabaseHolder.db ?: return
         val newFav = !_uiState.value.isFavorite
         viewModelScope.launch(Dispatchers.IO) {
-            // Save the exact identifier (Studio|||SeriesRoot) so different studios are not mixed
-            com.gpdb.android.data.repository.UserRepository(db, db.userActionDao()).toggleFavorite("series", seriesName, newFav)
+            com.gpdb.android.data.repository.UserRepository(db, db.userActionDao()).toggleFavorite(type, entityKey, newFav)
             _uiState.update { it.copy(isFavorite = newFav) }
         }
     }

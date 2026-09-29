@@ -3,6 +3,7 @@ package com.gpdb.android
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,11 +23,13 @@ import com.gpdb.android.ui.setup.SetupScreen
 import com.gpdb.android.ui.theme.GPDbTheme
 import kotlinx.coroutines.launch
 import java.io.File
-import androidx.fragment.app.FragmentActivity
 import com.gpdb.android.data.settings.AppSettingsRepository
 import com.gpdb.android.data.settings.ThemeMode
+import com.gpdb.android.data.analytics.UserAnalyticsRepository
 import com.gpdb.android.ui.lock.AppLockOverlay
 import com.gpdb.android.ui.lock.FakeCalculatorScreen
+import com.gpdb.android.util.AppLanguage
+import com.gpdb.android.util.LocalAppLanguage
 import com.gpdb.android.util.PanicSensorManager
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -42,6 +45,7 @@ class MainActivity : FragmentActivity() {
     private val isInFakeCalculatorMode = mutableStateOf(false)
     private val isAppLocked = mutableStateOf(false)
     private var lastBackgroundTimestamp: Long = 0L
+    private var focusStartTime: Long = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,43 +98,66 @@ class MainActivity : FragmentActivity() {
             }
         }
 
-        setContent {
-            val themeMode by appSettingsRepository.themeModeFlow.collectAsState(initial = ThemeMode.SYSTEM)
-            val dynamicColor by appSettingsRepository.dynamicColorFlow.collectAsState(initial = true)
-            val isSystemDark = isSystemInDarkTheme()
-            
-            val useDarkTheme = when (themeMode) {
-                ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
-                ThemeMode.SYSTEM -> isSystemDark
+        // 5. 周期性持久化专注时长
+        lifecycleScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(15_000)
+                if (focusStartTime > 0L) {
+                    val now = System.currentTimeMillis()
+                    val deltaSeconds = (now - focusStartTime) / 1000L
+                    if (deltaSeconds > 0) {
+                        UserAnalyticsRepository.getInstance(this@MainActivity).addFocusSeconds(deltaSeconds)
+                        focusStartTime = now
+                    }
+                }
             }
-            
-            GPDbTheme(darkTheme = useDarkTheme, dynamicColor = dynamicColor) {
-                val inFakeCalc by isInFakeCalculatorMode
-                val locked by isAppLocked
-                val currentPin by appSettingsRepository.appLockPinFlow.collectAsState(initial = "")
-                val biometricEnabled by appSettingsRepository.appLockBiometricEnabledFlow.collectAsState(initial = true)
+        }
 
-                if (inFakeCalc) {
-                    FakeCalculatorScreen(
-                        unlockPin = currentPin,
-                        onUnlock = {
-                            isInFakeCalculatorMode.value = false
-                        }
-                    )
-                } else if (locked) {
-                    AppLockOverlay(
-                        correctPin = currentPin,
-                        biometricEnabled = biometricEnabled,
-                        onUnlocked = {
-                            isAppLocked.value = false
-                        }
-                    )
+        setContent {
+            val themeChoice by appSettingsRepository.themeFlow.collectAsState(initial = "auto")
+            val dynamicColor by appSettingsRepository.dynamicColorFlow.collectAsState(initial = false)
+            val langPref by appPreferences.languageFlow.collectAsState(initial = "system")
+
+            val currentAppLang = remember(langPref) {
+                AppLanguage.resolveEffective(AppLanguage.fromCode(langPref))
+            }
+
+            LaunchedEffect(langPref) {
+                val localeList = if (langPref == "system") {
+                    androidx.core.os.LocaleListCompat.getEmptyLocaleList()
                 } else {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
+                    androidx.core.os.LocaleListCompat.forLanguageTags(langPref)
+                }
+                androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(localeList)
+            }
+
+            CompositionLocalProvider(LocalAppLanguage provides currentAppLang) {
+                GPDbTheme(themeChoice = themeChoice, dynamicColor = dynamicColor) {
+                    val inFakeCalc by isInFakeCalculatorMode
+                    val locked by isAppLocked
+                    val currentPin by appSettingsRepository.appLockPinFlow.collectAsState(initial = "")
+                    val biometricEnabled by appSettingsRepository.appLockBiometricEnabledFlow.collectAsState(initial = true)
+
+                    if (inFakeCalc) {
+                        FakeCalculatorScreen(
+                            unlockPin = currentPin,
+                            onUnlock = {
+                                isInFakeCalculatorMode.value = false
+                            }
+                        )
+                    } else if (locked) {
+                        AppLockOverlay(
+                            correctPin = currentPin,
+                            biometricEnabled = biometricEnabled,
+                            onUnlocked = {
+                                isAppLocked.value = false
+                            }
+                        )
+                    } else {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = MaterialTheme.colorScheme.background
+                        ) {
                         val isMounted by mountPreferences.isMountedFlow.collectAsState(initial = false)
                         val mountRoot by mountPreferences.mountRootFlow.collectAsState(initial = null)
                         val dbPath by mountPreferences.dbPathFlow.collectAsState(initial = null)
@@ -186,6 +213,7 @@ class MainActivity : FragmentActivity() {
             }
         }
     }
+    }
 
     private fun handlePanicTriggered() {
         lifecycleScope.launch {
@@ -208,6 +236,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onResume() {
         super.onResume()
+        focusStartTime = System.currentTimeMillis()
         lifecycleScope.launch {
             if (appSettingsRepository.panicSwitchEnabledFlow.first()) {
                 panicSensorManager.startListening()
@@ -225,6 +254,13 @@ class MainActivity : FragmentActivity() {
 
     override fun onPause() {
         super.onPause()
+        if (focusStartTime > 0L) {
+            val durationSeconds = (System.currentTimeMillis() - focusStartTime) / 1000L
+            if (durationSeconds > 0) {
+                UserAnalyticsRepository.getInstance(this).addFocusSeconds(durationSeconds)
+            }
+            focusStartTime = 0L
+        }
         lastBackgroundTimestamp = System.currentTimeMillis()
         panicSensorManager.stopListening()
     }

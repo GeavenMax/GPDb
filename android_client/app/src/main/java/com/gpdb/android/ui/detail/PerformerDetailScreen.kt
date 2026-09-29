@@ -155,10 +155,19 @@ fun PerformerDetailScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             
+                            val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+                            val isChinese = currentLang == com.gpdb.android.util.AppLanguage.ZH_CN || currentLang == com.gpdb.android.util.AppLanguage.ZH_TW
+
                             val basicDetails = listOfNotNull(
-                                performer.height?.takeIf { it.isNotBlank() && it != "none available" }?.let { "身高 $it" },
-                                performer.weight?.takeIf { it.isNotBlank() && it != "none available" }?.let { "体重 $it" },
-                                performer.build?.takeIf { it.isNotBlank() && it != "none available" }?.let { "体型 $it" }
+                                performer.height?.takeIf { it.isNotBlank() && it != "none available" }?.let {
+                                    "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("height", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
+                                },
+                                performer.weight?.takeIf { it.isNotBlank() && it != "none available" }?.let {
+                                    "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("weight", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
+                                },
+                                performer.build?.takeIf { it.isNotBlank() && it != "none available" }?.let {
+                                    "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("build", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.translate(it, isChinese)}"
+                                }
                             )
                             
                             @OptIn(ExperimentalLayoutApi::class)
@@ -181,16 +190,19 @@ fun PerformerDetailScreen(
                         }
                     }
 
-                    // 更多生理特征 (折叠)
+                    // 更多生理特征 (折叠并全量汉化)
+                    val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+                    val isChinese = currentLang == com.gpdb.android.util.AppLanguage.ZH_CN || currentLang == com.gpdb.android.util.AppLanguage.ZH_TW
+
                     val advancedDetails = listOfNotNull(
-                        performer.hair?.let { "发色 (Hair)" to it },
-                        performer.eyes?.let { "瞳色 (Eyes)" to it },
-                        performer.facialHair?.let { "胡须 (Facial Hair)" to it },
-                        performer.bodyHair?.let { "体毛 (Body Hair)" to it },
-                        performer.skin?.let { "肤色 (Skin)" to it },
-                        performer.dickSize?.let { "生理特征尺寸 (Dick Size)" to it },
-                        performer.foreskin?.let { "包皮 (Foreskin)" to it },
-                        performer.tattoos?.let { "纹身 (Tattoos)" to it }
+                        performer.hair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("hair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.eyes?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("eyes", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.facialHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("facialHair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.bodyHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("bodyHair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.skin?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("skin", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.dickSize?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("dickSize", isChinese) to com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese) },
+                        performer.foreskin?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("foreskin", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.tattoos?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("tattoos", isChinese) to com.gpdb.android.util.GlossaryHelper.trTattoo(it, isChinese) }
                     ).filter { it.second.isNotBlank() && it.second != "none available" }
 
                     if (advancedDetails.isNotEmpty()) {

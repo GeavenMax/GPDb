@@ -13,7 +13,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gpdb.android.image.PathResolver
+import com.gpdb.android.data.db.SandboxDatabaseInitializer
 import com.gpdb.android.data.preferences.MountPreferences
 import kotlinx.coroutines.launch
 
@@ -34,15 +37,15 @@ import kotlinx.coroutines.launch
 //
 //  流程图：
 //  ┌──────────────────────────────────────────────────────┐
-//  │  步骤 1：检查 MANAGE_EXTERNAL_STORAGE               │
-//  │  ├─ 未授权 → [授权按钮] → 跳转系统设置             │
-//  │  └─ 已授权 → 步骤 2                                 │
+//  │  方案 A（推荐）：一键创建本地沙盒影库 (零外部依赖)     │
+//  │  └─ 点击 → 创建私有沙盒 SQLite → 挂载进入应用        │
 //  ├──────────────────────────────────────────────────────┤
-//  │  步骤 2：选择 GPDb 根目录                           │
-//  │  ├─ [选择目录按钮] → ACTION_OPEN_DOCUMENT_TREE      │
-//  │  ├─ 收到 URI → PathResolver 还原绝对物理路径        │
-//  │  ├─ 校验 GPDb.db 与 GPDb_Images.zip 是否存在       │
-//  │  └─ DataStore 持久化绝对路径 → onMountComplete()    │
+//  │  方案 B：挂载已有数据包 (电脑端迁移)                 │
+//  │  ├─ 步骤 1：检查 MANAGE_EXTERNAL_STORAGE             │
+//  │  │   └─ 未授权 → [授权按钮] → 跳转系统设置           │
+//  │  └─ 步骤 2：选择 GPDb 根目录                         │
+//  │      ├─ [选择目录按钮] → ACTION_OPEN_DOCUMENT_TREE    │
+//  │      └─ 校验并挂载 GPDb.db 与 GPDb_Images.zip         │
 //  └──────────────────────────────────────────────────────┘
 // ============================================================
 
@@ -62,6 +65,7 @@ fun SetupScreen(
     var dbExists       by remember { mutableStateOf(false) }
     var zipExists      by remember { mutableStateOf(false) }
     var errorMessage   by remember { mutableStateOf<String?>(null) }
+    var isCreatingSandbox by remember { mutableStateOf(false) }
 
     // ── 重新进入前台时刷新权限状态（用户在系统设置开启权限后返回）
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -125,15 +129,16 @@ fun SetupScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 32.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             // App 图标 + 标题
             Icon(
                 imageVector = Icons.Outlined.Movie,
                 contentDescription = null,
-                modifier = Modifier.size(72.dp),
+                modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.primary,
             )
             Text(
@@ -142,13 +147,90 @@ fun SetupScreen(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "首次使用需要完成两步初始化配置，\n让 App 读取你的本地影库数据。",
+                text = "请选择影库初始化方式，开启你的全景影库体验。",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
 
-            Spacer(Modifier.height(8.dp))
+            // ── 推荐：全新用户免配置开箱 ──────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Outlined.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = "新手开箱 / 全新体验",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Text(
+                        text = "尚未准备电脑端导出的 GPDb.db 或图片包？无需担心！直接在手机专属沙盒内一键创建全新空白影库，无需外部存储权限，即可立即探索全部功能并支持在线刮削更新。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FilledTonalButton(
+                        onClick = {
+                            scope.launch {
+                                isCreatingSandbox = true
+                                try {
+                                    val sandboxDir = SandboxDatabaseInitializer.initializeSandbox(context)
+                                    mountPrefs.saveMountRoot(sandboxDir.absolutePath)
+                                    onMountComplete()
+                                } catch (e: Exception) {
+                                    errorMessage = "初始化沙盒影库失败: ${e.message}"
+                                } finally {
+                                    isCreatingSandbox = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isCreatingSandbox
+                    ) {
+                        if (isCreatingSandbox) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("正在创建本地数据库...")
+                        } else {
+                            Icon(Icons.Outlined.Bolt, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("一键创建本地沙盒影库", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HorizontalDivider(modifier = Modifier.weight(1f))
+                Text(
+                    text = "或从电脑导入已有影库",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                HorizontalDivider(modifier = Modifier.weight(1f))
+            }
 
             // ── 步骤 1：文件访问权限 ─────────────────────────
             SetupStep(

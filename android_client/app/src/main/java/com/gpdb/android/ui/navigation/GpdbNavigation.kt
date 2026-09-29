@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,8 +36,10 @@ sealed class Screen(val route: String) {
     object Movies : Screen("movies")
     object Performers : Screen("performers")
     object Studios : Screen("studios")
+    object Directors : Screen("directors")
     object Library : Screen("library")
     object Settings : Screen("settings")
+    object Analytics : Screen("analytics")
     
     object Search : Screen("search")
     object MovieDetail : Screen("movie_detail/{movieId}") {
@@ -71,6 +74,7 @@ fun GpdbNavGraph(
         Screen.Movies.route,
         Screen.Performers.route,
         Screen.Studios.route,
+        Screen.Directors.route,
         Screen.Library.route
     )
 
@@ -80,7 +84,7 @@ fun GpdbNavGraph(
                 NavigationBar {
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                        label = { Text("主页") },
+                        label = { Text(com.gpdb.android.util.I18n.string("nav.home")) },
                         selected = currentDestination?.hierarchy?.any { it.route == Screen.Home.route } == true,
                         onClick = {
                             navController.navigate(Screen.Home.route) {
@@ -92,7 +96,7 @@ fun GpdbNavGraph(
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Movie, contentDescription = null) },
-                        label = { Text("影片") },
+                        label = { Text(com.gpdb.android.util.I18n.string("nav.movies")) },
                         selected = currentDestination?.hierarchy?.any { it.route == Screen.Movies.route } == true,
                         onClick = {
                             navController.navigate(Screen.Movies.route) {
@@ -104,7 +108,7 @@ fun GpdbNavGraph(
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.People, contentDescription = null) },
-                        label = { Text("演员") },
+                        label = { Text(com.gpdb.android.util.I18n.string("nav.performers")) },
                         selected = currentDestination?.hierarchy?.any { it.route == Screen.Performers.route } == true,
                         onClick = {
                             navController.navigate(Screen.Performers.route) {
@@ -116,7 +120,7 @@ fun GpdbNavGraph(
                     )
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.Business, contentDescription = null) },
-                        label = { Text("片商") },
+                        label = { Text(com.gpdb.android.util.I18n.string("nav.studios")) },
                         selected = currentDestination?.hierarchy?.any { it.route == Screen.Studios.route } == true,
                         onClick = {
                             navController.navigate(Screen.Studios.route) {
@@ -127,8 +131,20 @@ fun GpdbNavGraph(
                         }
                     )
                     NavigationBarItem(
+                        icon = { Icon(Icons.Filled.Videocam, contentDescription = null) },
+                        label = { Text(com.gpdb.android.util.I18n.string("nav.directors")) },
+                        selected = currentDestination?.hierarchy?.any { it.route == Screen.Directors.route } == true,
+                        onClick = {
+                            navController.navigate(Screen.Directors.route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                    NavigationBarItem(
                         icon = { Icon(Icons.Default.VideoLibrary, contentDescription = null) },
-                        label = { Text("我的库") },
+                        label = { Text(com.gpdb.android.util.I18n.string("nav.library")) },
                         selected = currentDestination?.hierarchy?.any { it.route == Screen.Library.route } == true,
                         onClick = {
                             navController.navigate(Screen.Library.route) {
@@ -233,6 +249,16 @@ fun GpdbNavGraph(
                 )
             }
 
+            composable(Screen.Directors.route) {
+                val viewModel: DirectorListViewModel = viewModel()
+                DirectorListScreen(
+                    viewModel = viewModel,
+                    onDirectorClick = { directorName ->
+                        navController.navigate(Screen.FilteredMovieList.createRoute("director", directorName))
+                    }
+                )
+            }
+
             composable(Screen.Library.route) {
                 val viewModel: LibraryViewModel = viewModel()
                 LibraryScreen(
@@ -247,6 +273,9 @@ fun GpdbNavGraph(
                     },
                     onEpisodeClick = { episodeId ->
                         navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                    },
+                    onDirectorClick = { directorName ->
+                        navController.navigate(Screen.FilteredMovieList.createRoute("director", directorName))
                     },
                     onSettingsClick = {
                         navController.navigate(Screen.Settings.route)
@@ -299,6 +328,13 @@ fun GpdbNavGraph(
                     appPreferences = com.gpdb.android.data.preferences.AppPreferences(androidx.compose.ui.platform.LocalContext.current),
                     appSettingsRepository = com.gpdb.android.data.settings.AppSettingsRepository(androidx.compose.ui.platform.LocalContext.current),
                     onRemountClick = onRemountClick,
+                    onBackClick = { navController.popBackStack() },
+                    onNavigateToAnalytics = { navController.navigate(Screen.Analytics.route) }
+                )
+            }
+
+            composable(Screen.Analytics.route) {
+                com.gpdb.android.ui.analytics.AnalyticsScreen(
                     onBackClick = { navController.popBackStack() }
                 )
             }

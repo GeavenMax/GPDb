@@ -43,12 +43,21 @@ class AppSettingsRepository(private val context: Context) {
         val PANIC_ACTION = stringPreferencesKey("panic_action") // "CALCULATOR", "HOME", "KILL"
     }
 
+    val themeFlow: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[THEME_MODE] ?: "auto"
+    }
+
     val themeModeFlow: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
-        try {
-            ThemeMode.valueOf(preferences[THEME_MODE] ?: ThemeMode.SYSTEM.name)
-        } catch (e: Exception) {
-            ThemeMode.SYSTEM
+        val raw = preferences[THEME_MODE] ?: "auto"
+        when (raw.lowercase()) {
+            "light", "classic-light", "glass-light", "my-light" -> ThemeMode.LIGHT
+            "dark", "classic-dark", "glass-dark", "my-dark" -> ThemeMode.DARK
+            else -> ThemeMode.SYSTEM
         }
+    }
+
+    suspend fun setTheme(themeId: String) {
+        context.dataStore.edit { it[THEME_MODE] = themeId }
     }
 
     val dynamicColorFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->

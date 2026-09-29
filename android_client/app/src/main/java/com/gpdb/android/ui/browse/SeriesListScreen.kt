@@ -12,6 +12,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
+import com.gpdb.android.ui.components.SeriesCollageCover
 
 
 import androidx.compose.foundation.clickable
@@ -33,19 +34,6 @@ fun SeriesGridItem(
     physicalRootPath: String,
     onClick: () -> Unit
 ) {
-    val context = LocalContext.current
-    
-    // Default to a fallback if null
-    val relativePath = series.coverUrl?.toImageCachePath()
-
-    val imageData = remember(series.id, physicalRootPath) {
-        GpdbImageData(
-            relativePath = relativePath ?: "",
-            physicalRoot = physicalRootPath,
-            fallbackUrl = series.coverUrl
-        )
-    }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -60,13 +48,11 @@ fun SeriesGridItem(
                     .aspectRatio(0.7f)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(imageData)
-                        .build(),
-                    contentDescription = series.rootTitle,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter,
+                SeriesCollageCover(
+                    sampleCoversRaw = series.sampleCovers,
+                    singleFallbackUrl = series.coverUrl,
+                    physicalRootPath = physicalRootPath,
+                    title = series.rootTitle,
                     modifier = Modifier.fillMaxSize()
                 )
 

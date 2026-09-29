@@ -632,14 +632,11 @@ private fun SeriesShowcaseSection(
                 ) {
                     Column {
                         Box(modifier = Modifier.fillMaxWidth().aspectRatio(0.7f)) {
-                            // 使用首张代表作封面
-                            val firstCover = series.sampleCovers?.split(",")?.firstOrNull()?.trim()
-                            GpdbAsyncImage(
-                                url = firstCover,
+                            com.gpdb.android.ui.components.SeriesCollageCover(
+                                sampleCoversRaw = series.sampleCovers,
+                                singleFallbackUrl = series.coverUrl,
                                 physicalRootPath = physicalRootPath,
-                                contentDescription = series.rootTitle,
-                                defaultFolder = "Covers",
-                                contentScale = ContentScale.Crop,
+                                title = series.rootTitle,
                                 modifier = Modifier.fillMaxSize()
                             )
 

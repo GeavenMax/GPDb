@@ -1,11 +1,21 @@
 package com.gpdb.android.data.repository
 
 import androidx.sqlite.db.SimpleSQLiteQuery
+import com.gpdb.android.data.db.DatabaseHolder
 import com.gpdb.android.data.db.dao.BrowseDao
 import com.gpdb.android.data.db.entities.CategoryGlossaryEntity
 import com.gpdb.android.data.db.entities.MovieEntity
 import com.gpdb.android.data.db.entities.SeriesCollectionEntity
 import com.gpdb.android.data.db.entities.PerformerEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+data class DirectorSummary(
+    val id: Long,
+    val name: String,
+    val siteId: Long?,
+    val worksCount: Int
+)
 
 class BrowseRepository(private val browseDao: BrowseDao) {
 
@@ -95,6 +105,85 @@ class BrowseRepository(private val browseDao: BrowseDao) {
             SimpleSQLiteQuery("SELECT * FROM movies WHERE title LIKE ? || '%' OR title LIKE '%' || ? || '%' ORDER BY release_year DESC, id DESC LIMIT ? OFFSET ?", arrayOf(seriesRoot, seriesRoot, limit, offset))
         }
         return browseDao.getMoviesBySeries(query)
+    }
+
+    suspend fun getDirectorsPaged(
+        sortBy: String = "works",
+        limit: Int = 50,
+        offset: Int = 0,
+        search: String? = null
+    ): List<DirectorSummary> = withContext(Dispatchers.IO) {
+        val searchCondition = if (!search.isNullOrBlank()) "WHERE d.name LIKE ?" else ""
+        val orderClause = if (sortBy == "name") "d.name ASC" else "works_count DESC, d.name ASC"
+        val sql = """
+            SELECT d.id, d.name, d.site_id, COUNT(md.movie_id) as works_count
+            FROM directors d
+            LEFT JOIN movie_directors md ON d.id = md.director_id
+            $searchCondition
+            GROUP BY d.id
+            ORDER BY $orderClause
+            LIMIT ? OFFSET ?
+        """.trimIndent()
+        val args = if (!search.isNullOrBlank()) arrayOf("%${search}%", limit, offset) else arrayOf(limit, offset)
+        val db = DatabaseHolder.db ?: return@withContext emptyList()
+        val cursor = db.openHelper.readableDatabase.query(sql, args)
+        val result = mutableListOf<DirectorSummary>()
+        cursor.use { c ->
+            val idIdx = c.getColumnIndex("id")
+            val nameIdx = c.getColumnIndex("name")
+            val siteIdIdx = c.getColumnIndex("site_id")
+            val worksIdx = c.getColumnIndex("works_count")
+            while (c.moveToNext()) {
+                result.add(
+                    DirectorSummary(
+                        id = c.getLong(idIdx),
+                        name = c.getString(nameIdx),
+                        siteId = if (siteIdIdx >= 0 && !c.isNull(siteIdIdx)) c.getLong(siteIdIdx) else null,
+                        worksCount = if (worksIdx >= 0) c.getInt(worksIdx) else 0
+                    )
+                )
+            }
+        }
+        result
+    }
+
+    suspend fun getFavoriteDirectors(
+        limit: Int = 50,
+        offset: Int = 0,
+        search: String? = null
+    ): List<DirectorSummary> = withContext(Dispatchers.IO) {
+        val searchCondition = if (!search.isNullOrBlank()) "AND d.name LIKE ?" else ""
+        val sql = """
+            SELECT d.id, d.name, d.site_id, COUNT(md.movie_id) as works_count
+            FROM user_favorites uf
+            JOIN directors d ON uf.entity_key = d.name
+            LEFT JOIN movie_directors md ON d.id = md.director_id
+            WHERE uf.entity_type = 'director' $searchCondition
+            GROUP BY d.id
+            ORDER BY uf.created_at DESC
+            LIMIT ? OFFSET ?
+        """.trimIndent()
+        val args = if (!search.isNullOrBlank()) arrayOf("%${search}%", limit, offset) else arrayOf(limit, offset)
+        val db = DatabaseHolder.db ?: return@withContext emptyList()
+        val cursor = db.openHelper.readableDatabase.query(sql, args)
+        val result = mutableListOf<DirectorSummary>()
+        cursor.use { c ->
+            val idIdx = c.getColumnIndex("id")
+            val nameIdx = c.getColumnIndex("name")
+            val siteIdIdx = c.getColumnIndex("site_id")
+            val worksIdx = c.getColumnIndex("works_count")
+            while (c.moveToNext()) {
+                result.add(
+                    DirectorSummary(
+                        id = c.getLong(idIdx),
+                        name = c.getString(nameIdx),
+                        siteId = if (siteIdIdx >= 0 && !c.isNull(siteIdIdx)) c.getLong(siteIdIdx) else null,
+                        worksCount = if (worksIdx >= 0) c.getInt(worksIdx) else 0
+                    )
+                )
+            }
+        }
+        result
     }
 
     suspend fun getMoviesByDirector(director: String, limit: Int = 50, offset: Int = 0): List<MovieEntity> {

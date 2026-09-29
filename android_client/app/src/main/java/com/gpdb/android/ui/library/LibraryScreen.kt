@@ -16,6 +16,10 @@ import com.gpdb.android.ui.components.MovieGridItem
 import com.gpdb.android.ui.components.PerformerGridItem
 import com.gpdb.android.ui.components.SearchTopAppBar
 
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.clickable
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun LibraryScreen(
@@ -26,6 +30,7 @@ fun LibraryScreen(
     onEpisodeClick: (Long) -> Unit,
     onSeriesClick: (String) -> Unit = {},
     onStudioClick: (String) -> Unit = {},
+    onDirectorClick: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -62,7 +67,8 @@ fun LibraryScreen(
                         LibraryTab.FAV_MOVIES to "收藏影片",
                         LibraryTab.FAV_PERFORMERS to "收藏演员",
                         LibraryTab.FAV_SERIES to "收藏系列",
-                        LibraryTab.FAV_EPISODES to "收藏分集"
+                        LibraryTab.FAV_EPISODES to "收藏分集",
+                        LibraryTab.FAV_DIRECTORS to "收藏导演"
                     )
                     tabs.forEach { (tab, text) ->
                         FilterChip(
@@ -141,6 +147,49 @@ fun LibraryScreen(
                                     releaseDate = episode.releaseDate,
                                     onClick = { episode.id?.let { onEpisodeClick(it) } }
                                 )
+                            }
+                        }
+                        LibraryTab.FAV_DIRECTORS -> {
+                            items(
+                                items = uiState.directors,
+                                key = { it.id },
+                                contentType = { "director" },
+                                span = { GridItemSpan(maxLineSpan) }
+                            ) { director ->
+                                ListItem(
+                                    headlineContent = {
+                                        Text(
+                                            text = director.name,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            text = "${director.worksCount} 部作品",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    },
+                                    leadingContent = {
+                                        Surface(
+                                            shape = MaterialTheme.shapes.small,
+                                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(40.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Videocam,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(22.dp)
+                                                )
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.clickable { onDirectorClick(director.name) }
+                                )
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                             }
                         }
                         else -> {

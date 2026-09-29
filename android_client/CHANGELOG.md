@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2026-09-29
+
+### Added
+- **全新「导演」主频道与收藏导演体系 (Directors Tab & Favorites)**：
+  - 底部导航栏新增与 macOS 客户端完全对齐的“导演”Tab (`Screen.Directors`)，直通全库导演全景索引浏览。
+  - 导演列表支持姓名即时搜索、作品总数排序与姓名拼音排序切换，卡片清晰展示导演姓名、总作品数及代表作。
+  - “我的库”专属二级筛选新增“收藏导演”选项卡 (`LibraryTab.FAV_DIRECTORS`)，支持一键查看、收藏与取消收藏心仪导演。
+  - 导演作品集页面 (`FilteredMovieListScreen`) 增加导演收藏快捷心形切换，打通跨维度收藏数据闭环。
+- **全新用户零配置开箱体验与本地私有沙盒影库 (Zero-Config Onboarding & Local Sandbox Database)**：
+  - 针对只安装了 App、尚未准备外部 `GPDb.db` 或 15GB `GPDb_Images.zip` 的全新用户，在启动引导页 (`SetupScreen`) 推出「新手开箱 / 全新体验：一键创建本地沙盒影库」。
+  - 实现 `SandboxDatabaseInitializer`，在内部沙盒 `/data/user/0/<package_name>/files/gpdb_database/` 自动化秒级初始化标准 SQLite 数据库与 Room 所需全套结构表（包含 movies, performers, movie_performers, episodes, episode_performers, directors, movie_directors, series_collections, user_favorites, user_movie_data, scraped_entries 等）。
+  - **零外部存储权限依赖**：全新用户无需开启系统“所有文件访问权限”即可直接进入 App，零门槛快速体验完整界面与内置在线刮削更新。
+  - 支持后续无缝导入或重新挂载电脑端导出的外部大文件完整影库。
+- **多语言国际化系统深度对齐 (7-Language Multi-Language Engine)**：
+  - 彻底与 macOS 客户端同步，支持 7 大主流语言及系统自适应跟随：简体中文 (`zh-CN`)、繁体中文 (`zh-TW`)、英语 (`en`)、日语 (`ja`)、意大利语 (`it`)、西班牙语 (`es`)、德语 (`de`) 以及系统默认 (`system`)。
+  - 引入响应式 `LocalAppLanguage` CompositionLocal 与 `I18n.string(key)`，彻底修复“在设置中切换语言后界面不实时响应”的问题，切换语言瞬间全局 UI 毫秒级重绘，无需重启应用。
+- **macOS 六大专属主题与自适应色板同步 (macOS Theme Palette Synchronization)**：
+  - 同步 macOS 客户端 6 套高质感色彩主题：毛玻璃暗色 (`glass-dark`)、毛玻璃亮色 (`glass-light`)、经典深黑 (`classic-dark`)、经典浅白 (`classic-light`)、轻奢黑紫 (`my-dark`)、轻奢亮彩 (`my-light`)，以及跟随系统的自适应模式 (`auto`)。
+  - 设置页提供直观的可视化调色板圆点迷你色样预览（Mini Color Swatches），点击即刻全局切换，支持原生 Android 12+ Dynamic Color（Material You）动态色彩联动。
+- **100% 本地隐私使用统计看板 (Local Usage Analytics Dashboard)**：
+  - 新增 `UserAnalyticsRepository` 与 `AnalyticsScreen`，全天候本地精准记录并呈现：
+    - 累计专注浏览时长（秒级精确心跳统计与后台挂起即时结算）。
+    - 浏览量统计：影片浏览总数、分集浏览总数、演员档案查看数。
+    - 交互指标：全库搜索次数、收藏条目总数、个人星级打分次数、AI 双语翻译触发次数。
+    - 习惯洞察：深夜夜猫子模式统计 (23:00~05:00 浏览次数) 与活跃连续天数。
+  - 坚持 100% 本地 SQLite / DataStore 存储，不向任何第三方或云端发送任何遥测字节；提供一键抹除重置数据功能。
+
+### Changed
+- **设置页卡片化极简重构 (Streamlined & Categorized Settings Screen)**：
+  - 针对原有设置页条目繁杂冗长的问题，重构为 5 个清晰有序的聚合功能卡片：
+    1. 视觉外观与主题语言（主题选择器、迷你色样预览、多语言切换、封面展示风格）。
+    2. 影库统计与使用洞察（直通全新数据看板、快速清理缓存）。
+    3. 高级隐私安全与沙盒防护（多任务防窥、应用锁、紧急脱身、沙盒隔离）。
+    4. AI 智能翻译引擎（OpenAI/Gemini/DeepSeek 翻译配置与测试）。
+    5. 数据同步与存储挂载（增量更新检测、定时后台刮削、重新挂载影库目录）。
+
+### Fixed
+- **演员档案生理信息全中文自然本地化 (Performer Physiological Attributes Localization)**：
+  - 解决“中文界面下演员档案页体貌特征仍显示英文”问题。
+  - 新增 `GlossaryHelper` 字典，对 80+ 种眼睛颜色、发色、体毛量、胡须、体型、肤色、特殊生理特征以及高度/重量计量单位实现地道自然的中文双向智能转换。
+- **系列集合四宫格拼接封面解析修复 (Series Collage Covers JSON Array Parsing)**：
+  - 修复主页“经典系列大放送”与“影片 -> 系列”中四宫格拼接封面无法显示的缺陷。
+  - 重构 `SeriesCollageCover`，健壮解析 JSON 字符串数组格式的 `sample_covers`（如 `["cover1.jpg", "cover2.jpg", ...]`），具备单封面回退与占位符兜底。
+
 ## [2.10.0] - 2026-09-29
 
 ### Added

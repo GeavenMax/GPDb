@@ -24,6 +24,7 @@ class SettingsViewModel(
     val language = appPreferences.languageFlow.stateIn(viewModelScope, SharingStarted.Lazily, "system")
     val recordHistory = appPreferences.recordSearchHistoryFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
     
+    val themeChoice = appSettingsRepository.themeFlow.stateIn(viewModelScope, SharingStarted.Lazily, "auto")
     val themeMode = appSettingsRepository.themeModeFlow.stateIn(viewModelScope, SharingStarted.Lazily, ThemeMode.SYSTEM)
     val dynamicColor = appSettingsRepository.dynamicColorFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
     val llmApiKey = appSettingsRepository.llmApiKeyFlow.stateIn(viewModelScope, SharingStarted.Lazily, "")
@@ -90,6 +91,7 @@ class SettingsViewModel(
 
     fun setLanguage(lang: String) = viewModelScope.launch { appPreferences.setLanguage(lang) }
     fun setRecordHistory(record: Boolean) = viewModelScope.launch { appPreferences.setRecordSearchHistory(record) }
+    fun setTheme(themeId: String) = viewModelScope.launch { appSettingsRepository.setTheme(themeId) }
     fun setThemeMode(mode: ThemeMode) = viewModelScope.launch { appSettingsRepository.setThemeMode(mode) }
     fun setDynamicColor(enabled: Boolean) = viewModelScope.launch { appSettingsRepository.setDynamicColor(enabled) }
     fun setLlmConfig(

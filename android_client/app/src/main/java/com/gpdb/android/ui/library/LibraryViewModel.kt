@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class LibraryTab {
-    FAV_MOVIES, FAV_PERFORMERS, FAV_SERIES, FAV_EPISODES
+    FAV_MOVIES, FAV_PERFORMERS, FAV_SERIES, FAV_EPISODES, FAV_DIRECTORS
 }
 
 data class LibraryUiState(
@@ -26,6 +26,7 @@ data class LibraryUiState(
     val performers: List<PerformerEntity> = emptyList(),
     val series: List<com.gpdb.android.data.db.entities.SeriesCollectionEntity> = emptyList(),
     val episodes: List<com.gpdb.android.data.db.entities.EpisodeEntity> = emptyList(),
+    val directors: List<com.gpdb.android.data.repository.DirectorSummary> = emptyList(),
     val hasMore: Boolean = false,
     val error: String? = null
 )
@@ -45,7 +46,7 @@ class LibraryViewModel : ViewModel() {
     }
     
     fun updateSearch(query: String) {
-        _uiState.update { it.copy(searchQuery = query, movies = emptyList(), performers = emptyList(), series = emptyList(), hasMore = false) }
+        _uiState.update { it.copy(searchQuery = query, movies = emptyList(), performers = emptyList(), series = emptyList(), episodes = emptyList(), directors = emptyList(), hasMore = false) }
         refresh()
     }
 
@@ -56,6 +57,7 @@ class LibraryViewModel : ViewModel() {
                 LibraryTab.FAV_PERFORMERS -> _uiState.value.performers.isEmpty()
                 LibraryTab.FAV_SERIES -> _uiState.value.series.isEmpty()
                 LibraryTab.FAV_EPISODES -> _uiState.value.episodes.isEmpty()
+                LibraryTab.FAV_DIRECTORS -> _uiState.value.directors.isEmpty()
                 else -> _uiState.value.movies.isEmpty()
             }
             if (isCurrentlyEmpty) {
@@ -85,15 +87,19 @@ class LibraryViewModel : ViewModel() {
                 if (tab == LibraryTab.FAV_PERFORMERS) {
                     val pList = repo.getFavoritePerformers(pageSize, 0, _uiState.value.searchQuery)
                     currentOffset = pList.size
-                    _uiState.update { it.copy(isLoading = false, performers = pList, movies = emptyList(), series = emptyList(), hasMore = pList.size >= pageSize) }
+                    _uiState.update { it.copy(isLoading = false, performers = pList, movies = emptyList(), series = emptyList(), episodes = emptyList(), directors = emptyList(), hasMore = pList.size >= pageSize) }
                 } else if (tab == LibraryTab.FAV_SERIES) {
                     val sList = repo.getFavoriteSeries(pageSize, 0, _uiState.value.searchQuery)
                     currentOffset = sList.size
-                    _uiState.update { it.copy(isLoading = false, series = sList, performers = emptyList(), movies = emptyList(), hasMore = sList.size >= pageSize) }
+                    _uiState.update { it.copy(isLoading = false, series = sList, performers = emptyList(), movies = emptyList(), episodes = emptyList(), directors = emptyList(), hasMore = sList.size >= pageSize) }
                 } else if (tab == LibraryTab.FAV_EPISODES) {
                     val eList = repo.getFavoriteEpisodes(pageSize, 0, _uiState.value.searchQuery)
                     currentOffset = eList.size
-                    _uiState.update { it.copy(isLoading = false, episodes = eList, performers = emptyList(), movies = emptyList(), series = emptyList(), hasMore = eList.size >= pageSize) }
+                    _uiState.update { it.copy(isLoading = false, episodes = eList, performers = emptyList(), movies = emptyList(), series = emptyList(), directors = emptyList(), hasMore = eList.size >= pageSize) }
+                } else if (tab == LibraryTab.FAV_DIRECTORS) {
+                    val dList = repo.getFavoriteDirectors(pageSize, 0, _uiState.value.searchQuery)
+                    currentOffset = dList.size
+                    _uiState.update { it.copy(isLoading = false, directors = dList, performers = emptyList(), movies = emptyList(), series = emptyList(), episodes = emptyList(), hasMore = dList.size >= pageSize) }
                 } else {
                     val mList = when (tab) {
                         LibraryTab.FAV_MOVIES -> repo.getLibraryMovies("fav", pageSize, 0, _uiState.value.searchQuery)
@@ -101,7 +107,7 @@ class LibraryViewModel : ViewModel() {
                     }
                     currentOffset = mList.size
                     android.util.Log.i("LibraryViewModel", "loadInitial success, size=${mList.size}")
-                    _uiState.update { it.copy(isLoading = false, movies = mList, performers = emptyList(), series = emptyList(), hasMore = mList.size >= pageSize) }
+                    _uiState.update { it.copy(isLoading = false, movies = mList, performers = emptyList(), series = emptyList(), episodes = emptyList(), directors = emptyList(), hasMore = mList.size >= pageSize) }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("LibraryViewModel", "Exception: ${e.message}", e)
@@ -130,6 +136,10 @@ class LibraryViewModel : ViewModel() {
                     val nextList = repo.getFavoriteEpisodes(pageSize, currentOffset, _uiState.value.searchQuery)
                     currentOffset += nextList.size
                     _uiState.update { it.copy(isLoadingMore = false, episodes = it.episodes + nextList, hasMore = nextList.size >= pageSize) }
+                } else if (state.currentTab == LibraryTab.FAV_DIRECTORS) {
+                    val nextList = repo.getFavoriteDirectors(pageSize, currentOffset, _uiState.value.searchQuery)
+                    currentOffset += nextList.size
+                    _uiState.update { it.copy(isLoadingMore = false, directors = it.directors + nextList, hasMore = nextList.size >= pageSize) }
                 } else {
                     val nextMovies = when (state.currentTab) {
                         LibraryTab.FAV_MOVIES -> repo.getLibraryMovies("fav", pageSize, currentOffset, _uiState.value.searchQuery)
