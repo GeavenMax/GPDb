@@ -49,4 +49,16 @@ interface PerformerDao {
         ORDER BY e.release_date DESC, e.id DESC
     """)
     suspend fun getEpisodesForPerformer(performerId: Long): List<com.gpdb.android.data.db.entities.EpisodeEntity>
+
+    /** 增量插入单条演员信息 */
+    @androidx.room.Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun insertPerformer(performer: PerformerEntity): Long
+
+    /** 增量批量插入演员 */
+    @androidx.room.Insert(onConflict = androidx.room.OnConflictStrategy.IGNORE)
+    suspend fun insertPerformers(performers: List<PerformerEntity>): List<Long>
+
+    /** 查询所有已收录的演员 ID */
+    @Query("SELECT id FROM performers")
+    suspend fun getAllPerformerIds(): List<Long>
 }

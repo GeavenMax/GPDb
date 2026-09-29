@@ -24,6 +24,8 @@ class AppSettingsRepository(private val context: Context) {
         val LLM_API_KEY = stringPreferencesKey("llm_api_key")
         val LLM_BASE_URL = stringPreferencesKey("llm_base_url")
         val LLM_MODEL = stringPreferencesKey("llm_model")
+
+        val PERIODIC_SYNC_ENABLED = booleanPreferencesKey("periodic_sync_enabled")
     }
 
     val themeModeFlow: Flow<ThemeMode> = context.dataStore.data.map { preferences ->
@@ -97,5 +99,13 @@ class AppSettingsRepository(private val context: Context) {
             it[LLM_TARGET_LANGUAGE] = targetLanguage
             it[LLM_SYSTEM_PROMPT] = systemPrompt
         }
+    }
+
+    val periodicSyncEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[PERIODIC_SYNC_ENABLED] ?: true
+    }
+
+    suspend fun setPeriodicSyncEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[PERIODIC_SYNC_ENABLED] = enabled }
     }
 }

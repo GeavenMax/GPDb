@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **原生增量网络刮削引擎 (Native Incremental Scraper Engine)**：
+  - 在 Android 移动端原生实现对官方数据源（`/newm` 影片, `/newe` 分集, `/newp` 演员 及对应详情页）的高效增量抓取与 HTML 解析引擎（`GpdbScraperEngine`）。
+  - 智能比对本地数据库已有条目 ID，只抓取最新发布的条目，实现毫秒级快速增量检测。
+  - 自动解析影片、分集、演员元数据以及关联封面/缩略图，支持事务级安全批量写入本地 SQLite。
+- **免 ZIP 包图片按需加载与反爬绕过 (Anti-403 On-Demand Image Cache)**：
+  - 重构 `ZipImageFetcher` 与 `GpdbImageLoader`：建立“外部物理路径 -> 内部持久化目录 (`filesDir/image_cache/`) -> ZIP 包 -> 网络按需直连”的 4 级寻址管道。
+  - 解决官方图床 Cloudflare 拦截 Android 默认客户端报 HTTP 403 的缺陷，全链路注入桌面端 Chrome UA 与合法 `Referer: https://gayeroticvideoindex.com/` 请求头，完美绕过反爬机制。
+  - 网络按需拉取的图片自动在后台持久化落盘至本地缓存目录，新用户即使不下载高达 14GB 的 `GPDb_Images.zip`，浏览时也能秒级按需看图并永久沉淀为本地离线图片资产。
+- **WorkManager 后台静默同步与设置控制面板 (Background Sync & Management UI)**：
+  - 基于 Jetpack WorkManager 引入 `GpdbSyncWorker`，实现夜间自动静默同步与封面预热。
+  - 严格限制任务触发约束条件（仅在 Wi-Fi 连接且处于设备充电中执行），保障零无谓电量与流量消耗。
+  - 在“设置”页面新增“增量同步与图库缓存”管理面板，支持实时手动检查官方更新、展示待更新条目清单并一键执行增量入库与进度追踪。
 - **统一多端共享数据库兼容 (Shared GPDb.db Migration)**：
   - 彻底打通与 macOS 桌面端使用同一份原生数据库文件（`GPDb.db`）的能力，消除 Android 端专用的魔改版数据库 `GPDb_Android.db`。
   - 在 `GpdbDatabase` 中引入 `MIGRATION_0_1` 与 `MIGRATION_0_2` 双阶迁移规则，桌面端 `user_version = 0` 且未初始化的数据库挂载时自动补充 Room 校验标识与索引，杜绝 `IllegalStateException: A migration from 0 to 2 was required but not found` 崩溃。

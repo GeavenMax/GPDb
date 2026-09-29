@@ -39,11 +39,19 @@ object GpdbImageLoader {
         .allowRgb565(false)
         // ── 允许硬件位图（GPU 加速渲染）─────────────────────────
         .allowHardware(true)
-        // ── 网络客户端超时配置（第三层降级用）───────────────────
+        // ── 网络客户端超时配置与防盗链伪装头 ───────────────────────
         .okHttpClient {
             OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
+                .addInterceptor { chain ->
+                    val request = chain.request().newBuilder()
+                        .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+                        .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+                        .header("Referer", "https://gayeroticvideoindex.com/")
+                        .build()
+                    chain.proceed(request)
+                }
                 .build()
         }
 

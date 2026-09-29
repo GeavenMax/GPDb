@@ -123,6 +123,17 @@ object ZipHolder {
     val isReady: Boolean get() = lock.read { zipFile != null }
 }
 
+// ── 专用图片下载客户端（单例连接池）────────────────────────────────
+object ImageHttpClient {
+    val client: okhttp3.OkHttpClient by lazy {
+        okhttp3.OkHttpClient.Builder()
+            .connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+            .followRedirects(true)
+            .build()
+    }
+}
+
 // ── 核心 Fetcher 实现 ──────────────────────────────────────────
 class ZipImageFetcher(
     private val data: GpdbImageData,
@@ -134,50 +145,138 @@ class ZipImageFetcher(
     }
 
     override suspend fun fetch(): FetchResult? = withContext(Dispatchers.IO) {
-        val relativePath = data.relativePath
+        val relativePath = data.relativePath.trimStart('/')
         val physicalRoot = data.physicalRoot
 
-        // 1. 物理增量文件直读
-        if (physicalRoot.isNotBlank()) {
+        // 1. 物理增量文件直读 (外部挂载根目录)
+        if (physicalRoot.isNotBlank() && relativePath.isNotBlank()) {
             val physicalFile = File(physicalRoot, relativePath)
-            if (physicalFile.exists() && physicalFile.isFile) {
+            if (physicalFile.exists() && physicalFile.isFile && physicalFile.length() > 100) {
                 val bufferedSource = physicalFile.inputStream().source().buffer()
-                val imageSource = ImageSource(
-                    source = bufferedSource,
-                    context = options.context
-                )
                 return@withContext SourceResult(
-                    source = imageSource,
+                    source = ImageSource(source = bufferedSource, context = options.context),
                     mimeType = physicalFile.name.guessMimeType(),
                     dataSource = DataSource.DISK
                 )
             }
         }
 
-        // 2. ZIP Store-Mode O(1) 随机寻址
-        if (ZipHolder.isReady) {
+        // 1.5. App 本地内部私有持久化目录直读 (context.filesDir/relativePath)
+        if (relativePath.isNotBlank()) {
+            val internalFile = File(options.context.filesDir, relativePath)
+            if (internalFile.exists() && internalFile.isFile && internalFile.length() > 100) {
+                val bufferedSource = internalFile.inputStream().source().buffer()
+                return@withContext SourceResult(
+                    source = ImageSource(source = bufferedSource, context = options.context),
+                    mimeType = internalFile.name.guessMimeType(),
+                    dataSource = DataSource.DISK
+                )
+            }
+        }
+
+        // 2. ZIP Store-Mode O(1) 随机寻址 (如果挂载了 GPDb_Images.zip)
+        if (ZipHolder.isReady && relativePath.isNotBlank()) {
             val stream = ZipHolder.getInputStream(relativePath)
             if (stream != null) {
                 val bufferedSource = stream.source().buffer()
-                val imageSource = ImageSource(
-                    source = bufferedSource,
-                    context = options.context
-                )
                 return@withContext SourceResult(
-                    source = imageSource,
+                    source = ImageSource(source = bufferedSource, context = options.context),
                     mimeType = relativePath.guessMimeType(),
                     dataSource = DataSource.DISK
                 )
             }
         }
 
-        // 3. 网络 URL 降级
+        // 3. 网络按需自动拉取 + 自动本地持久化落盘 (防盗链伪装)
         val fallback = data.fallbackUrl
-        if (!fallback.isNullOrBlank()) {
-            return@withContext null // 交由 Coil 内置网络 Fetcher 处理
+        val remoteUrl = when {
+            !fallback.isNullOrBlank() && (fallback.startsWith("http://", ignoreCase = true) || fallback.startsWith("https://", ignoreCase = true)) -> fallback
+            !fallback.isNullOrBlank() -> "https://gayeroticvideoindex.com/${fallback.trimStart('/')}"
+            relativePath.isNotBlank() -> {
+                val clean = relativePath.removePrefix("image_cache/").trimStart('/')
+                "https://gayeroticvideoindex.com/images/$clean"
+            }
+            else -> null
+        }
+
+        if (!remoteUrl.isNullOrBlank() && relativePath.isNotBlank()) {
+            val downloadedFile = downloadAndCacheImage(
+                context = options.context,
+                remoteUrl = remoteUrl,
+                relativePath = relativePath,
+                physicalRoot = physicalRoot
+            )
+            if (downloadedFile != null && downloadedFile.exists() && downloadedFile.length() > 100) {
+                val bufferedSource = downloadedFile.inputStream().source().buffer()
+                return@withContext SourceResult(
+                    source = ImageSource(source = bufferedSource, context = options.context),
+                    mimeType = downloadedFile.name.guessMimeType(),
+                    dataSource = DataSource.NETWORK
+                )
+            }
         }
 
         null
+    }
+
+    private fun downloadAndCacheImage(
+        context: Context,
+        remoteUrl: String,
+        relativePath: String,
+        physicalRoot: String
+    ): File? {
+        try {
+            val request = okhttp3.Request.Builder()
+                .url(remoteUrl)
+                .header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+                .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+                .header("Accept-Language", "en-US,en;q=0.9")
+                .header("Referer", "https://gayeroticvideoindex.com/")
+                .header("Connection", "keep-alive")
+                .build()
+
+            ImageHttpClient.client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.d(TAG, "下载图片失败 ($remoteUrl): HTTP ${response.code}")
+                    return null
+                }
+                val body = response.body ?: return null
+                val bytes = body.bytes()
+                if (bytes.size < 100) return null
+
+                // 优先尝试写回外部存储 physicalRoot (若已挂载且可写)
+                var writtenFile: File? = null
+                if (physicalRoot.isNotBlank()) {
+                    try {
+                        val pFile = File(physicalRoot, relativePath)
+                        pFile.parentFile?.mkdirs()
+                        if (pFile.parentFile?.canWrite() == true) {
+                            pFile.writeBytes(bytes)
+                            writtenFile = pFile
+                        }
+                    } catch (e: Exception) {
+                        Log.d(TAG, "外部物理存储写入跳过: ${e.message}")
+                    }
+                }
+
+                // 无论外部存储是否可写，均写入应用内部文件目录，确保持久离线可用
+                val internalFile = File(context.filesDir, relativePath)
+                internalFile.parentFile?.mkdirs()
+                val tmpFile = File(context.filesDir, "$relativePath.tmp")
+                tmpFile.parentFile?.mkdirs()
+                tmpFile.writeBytes(bytes)
+                if (tmpFile.renameTo(internalFile)) {
+                    return writtenFile ?: internalFile
+                } else {
+                    internalFile.writeBytes(bytes)
+                    tmpFile.delete()
+                    return writtenFile ?: internalFile
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "网络拉取图片异常: $remoteUrl", e)
+            return null
+        }
     }
 
     class Factory : Fetcher.Factory<GpdbImageData> {

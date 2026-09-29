@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gpdb.android.data.db.DatabaseHolder
 import com.gpdb.android.data.preferences.AppPreferences
+import com.gpdb.android.data.preferences.MountPreferences
 import com.gpdb.android.data.repository.BrowseRepository
 import com.gpdb.android.data.settings.AppSettingsRepository
 import com.gpdb.android.data.settings.ThemeMode
@@ -11,12 +12,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val appPreferences: AppPreferences,
-    private val appSettingsRepository: AppSettingsRepository
+    private val appSettingsRepository: AppSettingsRepository,
+    private val mountPreferences: MountPreferences? = null
 ) : ViewModel() {
     val language = appPreferences.languageFlow.stateIn(viewModelScope, SharingStarted.Lazily, "system")
     val recordHistory = appPreferences.recordSearchHistoryFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
@@ -33,6 +36,7 @@ class SettingsViewModel(
     val llmSystemPrompt = appSettingsRepository.llmSystemPromptFlow.stateIn(viewModelScope, SharingStarted.Lazily, "")
     
     val appIcon = appPreferences.appIconFlow.stateIn(viewModelScope, SharingStarted.Lazily, "B")
+    val periodicSyncEnabled = appSettingsRepository.periodicSyncEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
 
     private val _translatableMovies = MutableStateFlow(0)
     val translatableMovies: StateFlow<Int> = _translatableMovies
@@ -94,4 +98,68 @@ class SettingsViewModel(
         )
     }
     fun setAppIcon(icon: String) = viewModelScope.launch { appPreferences.setAppIcon(icon) }
+
+    sealed class SyncStatus {
+        object Idle : SyncStatus()
+        object Checking : SyncStatus()
+        data class Discovered(val updates: com.gpdb.android.data.scraper.DiscoveredUpdates) : SyncStatus()
+        data class Syncing(val current: Int, val total: Int, val currentItem: String) : SyncStatus()
+        data class Completed(val result: com.gpdb.android.data.scraper.SyncResult) : SyncStatus()
+        data class Error(val message: String) : SyncStatus()
+    }
+
+    private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
+    val syncStatus: StateFlow<SyncStatus> = _syncStatus
+
+    fun setPeriodicSyncEnabled(enabled: Boolean, context: android.content.Context) {
+        viewModelScope.launch {
+            appSettingsRepository.setPeriodicSyncEnabled(enabled)
+            com.gpdb.android.data.scraper.GpdbSyncWorker.schedulePeriodicSync(context, enabled)
+        }
+    }
+
+    fun checkForUpdates(context: android.content.Context) {
+        viewModelScope.launch {
+            _syncStatus.value = SyncStatus.Checking
+            try {
+                val db = DatabaseHolder.db
+                if (db == null) {
+                    _syncStatus.value = SyncStatus.Error("数据库尚未挂载或连接不可用")
+                    return@launch
+                }
+                val physicalRoot = mountPreferences?.mountRootFlow?.first() ?: ""
+                val engine = com.gpdb.android.data.scraper.GpdbScraperEngine(context, db, physicalRoot)
+                val updates = engine.checkForUpdates()
+                _syncStatus.value = SyncStatus.Discovered(updates)
+            } catch (e: Exception) {
+                _syncStatus.value = SyncStatus.Error("检查官方更新失败: ${e.message}")
+            }
+        }
+    }
+
+    fun startSync(context: android.content.Context, updates: com.gpdb.android.data.scraper.DiscoveredUpdates) {
+        viewModelScope.launch {
+            try {
+                val db = DatabaseHolder.db
+                if (db == null) {
+                    _syncStatus.value = SyncStatus.Error("数据库未连接")
+                    return@launch
+                }
+                val physicalRoot = mountPreferences?.mountRootFlow?.first() ?: ""
+                val engine = com.gpdb.android.data.scraper.GpdbScraperEngine(context, db, physicalRoot)
+                _syncStatus.value = SyncStatus.Syncing(0, updates.totalCount, "准备中...")
+                val result = engine.syncUpdates(updates) { current, total, name ->
+                    _syncStatus.value = SyncStatus.Syncing(current, total, name)
+                }
+                _syncStatus.value = SyncStatus.Completed(result)
+                refreshStats()
+            } catch (e: Exception) {
+                _syncStatus.value = SyncStatus.Error("同步中断: ${e.message}")
+            }
+        }
+    }
+
+    fun resetSyncStatus() {
+        _syncStatus.value = SyncStatus.Idle
+    }
 }

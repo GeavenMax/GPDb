@@ -132,6 +132,9 @@ dependencies {
     // ── 网络请求 ─────────────────────────────────────────────
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // ── 后台任务与增量刮削调度 (WorkManager) ─────────────────
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // ── 测试 ─────────────────────────────────────────────────
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -59,4 +59,20 @@ interface MovieDao {
     /** 查询指定影片包含的所有分集 */
     @Query("SELECT * FROM episodes WHERE movie_id = :movieId ORDER BY release_date ASC, id ASC")
     suspend fun getEpisodesForMovie(movieId: Long): List<com.gpdb.android.data.db.entities.EpisodeEntity>
+
+    /** 增量刮削写入单部影片 */
+    @androidx.room.Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun insertMovie(movie: MovieEntity): Long
+
+    /** 增量批量插入影片 */
+    @androidx.room.Insert(onConflict = androidx.room.OnConflictStrategy.IGNORE)
+    suspend fun insertMovies(movies: List<MovieEntity>): List<Long>
+
+    /** 插入影片-演员关联 */
+    @androidx.room.Insert(onConflict = androidx.room.OnConflictStrategy.IGNORE)
+    suspend fun insertMoviePerformers(links: List<com.gpdb.android.data.db.entities.MoviePerformerEntity>): List<Long>
+
+    /** 查询所有已收录的电影 ID */
+    @Query("SELECT id FROM movies")
+    suspend fun getAllMovieIds(): List<Long>
 }

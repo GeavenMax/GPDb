@@ -82,7 +82,9 @@ fun changeAppIcon(context: Context, scope: CoroutineScope, newIcon: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(appPreferences: AppPreferences, appSettingsRepository: AppSettingsRepository, onRemountClick: () -> Unit) {
-    val viewModel = remember { SettingsViewModel(appPreferences, appSettingsRepository) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val mountPreferences = remember { com.gpdb.android.data.preferences.MountPreferences(context) }
+    val viewModel = remember { SettingsViewModel(appPreferences, appSettingsRepository, mountPreferences) }
     val language by viewModel.language.collectAsState()
     val recordHistory by viewModel.recordHistory.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
@@ -106,8 +108,6 @@ fun SettingsScreen(appPreferences: AppPreferences, appSettingsRepository: AppSet
     var showThemeDialog by remember { mutableStateOf(false) }
     var showIconDialog by remember { mutableStateOf(false) }
     var showLlmDialog by remember { mutableStateOf(false) }
-    
-    val context = LocalContext.current
 
     val scope = rememberCoroutineScope()
 
@@ -116,6 +116,109 @@ fun SettingsScreen(appPreferences: AppPreferences, appSettingsRepository: AppSet
     ) { innerPadding ->
         val mainScrollState = rememberScrollState()
         Column(modifier = Modifier.padding(innerPadding).verticalScroll(mainScrollState).padding(16.dp).fillMaxWidth()) {
+            Text("增量同步与图库缓存", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    val syncStatus by viewModel.syncStatus.collectAsState()
+                    val periodicSyncEnabled by viewModel.periodicSyncEnabled.collectAsState()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("后台静默自动同步", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "仅在 Wi-Fi 且充电时增量同步官网最新数据并预下载海报",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = periodicSyncEnabled,
+                            onCheckedChange = { viewModel.setPeriodicSyncEnabled(it, context) }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    when (val status = syncStatus) {
+                        is SettingsViewModel.SyncStatus.Idle -> {
+                            Button(
+                                onClick = { viewModel.checkForUpdates(context) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("检查官网最新条目")
+                            }
+                        }
+                        is SettingsViewModel.SyncStatus.Checking -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                Text("正在扫描官网最新发布 (/newm, /newe, /newp)...", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        is SettingsViewModel.SyncStatus.Discovered -> {
+                            val updates = status.updates
+                            if (updates.totalCount == 0) {
+                                Text("✅ 当前数据库已是最新，无新增条目", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(onClick = { viewModel.resetSyncStatus() }) {
+                                    Text("完成")
+                                }
+                            } else {
+                                Text(
+                                    "发现新发布内容：影片 ${updates.movieIds.size} 部，分集 ${updates.episodeIds.size} 个，演员 ${updates.performerIds.size} 位",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = { viewModel.startSync(context, updates) },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("立即同步并下载图片")
+                                    }
+                                    OutlinedButton(onClick = { viewModel.resetSyncStatus() }) {
+                                        Text("取消")
+                                    }
+                                }
+                            }
+                        }
+                        is SettingsViewModel.SyncStatus.Syncing -> {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Text("正在同步: ${status.currentItem} (${status.current}/${status.total})", style = MaterialTheme.typography.bodyMedium)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                LinearProgressIndicator(
+                                    progress = { if (status.total > 0) status.current.toFloat() / status.total.toFloat() else 0f },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                        is SettingsViewModel.SyncStatus.Completed -> {
+                            Text("🎉 ${status.result.message}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(onClick = { viewModel.resetSyncStatus() }) {
+                                Text("完成")
+                            }
+                        }
+                        is SettingsViewModel.SyncStatus.Error -> {
+                            Text("❌ ${status.message}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(onClick = { viewModel.resetSyncStatus() }) {
+                                Text("重试")
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text("翻译统计", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
