@@ -190,7 +190,7 @@ fun PerformerDetailScreen(
                         }
                     }
 
-                    // 更多生理特征 (折叠并全量汉化)
+                    // 详细生理特征 (默认全部展开展示并全量汉化)
                     val currentLang = com.gpdb.android.util.LocalAppLanguage.current
                     val isChinese = currentLang == com.gpdb.android.util.AppLanguage.ZH_CN || currentLang == com.gpdb.android.util.AppLanguage.ZH_TW
 
@@ -206,34 +206,22 @@ fun PerformerDetailScreen(
                     ).filter { it.second.isNotBlank() && it.second != "none available" }
 
                     if (advancedDetails.isNotEmpty()) {
-                        var isExpanded by rememberSaveable { mutableStateOf(false) }
-                        
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                            androidx.compose.animation.AnimatedVisibility(visible = isExpanded) {
-                                @OptIn(ExperimentalLayoutApi::class)
-                                FlowRow(
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    advancedDetails.forEach { (label, value) ->
-                                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-                                            Text(
-                                                text = "$label: $value",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                            )
-                                        }
-                                    }
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            advancedDetails.forEach { (label, value) ->
+                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                                    Text(
+                                        text = "$label: $value",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    )
                                 }
-                            }
-
-                            TextButton(
-                                onClick = { isExpanded = !isExpanded },
-                                modifier = Modifier.align(Alignment.CenterHorizontally),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
-                            ) {
-                                Text(if (isExpanded) "收起详细特征 ▲" else "展开详细生理特征 ▼")
                             }
                         }
                     }

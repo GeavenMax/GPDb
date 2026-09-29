@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 坚持 100% 本地 SQLite / DataStore 存储，不向任何第三方或云端发送任何遥测字节；提供一键抹除重置数据功能。
 
 ### Changed
+- **演员档案生理特征默认完整展示 (Default Full Display of Performer Physiological Traits)**：
+  - 演员档案页彻底移除“展开详细生理特征”/“收起详细特征”折叠交互按钮及冗余状态控制逻辑。
+  - 默认以自适应流式胶囊标签（`FlowRow`）全量展示眼睛颜色、发色、体型、胡须、体毛、肤色、特殊生理特征与纹身详情，省去多余点击操作，信息获取更加直观畅快。
 - **导航标签文案深度对齐 macOS 规范 (Navigation Tab Labels macOS Alignment)**：
   - 一级导航栏中将“影片库”、“演员库”、“片商库”精简为“影片”、“演员”、“片商”（去掉“库”字）。
   - 一级导航栏中将原“我的库”更名为“我的收藏”（对齐 macOS 客户端 `nav.favorites`）。
