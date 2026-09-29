@@ -77,6 +77,7 @@ jobs:
         id: artifacts
         shell: bash
         run: |
+          set -e
           TAG_NAME="${{ github.ref_name }}"
           if [ -z "$TAG_NAME" ] || [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             TAG_NAME="${{ inputs.tag_name }}"
@@ -98,11 +99,19 @@ jobs:
               echo "✅ Android APK package: dist_release/$NEW_APK_NAME"
             fi
           elif [ "${{ runner.os }}" == "Windows" ]; then
-            SETUP_PATH=$(find Windows_client/src-tauri/target/release/bundle/nsis desktop_client/src-tauri/target/release/bundle/nsis -name "*.exe" 2>/dev/null | head -1)
+            echo "Searching for Windows NSIS bundle installer..."
+            SETUP_PATH=$(find "${{ matrix.client_dir }}/src-tauri/target" -name "*setup*.exe" -o -name "*Setup*.exe" -o -name "*.exe" 2>/dev/null | grep -E "nsis|bundle" | head -1)
+            if [ -z "$SETUP_PATH" ]; then
+              SETUP_PATH=$(find "${{ matrix.client_dir }}/src-tauri/target/release" -maxdepth 4 -name "*.exe" 2>/dev/null | grep -v "build" | grep -v "deps" | head -1)
+            fi
             if [ -n "$SETUP_PATH" ]; then
               NEW_NAME="GPDb-Windows-${TAG_NAME}.exe"
               cp "$SETUP_PATH" "dist_release/$NEW_NAME"
-              echo "✅ Windows package: dist_release/$NEW_NAME"
+              echo "✅ Windows package: dist_release/$NEW_NAME from $SETUP_PATH"
+            else
+              echo "::error::No Windows setup exe found!"
+              find "${{ matrix.client_dir }}/src-tauri/target" -name "*.exe" || true
+              exit 1
             fi
           fi
 
