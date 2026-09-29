@@ -2,6 +2,7 @@
 translate_config.json
 .env
 .env.local
+scripts/
 scripts/.env
 scripts/.changelog_pusher_state.json
 scripts/PUSH_GUIDELINES.md
@@ -14,6 +15,15 @@ GPDb.db
 GPDb.db-shm
 GPDb.db-wal
 GPDb.db.backup-*
+GPDb*.db*
+GPDb*.gz
+gevi.db*
+test_schema.db*
+translations.db
+translations.db-shm
+translations.db-wal
+pending_*.json
+sitemap_*.xml
 # Manual pre-scrape copies (`cp GPDb.db backups/gpdb-<date>.db`). Deliberately not
 # named GPDb.db.backup-* so the scraper's own prune (keep=5) cannot delete them.
 backups/
@@ -34,10 +44,15 @@ __pycache__/
 node_modules/
 desktop_client/dist/
 desktop_client/node_modules/
+Windows_client/dist/
+Windows_client/node_modules/
 
 # --- Tauri build artifacts ---
 desktop_client/src-tauri/target/
+Windows_client/src-tauri/target/
 *.dmg
+*.exe
+*.msi
 
 # --- Android build artifacts & signing keys ---
 android_client/.gradle/

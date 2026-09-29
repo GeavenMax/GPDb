@@ -1,0 +1,58 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "GPDb",
+  "mainBinaryName": "gpdb",
+  "version": "2.12.0",
+  "identifier": "com.gpdb.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "GPDb",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "resources": [
+      "../../sync_gpdb.py",
+      "../../sync_bftv_catalog.py",
+      "../../batch_scraper.py",
+      "../../db_manager.py",
+      "../../scrape_bftv_performers.py",
+      "../../cache_images.py"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": true
+      }
+    }
+  }
+}

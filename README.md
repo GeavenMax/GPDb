@@ -111,10 +111,10 @@
 
 ### 普通用户（推荐）
 
-直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载最新 `v2.8.0` 版本对应的打包编译完成安装包：
-- ** macOS**：下载 `GPDb-macOS-v2.8.0.dmg`，双击挂载后将 `GPDb.app` 拖入 `Applications`（应用程序）即可启动。
-- **🪟 Windows**：下载 `GPDb-Windows-v2.8.0.exe`，双击运行安装程序完成安装。
-- **🤖 Android 手机/平板**：下载已由官方公钥强签名的 `GPDb-Android-v2.8.0-signed.apk`，在手机端直接安装。
+直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载最新 `v2.12.0` 版本对应的打包编译完成安装包：
+- ** macOS**：下载 `GPDb-macOS-v2.12.0.dmg`，双击挂载后将 `GPDb.app` 拖入 `Applications`（应用程序）即可启动。
+- **🪟 Windows**：下载 `GPDb-Windows-v2.12.0.exe`，双击运行安装程序完成安装。
+- **🤖 Android 手机/平板**：下载已由官方公钥强签名的 `GPDb-Android-v2.12.0-signed.apk`，在手机端直接安装。
 
 ### 开发者本地编译与运行
 

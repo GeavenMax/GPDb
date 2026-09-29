@@ -27,9 +27,11 @@ jobs:
           - platform: macOS
             os: macos-latest
             bundles: app,dmg
+            client_dir: desktop_client
           - platform: Windows
             os: windows-latest
             bundles: nsis
+            client_dir: Windows_client
 
     steps:
       # ── 1. 检出代码 ──────────────────────────────────────────────────────────
@@ -47,8 +49,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            desktop_client/src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('desktop_client/src-tauri/Cargo.lock') }}
+            ${{ matrix.client_dir }}/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles(format('{0}/src-tauri/Cargo.lock', matrix.client_dir)) }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -58,16 +60,16 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: desktop_client/package-lock.json
+          cache-dependency-path: ${{ matrix.client_dir }}/package-lock.json
 
       # ── 5. 安装前端依赖 ───────────────────────────────────────────────────
       - name: Install frontend dependencies
-        working-directory: desktop_client
+        working-directory: ${{ matrix.client_dir }}
         run: npm ci
 
       # ── 6. 构建 Tauri 应用 ─────────────────────────────────────────────────
       - name: Build Tauri app
-        working-directory: desktop_client
+        working-directory: ${{ matrix.client_dir }}
         run: npx tauri build --bundles ${{ matrix.bundles }}
 
       # ── 7. 整理产物并按规范重命名 ─────────────────────────────────────────
@@ -96,7 +98,7 @@ jobs:
               echo "✅ Android APK package: dist_release/$NEW_APK_NAME"
             fi
           elif [ "${{ runner.os }}" == "Windows" ]; then
-            SETUP_PATH=$(find desktop_client/src-tauri/target/release/bundle/nsis -name "*.exe" 2>/dev/null | head -1)
+            SETUP_PATH=$(find Windows_client/src-tauri/target/release/bundle/nsis desktop_client/src-tauri/target/release/bundle/nsis -name "*.exe" 2>/dev/null | head -1)
             if [ -n "$SETUP_PATH" ]; then
               NEW_NAME="GPDb-Windows-${TAG_NAME}.exe"
               cp "$SETUP_PATH" "dist_release/$NEW_NAME"

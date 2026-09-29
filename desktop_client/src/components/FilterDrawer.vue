@@ -8,7 +8,9 @@ import type {
   PerformerSortBy,
   EpisodeFilterState,
   EpisodeSortBy,
+  DateFilter,
 } from '../types';
+import { DATE_FILTER_OPTIONS, EPISODE_DATE_FILTER_OPTIONS } from '../types';
 import { FACET_KEYS, FACET_LABELS, EPISODE_SORTS } from '../api';
 import { tr, trCategory } from '../utils/glossary';
 
@@ -120,6 +122,11 @@ function selectSort(sort: FilterState['sortBy']) {
   apply();
 }
 
+function selectDateFilter(df: DateFilter) {
+  local.value.dateFilter = local.value.dateFilter === df ? 'all' : df;
+  apply();
+}
+
 function resetAll() {
   local.value = {
     query: '',
@@ -129,6 +136,7 @@ function resetAll() {
     yearMax: null,
     category: '',
     sortBy: 'year_desc',
+    dateFilter: 'all',
   };
   emit('reset');
 }
@@ -360,6 +368,26 @@ function resetAll() {
               </button>
             </div>
           </div>
+
+          <!-- Episode Date Filter -->
+          <div class="space-y-2">
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">时间范围 / 批次</label>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button
+                v-for="d in EPISODE_DATE_FILTER_OPTIONS"
+                :key="d.id"
+                @click="patchEpisodeFilters({ dateFilter: (episodeFilters?.dateFilter || 'all') === d.id ? 'all' : d.id })"
+                :class="[
+                  'px-2 py-1.5 rounded-lg text-xs font-medium border text-center transition',
+                  (episodeFilters?.dateFilter || 'all') === d.id
+                    ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                    : 'bg-surface border-line text-fg-3 hover:text-fg-2'
+                ]"
+              >
+                {{ d.label }}
+              </button>
+            </div>
+          </div>
         </template>
 
         <!-- ============ Movie filters ============ -->
@@ -385,6 +413,26 @@ function resetAll() {
               ]"
             >
               {{ s.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Movie Date Filter -->
+        <div class="space-y-2">
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">时间范围 / 批次</label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button
+              v-for="d in DATE_FILTER_OPTIONS"
+              :key="d.id"
+              @click="selectDateFilter(d.id)"
+              :class="[
+                'px-2 py-1.5 rounded-lg text-xs font-medium border text-center transition',
+                (local.dateFilter || 'all') === d.id
+                  ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
+                  : 'bg-surface border-line text-fg-3 hover:text-fg-2'
+              ]"
+            >
+              {{ d.label }}
             </button>
           </div>
         </div>

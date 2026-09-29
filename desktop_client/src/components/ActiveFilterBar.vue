@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { SlidersHorizontal, RotateCcw } from '@lucide/vue';
 import FilterChip from './FilterChip.vue';
 import type { FilterState, PerformerFilterState, EpisodeFilterState } from '../types';
+import { DATE_FILTER_OPTIONS, EPISODE_DATE_FILTER_OPTIONS } from '../types';
 import { FACET_KEYS, FACET_LABELS } from '../api';
 import { trCategory } from '../utils/glossary';
 
@@ -62,6 +63,15 @@ const activeChips = computed<ChipItem[]>(() => {
         label: '分类:',
         value: trCategory(f.category),
         onRemove: () => emit('clear-movie-field', 'category'),
+      });
+    }
+    if (f.dateFilter && f.dateFilter !== 'all') {
+      const opt = DATE_FILTER_OPTIONS.find(o => o.id === f.dateFilter);
+      chips.push({
+        id: `m-date-${f.dateFilter}`,
+        label: '时间:',
+        value: opt ? opt.label : f.dateFilter,
+        onRemove: () => emit('clear-movie-field', 'dateFilter'),
       });
     }
     if (f.yearMin != null || f.yearMax != null) {
@@ -139,6 +149,15 @@ const activeChips = computed<ChipItem[]>(() => {
         label: '',
         value: '包含演员',
         onRemove: () => emit('clear-episode-field', 'hasPerformers'),
+      });
+    }
+    if (ef.dateFilter && ef.dateFilter !== 'all') {
+      const opt = EPISODE_DATE_FILTER_OPTIONS.find(o => o.id === ef.dateFilter);
+      chips.push({
+        id: `ep-date-${ef.dateFilter}`,
+        label: '时间:',
+        value: opt ? opt.label : ef.dateFilter,
+        onRemove: () => emit('clear-episode-field', 'dateFilter'),
       });
     }
   } else if (props.tab === 'studios' && props.studioQuery?.trim()) {

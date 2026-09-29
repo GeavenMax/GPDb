@@ -221,6 +221,7 @@ export interface EpisodeFilterState {
   /** Only episodes whose synopsis has been translated — the readable ones. */
   hasZh: boolean;
   hasPerformers: boolean;
+  dateFilter?: DateFilter;
 }
 
 /** Performer attributes that can be filtered on, keyed by API facet name. */
@@ -346,6 +347,33 @@ export interface Episode {
   release_date?: string | null;
 }
 
+export type PosterDisplayMode = 'adaptive_pager' | 'flip_3d';
+
+export type DateFilter = 'all' | 'last_scraped' | 'recent_7' | 'recent_30' | 'recent_90' | 'recent_year';
+
+export interface DateFilterOption {
+  id: DateFilter;
+  label: string;
+}
+
+export const DATE_FILTER_OPTIONS: DateFilterOption[] = [
+  { id: 'all', label: '全部' },
+  { id: 'last_scraped', label: '上次入库' },
+  { id: 'recent_7', label: '最近7天' },
+  { id: 'recent_30', label: '最近30天' },
+  { id: 'recent_90', label: '最近90天' },
+  { id: 'recent_year', label: '本年度' },
+];
+
+export const EPISODE_DATE_FILTER_OPTIONS: DateFilterOption[] = [
+  { id: 'all', label: '全部' },
+  { id: 'last_scraped', label: '上次入库' },
+  { id: 'recent_7', label: '最近7天发行' },
+  { id: 'recent_30', label: '最近30天发行' },
+  { id: 'recent_90', label: '最近90天发行' },
+  { id: 'recent_year', label: '本年度发行' },
+];
+
 export interface FilterState {
   query: string;
   studio: string;
@@ -360,6 +388,7 @@ export interface FilterState {
   yearMax: number | null;
   category: string;
   sortBy: 'year_desc' | 'year_asc' | 'title_asc' | 'id_desc';
+  dateFilter?: DateFilter;
 }
 
 export type FavoriteType = 'movie' | 'performer' | 'studio' | 'director' | 'episode' | 'series';

@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- macOS squircle clip -->
+    <clipPath id="squircle">
+      <rect x="0" y="0" width="512" height="512" rx="115" ry="115" />
+    </clipPath>
+
+    <!-- Deep Midnight Blue & Cosmic Void Gradient -->
+    <linearGradient id="midnightAbyss" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#090d1a" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+
+    <!-- Radial Nebula Highlight -->
+    <radialGradient id="nebulaCore" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#1e3a8a" stop-opacity="0.4" />
+      <stop offset="45%" stop-color="#0e1726" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#030712" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- 24K Satin Brushed Gold Gradient (Symbol 1) -->
+    <linearGradient id="goldSatin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="25%" stop-color="#fbbf24" />
+      <stop offset="60%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#78350f" />
+    </linearGradient>
+
+    <!-- Cold Brushed Titanium Gradient (Symbol 2) -->
+    <linearGradient id="titaniumMetal" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#64748b" />
+      <stop offset="35%" stop-color="#cbd5e1" />
+      <stop offset="65%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+
+    <!-- Convex Lens Intersection Glow -->
+    <radialGradient id="lensGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+      <stop offset="40%" stop-color="#06b6d4" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Subtle Rim Light -->
+    <linearGradient id="rimGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.4" />
+      <stop offset="30%" stop-color="#ffffff" stop-opacity="0.1" />
+      <stop offset="70%" stop-color="#000000" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0.3" />
+    </linearGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="shadowMars" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feOffset dx="0" dy="12" result="offset" />
+      <feComposite in="SourceGraphic" in2="offset" operator="over" />
+    </filter>
+    <filter id="lensBloom" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="22" />
+    </filter>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <!-- Base Background -->
+    <rect width="512" height="512" fill="url(#midnightAbyss)" />
+    <!-- Nebula Ambient Light -->
+    <circle cx="256" cy="256" r="240" fill="url(#nebulaCore)" />
+
+    <!-- Subtle Background Film Grid Lines -->
+    <g stroke="#ffffff" stroke-opacity="0.04" stroke-width="1">
+      <circle cx="256" cy="256" r="180" fill="none" stroke-dasharray="6 6" />
+      <circle cx="256" cy="256" r="220" fill="none" />
+      <line x1="256" y1="36" x2="256" y2="476" stroke-dasharray="8 8" />
+      <line x1="36" y1="256" x2="476" y2="256" stroke-dasharray="8 8" />
+    </g>
+
+    <!-- Central Twin Mars Group -->
+    <g filter="url(#shadowMars)">
+      
+      <!-- FIRST MARS SYMBOL (Titanium - Lower Left base, pointing Up-Right) -->
+      <g transform="translate(195, 290)">
+        <!-- Outer Ring -->
+        <circle cx="0" cy="0" r="78" fill="none" stroke="url(#titaniumMetal)" stroke-width="26" />
+        <!-- Arrow Shaft & Head -->
+        <line x1="55" y1="-55" x2="115" y2="-115" stroke="url(#titaniumMetal)" stroke-width="26" stroke-linecap="round" />
+        <path d="M 68 -115 L 118 -115 L 118 -65" fill="none" stroke="url(#titaniumMetal)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      <!-- SECOND MARS SYMBOL (24K Gold - Upper Right interlocked, pointing Up-Right) -->
+      <g transform="translate(285, 215)">
+        <!-- Outer Ring -->
+        <circle cx="0" cy="0" r="78" fill="none" stroke="url(#goldSatin)" stroke-width="26" />
+        <!-- Arrow Shaft & Head -->
+        <line x1="55" y1="-55" x2="120" y2="-120" stroke="url(#goldSatin)" stroke-width="26" stroke-linecap="round" />
+        <path d="M 72 -120 L 122 -120 L 122 -70" fill="none" stroke="url(#goldSatin)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      <!-- Intersecting Overlap Weave Effect (Creating true physical knot/interlocking illusion) -->
+      <!-- Clip-weave piece of Titanium symbol coming over the Gold ring -->
+      <g transform="translate(195, 290)">
+        <path d="M 40 -60 A 78 78 0 0 1 76 -20" fill="none" stroke="url(#titaniumMetal)" stroke-width="26" stroke-linecap="round" />
+      </g>
+    </g>
+
+    <!-- Optical Focal Bloom at Center Overlap -->
+    <ellipse cx="240" cy="252" rx="42" ry="42" fill="url(#lensGlow)" opacity="0.6" filter="url(#lensBloom)" />
+    <circle cx="240" cy="252" r="8" fill="#ffffff" opacity="0.85" />
+    <line x1="180" y1="252" x2="300" y2="252" stroke="#38bdf8" stroke-width="1.5" opacity="0.5" />
+
+    <!-- Squircle Border Highlight -->
+    <rect x="1" y="1" width="510" height="510" rx="114" ry="114" fill="none" stroke="url(#rimGlow)" stroke-width="2.5" />
+  </g>
+</svg>

@@ -16,6 +16,8 @@ import EnvironmentCheckModal from './components/EnvironmentCheckModal.vue';
 import ImageLightbox from './components/ImageLightbox.vue';
 import FilterDrawer from './components/FilterDrawer.vue';
 import ActiveFilterBar from './components/ActiveFilterBar.vue';
+import AppLockOverlay from './components/AppLockOverlay.vue';
+import FakeCalculatorModal from './components/FakeCalculatorModal.vue';
 import { defineAsyncComponent } from 'vue';
 const SyncModal = defineAsyncComponent(() => import('./components/plugins/SyncModal.vue'));
 import PaginationBar from './components/PaginationBar.vue';
@@ -59,18 +61,23 @@ import { titlePrimary, titleSecondary, sceneFilm } from './utils/bilingual';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
-  Megaphone, FolderOpen, Search, Globe, Shield,
+  Megaphone, FolderOpen, Search, Globe, Shield, Eye, Lock, Calculator,
   Bookmark, CheckCircle2, ChevronDown, ChevronRight, ChevronsUpDown, Star, Info,
   SlidersHorizontal
 } from '@lucide/vue';
 import HomeView from './views/HomeView.vue';
+import { t, currentLocale, setLocale, SUPPORTED_LANGUAGES } from './i18n';
 import AnalyticsView from './views/AnalyticsView.vue';
 import PluginsView from './views/PluginsView.vue';
 import TrophiesView from './views/TrophiesView.vue';
 import TrophyToast from './components/TrophyToast.vue';
 import { pluginsConfig } from './services/pluginManager';
-import { SUPPORTED_LANGUAGES, currentLocale, setLocale, t } from './i18n';
-import { privacySettings, savePrivacySettings } from './services/privacy';
+import {
+  privacySettings, savePrivacySettings, isAppLocked, isFakeCalculatorActive,
+  isWindowBlurred, initPrivacyListeners, triggerPanicMode
+} from './services/privacy';
+import { DATE_FILTER_OPTIONS, EPISODE_DATE_FILTER_OPTIONS } from './types';
+import type { DateFilter } from './types';
 import {
   startFocusTracker, recordMovieView, recordPerformerView,
   recordEpisodeView, recordDirectorView, recordStudioView,
@@ -83,6 +90,17 @@ import { initAutoSyncSchedule } from './services/autoSync';
 
 type SettingsSubTab = 'all' | 'appearance' | 'localization' | 'data' | 'privacy';
 const settingsSubTab = ref<SettingsSubTab>('all');
+
+const pinEditInput = ref(privacySettings.value.pinCode || '');
+const disguiseTitleInput = ref(privacySettings.value.disguiseAppName || 'GPDb');
+
+function handleUpdatePin() {
+  savePrivacySettings({ pinCode: pinEditInput.value.trim() });
+}
+
+function handleUpdateDisguiseTitle() {
+  savePrivacySettings({ disguiseAppName: disguiseTitleInput.value.trim() || 'GPDb' });
+}
 
 /** Labels for the five favorites sections and the type pickers. */
 const FAVORITE_LABELS: Record<FavoriteType, string> = {
@@ -224,6 +242,16 @@ function layerOf(kind: ModalKind) {
 }
 
 const filters = reactive<FilterState>(createMovieFilters());
+
+function setDateFilter(df: DateFilter) {
+  filters.dateFilter = df;
+  fetchMovies(true, 1);
+}
+
+function setEpisodeDateFilter(df: DateFilter) {
+  episodeFilters.dateFilter = df;
+  fetchEpisodes(true, 1);
+}
 
 // Synopsis language preference (issue #4). Falls back to English per-movie
 // whenever a Chinese translation has not been generated yet.
@@ -1553,8 +1581,7 @@ function onGlobalDblClick(e: MouseEvent) {
 onMounted(async () => {
   startFocusTracker();
   initAppIcon();
-  // index.html's inline script already put the stored theme on <html> before the first
-  // paint; this starts the OS listener that keeps 跟随系统 current.
+  initPrivacyListeners();
   initTheme();
 
   // Hearts come from the database, not localStorage — so they survive a browser
@@ -1768,6 +1795,27 @@ onUnmounted(() => {
                 <span class="text-fg-4 text-[11px]">列</span>
               </div>
             </div>
+          </div>
+
+          <!-- Date Filter Capsule Bar (Aligned with Android 2.10) -->
+          <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar flex-wrap">
+            <span class="text-xs text-fg-4 font-medium shrink-0 flex items-center gap-1.5 mr-1">
+              <Clock class="w-3.5 h-3.5 text-accent" />
+              <span>时间筛选:</span>
+            </span>
+            <button
+              v-for="df in DATE_FILTER_OPTIONS"
+              :key="df.id"
+              @click="setDateFilter(df.id)"
+              :class="[
+                'px-3 py-1 rounded-full text-xs font-medium transition cursor-pointer shrink-0 border',
+                (filters.dateFilter || 'all') === df.id
+                  ? 'bg-accent-fill text-on-fill font-bold border-accent shadow-sm'
+                  : 'bg-surface/80 hover:bg-surface border-line text-fg-3 hover:text-fg'
+              ]"
+            >
+              {{ df.label }}
+            </button>
           </div>
 
           <!-- Prominent Active Filter Banner -->
@@ -2326,6 +2374,27 @@ onUnmounted(() => {
                 <span class="text-fg-4 text-[11px]">列</span>
               </div>
             </div>
+          </div>
+
+          <!-- Episode Date Filter Capsule Bar -->
+          <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar flex-wrap">
+            <span class="text-xs text-fg-4 font-medium shrink-0 flex items-center gap-1.5 mr-1">
+              <Clock class="w-3.5 h-3.5 text-accent" />
+              <span>时间筛选:</span>
+            </span>
+            <button
+              v-for="df in EPISODE_DATE_FILTER_OPTIONS"
+              :key="df.id"
+              @click="setEpisodeDateFilter(df.id)"
+              :class="[
+                'px-3 py-1 rounded-full text-xs font-medium transition cursor-pointer shrink-0 border',
+                (episodeFilters.dateFilter || 'all') === df.id
+                  ? 'bg-accent-fill text-on-fill font-bold border-accent shadow-sm'
+                  : 'bg-surface/80 hover:bg-surface border-line text-fg-3 hover:text-fg'
+              ]"
+            >
+              {{ df.label }}
+            </button>
           </div>
 
           <!-- Prominent Active Filter Banner -->
@@ -3206,6 +3275,70 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- Section 0.2: Poster Display Scheme (Aligned with Android v2.10.0) -->
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'appearance'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4"
+          >
+            <div class="flex items-center gap-3">
+              <Eye class="w-5 h-5 text-accent" />
+              <div>
+                <div class="text-sm font-bold text-fg">海报展示与翻转排版方案</div>
+                <div class="text-xs text-fg-3">支持自适应画廊与 3D 拟真实体卡片两种呈现范式（已对齐移动端 v2.10.0）</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                @click="savePrivacySettings({ posterDisplayMode: 'adaptive_pager' })"
+                class="text-left p-4 rounded-xl border transition flex flex-col justify-between cursor-pointer"
+                :class="privacySettings.posterDisplayMode === 'adaptive_pager'
+                  ? 'bg-accent-fill/10 border-accent-fill/40 shadow-sm ring-1 ring-accent-fill/30'
+                  : 'bg-surface border-line-strong hover:border-line-strong'"
+              >
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold" :class="privacySettings.posterDisplayMode === 'adaptive_pager' ? 'text-accent-soft' : 'text-fg-2'">
+                      自适应高清画廊 (Adaptive Pager)
+                    </span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-accent-fill/20 text-accent font-bold">默认推荐</span>
+                  </div>
+                  <p class="text-[11px] text-fg-4 mt-1.5 leading-relaxed">
+                    双面海报无损无黑边裁剪，分段式胶囊指示器，点击或拖拽流畅切换正面/反面，支持双击一键呼出全屏缩放灯箱。
+                  </p>
+                </div>
+                <div class="mt-3 pt-2 border-t border-line/40 flex items-center gap-2 text-[10px] text-fg-4">
+                  <Check v-if="privacySettings.posterDisplayMode === 'adaptive_pager'" class="w-3.5 h-3.5 text-accent shrink-0" />
+                  <span>画廊式平铺 · 极速图片渲染</span>
+                </div>
+              </button>
+
+              <button
+                @click="savePrivacySettings({ posterDisplayMode: 'flip_3d' })"
+                class="text-left p-4 rounded-xl border transition flex flex-col justify-between cursor-pointer"
+                :class="privacySettings.posterDisplayMode === 'flip_3d'
+                  ? 'bg-accent-fill/10 border-accent-fill/40 shadow-sm ring-1 ring-accent-fill/30'
+                  : 'bg-surface border-line-strong hover:border-line-strong'"
+              >
+                <div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold" :class="privacySettings.posterDisplayMode === 'flip_3d' ? 'text-accent-soft' : 'text-fg-2'">
+                      3D 拟真实体卡片 (3D Physical Flip)
+                    </span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-bold">沉浸式</span>
+                  </div>
+                  <p class="text-[11px] text-fg-4 mt-1.5 leading-relaxed">
+                    高拟真实体 DVD/蓝光盒物理卡片，60fps CSS 3D 景深透视翻转，配备环境氛围泛光和边框质感，极具收藏质感。
+                  </p>
+                </div>
+                <div class="mt-3 pt-2 border-t border-line/40 flex items-center gap-2 text-[10px] text-fg-4">
+                  <Check v-if="privacySettings.posterDisplayMode === 'flip_3d'" class="w-3.5 h-3.5 text-accent shrink-0" />
+                  <span>3D 景深物理透视 · 实体翻转胶囊</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <!-- Section 0.5: Language & Localization -->
           <div
             v-if="settingsSubTab === 'all' || settingsSubTab === 'localization'"
@@ -3337,6 +3470,135 @@ onUnmounted(() => {
                 <Trash2 class="w-3.5 h-3.5" />
                 <span>重置所有使用统计数据</span>
               </button>
+            </div>
+
+            <!-- Advanced Security & Anti-peeping Suite (Aligned with Android v2.10.0 / v2.11.0) -->
+            <div class="pt-4 border-t border-line/60 space-y-4">
+              <div class="flex items-center gap-2">
+                <Lock class="w-4 h-4 text-accent" />
+                <span class="text-xs font-bold text-fg">应用安全锁与防窥套件 (Security & Privacy Suite)</span>
+              </div>
+
+              <!-- PIN Lock Configuration -->
+              <div class="p-4 rounded-xl bg-surface border border-line space-y-3">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-semibold text-fg-2">PIN 码安全应用锁</div>
+                    <div class="text-[11px] text-fg-4">启动应用或锁屏恢复时需输入 4~6 位数字 PIN 码</div>
+                  </div>
+                  <button
+                    @click="savePrivacySettings({ pinLockEnabled: !privacySettings.pinLockEnabled })"
+                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                    :class="privacySettings.pinLockEnabled ? 'bg-accent-fill' : 'bg-surface-3'"
+                  >
+                    <span
+                      class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"
+                      :class="privacySettings.pinLockEnabled ? 'translate-x-5' : 'translate-x-0'"
+                    />
+                  </button>
+                </div>
+
+                <div v-if="privacySettings.pinLockEnabled" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-line/40">
+                  <div>
+                    <label class="block text-[11px] font-medium text-fg-3 mb-1">设置/修改 PIN 码（4~6位数字）：</label>
+                    <div class="flex gap-2">
+                      <input
+                        v-model="pinEditInput"
+                        type="password"
+                        maxlength="6"
+                        placeholder="例如: 1234"
+                        class="w-full px-3 py-1.5 rounded-lg bg-surface-2 border border-line text-xs font-mono text-fg focus:outline-none focus:border-accent"
+                        @blur="handleUpdatePin"
+                        @keydown.enter="handleUpdatePin"
+                      />
+                      <button
+                        @click="handleUpdatePin"
+                        class="px-3 py-1.5 rounded-lg bg-accent-fill text-on-fill text-xs font-bold shrink-0 transition hover:bg-accent cursor-pointer"
+                      >保存</button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[11px] font-medium text-fg-3 mb-1">自动锁定超时策略：</label>
+                    <select
+                      :value="privacySettings.lockTimeoutMinutes"
+                      @change="(e) => savePrivacySettings({ lockTimeoutMinutes: Number((e.target as HTMLSelectElement).value) })"
+                      class="w-full px-3 py-1.5 rounded-lg bg-surface-2 border border-line text-xs text-fg focus:outline-none focus:border-accent cursor-pointer"
+                    >
+                      <option :value="0">立即锁定（失焦即锁）</option>
+                      <option :value="1">离开/闲置 1 分钟后锁定</option>
+                      <option :value="5">离开/闲置 5 分钟后锁定（推荐）</option>
+                      <option :value="15">离开/闲置 15 分钟后锁定</option>
+                      <option :value="30">离开/闲置 30 分钟后锁定</option>
+                      <option :value="-1">仅手动锁屏（不自动锁定）</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Window Blur Mask Toggle -->
+              <div class="flex items-center justify-between p-3.5 rounded-xl bg-surface border border-line">
+                <div>
+                  <div class="text-xs font-semibold text-fg-2">窗口失焦隐私遮罩 (Window Blur Shield)</div>
+                  <div class="text-[11px] text-fg-4">切换到其他窗口或锁屏时，瞬间覆盖高斯毛玻璃防窥层（对齐 Android FLAG_SECURE 防录屏与防窥）</div>
+                </div>
+                <button
+                  @click="savePrivacySettings({ blurOnWindowBlur: !privacySettings.blurOnWindowBlur })"
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                  :class="privacySettings.blurOnWindowBlur ? 'bg-accent-fill' : 'bg-surface-3'"
+                >
+                  <span
+                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"
+                    :class="privacySettings.blurOnWindowBlur ? 'translate-x-5' : 'translate-x-0'"
+                  />
+                </button>
+              </div>
+
+              <!-- Fake Calculator Panic Mode -->
+              <div class="p-4 rounded-xl bg-surface border border-line space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <Calculator class="w-4 h-4 text-accent" />
+                    <div>
+                      <div class="text-xs font-semibold text-fg-2">全功能伪装计算器 & 紧急脱身 (Panic Switch)</div>
+                      <div class="text-[11px] text-fg-4">一键瞬间伪装为 Apple 标准计算器（快捷键: <kbd class="px-1.5 py-0.5 rounded bg-surface-2 font-mono text-[10px] border border-line">Cmd + Shift + P</kbd>）</div>
+                    </div>
+                  </div>
+                  <button
+                    @click="triggerPanicMode"
+                    class="px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-accent transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                    title="立即测试进入计算器伪装模式"
+                  >
+                    <Calculator class="w-3.5 h-3.5" />
+                    <span>呼出伪装计算器</span>
+                  </button>
+                </div>
+                <div class="text-[11px] text-fg-4 leading-relaxed bg-surface-2/60 p-2.5 rounded-lg border border-line/40">
+                  💡 <strong>解锁机制：</strong>在计算器中输入您的 PIN 码（默认 <code class="font-mono">1234</code>）并按下 <code class="font-mono font-bold">=</code> 号，或在计算器顶部连击 4 次即可安全解锁返回 GPDb。
+                </div>
+              </div>
+
+              <!-- Window Disguise Title -->
+              <div class="p-3.5 rounded-xl bg-surface border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div class="text-xs font-semibold text-fg-2">应用窗口伪装标题 (Disguise Title)</div>
+                  <div class="text-[11px] text-fg-4">自定义应用在 macOS 标题栏与任务管理器中呈现的标题名称</div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <input
+                    v-model="disguiseTitleInput"
+                    type="text"
+                    placeholder="GPDb"
+                    class="w-32 px-2.5 py-1 rounded-lg bg-surface-2 border border-line text-xs font-mono text-fg focus:outline-none focus:border-accent"
+                    @blur="handleUpdateDisguiseTitle"
+                    @keydown.enter="handleUpdateDisguiseTitle"
+                  />
+                  <button
+                    @click="handleUpdateDisguiseTitle"
+                    class="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line text-xs text-fg-2 transition cursor-pointer"
+                  >应用</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -3924,5 +4186,22 @@ onUnmounted(() => {
       @close="showEnvironmentModal = false"
       @open-database-setup="showPermissionModal = true; showEnvironmentModal = false"
     />
+
+    <!-- Security Overlays (Aligned with Android 2.10) -->
+    <AppLockOverlay v-if="isAppLocked" />
+    <FakeCalculatorModal v-if="isFakeCalculatorActive" />
+
+    <!-- Window Blur Privacy Protection Mask -->
+    <div
+      v-if="isWindowBlurred && privacySettings.blurOnWindowBlur && !isAppLocked && !isFakeCalculatorActive"
+      class="fixed inset-0 z-[280] bg-scrim/80 backdrop-blur-2xl flex flex-col items-center justify-center select-none text-fg p-4 cursor-pointer"
+      @click="isWindowBlurred = false"
+    >
+      <div class="p-6 rounded-3xl bg-surface/90 border border-line-strong flex flex-col items-center gap-3 shadow-2xl">
+        <Shield class="w-10 h-10 text-accent animate-pulse" />
+        <div class="text-sm font-bold text-fg">隐私防窥保护生效中</div>
+        <div class="text-xs text-fg-4">点击任意位置恢复工作台界面</div>
+      </div>
+    </div>
   </div>
 </template>

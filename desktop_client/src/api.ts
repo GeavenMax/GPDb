@@ -179,6 +179,7 @@ export function createMovieFilters(): FilterState {
     yearMax: null,
     category: '',
     sortBy: 'year_desc',
+    dateFilter: 'all',
   };
 }
 
@@ -208,7 +209,7 @@ export function countActivePerformerFilters(f: PerformerFilterState): number {
 }
 
 export function createEpisodeFilters(): EpisodeFilterState {
-  return { studio: '', hasZh: false, hasPerformers: false };
+  return { studio: '', hasZh: false, hasPerformers: false, dateFilter: 'all' };
 }
 
 export function countActiveEpisodeFilters(f: EpisodeFilterState, sortBy: EpisodeSortBy): number {
@@ -216,6 +217,7 @@ export function countActiveEpisodeFilters(f: EpisodeFilterState, sortBy: Episode
   if (f.studio) n++;
   if (f.hasZh) n++;
   if (f.hasPerformers) n++;
+  if (f.dateFilter && f.dateFilter !== 'all') n++;
   if (sortBy !== 'id_desc') n++;
   return n;
 }
@@ -503,6 +505,7 @@ export const api = {
         studio: filters.studio,
         hasZh: filters.hasZh,
         hasPerformers: filters.hasPerformers,
+        dateFilter: filters.dateFilter,
         page,
         pageSize,
       });
@@ -517,6 +520,7 @@ export const api = {
       if (filters.studio) params.set('studio', filters.studio);
       if (filters.hasZh) params.set('hasZh', '1');
       if (filters.hasPerformers) params.set('hasPerformers', '1');
+      if (filters.dateFilter) params.set('dateFilter', filters.dateFilter);
       const res = await fetch(`/api/episode-library?${params.toString()}`);
       if (res.ok) return await res.json();
     } catch {}
@@ -909,6 +913,37 @@ export const api = {
     return postProviderAction(action, payload);
   },
 
+  async exportTranslations(): Promise<string> {
+    if (isTauri) {
+      return tauriInvoke<string>('export_translations');
+    }
+    const res = await fetch('/api/translate/export');
+    if (!res.ok) throw new Error('导出翻译失败');
+    return await res.text();
+  },
+
+  async importTranslations(jsonContent: string): Promise<{ movies_updated: number; episodes_updated: number; total_updated: number }> {
+    if (isTauri) {
+      return tauriInvoke<{ movies_updated: number; episodes_updated: number; total_updated: number }>('import_translations', { jsonContent });
+    }
+    const res = await fetch('/api/translate/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: jsonContent,
+    });
+    if (!res.ok) throw new Error('导入翻译失败');
+    return await res.json();
+  },
+
+  async fetchProviderModels(providerName: string): Promise<string[]> {
+    if (isTauri) {
+      return tauriInvoke<string[]>('fetch_provider_models', { providerName });
+    }
+    const res = await fetch(`/api/translate/providers/${encodeURIComponent(providerName)}/models`);
+    if (!res.ok) throw new Error('获取模型列表失败');
+    return await res.json();
+  },
+
   /**
    * Translate a film's synopsis on demand.
    *
@@ -1213,4 +1248,5 @@ export const api = {
     };
   },
 };
+
 

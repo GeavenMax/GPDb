@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue';
-import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown,  } from '@lucide/vue';
+import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown, RotateCcw, Disc3, ZoomIn } from '@lucide/vue';
 import type { Movie, UserTag, FavoriteType, MovieSeriesResponse } from '../types';
 import EpisodeRow from './EpisodeRow.vue';
 import SeriesModal from './SeriesModal.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
+import { openLightbox } from '../utils/lightbox';
+import { privacySettings } from '../services/privacy';
 import { titlePrimary, titleSecondary } from '../utils/bilingual';
 import { trCategory } from '../utils/glossary';
 import { api, IS_TAURI } from '../api';
@@ -70,6 +72,31 @@ function isFav(type: FavoriteType, key: string | null | undefined): boolean {
 const autoAttempted = new Set<number>();
 
 const activeCoverIndex = ref(0);
+const isFlipped = ref(false);
+const posterDisplayMode = computed(() => privacySettings.value.posterDisplayMode || 'adaptive_pager');
+
+const frontCoverUrl = computed(() => {
+  if (props.movie?.covers && props.movie.covers.length > 0) {
+    return getImageUrl(props.movie.covers[0]);
+  }
+  return props.movie?.cover_full ? getImageUrl(props.movie.cover_full) : '';
+});
+
+const backCoverUrl = computed(() => {
+  const covers = props.movie?.covers;
+  if (covers && covers.length > 1) {
+    const backIdx = activeCoverIndex.value > 0 ? activeCoverIndex.value : 1;
+    return getImageUrl(covers[backIdx]);
+  }
+  if ((props.movie as any)?.cover_back) {
+    return getImageUrl((props.movie as any).cover_back);
+  }
+  return '';
+});
+
+function toggleFlip() {
+  isFlipped.value = !isFlipped.value;
+}
 
 const showRatingCard = ref(false);
 const showPrivateNotes = ref(false);
@@ -114,6 +141,8 @@ function toggleOriginal() {
 }
 
 watch(() => props.movie, (m) => {
+  isFlipped.value = false;
+  activeCoverIndex.value = 0;
   zhDescription.value = m?.description_zh || null;
   showOriginalOverride.value = null;
   translateError.value = '';
@@ -200,21 +229,6 @@ const titleAlt = computed(() =>
 );
 /** Category, term by term — the column holds "Wrestling<br />J/O" as one value. */
 const categoryLabel = computed(() => trCategory(props.movie?.category));
-
-const displayReleaseDate = computed(() => {
-  if (!props.movie) return null;
-  if (props.movie.release_date) return props.movie.release_date;
-  if (props.movie.episodes && props.movie.episodes.length > 0) {
-    const dates = props.movie.episodes
-      .map(e => e.release_date)
-      .filter((d): d is string => Boolean(d && d.trim()));
-    if (dates.length > 0) {
-      dates.sort();
-      return dates[0];
-    }
-  }
-  return null;
-});
 
 // Hint for long synopses: they scroll inside their own box, which is not obvious
 // without a scrollbar, so the hint stays visible until the user reaches the end.
@@ -471,48 +485,184 @@ onUnmounted(() => {
 
         <!-- Foreground Content -->
         <div class="relative z-10 flex flex-col md:flex-row gap-6 items-start">
-          <!-- Poster Container with Multi-Cover Switching -->
+          <!-- Poster Container with Multi-Cover Switching & 3D Flip Support -->
           <div class="flex flex-col items-center gap-2 shrink-0">
-            <!-- data-zoom-click: the poster has no click action of its own, so one
-                 click opens the viewer (see utils/lightbox.ts). -->
-            <div class="w-44 md:w-56 aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border border-line-strong/60 bg-sunken relative group">
-              <img
-                v-if="currentCover"
-                :src="currentCover"
-                :alt="movie.title"
-                referrerpolicy="no-referrer"
-                data-zoom-click
-                class="w-full h-full object-cover transition-all duration-300"
-              />
-              <div v-else class="w-full h-full flex flex-col items-center justify-center text-fg-5 p-4 text-center">
-                <Film class="w-12 h-12 mb-2 stroke-1" />
-                <span class="text-xs">无封面</span>
+            <!-- Mode 1: 3D Flip Card -->
+            <div
+              v-if="posterDisplayMode === 'flip_3d'"
+              class="flex flex-col items-center gap-3 select-none"
+            >
+              <div
+                class="relative w-48 md:w-60 aspect-[3/4.2] group cursor-pointer"
+                style="perspective: 1200px; -webkit-perspective: 1200px;"
+                @click="toggleFlip"
+                @dblclick="openLightbox(isFlipped && backCoverUrl ? backCoverUrl : (frontCoverUrl || currentCover), movie.title)"
+              >
+                <!-- Ambient Glow Background -->
+                <div
+                  v-if="currentCover"
+                  class="absolute -inset-3 bg-cover bg-center rounded-3xl blur-2xl opacity-60 transition-opacity duration-500 pointer-events-none scale-105"
+                  :style="{ backgroundImage: `url(${currentCover})` }"
+                ></div>
+
+                <!-- 3D Card Inner (Flipper) -->
+                <div
+                  class="w-full h-full relative"
+                  style="transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); transform-style: preserve-3d; -webkit-transform-style: preserve-3d;"
+                  :style="{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }"
+                >
+                  <!-- Front Face -->
+                  <div
+                    class="absolute inset-0 w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-line-strong/70 bg-sunken flex items-center justify-center"
+                    style="backface-visibility: hidden; -webkit-backface-visibility: hidden; transform: rotateY(0deg); -webkit-transform: rotateY(0deg);"
+                  >
+                    <img
+                      v-if="frontCoverUrl || currentCover"
+                      :src="frontCoverUrl || currentCover"
+                      :alt="movie.title"
+                      class="w-full h-full object-cover"
+                      referrerpolicy="no-referrer"
+                    />
+                    <div v-else class="text-center p-4 text-fg-5">
+                      <Film class="w-12 h-12 mb-2 mx-auto stroke-1" />
+                      <span class="text-xs">无封面</span>
+                    </div>
+
+                    <!-- Front Badge Tag -->
+                    <div class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-bold text-white/90 border border-white/10 shadow">
+                      正面 FRONT
+                    </div>
+
+                    <!-- Zoom Icon -->
+                    <button
+                      type="button"
+                      @click.stop="openLightbox(frontCoverUrl || currentCover, movie.title)"
+                      class="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white/90 transition shadow cursor-pointer"
+                      title="放大查看高清大图"
+                    >
+                      <ZoomIn class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <!-- Back Face -->
+                  <div
+                    class="absolute inset-0 w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-line-strong/70 bg-surface-2 flex items-center justify-center"
+                    style="backface-visibility: hidden; -webkit-backface-visibility: hidden; transform: rotateY(180deg); -webkit-transform: rotateY(180deg);"
+                  >
+                    <img
+                      v-if="backCoverUrl"
+                      :src="backCoverUrl"
+                      :alt="`${movie.title} (封底)`"
+                      class="w-full h-full object-cover"
+                      referrerpolicy="no-referrer"
+                    />
+                    <!-- Aesthetic Collectible Card Back if no image -->
+                    <div v-else class="w-full h-full p-5 flex flex-col justify-between items-center text-center bg-gradient-to-br from-surface-3 via-surface-2 to-surface-1 relative overflow-hidden select-none">
+                      <div class="w-20 h-20 rounded-full border-4 border-accent/40 flex items-center justify-center bg-accent-fill/10 shadow-inner mt-4">
+                        <Disc3 class="w-10 h-10 text-accent animate-spin-slow" />
+                      </div>
+                      <div class="space-y-1.5 z-10 px-2">
+                        <div class="text-xs font-bold text-fg line-clamp-2">{{ movie.title }}</div>
+                        <div v-if="movie.studio_name" class="text-[11px] text-accent font-semibold">{{ movie.studio_name }}</div>
+                        <div class="text-[10px] text-fg-4">{{ movie.release_year ? movie.release_year + ' 年' : '发行年未知' }} · {{ movie.duration_mins ? movie.duration_mins + '分钟' : '典藏精装' }}</div>
+                      </div>
+                      <div class="text-[10px] font-mono text-fg-5 tracking-wider">★ GPDb COLLECTIBLE PHYSICAL ★</div>
+                    </div>
+
+                    <!-- Back Badge Tag -->
+                    <div class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-accent-fill text-on-fill text-[10px] font-bold shadow">
+                      封底 BACK
+                    </div>
+
+                    <!-- Zoom Icon for Back -->
+                    <button
+                      v-if="backCoverUrl"
+                      type="button"
+                      @click.stop="openLightbox(backCoverUrl, `${movie.title} (封底)`)"
+                      class="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white/90 transition shadow cursor-pointer"
+                      title="放大查看封底大图"
+                    >
+                      <ZoomIn class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interactive Controls Under Card -->
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  @click.stop="toggleFlip"
+                  class="px-3.5 py-1.5 rounded-full bg-accent-fill hover:bg-accent text-on-fill text-xs font-bold flex items-center gap-1.5 shadow-md transition cursor-pointer"
+                >
+                  <RotateCcw class="w-3.5 h-3.5" />
+                  <span>{{ isFlipped ? '翻看正面' : '3D翻转封底' }}</span>
+                </button>
+
+                <!-- Multi-back switcher if movie has 3+ covers -->
+                <div v-if="movie.covers && movie.covers.length > 2" class="flex gap-1 p-0.5 bg-surface border border-line rounded-lg">
+                  <button
+                    v-for="(_, idx) in movie.covers"
+                    :key="idx"
+                    @click.stop="activeCoverIndex = idx; if (!isFlipped && idx > 0) isFlipped = true; else if (isFlipped && idx === 0) isFlipped = false;"
+                    class="px-2 py-0.5 rounded text-[10px] font-semibold transition"
+                    :class="activeCoverIndex === idx ? 'bg-accent-fill text-on-fill' : 'text-fg-4 hover:text-fg'"
+                  >
+                    #{{ idx + 1 }}
+                  </button>
+                </div>
+              </div>
+              <div class="text-[10px] text-fg-4">
+                💡 轻击卡片翻转 · 双击放大查看
               </div>
             </div>
 
-            <!-- Front / Back Cover Switcher Pills -->
-            <div v-if="movie.covers && movie.covers.length > 1" class="flex gap-1.5 p-1 bg-surface/90 border border-line rounded-xl shadow">
-              <button
-                v-for="(_, idx) in movie.covers"
-                :key="idx"
-                @click="activeCoverIndex = idx"
-                :class="[
-                  'px-3 py-1 rounded-lg text-xs font-semibold transition',
-                  activeCoverIndex === idx
-                    ? 'bg-accent-fill text-on-fill shadow'
-                    : 'text-fg-3 hover:text-fg-2 hover:bg-surface-2'
-                ]"
+            <!-- Mode 2: Adaptive Gallery Pager (Default) -->
+            <div
+              v-else
+              class="flex flex-col items-center gap-2"
+            >
+              <div
+                class="w-44 md:w-56 min-h-[260px] max-h-[380px] rounded-2xl overflow-hidden shadow-2xl border border-line-strong/60 bg-sunken relative group cursor-pointer flex items-center justify-center"
+                @click="openLightbox(currentCover, movie.title)"
               >
-                {{ idx === 0 ? '正面封面' : idx === 1 ? '封底背面' : `封面 ${idx + 1}` }}
-              </button>
+                <img
+                  v-if="currentCover"
+                  :src="currentCover"
+                  :alt="movie.title"
+                  referrerpolicy="no-referrer"
+                  class="max-w-full max-h-[380px] w-auto h-auto object-contain transition-all duration-300 group-hover:scale-105"
+                />
+                <div v-else class="w-full h-full flex flex-col items-center justify-center text-fg-5 p-4 text-center">
+                  <Film class="w-12 h-12 mb-2 stroke-1" />
+                  <span class="text-xs">无封面</span>
+                </div>
+              </div>
+
+              <!-- Front / Back Cover Switcher Pills -->
+              <div v-if="movie.covers && movie.covers.length > 1" class="flex gap-1.5 p-1 bg-surface/90 border border-line rounded-xl shadow">
+                <button
+                  v-for="(_, idx) in movie.covers"
+                  :key="idx"
+                  @click="activeCoverIndex = idx"
+                  :class="[
+                    'px-3 py-1 rounded-lg text-xs font-semibold transition',
+                    activeCoverIndex === idx
+                      ? 'bg-accent-fill text-on-fill shadow'
+                      : 'text-fg-3 hover:text-fg-2 hover:bg-surface-2'
+                  ]"
+                >
+                  {{ idx === 0 ? '正面' : idx === 1 ? '封底' : `版本 ${idx + 1}` }}
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- Metadata -->
           <div class="flex-1 space-y-4">
             <div class="flex items-center gap-2 flex-wrap">
-              <span v-if="displayReleaseDate || movie.release_year" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-accent-fill/10 text-accent border border-accent-fill/30 font-mono">
-                {{ displayReleaseDate || movie.release_year }}
+              <span v-if="movie.release_year" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-accent-fill/10 text-accent border border-accent-fill/30 font-mono">
+                {{ movie.release_year }}
               </span>
               <span v-if="movie.duration_mins" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong flex items-center gap-1.5">
                 <Clock class="w-3.5 h-3.5" />
@@ -902,7 +1052,7 @@ onUnmounted(() => {
           <!-- One row per scene, in the shared reading layout — see EpisodeRow.
                The film's own scenes are ordered by id, so the row's index is the
                scene's position in the film (the same number the library shows).
-               No 出处 and no year: this *is* the film. -->
+               No 出处: this *is* the film. Show exact date if scene has it. -->
           <EpisodeRow
             v-for="(ep, i) in movie.episodes"
             :key="ep.id"
@@ -910,7 +1060,7 @@ onUnmounted(() => {
             :ordinal="i + 1"
             :ordinal-count="movie.episodes.length"
             :show-source="false"
-            :show-year="false"
+            :show-year="true"
             :lang="lang"
             zoom-on-click
             :is-favorite="isFav('episode', String(ep.id))"

@@ -58,30 +58,26 @@ from pathlib import Path
 from typing import Any
 
 from db_manager import DatabaseManager
+from translation_manager import save_translations
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_FILE = BASE_DIR / "translate_config.json"
+TRANS_DB_FILE = BASE_DIR / "translations.db"
 
 # A response that is already mostly CJK needs no translation.
 CJK_RE = re.compile(r"[一-鿿]")
 
-SYSTEM_PROMPT = """你是一名成人影片资料库的专职译者。你会收到一批英文的剧情简介，需要逐条翻译成简体中文。
+SYSTEM_PROMPT = """You are an adult film library archival catalog translator. You will receive a batch of English movie/scene synopses. Translate each item faithfully and accurately into Simplified Chinese.
 
-翻译风格（最重要，必须严格遵守）：
-1. 忠于原文。逐句对应，原文说了什么就译什么，不增不减、不概括、不改写、不调整叙述顺序。
-2. 非常直白。用词直接、露骨、不回避，按原文的露骨程度如实翻译：原文用了直白的说法就译成直白的说法，不要替换成委婉语、暗示或模糊表述，也不要弱化、淡化、"净化"或美化原文内容。
-3. 不要意译或润色。宁可保持原文的句式和语序，也不要为了文采而改变原意。
-4. 人名、片名、厂牌名（Studio）一律保留原文拉丁字母写法，绝对不要音译成汉字。
-   例：Count Vladimir 就译作 "Count Vladimir"，不要写成 "弗拉基米尔伯爵"；Staxus 保持 "Staxus"。
-5. 保持档案记录语气：只陈述原文内容，不添加评价、不添加原文没有的粗俗词。
+Translation Rules (strictly required):
+1. Faithful to original: Sentence-by-sentence correspondence. Translate what is stated without adding, omitting, summarizing, or changing the narrative sequence.
+2. Direct and uncensored: Translate adult content, physical acts, and body parts candidly using standard Chinese terminology in adult entertainment contexts. Do not sanitize, soften, or omit explicit details.
+3. Preserve names: Keep performer names, series titles, and studio names in original Latin letters (e.g. Joey Albano stays "Joey Albano", Staxus stays "Staxus"). Do not transliterate phonetically into Chinese characters.
+4. Objective archival tone: Record details objectively without personal commentary.
 
-处理特殊内容：涉及性行为、身体部位、性取向等成人内容时，照实翻译，使用中文成人语境中通用的直接说法，不要因内容露骨而删减、跳过或含糊处理。
-
-只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
-
-输出格式（必须严格遵守）：
-{"translations": [{"i": 1, "zh": "第一条译文"}, {"i": 2, "zh": "第二条译文"}]}
-其中 i 是输入的序号，必须与输入一一对应，不得遗漏或调换顺序。"""
+Output strictly valid JSON with no markdown wrapping, explanation, or preamble:
+{"translations": [{"i": 1, "zh": "译文1"}, {"i": 2, "zh": "译文2"}]}
+The index 'i' must correspond exactly to the input sequence."""
 
 
 # Film titles need their own prompt, and can NOT reuse SYSTEM_PROMPT above:
@@ -324,10 +320,17 @@ class GeminiProvider(Provider):
     def translate(self, texts: list[str],
                   contexts: list[str] | None = None) -> list[str]:
         base = self.base_url or self.DEFAULT_BASE_URL
+        safety_settings = [
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        ]
         payload = {
             "systemInstruction": {"parts": [{"text": self.system_prompt}]},
             "contents": [{"role": "user", "parts": [{"text": self.user_turn(texts, contexts)}]}],
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0.3},
+            "safetySettings": safety_settings,
         }
         body = self._post(
             f"{base}/v1beta/models/{self.model}:generateContent",
@@ -1059,8 +1062,14 @@ def store_translation(db: DatabaseManager, task: dict, zh: str | None) -> None:
     """Write one result back to the right table. None marks a failed attempt."""
     if task["kind"] == "movie":
         db.set_movie_translation(task["id"], zh)
+        if zh:
+            save_translations(TRANS_DB_FILE, "movie", "description", "zh-CN",
+                              [{"id": task["id"], "src": task["text"], "trans": zh}])
     else:
         db.set_episode_translation(task["id"], zh)
+        if zh:
+            save_translations(TRANS_DB_FILE, "episode", "description", "zh-CN",
+                              [{"id": task["id"], "src": task["text"], "trans": zh}])
 
 
 def translate_batch(provider: Provider, texts: list[str],
@@ -1255,6 +1264,8 @@ def run_title_translation(
                 review[row["i"]] = zh
             else:
                 db.set_movie_title_translation(row["title"], zh)
+                save_translations(TRANS_DB_FILE, "movie", "title", "zh-CN",
+                                  [{"id": None, "src": row["title"], "trans": zh}])
         return batch_saved, batch_failed
 
     drive_batches(provider, batches, workers, dry_run, handle, time.time())

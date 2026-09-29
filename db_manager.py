@@ -496,11 +496,16 @@ class DatabaseManager:
         premise.
         """
         sql = """
-            SELECT title, description FROM (
-                SELECT title, description,
+            SELECT title, context FROM (
+                SELECT title, 
+                       CASE 
+                           WHEN description_zh IS NOT NULL AND trim(description_zh) != '' THEN description_zh 
+                           ELSE description 
+                       END AS context,
                        ROW_NUMBER() OVER (
                            PARTITION BY title
-                           ORDER BY length(COALESCE(description, '')) DESC, id ASC
+                           ORDER BY (description_zh IS NOT NULL AND trim(description_zh) != '') DESC,
+                                    length(COALESCE(description, '')) DESC, id ASC
                        ) AS rn
                 FROM movies
                 WHERE title IS NOT NULL AND trim(title) != ''

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0] - 2026-09-29
+
+### Added
+- **全新独立 Windows 客户端工程体系 (`/Windows_client`)**：
+  - 架构完全独立解耦：在项目根目录建立专有 `/Windows_client` 文件夹，将 Windows 平台特定的 Tauri 2 配置、打包管线、构建脚本与界面微调收拢于单一工程内，彻底避免与 macOS (`desktop_client`) 及 Android (`android_client`) 的开发环境产生任何文件侵染。
+  - 专属开箱即用构建套件：提供 `build_windows.ps1` (PowerShell) 与 `build_windows.bat` (批处理) 双脚本，自动检查 Node.js 与 Rust 工具链版本，一键自动拉取依赖并编译生成 Windows 安装程序。
+- **Windows Python 运行环境智能探测链 (Multi-Source Python Resolution Engine)**：
+  - 针对 Windows 平台下 Python 安装形态多样的痛点（官方包、微软商店沙盒、Conda、自定义路径），实现多级分层智能探测。
+
+### Changed
+- **跨平台 CI/CD 自动化构建矩阵解耦 (`.github/workflows/release.yml`)**：
+  - 构建矩阵引入 `client_dir` 参数，macOS 节点绑定 `desktop_client`（产出 `.dmg` / `.app`），Windows 节点绑定 `Windows_client`（产出 NSIS `.exe`），两端缓存键与依赖安装完全独立隔离。
+- **全生态版本号统一演进至 v2.12.0**：
+  - 保持 Android、macOS 与 Windows 三端同步版本迭代演进。
+
+### Fixed
+- **Windows 子进程控制台黑框闪烁彻底消除 (CREATE_NO_WINDOW Console Suppression)**：
+  - 全面引入 `#[cfg(target_os = "windows")]`，并在所有子进程调用前统一注入 `creation_flags(0x08000000)` (`CREATE_NO_WINDOW`)。
+
 ## [2.11.1] - 2026-09-29
 
 ### Fixed

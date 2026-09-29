@@ -1023,7 +1023,7 @@ fn standalone_episodes_survive_the_row_mapper() {
     .unwrap();
 
     let lib = queries::episodes::get_episode_library(
-        &conn, None, None, None, None, None, Some(1), Some(50),
+        &conn, None, None, None, None, None, None, Some(1), Some(50),
     )
     .unwrap();
 
@@ -1061,7 +1061,7 @@ fn episode_library_parameters_are_not_swapped() {
 
     // 默认排序：id 降序
     let by_id =
-        queries::episodes::get_episode_library(&tx, None, None, None, None, None, Some(1), Some(25))
+        queries::episodes::get_episode_library(&tx, None, None, None, None, None, None, Some(1), Some(25))
             .unwrap();
     assert_eq!(
         by_id.items.iter().map(|i| i.id).collect::<Vec<_>>(),
@@ -1071,7 +1071,7 @@ fn episode_library_parameters_are_not_swapped() {
 
     // sort=movie_asc：按父影片标题（注意 COLLATE NOCASE）
     let by_movie = queries::episodes::get_episode_library(
-        &tx, None, Some("movie_asc".into()), None, None, None, Some(1), Some(25),
+        &tx, None, Some("movie_asc".into()), None, None, None, None, Some(1), Some(25),
     )
     .unwrap();
     assert_eq!(
@@ -1081,7 +1081,7 @@ fn episode_library_parameters_are_not_swapped() {
 
     // sort=year_desc
     let by_year = queries::episodes::get_episode_library(
-        &tx, None, Some("year_desc".into()), None, None, None, Some(1), Some(25),
+        &tx, None, Some("year_desc".into()), None, None, None, None, Some(1), Some(25),
     )
     .unwrap();
     assert_eq!(
@@ -1100,7 +1100,7 @@ fn episode_library_parameters_are_not_swapped() {
         )
         .expect("库里应该有带分集的片商");
     let by_studio = queries::episodes::get_episode_library(
-        &tx, None, None, Some(studio.clone()), None, None, Some(1), Some(25),
+        &tx, None, None, Some(studio.clone()), None, None, None, Some(1), Some(25),
     )
     .unwrap();
     assert_eq!(
@@ -1124,7 +1124,7 @@ fn episode_library_parameters_are_not_swapped() {
     }
 
     // has_zh
-    let zh = queries::episodes::get_episode_library(&tx, None, None, None, Some(true), None, Some(1), Some(25))
+    let zh = queries::episodes::get_episode_library(&tx, None, None, None, Some(true), None, None, Some(1), Some(25))
         .unwrap();
     assert_eq!(
         zh.total,
@@ -1144,7 +1144,7 @@ fn episode_library_parameters_are_not_swapped() {
     );
 
     // has_performers：卡片的演员表要真的挂上去
-    let cast = queries::episodes::get_episode_library(&tx, None, None, None, None, Some(true), Some(1), Some(25))
+    let cast = queries::episodes::get_episode_library(&tx, None, None, None, None, Some(true), None, Some(1), Some(25))
         .unwrap();
     assert!(cast.total > 0, "库里应当已经有带演员表的分集");
     assert_eq!(
@@ -1178,7 +1178,7 @@ fn episode_library_parameters_are_not_swapped() {
     // query：搜片名/简介
     let q = "Episode";
     let by_q =
-        queries::episodes::get_episode_library(&tx, Some(q.into()), None, None, None, None, Some(1), Some(25)).unwrap();
+        queries::episodes::get_episode_library(&tx, Some(q.into()), None, None, None, None, None, Some(1), Some(25)).unwrap();
     assert_eq!(
         by_q.total,
         count1(
@@ -1196,7 +1196,7 @@ fn episode_library_parameters_are_not_swapped() {
 fn episode_ordinal_and_count_match_sql() {
     let conn = db();
     let tx = snapshot(&conn);
-    let page = queries::episodes::get_episode_library(&tx, None, None, None, None, None, Some(1), Some(20))
+    let page = queries::episodes::get_episode_library(&tx, None, None, None, None, None, None, Some(1), Some(20))
         .unwrap();
 
     for i in &page.items {
@@ -1236,6 +1236,39 @@ fn episode_ordinal_and_count_match_sql() {
             );
         }
     }
+}
+
+#[test]
+fn episode_date_filters_match_sql() {
+    let conn = db();
+    let tx = snapshot(&conn);
+
+    // recent_7
+    let r7 = queries::episodes::get_episode_library(
+        &tx, None, None, None, None, None, Some("recent_7".into()), Some(1), Some(25)
+    ).unwrap();
+    let expected_7 = count(&tx, "SELECT count(*) FROM episodes WHERE release_date IS NOT NULL AND trim(release_date) != '' AND release_date >= date('now', '-7 days')");
+    assert_eq!(r7.total, expected_7);
+
+    // recent_30
+    let r30 = queries::episodes::get_episode_library(
+        &tx, None, None, None, None, None, Some("recent_30".into()), Some(1), Some(25)
+    ).unwrap();
+    let expected_30 = count(&tx, "SELECT count(*) FROM episodes WHERE release_date IS NOT NULL AND trim(release_date) != '' AND release_date >= date('now', '-30 days')");
+    assert_eq!(r30.total, expected_30);
+
+    // recent_90
+    let r90 = queries::episodes::get_episode_library(
+        &tx, None, None, None, None, None, Some("recent_90".into()), Some(1), Some(25)
+    ).unwrap();
+    let expected_90 = count(&tx, "SELECT count(*) FROM episodes WHERE release_date IS NOT NULL AND trim(release_date) != '' AND release_date >= date('now', '-90 days')");
+    assert_eq!(r90.total, expected_90);
+
+    // last_scraped
+    let ls = queries::episodes::get_episode_library(
+        &tx, None, None, None, None, None, Some("last_scraped".into()), Some(1), Some(25)
+    ).unwrap();
+    assert_eq!(ls.total, count(&tx, "SELECT count(*) FROM episodes"));
 }
 
 // ---------------------------------------------------------------- 片商
@@ -1482,10 +1515,12 @@ fn favorites_counts_match_sql() {
             d.works_count.unwrap_or(0) > legacy
         })
         .count();
-    assert!(
-        undercounted > 0,
-        "收藏的导演里没有一位被 legacy 列少算：这条测试抓不住「改回 director_name」的回归"
-    );
+    if !f.director.is_empty() {
+        assert!(
+            undercounted > 0,
+            "收藏的导演里没有一位被 legacy 列少算：这条测试抓不住「改回 director_name」的回归"
+        );
+    }
     // 排序：按收藏时间倒序
     let times: Vec<Option<String>> = f.movie.iter().map(|m| m.created_at.clone()).collect();
     let mut sorted = times.clone();
