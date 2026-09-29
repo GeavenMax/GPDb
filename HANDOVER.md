@@ -12,7 +12,7 @@
 把 `gayeroticvideoindex.com` 的影片, 演员, 分集数据刮下来, 存进本地 SQLite,
 配一个**完全离线**可用的桌面客户端（GPDb）。
 
-- 项目根：`/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GPDb_Offline_Database`
+- 项目根：`<project_root>/GPDb_Offline_Database`
 - 主库：`GPDb.db`（约 313 MB）
 - 分支：`gpdb-plus`。最新提交序列见 §5.1。
 - 后端：Python 3 **纯标准库**，`python3 server.py` 起在 **8787** 端口
@@ -304,7 +304,7 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 
 ### 4.2 上一轮（2026-09-22）：分集高清图 + 独立分集抓取
 
-对应计划：`/Users/joel/.claude/plans/silly-bouncing-haven.md`
+对应计划：`~/.claude/plans/silly-bouncing-haven.md`
 （**注意**：Claude 的 plan 文件路径会被后续会话覆盖，尽早另存）。
 
 **成果**
@@ -437,7 +437,7 @@ python3 -u scraper_v2.py --mode episode-sync --concurrency 3 --sweep-companies 1
 **第二步 — 高清图全量预下载：✅ 已完成（2026-09-22 20:36 收尾，共跑四遍）。**
 
 ```bash
-cd "/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GPDb_Offline_Database"
+cd "<project_root>"
 python3 -u cache_images.py --mode episodes --concurrency 32 >> /tmp/img_dl.log 2>&1
 ```
 
@@ -609,7 +609,7 @@ PNG 368、WebP 151、GIF 3——站点在 `.jpg` 这个 URL 下会回别的格�
 ## 6. 常用命令
 
 ```bash
-cd "/Users/joel/iCloud Drive (Archive)/Documents/antigravity/游戏库管理App/GPDb_Offline_Database"
+cd "<project_root>"
 
 # 起后端（改完 server.py / db_manager.py 必须重启）
 python3 server.py                     # 8787

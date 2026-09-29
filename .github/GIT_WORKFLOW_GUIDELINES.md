@@ -73,4 +73,4 @@
   - `scripts/send_db_to_tg.py`
   - `scripts/tg_changelog_pusher.py`
   - `scripts/.changelog_pusher_state.json`
-* 上述规则已硬编码写入根目录 [.gitignore](file:///Users/joel/iCloud%20Drive%20%28Archive%29/Documents/antigravity/%E6%B8%B8%E6%88%8F%E5%BA%93%E7%AE%A1%E7%90%86App/GEVI_Offline_Database/.gitignore)，在以后的任意代码提交和版本发布操作中，不得将其添加进版本控制。
+* 上述规则已硬编码写入根目录 [.gitignore](../.gitignore)，在以后的任意代码提交和版本发布操作中，不得将其添加进版本控制。
