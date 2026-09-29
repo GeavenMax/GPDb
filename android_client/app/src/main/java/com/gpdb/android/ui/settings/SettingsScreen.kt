@@ -105,6 +105,10 @@ fun SettingsScreen(
     val panicShakeEnabled by viewModel.panicShakeEnabled.collectAsState()
     val panicAction by viewModel.panicAction.collectAsState()
 
+    val screenshotPrivacyBlurEnabled by viewModel.screenshotPrivacyBlurEnabled.collectAsState()
+    val screenshotPrivacyBlurImages by viewModel.screenshotPrivacyBlurImages.collectAsState()
+    val screenshotPrivacyBlurText by viewModel.screenshotPrivacyBlurText.collectAsState()
+
     val llmApiKey by viewModel.llmApiKey.collectAsState()
     val llmBaseUrl by viewModel.llmBaseUrl.collectAsState()
     val llmModel by viewModel.llmModel.collectAsState()
@@ -290,7 +294,34 @@ fun SettingsScreen(
                         onCheckedChange = { viewModel.setFlagSecureEnabled(it) }
                     )
 
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+                    SettingSwitchRow(
+                        title = "截屏隐私打码模式",
+                        subtitle = if (screenshotPrivacyBlurEnabled) "已开启：所有界面图片与介绍文字高斯模糊" else "未开启：正常显示",
+                        icon = Icons.Default.BlurOn,
+                        checked = screenshotPrivacyBlurEnabled,
+                        onCheckedChange = { viewModel.setScreenshotPrivacyBlurEnabled(it) }
+                    )
+
+                    if (screenshotPrivacyBlurEnabled) {
+                        SettingSwitchRow(
+                            title = "高斯模糊所有图片与海报",
+                            subtitle = "全库封面、海报、剧照及演员头像模糊化",
+                            icon = Icons.Default.Image,
+                            checked = screenshotPrivacyBlurImages,
+                            onCheckedChange = { viewModel.setScreenshotPrivacyBlurImages(it) }
+                        )
+                        SettingSwitchRow(
+                            title = "高斯模糊简介与描述文字",
+                            subtitle = "剧情简介与细节说明文字模糊化防偷窥",
+                            icon = Icons.Default.TextFields,
+                            checked = screenshotPrivacyBlurText,
+                            onCheckedChange = { viewModel.setScreenshotPrivacyBlurText(it) }
+                        )
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     SettingSwitchRow(
                         title = I18n.string("settings.appLock"),

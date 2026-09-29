@@ -53,6 +53,10 @@ class SettingsViewModel(
     val panicShakeEnabled = appSettingsRepository.panicShakeEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
     val panicAction = appSettingsRepository.panicActionFlow.stateIn(viewModelScope, SharingStarted.Lazily, "CALCULATOR")
 
+    val screenshotPrivacyBlurEnabled = appSettingsRepository.screenshotPrivacyBlurEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, false)
+    val screenshotPrivacyBlurImages = appSettingsRepository.screenshotPrivacyBlurImagesFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
+    val screenshotPrivacyBlurText = appSettingsRepository.screenshotPrivacyBlurTextFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
+
     private val _translatableMovies = MutableStateFlow(0)
     val translatableMovies: StateFlow<Int> = _translatableMovies
     
@@ -259,6 +263,24 @@ class SettingsViewModel(
     fun setPanicAction(action: String) {
         viewModelScope.launch {
             appSettingsRepository.setPanicAction(action)
+        }
+    }
+
+    fun setScreenshotPrivacyBlurEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setScreenshotPrivacyBlurEnabled(enabled)
+        }
+    }
+
+    fun setScreenshotPrivacyBlurImages(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setScreenshotPrivacyBlurImages(enabled)
+        }
+    }
+
+    fun setScreenshotPrivacyBlurText(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setScreenshotPrivacyBlurText(enabled)
         }
     }
 }

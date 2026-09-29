@@ -416,16 +416,19 @@ class DatabaseManager:
         return [row[0] for row in cur.fetchall()]
 
     # --- Machine Translation Support ---
-    def get_untranslated_movies(self, limit: int | None = None, max_attempts: int = 3) -> list[dict]:
+    def get_untranslated_movies(self, limit: int | None = None, max_attempts: int = 3, studio_name: str | None = None) -> list[dict]:
         """Movies that still need a Chinese description, skipping ones that keep failing."""
         sql = """
             SELECT id, title, description FROM movies
             WHERE description IS NOT NULL AND trim(description) != ''
               AND description_zh IS NULL
               AND COALESCE(translation_attempts, 0) < ?
-            ORDER BY id ASC
         """
         args: list[Any] = [max_attempts]
+        if studio_name:
+            sql += " AND studio_name = ?"
+            args.append(studio_name)
+        sql += " ORDER BY id ASC"
         if limit and limit > 0:
             sql += " LIMIT ?"
             args.append(limit)
@@ -446,18 +449,22 @@ class DatabaseManager:
                     (movie_id,)
                 )
 
-    def get_untranslated_episodes(self, limit: int | None = None, movie_id: int | None = None) -> list[dict]:
+    def get_untranslated_episodes(self, limit: int | None = None, movie_id: int | None = None, studio_name: str | None = None) -> list[dict]:
         """Episodes that still need a Chinese description."""
         sql = """
-            SELECT id, movie_id, title, description FROM episodes
-            WHERE description IS NOT NULL AND trim(description) != ''
-              AND description_zh IS NULL
+            SELECT e.id, e.movie_id, e.title, e.description FROM episodes e
+            LEFT JOIN movies m ON e.movie_id = m.id
+            WHERE e.description IS NOT NULL AND trim(e.description) != ''
+              AND e.description_zh IS NULL
         """
         args: list[Any] = []
         if movie_id is not None:
-            sql += " AND movie_id = ?"
+            sql += " AND e.movie_id = ?"
             args.append(movie_id)
-        sql += " ORDER BY id ASC"
+        if studio_name:
+            sql += " AND (m.studio_name = ? OR e.studio_name = ?)"
+            args.extend([studio_name, studio_name])
+        sql += " ORDER BY e.id ASC"
         if limit and limit > 0:
             sql += " LIMIT ?"
             args.append(limit)
@@ -475,27 +482,10 @@ class DatabaseManager:
             )
 
     # --- Title translation (see schema.sql movies.title_zh) ---
-    def get_untranslated_titles(self, limit: int | None = None, max_attempts: int = 3) -> list[dict]:
-        """Distinct film titles still needing a Chinese name, with one description as context.
-
-        Two things here are deliberate and easy to get wrong by "reusing" the synopsis
-        path instead:
-
-        * No `description IS NOT NULL` filter. `get_untranslated_movies` requires a
-          synopsis because it is translating synopses; 13,301 of the 63,238 films have
-          none, so copying that predicate here would silently leave a fifth of the
-          library's titles untranslated forever.
-        * One row per *title*, not per film. 63,238 films share 59,873 distinct titles,
-          so grouping saves 5% of the API calls and - more importantly - guarantees a
-          repeated title like "Boys Will Be Boys" (17 films) reads identically in all 17
-          places instead of being translated 17 slightly different ways.
-
-        The description rides along purely as context for puns: a title like "Creamy
-        Ranch" can only be judged against what the film actually is. It comes from the
-        duplicate with the longest synopsis, which is the one most likely to explain the
-        premise.
-        """
-        sql = """
+    def get_untranslated_titles(self, limit: int | None = None, max_attempts: int = 3, studio_name: str | None = None) -> list[dict]:
+        """Distinct film titles still needing a Chinese name, with one description as context."""
+        where_studio = "AND studio_name = ?" if studio_name else ""
+        sql = f"""
             SELECT title, context FROM (
                 SELECT title, 
                        CASE 
@@ -511,10 +501,13 @@ class DatabaseManager:
                 WHERE title IS NOT NULL AND trim(title) != ''
                   AND (title_zh IS NULL OR trim(title_zh) = '')
                   AND COALESCE(title_attempts, 0) < ?
+                  {where_studio}
             ) WHERE rn = 1
             ORDER BY title ASC
         """
         args: list[Any] = [max_attempts]
+        if studio_name:
+            args.append(studio_name)
         if limit and limit > 0:
             sql += " LIMIT ?"
             args.append(limit)

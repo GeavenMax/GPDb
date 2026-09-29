@@ -61,7 +61,7 @@ import { titlePrimary, titleSecondary, sceneFilm } from './utils/bilingual';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
-  Megaphone, FolderOpen, Search, Globe, Shield, Eye, Lock, Calculator,
+  Megaphone, FolderOpen, Search, Globe, Shield, Eye, EyeOff, Lock, Calculator,
   Bookmark, CheckCircle2, ChevronDown, ChevronRight, ChevronsUpDown, Star, Info,
   SlidersHorizontal
 } from '@lucide/vue';
@@ -1627,7 +1627,13 @@ onUnmounted(() => {
     scrolling. Everything bound to `<main>` — the scroll-based loader in
     particular — then sits on an element that never scrolls.
   -->
-  <div class="wallpaper h-screen overflow-hidden bg-app text-fg flex flex-col antialiased">
+  <div
+    class="wallpaper h-screen overflow-hidden bg-app text-fg flex flex-col antialiased"
+    :class="{
+      'privacy-blur-images': privacySettings.screenshotPrivacyEnabled && privacySettings.blurImages,
+      'privacy-blur-text': privacySettings.screenshotPrivacyEnabled && privacySettings.blurDescriptions
+    }"
+  >
     <!-- Navbar -->
     <Navbar
       v-model="searchQuery"
@@ -3552,6 +3558,58 @@ onUnmounted(() => {
                     :class="privacySettings.blurOnWindowBlur ? 'translate-x-5' : 'translate-x-0'"
                   />
                 </button>
+              </div>
+
+              <!-- Screenshot Sharing Privacy Mode -->
+              <div class="p-4 rounded-xl bg-surface border border-line space-y-3">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2.5">
+                    <EyeOff class="w-4 h-4 text-accent" />
+                    <div>
+                      <div class="text-xs font-semibold text-fg-2">截屏分享防窥模式 (Screenshot Privacy Mode)</div>
+                      <div class="text-[11px] text-fg-4">手动开启后高斯模糊所有界面的图片或介绍文字，专用于安全截屏分享</div>
+                    </div>
+                  </div>
+                  <button
+                    @click="savePrivacySettings({ screenshotPrivacyEnabled: !privacySettings.screenshotPrivacyEnabled })"
+                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                    :class="privacySettings.screenshotPrivacyEnabled ? 'bg-accent-fill' : 'bg-surface-3'"
+                  >
+                    <span
+                      class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out"
+                      :class="privacySettings.screenshotPrivacyEnabled ? 'translate-x-5' : 'translate-x-0'"
+                    />
+                  </button>
+                </div>
+
+                <!-- Granular blur controls when enabled -->
+                <div v-if="privacySettings.screenshotPrivacyEnabled" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 border-t border-line/40">
+                  <label class="flex items-center gap-2.5 p-2 rounded-lg bg-surface-2/60 border border-line/50 cursor-pointer hover:bg-surface-2 transition">
+                    <input
+                      type="checkbox"
+                      :checked="privacySettings.blurImages"
+                      @change="savePrivacySettings({ blurImages: !privacySettings.blurImages })"
+                      class="rounded text-accent focus:ring-accent"
+                    />
+                    <div>
+                      <div class="text-xs font-medium text-fg">模糊海报与剧照图片</div>
+                      <div class="text-[10px] text-fg-4">高斯模糊影片封面、剧照、演职员头像等图片</div>
+                    </div>
+                  </label>
+
+                  <label class="flex items-center gap-2.5 p-2 rounded-lg bg-surface-2/60 border border-line/50 cursor-pointer hover:bg-surface-2 transition">
+                    <input
+                      type="checkbox"
+                      :checked="privacySettings.blurDescriptions"
+                      @change="savePrivacySettings({ blurDescriptions: !privacySettings.blurDescriptions })"
+                      class="rounded text-accent focus:ring-accent"
+                    />
+                    <div>
+                      <div class="text-xs font-medium text-fg">模糊剧情介绍与敏感文字</div>
+                      <div class="text-[10px] text-fg-4">高斯模糊影片详情简介、分集概要等文字</div>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <!-- Fake Calculator Panic Mode -->

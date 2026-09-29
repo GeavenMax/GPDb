@@ -67,17 +67,21 @@ TRANS_DB_FILE = BASE_DIR / "translations.db"
 # A response that is already mostly CJK needs no translation.
 CJK_RE = re.compile(r"[一-鿿]")
 
-SYSTEM_PROMPT = """You are an adult film library archival catalog translator. You will receive a batch of English movie/scene synopses. Translate each item faithfully and accurately into Simplified Chinese.
+SYSTEM_PROMPT = """你是一名成人影片资料库的专职译者。你会收到英文剧情简介、分集与专有名词，需要如实翻译成简体中文。
 
-Translation Rules (strictly required):
-1. Faithful to original: Sentence-by-sentence correspondence. Translate what is stated without adding, omitting, summarizing, or changing the narrative sequence.
-2. Direct and uncensored: Translate adult content, physical acts, and body parts candidly using standard Chinese terminology in adult entertainment contexts. Do not sanitize, soften, or omit explicit details.
-3. Preserve names: Keep performer names, series titles, and studio names in original Latin letters (e.g. Joey Albano stays "Joey Albano", Staxus stays "Staxus"). Do not transliterate phonetically into Chinese characters.
-4. Objective archival tone: Record details objectively without personal commentary.
+翻译风格（最重要，必须严格遵守）：
+1. 忠于原文：逐句对应，原文说了什么就译什么，不增不减、不概括、不改写、不调整叙述顺序。
+2. 非常直白：用词直接、露骨、不回避，按原文露骨程度如实翻译，不要替换成委婉语、暗示或模糊表述，绝不弱化、淡化、"净化"或美化原文内容。
+3. 不要意译或润色：宁可保持原文的句式和语序，也不要为了文采而改变原意。
+4. 人名、片名、厂牌名（Studio）一律保留原文拉丁字母写法，绝对不要音译成汉字（例：Count Vladimir 保持 "Count Vladimir"，不要写成 "弗拉基米尔伯爵"；Staxus 保持 "Staxus"）。
+5. 保持档案记录语气：只陈述原文内容，不添加主观评价。涉及成人内容、身体部位、性取向时照实翻译，使用中文成人语境中通用的直接说法，不要因内容露骨而删减、跳过或含糊处理。
+6. 严格契合男同性恋（Gay）语境：所有简介、分集和标题全部来自男同性恋题材，身体部位严禁出现任何针对女性的词汇（如严禁使用“逼”、“骚逼”、“屄”等）。涉及后庭器官或被插入部位时，必须使用“屁眼”、“菊花”、“菊门”、“肛门”、“后庭”等男性同性恋语境词汇；“操逼”一律译为“操屁股”、“干屁股”、“后入”或“猛操”。
 
-Output strictly valid JSON with no markdown wrapping, explanation, or preamble:
-{"translations": [{"i": 1, "zh": "译文1"}, {"i": 2, "zh": "译文2"}]}
-The index 'i' must correspond exactly to the input sequence."""
+只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
+
+输出格式（必须严格遵守）：
+{"translations": [{"i": 1, "zh": "第一条译文"}, {"i": 2, "zh": "第二条译文"}]}
+其中 i 是输入的序号，必须与输入一一对应，不得遗漏或调换顺序。"""
 
 
 # Film titles need their own prompt, and can NOT reuse SYSTEM_PROMPT above:
@@ -102,7 +106,8 @@ TITLE_SYSTEM_PROMPT = """你是一名成人影片资料库的专职译者。你�
    例：Count Vladimir 保持 "Count Vladimir"，不要写成「弗拉基米尔伯爵」。
 4. 不要音译；不要把英文原名原样再抄一遍当作译文。
 5. 中文片名尽量不超过 20 个字，要像一个片名，不要写成一句解释。
-6. 附带的简介只用来判断片名里的双关指向什么，**不要翻译简介本身**。
+6. 严格契合男同性恋（Gay）语境：身体部位严禁出现任何针对女性的词汇（如严禁使用“逼”、“骚逼”、“屄”等）。涉及后庭器官或被插入部位时，使用“屁眼”、“菊花”、“菊门”、“肛门”等男性同性恋语境词汇；“操逼”一律译为“操屁股”、“干屁股”或“猛操”。
+7. 附带的简介只用来判断片名里的双关指向什么，**不要翻译简介本身**。
 
 只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
 
@@ -187,16 +192,20 @@ class Provider:
     def _post(self, url: str, payload: dict, headers: dict) -> dict:
         data = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                return json.loads(resp.read().decode("utf-8", errors="ignore"))
-        except urllib.error.HTTPError as e:
-            detail = e.read().decode("utf-8", errors="ignore")[:500]
-            raise TranslationError(f"HTTP {e.code} from {url}: {detail}") from e
-        except urllib.error.URLError as e:
-            raise TranslationError(f"Network error calling {url}: {e.reason}") from e
-        except json.JSONDecodeError as e:
-            raise TranslationError(f"Non-JSON response from {url}: {e}") from e
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    return json.loads(resp.read().decode("utf-8", errors="ignore"))
+            except urllib.error.HTTPError as e:
+                detail = e.read().decode("utf-8", errors="ignore")[:500]
+                raise TranslationError(f"HTTP {e.code} from {url}: {detail}") from e
+            except urllib.error.URLError as e:
+                if attempt < 2:
+                    time.sleep(1.5 * (attempt + 1))
+                    continue
+                raise TranslationError(f"Network error calling {url}: {e.reason}") from e
+            except json.JSONDecodeError as e:
+                raise TranslationError(f"Non-JSON response from {url}: {e}") from e
 
     def translate(self, texts: list[str],
                   contexts: list[str] | None = None) -> list[str]:
@@ -1037,7 +1046,7 @@ def translate_categories(db: DatabaseManager, dry_run: bool = False,
 # Batch driver
 # --------------------------------------------------------------------------
 
-def collect_translation_tasks(db: DatabaseManager, limit: int | None) -> list[dict]:
+def collect_translation_tasks(db: DatabaseManager, limit: int | None, studio: str | None = None) -> list[dict]:
     """Every untranslated synopsis, as one flat list of {kind, id, title, text}.
 
     Movies first, then episodes. Keeping both kinds in a single list means the
@@ -1045,10 +1054,10 @@ def collect_translation_tasks(db: DatabaseManager, limit: int | None) -> list[di
     the `kind` matters when storing the result.
     """
     tasks: list[dict] = []
-    for row in db.get_untranslated_movies(limit=None):
+    for row in db.get_untranslated_movies(limit=None, studio_name=studio):
         tasks.append({"kind": "movie", "id": row["id"],
                       "title": row["title"], "text": row["description"]})
-    for row in db.get_untranslated_episodes(limit=None):
+    for row in db.get_untranslated_episodes(limit=None, studio_name=studio):
         tasks.append({"kind": "episode", "id": row["id"],
                       "title": row["title"], "text": row["description"]})
     # The cap is applied after merging, so a run without --limit reaches the episode
@@ -1146,8 +1155,9 @@ def run_translation(
     batch_size: int,
     workers: int,
     dry_run: bool,
+    studio: str | None = None,
 ) -> None:
-    rows = collect_translation_tasks(db, limit)
+    rows = collect_translation_tasks(db, limit, studio)
     total = len(rows)
     if total == 0:
         print("🎉 没有需要翻译的简介（全部已翻译或没有简介）。")
@@ -1157,7 +1167,8 @@ def run_translation(
     batches = [rows[i:i + batch_size] for i in range(0, total, batch_size)]
     print("=" * 70)
     print(f"🌐 GPDb 剧情简介批量翻译 | 服务商: {provider.__class__.__name__} | 模型: {provider.model}")
-    print(f"   待翻译: {total:,} 条 (影片 {n_movies:,} + 片段 {total - n_movies:,}) | "
+    studio_info = f" | 厂牌筛选: {studio}" if studio else ""
+    print(f"   待翻译: {total:,} 条 (影片 {n_movies:,} + 片段 {total - n_movies:,}){studio_info} | "
           f"批次大小: {batch_size} | 批次数: {len(batches)} | 并发: {workers}")
     if dry_run:
         print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
@@ -1177,8 +1188,6 @@ def run_translation(
                 continue
             batch_saved += 1
             if dry_run:
-                # Only the first two per batch: a synopsis is long enough that
-                # printing all of them would bury the progress line.
                 if batch_saved <= 2:
                     print(f"\n  [{row['kind']}] #{row['id']} {row['title']}\n"
                           f"    EN: {row['text'][:110]}\n    ZH: {zh[:110]}")
@@ -1194,7 +1203,7 @@ def run_translation(
 # --------------------------------------------------------------------------
 
 def collect_title_tasks(db: DatabaseManager, limit: int | None,
-                        with_context: bool = True) -> list[dict]:
+                        with_context: bool = True, studio: str | None = None) -> list[dict]:
     """Distinct untranslated titles, as one flat list of {i, title, text}.
 
     `text` is what rides along as pun context: the longest synopsis of that title's
@@ -1202,7 +1211,7 @@ def collect_title_tasks(db: DatabaseManager, limit: int | None,
     comparing the two runs).
     """
     tasks: list[dict] = []
-    for i, row in enumerate(db.get_untranslated_titles(limit=limit)):
+    for i, row in enumerate(db.get_untranslated_titles(limit=limit, studio_name=studio)):
         context = (row.get("description") or "") if with_context else ""
         tasks.append({
             "i": i,
@@ -1220,8 +1229,9 @@ def run_title_translation(
     workers: int,
     dry_run: bool,
     with_context: bool = True,
+    studio: str | None = None,
 ) -> None:
-    tasks = collect_title_tasks(db, limit, with_context)
+    tasks = collect_title_tasks(db, limit, with_context, studio=studio)
     total = len(tasks)
     if total == 0:
         print("🎉 没有需要翻译的片名（全部已翻译或没有片名）。")
@@ -1312,6 +1322,7 @@ def main():
                         help="片名模式不带简介上下文。用于和默认模式对比双关译准不准")
     parser.add_argument("--list-profiles", action="store_true",
                         help="列出已保存的翻译服务配置后退出 (不显示 API Key)")
+    parser.add_argument("--studio", help="只翻译指定片商/厂牌的影片和分集内容 (如 'Treasure Island Media')")
     args = parser.parse_args()
 
     if args.list_profiles:
@@ -1380,6 +1391,7 @@ def main():
             workers=args.workers,
             dry_run=args.dry_run,
             with_context=not args.no_context,
+            studio=args.studio,
         )
         return
 
@@ -1391,6 +1403,7 @@ def main():
         batch_size=args.batch_size or 20,
         workers=args.workers,
         dry_run=args.dry_run,
+        studio=args.studio,
     )
 
 

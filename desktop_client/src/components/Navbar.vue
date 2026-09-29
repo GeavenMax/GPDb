@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
-import { Search, SlidersHorizontal, RefreshCw, X, LayoutGrid, List, Clock, Trash2 } from '@lucide/vue';
-import { privacySettings } from '../services/privacy';
+import { Search, SlidersHorizontal, RefreshCw, X, LayoutGrid, List, Clock, Trash2, Eye, EyeOff } from '@lucide/vue';
+import { privacySettings, toggleScreenshotPrivacy } from '../services/privacy';
 import { analytics, recordSearch, removeSearchHistoryItem, clearSearchHistory } from '../services/analytics';
 import { isScrapingRunning, newlyScrapedCount } from '../services/scraper';
 import { t } from '../i18n';
@@ -187,6 +187,22 @@ onUnmounted(() => {
           <List class="w-4 h-4" />
         </button>
       </div>
+
+      <!-- Quick Screenshot Privacy Toggle -->
+      <button
+        @click="toggleScreenshotPrivacy"
+        :class="[
+          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition cursor-pointer',
+          privacySettings.screenshotPrivacyEnabled
+            ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-sm'
+            : 'bg-surface hover:bg-surface-2 border-line text-fg-3 hover:text-fg'
+        ]"
+        :title="privacySettings.screenshotPrivacyEnabled ? '截屏防窥模式已开启（高斯模糊图片/文字），点击恢复' : '点击开启截屏防窥模式（用于安全截屏分享）'"
+      >
+        <EyeOff v-if="privacySettings.screenshotPrivacyEnabled" class="w-3.5 h-3.5 text-amber-400" />
+        <Eye v-else class="w-3.5 h-3.5 text-fg-4" />
+        <span class="hidden md:inline">{{ privacySettings.screenshotPrivacyEnabled ? '防窥中' : '防窥' }}</span>
+      </button>
 
       <!-- Filter Drawer Button -->
       <button

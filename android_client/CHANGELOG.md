@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.0] - 2026-09-29
+
+### Added
+- **截屏隐私打码模式 (Screenshot Privacy Blur Mode)**：
+  - **手动启用与细分控制**：在设置「隐私与安全」中新增「截屏隐私打码模式」主开关，并支持独立勾选「模糊图片」（全局高斯模糊影片海报、封面、剧照与演职员头像）与「模糊介绍文字」（全局高斯模糊剧情简介与敏感文字描述），专用于安全截图与社媒分享。
+  - **全局响应式渲染架构**：采用 `LocalPrivacyBlur` CompositionLocal 结合 DataStore 响应式流，无侵入式作用于 `GpdbAsyncImage`、`TranslationSection`、`PerformerDetailScreen` 及 `ZoomableImageDialog`，全屏界面秒级即时生效。
+- **影片与分集档案页卡片分享功能 (Aesthetic Share Card Generator)**：
+  - **一键快捷生成**：影片详情页 (`MovieDetailScreen`) 与分集档案页 (`EpisodeDetailScreen`) 顶部操作栏新增「卡片分享」按钮，一键调出高颜值分享卡片。
+  - **自适应海报流光高斯背景**：通过采样算法从封面自适应提取主导色相，辅以暗色渐变与高精度高斯模糊，营造如同 Apple Music / Spotify 般通透现代的艺术级光晕质感。
+  - **精简而全面的元数据卡片**：集成高清封面/缩略图、中英双语标题、发行年份/日期、片商、导演、时长、评分、分级、参演演员阵容以及典雅引用样式的剧情简介。
+  - **分享前安全隐私脱敏**：弹窗内嵌即时交互开关，支持分享前按需单独或同时勾选「模糊海报」与「模糊文字」，彻底免除剧透与隐私顾虑。
+  - **无损双重导出**：采用 Compose 1.8 `rememberGraphicsLayer` 硬件加速位图捕获引擎，支持一键无损保存至系统相册 (`MediaStore` API，兼容 Android 10+ 分区存储与早期版本)，以及通过 `FileProvider` 唤起 Android 原生分享面板（直接分享至微信、QQ、Telegram、X 等）。
+- **全生态版本号统一提升至 v2.13.0**。
+
 ## [2.12.0] - 2026-09-29
 
 ### Added

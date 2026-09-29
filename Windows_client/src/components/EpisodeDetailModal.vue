@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { X, Film, Heart, Clapperboard, Calendar, ChevronLeft, ChevronRight, Languages,  } from '@lucide/vue';
+import { X, Film, Heart, Clapperboard, Calendar, ChevronLeft, ChevronRight, Languages, Share2 } from '@lucide/vue';
 import type { EpisodeSummary } from '../types';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
@@ -8,6 +8,7 @@ import { episodeHeading, episodeLabel } from '../utils/episode';
 import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
 import { pluginsConfig } from '../services/pluginManager';
 import { defineAsyncComponent } from 'vue';
+import ShareCardModal, { type ShareCardData } from './ShareCardModal.vue';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -80,6 +81,27 @@ const nextEpisode = computed(() =>
 const positionLabel = computed(() =>
   index.value >= 0 && props.list ? `${index.value + 1} / ${props.list.length}` : ''
 );
+
+const showShareModal = ref(false);
+
+const shareCardData = computed<ShareCardData | null>(() => {
+  if (!props.episode) return null;
+  const rawPoster = props.episode.thumbnail_url || (props.episode as any).still_url || (props.episode as any).cover_url;
+  return {
+    type: 'episode',
+    title: heading.value,
+    titleAlt: filmAlt.value,
+    posterUrl: rawPoster ? getImageUrl(rawPoster) : '',
+    category: '分集剧照档案',
+    releaseDate: props.episode.release_date || (props.episode.release_year ? String(props.episode.release_year) : ''),
+    studioName: props.episode.studio_name,
+    performers: props.episode.performers?.map(p => p.name) || [],
+    description: props.episode.description,
+    descriptionZh: props.episode.description_zh,
+    episodeHeading: `第 ${props.episode.episode_ordinal} 集 / 共 ${props.episode.episode_count} 集`,
+    id: props.episode.id,
+  };
+});
 
 // Escape only. The arrow keys are left alone deliberately: the image viewer pages
 // with them, and a second listener paging the modal underneath would fight it.
@@ -200,6 +222,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </template>
 
             <button
+              type="button"
+              @click="showShareModal = true"
+              class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line-strong bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+              title="生成精美分集分享卡片 (支持背景取色与隐私脱敏)"
+            >
+              <Share2 class="w-3.5 h-3.5" />
+              <span>分享卡片</span>
+            </button>
+
+            <button
               @click="emit('toggle-favorite', episode)"
               :class="[
                 'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition cursor-pointer',
@@ -281,6 +313,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       </div>
     </div>
   </div>
+
+  <!-- Share Card Modal -->
+  <ShareCardModal
+    :show="showShareModal"
+    :data="shareCardData"
+    :z-index="(zIndex ?? 50) + 25"
+    @close="showShareModal = false"
+  />
 </template>
 
 <style scoped>

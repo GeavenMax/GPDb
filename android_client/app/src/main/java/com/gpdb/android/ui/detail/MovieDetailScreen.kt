@@ -44,6 +44,9 @@ import com.gpdb.android.ui.components.GpdbAsyncImage
 import com.gpdb.android.ui.components.TranslationSection
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import com.gpdb.android.ui.components.ShareCardData
+import com.gpdb.android.ui.components.ShareCardDialog
+import androidx.compose.material.icons.filled.Share
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +63,7 @@ fun MovieDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val uriHandler = LocalUriHandler.current
+    var showShareCard by remember { mutableStateOf(false) }
 
     LaunchedEffect(movieId) {
         viewModel.loadMovie(movieId)
@@ -85,6 +89,11 @@ fun MovieDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showShareCard = true }) {
+                        Icon(Icons.Default.Share, contentDescription = "卡片分享")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -583,5 +592,33 @@ fun MovieDetailScreen(
                 }
             }
         }
+    }
+
+    if (showShareCard && uiState.movieDetail != null) {
+        val movie = uiState.movieDetail!!.movie
+        val performers = uiState.movieDetail!!.performers.map { it.name }
+        val cardData = remember(movie, performers) {
+            ShareCardData(
+                title = movie.title,
+                titleZh = movie.titleZh,
+                posterUrl = movie.coverFull ?: movie.coverIcon,
+                fallbackEntityId = movie.id,
+                defaultFolder = "Covers",
+                releaseYear = movie.releaseYear,
+                studio = movie.studioName,
+                director = movie.directorName,
+                durationMins = movie.durationMins,
+                rating = movie.rating,
+                category = movie.category,
+                performers = performers,
+                description = movie.descriptionZh?.takeIf { it.isNotBlank() } ?: movie.description,
+                isEpisode = false
+            )
+        }
+        ShareCardDialog(
+            cardData = cardData,
+            physicalRootPath = physicalRootPath,
+            onDismiss = { showShareCard = false }
+        )
     }
 }

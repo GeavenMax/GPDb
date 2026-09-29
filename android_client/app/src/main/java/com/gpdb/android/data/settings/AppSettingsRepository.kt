@@ -41,6 +41,10 @@ class AppSettingsRepository(private val context: Context) {
         val PANIC_TRIGGER_FACE_DOWN = booleanPreferencesKey("panic_trigger_face_down") // default = true
         val PANIC_TRIGGER_SHAKE = booleanPreferencesKey("panic_trigger_shake") // default = true
         val PANIC_ACTION = stringPreferencesKey("panic_action") // "CALCULATOR", "HOME", "KILL"
+
+        val SCREENSHOT_PRIVACY_BLUR_ENABLED = booleanPreferencesKey("screenshot_privacy_blur_enabled") // default = false
+        val SCREENSHOT_PRIVACY_BLUR_IMAGES = booleanPreferencesKey("screenshot_privacy_blur_images") // default = true
+        val SCREENSHOT_PRIVACY_BLUR_TEXT = booleanPreferencesKey("screenshot_privacy_blur_text") // default = true
     }
 
     val themeFlow: Flow<String> = context.dataStore.data.map { preferences ->
@@ -222,5 +226,30 @@ class AppSettingsRepository(private val context: Context) {
 
     suspend fun setPanicAction(action: String) {
         context.dataStore.edit { it[PANIC_ACTION] = action }
+    }
+
+    // ── 4. 截屏隐私打码模式 (Screenshot Privacy Blur) ───────────────
+    val screenshotPrivacyBlurEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[SCREENSHOT_PRIVACY_BLUR_ENABLED] ?: false
+    }
+
+    suspend fun setScreenshotPrivacyBlurEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[SCREENSHOT_PRIVACY_BLUR_ENABLED] = enabled }
+    }
+
+    val screenshotPrivacyBlurImagesFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[SCREENSHOT_PRIVACY_BLUR_IMAGES] ?: true
+    }
+
+    suspend fun setScreenshotPrivacyBlurImages(enabled: Boolean) {
+        context.dataStore.edit { it[SCREENSHOT_PRIVACY_BLUR_IMAGES] = enabled }
+    }
+
+    val screenshotPrivacyBlurTextFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[SCREENSHOT_PRIVACY_BLUR_TEXT] ?: true
+    }
+
+    suspend fun setScreenshotPrivacyBlurText(enabled: Boolean) {
+        context.dataStore.edit { it[SCREENSHOT_PRIVACY_BLUR_TEXT] = enabled }
     }
 }

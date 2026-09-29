@@ -14,6 +14,10 @@ export interface PrivacySettings {
   disguiseAppName: string;
   // Poster Display Scheme
   posterDisplayMode: PosterDisplayMode;
+  // Screenshot Privacy & Blur for Sharing
+  screenshotPrivacyEnabled: boolean;
+  blurImages: boolean;
+  blurDescriptions: boolean;
 }
 
 const PRIVACY_KEY = 'gpdb_privacy_settings';
@@ -30,6 +34,9 @@ function loadPrivacySettings(): PrivacySettings {
     panicModeEnabled: true,
     disguiseAppName: 'GPDb',
     posterDisplayMode: 'adaptive_pager',
+    screenshotPrivacyEnabled: false,
+    blurImages: true,
+    blurDescriptions: true,
   };
 
   try {
@@ -54,6 +61,12 @@ export function savePrivacySettings(updates: Partial<PrivacySettings>) {
   if (updates.disguiseAppName) {
     document.title = updates.disguiseAppName;
   }
+}
+
+export function toggleScreenshotPrivacy() {
+  savePrivacySettings({
+    screenshotPrivacyEnabled: !privacySettings.value.screenshotPrivacyEnabled,
+  });
 }
 
 // Runtime Security States

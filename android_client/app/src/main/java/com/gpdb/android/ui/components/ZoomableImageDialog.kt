@@ -153,6 +153,7 @@ fun ZoomableImageDialog(
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxSize()
+                            .privacyBlurImage()
                             .graphicsLayer(
                                 scaleX = scale,
                                 scaleY = scale,

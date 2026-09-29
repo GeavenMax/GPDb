@@ -27,6 +27,7 @@ import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
 import com.gpdb.android.ui.components.EpisodeListItem
 import com.gpdb.android.ui.components.MovieGridItem
+import com.gpdb.android.ui.components.privacyBlurImage
 
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -142,6 +143,7 @@ fun PerformerDetailScreen(
                                 .size(100.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .privacyBlurImage()
                                 .clickable { showFullImage = true }
                         )
                         

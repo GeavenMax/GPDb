@@ -47,6 +47,6 @@ fun GpdbAsyncImage(
         contentDescription = contentDescription,
         alignment = alignment,
         contentScale = contentScale,
-        modifier = modifier
+        modifier = modifier.privacyBlurImage()
     )
 }

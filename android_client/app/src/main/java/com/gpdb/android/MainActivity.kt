@@ -131,7 +131,22 @@ class MainActivity : FragmentActivity() {
                 androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(localeList)
             }
 
-            CompositionLocalProvider(LocalAppLanguage provides currentAppLang) {
+            val privacyBlurEnabled by appSettingsRepository.screenshotPrivacyBlurEnabledFlow.collectAsState(initial = false)
+            val privacyBlurImages by appSettingsRepository.screenshotPrivacyBlurImagesFlow.collectAsState(initial = true)
+            val privacyBlurText by appSettingsRepository.screenshotPrivacyBlurTextFlow.collectAsState(initial = true)
+
+            val privacyBlurState = remember(privacyBlurEnabled, privacyBlurImages, privacyBlurText) {
+                com.gpdb.android.ui.components.PrivacyBlurState(
+                    enabled = privacyBlurEnabled,
+                    blurImages = privacyBlurImages,
+                    blurText = privacyBlurText
+                )
+            }
+
+            CompositionLocalProvider(
+                LocalAppLanguage provides currentAppLang,
+                com.gpdb.android.ui.components.LocalPrivacyBlur provides privacyBlurState
+            ) {
                 GPDbTheme(themeChoice = themeChoice, dynamicColor = dynamicColor) {
                     val inFakeCalc by isInFakeCalculatorMode
                     val locked by isAppLocked

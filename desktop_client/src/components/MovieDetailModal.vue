@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue';
-import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown, RotateCcw, Disc3, ZoomIn } from '@lucide/vue';
+import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown, RotateCcw, Disc3, ZoomIn, Share2 } from '@lucide/vue';
 import type { Movie, UserTag, FavoriteType, MovieSeriesResponse } from '../types';
 import EpisodeRow from './EpisodeRow.vue';
 import SeriesModal from './SeriesModal.vue';
+import ShareCardModal, { type ShareCardData } from './ShareCardModal.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { openLightbox } from '../utils/lightbox';
@@ -92,6 +93,27 @@ const backCoverUrl = computed(() => {
     return getImageUrl((props.movie as any).cover_back);
   }
   return '';
+});
+
+const showShareModal = ref(false);
+
+const shareCardData = computed<ShareCardData | null>(() => {
+  if (!props.movie) return null;
+  return {
+    type: 'movie',
+    title: titleMain.value,
+    titleAlt: titleAlt.value,
+    posterUrl: frontCoverUrl.value || currentCover.value || '',
+    category: categoryLabel.value,
+    releaseDate: displayReleaseDate.value || (props.movie.release_year ? String(props.movie.release_year) : ''),
+    durationMins: props.movie.duration_mins,
+    studioName: props.movie.studio_name,
+    directorName: props.movie.directors?.map(d => d.name).join('、'),
+    performers: props.movie.performers?.map(p => p.name) || [],
+    description: props.movie.description,
+    descriptionZh: props.movie.description_zh,
+    id: props.movie.id,
+  };
 });
 
 function toggleFlip() {
@@ -229,6 +251,21 @@ const titleAlt = computed(() =>
 );
 /** Category, term by term — the column holds "Wrestling<br />J/O" as one value. */
 const categoryLabel = computed(() => trCategory(props.movie?.category));
+
+const displayReleaseDate = computed(() => {
+  if (!props.movie) return null;
+  if (props.movie.release_date) return props.movie.release_date;
+  if (props.movie.episodes && props.movie.episodes.length > 0) {
+    const dates = props.movie.episodes
+      .map(e => e.release_date)
+      .filter((d): d is string => Boolean(d && d.trim()));
+    if (dates.length > 0) {
+      dates.sort();
+      return dates[0];
+    }
+  }
+  return null;
+});
 
 // Hint for long synopses: they scroll inside their own box, which is not obvious
 // without a scrollbar, so the hint stays visible until the user reaches the end.
@@ -564,7 +601,7 @@ onUnmounted(() => {
                       <div class="space-y-1.5 z-10 px-2">
                         <div class="text-xs font-bold text-fg line-clamp-2">{{ movie.title }}</div>
                         <div v-if="movie.studio_name" class="text-[11px] text-accent font-semibold">{{ movie.studio_name }}</div>
-                        <div class="text-[10px] text-fg-4">{{ movie.release_year ? movie.release_year + ' 年' : '发行年未知' }} · {{ movie.duration_mins ? movie.duration_mins + '分钟' : '典藏精装' }}</div>
+                        <div class="text-[10px] text-fg-4">{{ movie.release_year }} · {{ movie.duration_mins ? movie.duration_mins + '分钟' : '典藏精装' }}</div>
                       </div>
                       <div class="text-[10px] font-mono text-fg-5 tracking-wider">★ GPDb COLLECTIBLE PHYSICAL ★</div>
                     </div>
@@ -661,8 +698,8 @@ onUnmounted(() => {
           <!-- Metadata -->
           <div class="flex-1 space-y-4">
             <div class="flex items-center gap-2 flex-wrap">
-              <span v-if="movie.release_year" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-accent-fill/10 text-accent border border-accent-fill/30 font-mono">
-                {{ movie.release_year }}
+              <span v-if="displayReleaseDate || movie.release_year" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-accent-fill/10 text-accent border border-accent-fill/30 font-mono">
+                {{ displayReleaseDate || movie.release_year }}
               </span>
               <span v-if="movie.duration_mins" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong flex items-center gap-1.5">
                 <Clock class="w-3.5 h-3.5" />
@@ -672,9 +709,18 @@ onUnmounted(() => {
                 {{ categoryLabel }}
               </span>
               <button
+                type="button"
+                @click="showShareModal = true"
+                class="ml-auto px-3 py-1 rounded-lg text-xs font-medium border border-line-strong bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+                title="生成精美分享卡片 (支持背景渐变自适应与隐私防窥)"
+              >
+                <Share2 class="w-3.5 h-3.5" />
+                <span>分享卡片</span>
+              </button>
+              <button
                 @click="emit('toggle-favorite', movie)"
                 :class="[
-                  'ml-auto px-3 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
+                  'px-3 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
                   isFavorite
                     ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
                     : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
@@ -819,7 +865,7 @@ onUnmounted(() => {
                 class="max-h-72 overflow-y-auto pr-2 -mr-2"
                 @scroll.passive="onDescriptionScroll"
               >
-                <p class="whitespace-pre-line">{{ displayedDescription }}</p>
+                <p class="whitespace-pre-line synopsis-text" data-privacy="text">{{ displayedDescription }}</p>
               </div>
 
               <!-- Fades in while there is more text below, so the cut-off is visible -->
@@ -1052,7 +1098,7 @@ onUnmounted(() => {
           <!-- One row per scene, in the shared reading layout — see EpisodeRow.
                The film's own scenes are ordered by id, so the row's index is the
                scene's position in the film (the same number the library shows).
-               No 出处: this *is* the film. Show exact date if scene has it. -->
+               No 出处 and no year: this *is* the film. -->
           <EpisodeRow
             v-for="(ep, i) in movie.episodes"
             :key="ep.id"
@@ -1060,7 +1106,7 @@ onUnmounted(() => {
             :ordinal="i + 1"
             :ordinal-count="movie.episodes.length"
             :show-source="false"
-            :show-year="true"
+            :show-year="false"
             :lang="lang"
             zoom-on-click
             :is-favorite="isFav('episode', String(ep.id))"
@@ -1081,6 +1127,14 @@ onUnmounted(() => {
     @close="showSeriesModal = false"
     @select-movie="onSelectSeriesMovie"
     @toggle-favorite="(rootTitle) => emit('toggle-entity-favorite', 'series', rootTitle)"
+  />
+
+  <!-- Share Card Modal -->
+  <ShareCardModal
+    :show="showShareModal"
+    :data="shareCardData"
+    :z-index="(zIndex ?? 50) + 25"
+    @close="showShareModal = false"
   />
 </template>
 

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.13.0] - 2026-09-29
+
+### Added
+- **截屏分享隐私保护与全局高斯防窥模式 (Screenshot Privacy & Blur Mode)**：
+  - **手动启用与一键快捷切换**：在设置「隐私与数据安全」中提供专属控制面板，并在顶部导航栏 (`Navbar.vue`) 放置一键“截屏防窥”眼睛开关；支持快捷键与即时状态切换（防窥中 / 正常浏览）。
+  - **细粒度隐私脱敏控制**：
+    - `模糊海报与剧照图片`：全局高斯模糊 (`blur(24px)`) 所有影视封面、剧照、演职员头像等敏感视觉画面，杜绝截屏或社媒分享时泄露画面；
+    - `模糊剧情介绍与敏感文字`：高斯模糊 (`blur(7px)`) 影视简介、分集梗概等敏感文字并禁止文本选中，防止剧透与涉密内容外泄。
+- **影片与分集一键精美分享卡片生成器 (Aesthetic Share Card Generator)**：
+  - **自适应海报高斯背景取色**：全新架构的 `ShareCardModal.vue` 组件，背景光晕直接从海报封面自适应提取色相并实施高精度大半径高斯模糊 (`blur(45px~60px)`)，搭配暗夜渐变遮罩，呈现 Apple Music / Spotify 级别的流光视效。
+  - **海报与文字安全脱敏分享 (Selective Blur for Sharing)**：
+    - 在生成分享卡片时，用户可独立勾选「模糊海报封面」（海报注入高斯模糊并覆盖隐私保护徽章）与「模糊剧情介绍」（文字注入高斯模糊并覆盖脱敏标签），实现 100% 安全社交分享。
+    - 提供“流光 (Vibrant)”、“深黑 (Dark)”、“午夜 (Midnight)”三种专属背景光晕预设，以及剧情概要显示开关。
+  - **超高清 Retina 2x 双重导出**：
+    - **复制卡片图片 (Copy Image)**：基于离线 HTML5 Canvas 2D 引擎以 2x 超高清分辨率直接光栅化卡片为 PNG Blob，并无缝写入系统剪贴板（支持在微信、QQ、Telegram、Discord、X/Twitter 等社交聊天软件中直接 <kbd>Ctrl + V</kbd> 粘贴分享）；
+    - **保存为图片 (Save Image)**：一键将高质量分享卡片导出至本地磁盘 (`.png`)。
+  - **双档案页全面接入**：在影片详情页 (`MovieDetailModal.vue`) 与分集详情页 (`EpisodeDetailModal.vue`) 操作栏全面部署「分享卡片」入口。
+
+---
+
 ## [2.12.0] - 2026-09-29
 
 ### Added

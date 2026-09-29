@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
 import com.gpdb.android.ui.components.GpdbAsyncImage
+import com.gpdb.android.ui.components.ShareCardData
+import com.gpdb.android.ui.components.ShareCardDialog
 import com.gpdb.android.ui.components.TranslationSection
 import com.gpdb.android.ui.components.ZoomableImageDialog
 
@@ -39,6 +42,7 @@ fun EpisodeDetailScreen(
     onMovieClick: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showShareCard by remember { mutableStateOf(false) }
 
     LaunchedEffect(episodeId) {
         viewModel.loadEpisode(episodeId)
@@ -51,6 +55,11 @@ fun EpisodeDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showShareCard = true }) {
+                        Icon(Icons.Default.Share, contentDescription = "卡片分享")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -236,5 +245,37 @@ fun EpisodeDetailScreen(
                 }
             }
         }
+    }
+
+    if (showShareCard && uiState.episodeDetail != null) {
+        val detail = uiState.episodeDetail!!
+        val episode = detail.episode
+        val parentMovie = uiState.parentMovie
+        val studio = episode.studioName ?: parentMovie?.studioName
+        val releaseYear = episode.releaseDate?.take(4)?.toIntOrNull() ?: parentMovie?.releaseYear
+        val performers = detail.performers.map { it.name }
+        val cardData = remember(episode, parentMovie, performers) {
+            ShareCardData(
+                title = episode.title ?: "未知分集",
+                titleZh = parentMovie?.titleZh ?: parentMovie?.title,
+                posterUrl = episode.thumbnailUrl,
+                fallbackEntityId = episode.id,
+                defaultFolder = "Episodes",
+                releaseYear = releaseYear,
+                studio = studio,
+                director = parentMovie?.directorName,
+                durationMins = null,
+                rating = parentMovie?.rating,
+                category = parentMovie?.category,
+                performers = performers,
+                description = episode.descriptionZh?.takeIf { it.isNotBlank() } ?: episode.description ?: episode.actionNotes,
+                isEpisode = true
+            )
+        }
+        ShareCardDialog(
+            cardData = cardData,
+            physicalRootPath = physicalRootPath,
+            onDismiss = { showShareCard = false }
+        )
     }
 }

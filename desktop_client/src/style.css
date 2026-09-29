@@ -99,3 +99,20 @@ img {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--surface-3);
 }
+
+/* ==========================================================================
+   Screenshot Privacy Mode (截屏分享防窥模式)
+   ========================================================================== */
+.privacy-blur-images img:not(.no-privacy-blur),
+.privacy-blur-images [data-privacy="image"]:not(.no-privacy-blur) {
+  filter: blur(24px) brightness(0.9) !important;
+  transition: filter 0.25s ease-in-out;
+}
+
+.privacy-blur-text .synopsis-text:not(.no-privacy-blur),
+.privacy-blur-text .description-text:not(.no-privacy-blur),
+.privacy-blur-text [data-privacy="text"]:not(.no-privacy-blur) {
+  filter: blur(7px) !important;
+  user-select: none !important;
+  transition: filter 0.25s ease-in-out;
+}
