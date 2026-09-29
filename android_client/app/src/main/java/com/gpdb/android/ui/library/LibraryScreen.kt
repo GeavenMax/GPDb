@@ -9,6 +9,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import com.gpdb.android.ui.components.EpisodeListItem
 import com.gpdb.android.ui.components.MovieGridItem
 import com.gpdb.android.ui.components.PerformerGridItem
@@ -23,7 +25,8 @@ fun LibraryScreen(
     onPerformerClick: (Long) -> Unit,
     onEpisodeClick: (Long) -> Unit,
     onSeriesClick: (String) -> Unit = {},
-    onStudioClick: (String) -> Unit = {}
+    onStudioClick: (String) -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -40,7 +43,12 @@ fun LibraryScreen(
                     title = "我的库",
                     searchQuery = uiState.searchQuery,
                     onSearchQueryChange = { viewModel.updateSearch(it) },
-                    placeholder = "在当前库中搜索..."
+                    placeholder = "在当前库中搜索...",
+                    actions = {
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Default.Settings, contentDescription = "设置")
+                        }
+                    }
                 )
 
                 FlowRow(

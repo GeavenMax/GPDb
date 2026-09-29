@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dynamic Theme (Material You)**: 深度整合 Material 3 动态主题系统，支持 Android 12+ 系统壁纸自适应取色，以及手动强制锁定暗色/亮色模式。
 
 ### Changed
+- **设置入口重构至“我的库”右上角 (Settings Entry Relocated to Library Top-Right)**：
+  - 将底部导航栏冗余的“设置”Tab 移出，精简底部全局导航项；在“我的库”顶部导航栏右上角新增设置齿轮入口。
+  - 在“设置”界面新增左上角返回按钮与原生返回栈导航；在即时搜索展开时自动让位收起设置按钮，保障搜索文本框拥有全屏宽度，二者互不干扰。
 - **数据库日志模式调优 (TRUNCATE Journal Mode)**：
   - 将 Room 数据库的 JournalMode 显式锁定为 `TRUNCATE`，杜绝 Android 外部存储 / SAF / FUSE 挂载点下由于不支持 POSIX `mmap` 对 `.db-shm` / `.db-wal` 文件引发的 I/O 权限异常，实现移动端与 macOS 间随意拷贝热插拔。
 - **页面过度复杂性重构与极致瘦身 (Screen Streamlining & Deduplication)**：
@@ -67,6 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dead Code**: 移除了 `MovieDetailScreen` 中的私有 `MovieUserActionBar` 废弃代码以及构建残留文件。
 
 ### Fixed
+- **搜索输入框自动获焦与软键盘自动弹起 (Search Input Auto-Focus & Keyboard Trigger)**：
+  - 修复此前点击搜索图标后仅展示文本框但软键盘不自动拉起、必须用户再次点击文本框的缺陷。
+  - 在全局即时搜索顶栏 `SearchTopAppBar` 与独立搜索页 `SearchScreen` 中接入 `FocusRequester` 与 `LocalSoftwareKeyboardController`，点击搜索时自动获焦并即时呼出系统输入法键盘。
 - **FTS5 虚表语法兼容性与中文搜索修复 (FTS5 Query Crash & CJK Fallback)**：
   - 修复此前硬编码 `"$query"*` 导致 SQLite FTS5 解析报错（`near "query": syntax error`）的问题，采用跨平台安全的 `id IN (SELECT id FROM movies_fts WHERE movies_fts MATCH ?)` 子查询语法。
   - 新增 CJK 中文标题与中文简介的 `LIKE` 兜底匹配机制，彻底解决 FTS5 分词器无法识别无空格中文词汇导致搜索无结果的问题。

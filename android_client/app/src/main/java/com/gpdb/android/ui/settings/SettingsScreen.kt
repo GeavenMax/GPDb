@@ -24,6 +24,7 @@ import org.json.JSONArray
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -81,7 +82,12 @@ fun changeAppIcon(context: Context, scope: CoroutineScope, newIcon: String) {
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(appPreferences: AppPreferences, appSettingsRepository: AppSettingsRepository, onRemountClick: () -> Unit) {
+fun SettingsScreen(
+    appPreferences: AppPreferences,
+    appSettingsRepository: AppSettingsRepository,
+    onRemountClick: () -> Unit,
+    onBackClick: (() -> Unit)? = null
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val mountPreferences = remember { com.gpdb.android.data.preferences.MountPreferences(context) }
     val viewModel = remember { SettingsViewModel(appPreferences, appSettingsRepository, mountPreferences) }
@@ -112,7 +118,18 @@ fun SettingsScreen(appPreferences: AppPreferences, appSettingsRepository: AppSet
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("设置") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("设置") },
+                navigationIcon = {
+                    if (onBackClick != null) {
+                        IconButton(onClick = onBackClick) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        }
+                    }
+                }
+            )
+        }
     ) { innerPadding ->
         val mainScrollState = rememberScrollState()
         Column(modifier = Modifier.padding(innerPadding).verticalScroll(mainScrollState).padding(16.dp).fillMaxWidth()) {

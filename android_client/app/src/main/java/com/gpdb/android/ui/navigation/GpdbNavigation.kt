@@ -66,8 +66,7 @@ fun GpdbNavGraph(
         Screen.Home.route,
         Screen.Performers.route,
         Screen.Studios.route,
-        Screen.Library.route,
-        Screen.Settings.route
+        Screen.Library.route
     )
 
     Scaffold(
@@ -116,18 +115,6 @@ fun GpdbNavGraph(
                         selected = currentDestination?.hierarchy?.any { it.route == Screen.Library.route } == true,
                         onClick = {
                             navController.navigate(Screen.Library.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-                    NavigationBarItem(
-                        icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                        label = { Text("设置") },
-                        selected = currentDestination?.hierarchy?.any { it.route == Screen.Settings.route } == true,
-                        onClick = {
-                            navController.navigate(Screen.Settings.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
@@ -197,6 +184,9 @@ fun GpdbNavGraph(
                     },
                     onEpisodeClick = { episodeId ->
                         navController.navigate(Screen.EpisodeDetail.createRoute(episodeId))
+                    },
+                    onSettingsClick = {
+                        navController.navigate(Screen.Settings.route)
                     }
                 )
             }
@@ -241,11 +231,12 @@ fun GpdbNavGraph(
                 )
             }
 
-                        composable(Screen.Settings.route) {
+            composable(Screen.Settings.route) {
                 com.gpdb.android.ui.settings.SettingsScreen(
                     appPreferences = com.gpdb.android.data.preferences.AppPreferences(androidx.compose.ui.platform.LocalContext.current),
                     appSettingsRepository = com.gpdb.android.data.settings.AppSettingsRepository(androidx.compose.ui.platform.LocalContext.current),
-                    onRemountClick = onRemountClick
+                    onRemountClick = onRemountClick,
+                    onBackClick = { navController.popBackStack() }
                 )
             }
 

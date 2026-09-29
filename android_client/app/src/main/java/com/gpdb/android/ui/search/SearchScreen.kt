@@ -12,6 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
@@ -31,9 +34,17 @@ fun SearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val searchHistory by viewModel.searchHistory.collectAsState()
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(physicalRootPath) {
         viewModel.initRepository()
+    }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(100)
+        focusRequester.requestFocus()
+        keyboardController?.show()
     }
 
     Scaffold(
@@ -44,7 +55,9 @@ fun SearchScreen(
                         value = uiState.query,
                         onValueChange = { viewModel.updateQuery(it) },
                         placeholder = { Text("搜索影片或演员...") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = MaterialTheme.colorScheme.surface,

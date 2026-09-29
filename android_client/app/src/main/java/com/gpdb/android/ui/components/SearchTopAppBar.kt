@@ -13,12 +13,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 
 /**
  * 统一的带即时搜索功能的 TopAppBar
  *
- * 自动管理展开/折叠状态，提供统一视觉外观，支持在动作区添加自定义按钮（如排序菜单）。
+ * 自动管理展开/折叠状态，提供统一视觉外观，支持在动作区添加自定义按钮（如设置、排序菜单）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +35,16 @@ fun SearchTopAppBar(
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     var isSearching by rememberSaveable { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    LaunchedEffect(isSearching) {
+        if (isSearching) {
+            kotlinx.coroutines.delay(50)
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
 
     TopAppBar(
         modifier = modifier,
@@ -55,7 +68,9 @@ fun SearchTopAppBar(
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester)
                     )
                 } else {
                     Text(title)
@@ -74,8 +89,8 @@ fun SearchTopAppBar(
                 IconButton(onClick = { isSearching = true }) {
                     Icon(Icons.Default.Search, contentDescription = "搜索")
                 }
+                actions()
             }
-            actions()
         }
     )
 }
