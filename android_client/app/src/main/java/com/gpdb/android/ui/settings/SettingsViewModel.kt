@@ -38,6 +38,9 @@ class SettingsViewModel(
     val appIcon = appPreferences.appIconFlow.stateIn(viewModelScope, SharingStarted.Lazily, "B")
     val periodicSyncEnabled = appSettingsRepository.periodicSyncEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
 
+    val posterDisplayMode = appSettingsRepository.posterDisplayModeFlow.stateIn(viewModelScope, SharingStarted.Lazily, "adaptive_pager")
+    val saveImagesToExternal = appSettingsRepository.saveImagesToExternalFlow.stateIn(viewModelScope, SharingStarted.Lazily, false)
+
     private val _translatableMovies = MutableStateFlow(0)
     val translatableMovies: StateFlow<Int> = _translatableMovies
     
@@ -161,5 +164,34 @@ class SettingsViewModel(
 
     fun resetSyncStatus() {
         _syncStatus.value = SyncStatus.Idle
+    }
+
+    fun setPosterDisplayMode(mode: String) {
+        viewModelScope.launch {
+            appSettingsRepository.setPosterDisplayMode(mode)
+        }
+    }
+
+    fun setSaveImagesToExternal(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setSaveImagesToExternal(enabled)
+            if (enabled && mountPreferences != null) {
+                val root = mountPreferences.mountRootFlow.first()
+                if (!root.isNullOrBlank()) {
+                    com.gpdb.android.util.PrivacyHelper.ensureNoMedia(java.io.File(root))
+                }
+            }
+        }
+    }
+
+    fun enforceExternalNoMedia() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (mountPreferences != null) {
+                val root = mountPreferences.mountRootFlow.first()
+                if (!root.isNullOrBlank()) {
+                    com.gpdb.android.util.PrivacyHelper.ensureNoMedia(java.io.File(root))
+                }
+            }
+        }
     }
 }

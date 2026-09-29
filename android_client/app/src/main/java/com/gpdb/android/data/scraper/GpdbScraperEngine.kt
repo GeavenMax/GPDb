@@ -12,6 +12,7 @@ import com.gpdb.android.data.db.entities.MoviePerformerEntity
 import com.gpdb.android.data.db.entities.PerformerEntity
 import com.gpdb.android.image.ImageHttpClient
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
@@ -341,7 +342,7 @@ class GpdbScraperEngine(
         )
     }
 
-    private fun downloadAndCacheImageSync(url: String) {
+    private suspend fun downloadAndCacheImageSync(url: String) {
         try {
             val cleanUrl = if (url.startsWith("http")) url else "$BASE_URL/${url.trimStart('/')}"
             val request = Request.Builder()
@@ -365,20 +366,26 @@ class GpdbScraperEngine(
                 val filename = cleanUrl.substringAfterLast("/")
                 val relPath = "image_cache/$folder/$filename"
 
-                // 外部物理目录
-                if (physicalRootPath.isNotBlank()) {
+                // 隐私沙盒隔离控制：仅在用户显式开启“允许保存至外部存储”时写回外部目录
+                val appSettings = com.gpdb.android.data.settings.AppSettingsRepository(context)
+                val allowExternal = appSettings.saveImagesToExternalFlow.firstOrNull() ?: false
+
+                if (allowExternal && physicalRootPath.isNotBlank()) {
                     try {
                         val pFile = File(physicalRootPath, relPath)
                         pFile.parentFile?.mkdirs()
                         if (pFile.parentFile?.canWrite() == true) {
                             pFile.writeBytes(bytes)
+                            com.gpdb.android.util.PrivacyHelper.ensureNoMedia(File(physicalRootPath))
+                            com.gpdb.android.util.PrivacyHelper.ensureNoMedia(pFile.parentFile)
                         }
                     } catch (_: Exception) {}
                 }
 
-                // 应用内部文件目录
+                // 应用内部私有沙盒文件目录 (/data/user/0/.../files/image_cache)
                 val iFile = File(context.filesDir, relPath)
                 iFile.parentFile?.mkdirs()
+                com.gpdb.android.util.PrivacyHelper.ensureNoMedia(iFile.parentFile)
                 iFile.writeBytes(bytes)
             }
         } catch (_: Exception) {}

@@ -25,7 +25,8 @@ enum class HomeTab { ALL_MOVIES, EPISODES, SERIES }
 
 enum class DateFilter(val label: String) {
     ALL("全部"),
-    RECENT_SCRAPED("最近入库"),
+    LAST_SCRAPED("上次入库"),
+    RECENT_7("最近7天"),
     RECENT_30("最近30天"),
     RECENT_90("最近90天"),
     RECENT_YEAR("本年度")
@@ -217,10 +218,10 @@ class HomeViewModel : ViewModel() {
                 if (sortByYear) db.movieDao().getMoviesByYear(limit, offset)
                 else db.movieDao().getMoviesList(limit, offset)
             }
-            DateFilter.RECENT_SCRAPED -> {
+            DateFilter.LAST_SCRAPED -> {
                 db.movieDao().getMoviesByScrapedAt(limit, offset)
             }
-            DateFilter.RECENT_30, DateFilter.RECENT_90 -> {
+            DateFilter.RECENT_7, DateFilter.RECENT_30, DateFilter.RECENT_90 -> {
                 db.movieDao().getMoviesByMinYear(2026, limit, offset)
             }
             DateFilter.RECENT_YEAR -> {
@@ -279,8 +280,13 @@ class HomeViewModel : ViewModel() {
         val now = java.util.Calendar.getInstance()
         val format = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
         return when (filter) {
-            DateFilter.ALL, DateFilter.RECENT_SCRAPED -> {
+            DateFilter.ALL, DateFilter.LAST_SCRAPED -> {
                 db.episodeDao().getEpisodesPaged(limit, offset)
+            }
+            DateFilter.RECENT_7 -> {
+                now.add(java.util.Calendar.DAY_OF_YEAR, -7)
+                val minDate = format.format(now.time)
+                db.episodeDao().getEpisodesByMinDate(minDate, limit, offset)
             }
             DateFilter.RECENT_30 -> {
                 now.add(java.util.Calendar.DAY_OF_YEAR, -30)

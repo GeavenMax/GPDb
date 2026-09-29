@@ -21,7 +21,13 @@ class HomeFeedViewModel(
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     init {
-        loadFeed()
+        viewModelScope.launch {
+            com.gpdb.android.data.db.DatabaseHolder.isReadyFlow.collect { isReady ->
+                if (isReady) {
+                    loadFeed()
+                }
+            }
+        }
     }
 
     fun loadFeed() {

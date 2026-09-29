@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
         mountPreferences = MountPreferences(this)
         appPreferences = AppPreferences(this)
         appSettingsRepository = AppSettingsRepository(this)
+        com.gpdb.android.util.PrivacyHelper.initSandboxPrivacy(this)
 
         setContent {
             val themeMode by appSettingsRepository.themeModeFlow.collectAsState(initial = ThemeMode.SYSTEM)

@@ -22,6 +22,9 @@ object DatabaseHolder {
     @Volatile
     private var currentPath: String? = null
 
+    private val _isReadyFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isReadyFlow: kotlinx.coroutines.flow.StateFlow<Boolean> = _isReadyFlow
+
     /**
      * 在后台协程池异步初始化/挂载数据库，并捕获完整的底层 SQLite 堆栈信息
      */
@@ -30,12 +33,14 @@ object DatabaseHolder {
             lock.write {
                 if (currentPath == absoluteDbPath && database != null) {
                     Log.d(TAG, "数据库路径未改变，复用已有连接: $absoluteDbPath")
+                    _isReadyFlow.value = true
                     return@withContext Result.success(database!!)
                 }
 
                 try {
                     database?.close()
                     database = null
+                    _isReadyFlow.value = false
 
                     Log.i(TAG, "开始挂载数据库 (后台线程): $absoluteDbPath")
                     val db = GpdbDatabase.buildFromExternalFile(context, absoluteDbPath)
@@ -46,11 +51,13 @@ object DatabaseHolder {
 
                     database = db
                     currentPath = absoluteDbPath
+                    _isReadyFlow.value = true
                     Result.success(db)
                 } catch (e: Exception) {
                     Log.e(TAG, "【CRITICAL】数据库挂载失败: $absoluteDbPath\n原因: ${e.message}", e)
                     database = null
                     currentPath = null
+                    _isReadyFlow.value = false
                     Result.failure(e)
                 }
             }
@@ -71,6 +78,7 @@ object DatabaseHolder {
             } finally {
                 database = null
                 currentPath = null
+                _isReadyFlow.value = false
                 Log.i(TAG, "DatabaseHolder 已完全释放连接")
             }
         }

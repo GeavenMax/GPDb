@@ -19,6 +19,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material.icons.filled.Flip
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -99,11 +108,34 @@ fun MovieDetailScreen(
                 val detail = uiState.movieDetail ?: return@Box
                 val movie = detail.movie
 
-                val coverUrls = listOfNotNull(movie.coverFull, movie.coverBack)
-                val validCovers = if (coverUrls.isNotEmpty()) coverUrls else listOf("image_cache/Covers/${movie.id}.jpg")
+                val context = LocalContext.current
+                val appSettingsRepository = remember { com.gpdb.android.data.settings.AppSettingsRepository(context) }
+                val posterDisplayMode by appSettingsRepository.posterDisplayModeFlow.collectAsState(initial = "adaptive_pager")
+
+                val extraCovers = remember(movie.coversJson) {
+                    val list = mutableListOf<String>()
+                    if (!movie.coversJson.isNullOrBlank()) {
+                        try {
+                            val jsonArray = org.json.JSONArray(movie.coversJson)
+                            for (i in 0 until jsonArray.length()) {
+                                val u = jsonArray.optString(i)
+                                if (u.isNotBlank()) list.add(u)
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    list
+                }
+                val validCovers = remember(movie.coverFull, movie.coverBack, extraCovers) {
+                    val result = linkedSetOf<String>()
+                    movie.coverFull?.let { result.add(it) }
+                    movie.coverBack?.let { result.add(it) }
+                    result.addAll(extraCovers)
+                    if (result.isEmpty()) listOf("image_cache/Covers/${movie.id}.jpg") else result.toList()
+                }
 
                 var showFullImageIndex by remember { mutableStateOf<Int?>(null) }
 
+                // 方案三：通用全屏缩放手势灯箱 (Lightbox)
                 if (showFullImageIndex != null) {
                     val coverDataList = validCovers.map { url ->
                         val relPath = url.toImageCachePath() ?: "image_cache/Covers/${movie.id}.jpg"
@@ -121,62 +153,226 @@ fun MovieDetailScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // 海报多图轮播
-                    val pagerState = rememberPagerState(pageCount = { validCovers.size })
+                    if (posterDisplayMode == "flip_3d") {
+                        // 方案一：3D 拟真翻转实体卡片
+                        var isFlipped by remember { mutableStateOf(false) }
+                        val rotation by animateFloatAsState(
+                            targetValue = if (isFlipped) 180f else 0f,
+                            animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
+                            label = "card_flip_3d"
+                        )
 
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 9f)
-                    ) {
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxSize()
-                        ) { page ->
-                            val url = validCovers[page]
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(380.dp)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // 背景氛围虚化
                             GpdbAsyncImage(
-                                url = url,
+                                url = movie.coverFull,
                                 physicalRootPath = physicalRootPath,
-                                contentDescription = "${movie.title} - 海报 $page",
                                 fallbackEntityId = movie.id,
                                 defaultFolder = "Covers",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .clickable { showFullImageIndex = page }
+                                    .blur(32.dp)
                             )
-                        }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.4f))
+                            )
 
-                        // 底部渐变遮罩
+                            // 3D 旋转卡片
+                            Card(
+                                modifier = Modifier
+                                    .width(230.dp)
+                                    .aspectRatio(0.7f)
+                                    .graphicsLayer {
+                                        rotationY = rotation
+                                        cameraDistance = 12f * density
+                                    }
+                                    .clickable {
+                                        showFullImageIndex = if (rotation > 90f && movie.coverBack != null) 1 else 0
+                                    },
+                                shape = RoundedCornerShape(12.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+                            ) {
+                                if (rotation <= 90f) {
+                                    GpdbAsyncImage(
+                                        url = movie.coverFull,
+                                        physicalRootPath = physicalRootPath,
+                                        contentDescription = "正面封面",
+                                        fallbackEntityId = movie.id,
+                                        defaultFolder = "Covers",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    GpdbAsyncImage(
+                                        url = movie.coverBack ?: movie.coverFull,
+                                        physicalRootPath = physicalRootPath,
+                                        contentDescription = "封底封套",
+                                        fallbackEntityId = movie.id,
+                                        defaultFolder = "Covers",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .graphicsLayer { rotationY = 180f }
+                                    )
+                                }
+                            }
+
+                            // 浮动翻转药丸按钮（如果存在封底）
+                            if (movie.coverBack != null) {
+                                Surface(
+                                    onClick = { isFlipped = !isFlipped },
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                    shadowElevation = 6.dp,
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(16.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Flip,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            if (isFlipped) "翻看正面" else "翻看封底",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 左下角轻触缩放提示
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color.Black.copy(alpha = 0.55f),
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(16.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(Icons.Default.ZoomIn, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("轻触全屏放大", style = MaterialTheme.typography.labelSmall, color = Color.White)
+                                }
+                            }
+                        }
+                    } else {
+                        // 方案二：自适应画廊轮播 (Natural Aspect Ratio)
+                        val pagerState = rememberPagerState(pageCount = { validCovers.size })
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(80.dp)
-                                .align(Alignment.BottomCenter)
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background)
-                                    )
-                                )
-                        )
+                                .height(380.dp)
+                                .background(Color.Black)
+                        ) {
+                            // 动态底层氛围虚化
+                            val currentCoverUrl = validCovers.getOrNull(pagerState.currentPage) ?: validCovers.first()
+                            GpdbAsyncImage(
+                                url = currentCoverUrl,
+                                physicalRootPath = physicalRootPath,
+                                fallbackEntityId = movie.id,
+                                defaultFolder = "Covers",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .blur(36.dp)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.45f))
+                            )
 
-                        // 页面指示器
-                        if (validCovers.size > 1) {
-                            Row(
+                            // 前景完整自适应画廊
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.fillMaxSize()
+                            ) { page ->
+                                val url = validCovers[page]
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Card(
+                                        shape = RoundedCornerShape(12.dp),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                                        modifier = Modifier.wrapContentSize()
+                                    ) {
+                                        GpdbAsyncImage(
+                                            url = url,
+                                            physicalRootPath = physicalRootPath,
+                                            contentDescription = "${movie.title} - 海报 $page",
+                                            fallbackEntityId = movie.id,
+                                            defaultFolder = "Covers",
+                                            contentScale = ContentScale.Fit,
+                                            modifier = Modifier
+                                                .fillMaxHeight()
+                                                .clickable { showFullImageIndex = page }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 底部渐变过渡
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(60.dp)
+                                    .align(Alignment.BottomCenter)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background)
+                                        )
+                                    )
+                            )
+
+                            // 底部药丸指示器
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = Color.Black.copy(alpha = 0.65f),
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
-                                    .padding(bottom = 16.dp),
-                                horizontalArrangement = Arrangement.Center
+                                    .padding(bottom = 12.dp)
                             ) {
-                                repeat(validCovers.size) { iteration ->
-                                    val color = if (pagerState.currentPage == iteration) Color.White else Color.White.copy(alpha = 0.5f)
-                                    Box(
-                                        modifier = Modifier
-                                            .padding(horizontal = 4.dp)
-                                            .clip(CircleShape)
-                                            .background(color)
-                                            .size(6.dp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    val tagText = when (pagerState.currentPage) {
+                                        0 -> "正面封面"
+                                        1 -> if (movie.coverBack != null) "封底封套" else "变体海报"
+                                        else -> "变体海报"
+                                    }
+                                    Text(
+                                        "${pagerState.currentPage + 1}/${validCovers.size} · $tagText",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
                                     )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Icon(Icons.Default.ZoomIn, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(12.dp))
                                 }
                             }
                         }

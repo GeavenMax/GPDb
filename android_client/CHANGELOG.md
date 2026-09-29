@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-09-29
+
+### Added
+- **影片海报双方案与全屏手势缩放灯箱 (Poster Display Schemes & Fullscreen Lightbox)**：
+  - **用户自定义海报展示方案 (User Preference)**：在“设置 -> 海报与视觉展示”中提供展示模式切换，随心切换 3D 卡片与自适应画廊。
+  - **方案一：3D 拟真翻转卡片 (3D Flip Card)**：运用 Jetpack Compose `graphicsLayer { rotationY = ... }` 与摄像机视角距离调节，实现正反面 3D 拟真翻转交互；配备翻转胶囊悬浮按钮与背面元数据指示，并伴随环境光晕（Ambient Glow）背景柔焦投影。
+  - **方案二：自适应画廊轮播 (Adaptive Gallery Pager，默认)**：基于 `HorizontalPager` 与 `ContentScale.Fit` 完整保留正反面及变体海报的原始比例，杜绝任何不自然裁切；集成动态胶囊指示器与版本切换。
+  - **方案三：全屏双指手势缩放灯箱 (Fullscreen Zoomable Lightbox，内置默认)**：点击任意封面即刻唤起纯黑全屏沉浸式灯箱，支持双指自由缩放（Pinch-to-zoom 1x~5x）、自由平移（Pan）与双击快速复位，海报细节纤毫毕现。
+- **时间筛选胶囊栏扩充 (Expanded Date Filter Options)**：
+  - 在“影片”和“分集”浏览列表顶部时间筛选胶囊栏中新增 **“上次入库” (`LAST_SCRAPED`)** 与 **“最近7天” (`RECENT_7`)** 快捷选项。
+  - “上次入库”通过单次扫描本地最新抓取入库的时间戳（`max(scraped_at) / max(created_at)`），秒级精准锁定最近一批新条目。
+  - “最近7天”通过 SQL 动态日期回溯（`datetime('now', '-7 days')`），为高频追更用户提供极速周更视图。
+- **系统级隐私安全与沙盒物理隔离 (Privacy Protection & Sandbox Isolation)**：
+  - **Linux UID 权限物理沙盒**：强制将图片缓存与网络刮削下载目录完全限定在应用专属内部沙盒目录：`/data/user/0/<package_name>/files/image_cache/`。
+  - **系统相册与第三方 App 物理绝缘**：得益于 Android Linux 内核 UID 权限机制，系统 MediaScanner 绝对不会扫描应用私有 `filesDir`，微信、QQ、系统相册、第三方图库及文件选取器完全无权访问，杜绝任何成人图片外泄。
+  - **递归 `.nomedia` 动态全覆盖防护**：新增 `PrivacyHelper` 工具集，在应用冷启动及任意图片落盘时，自动对根目录及 `Covers/`、`Episodes/`、`Performers/` 等所有子目录递归注入 `.nomedia` 屏蔽文件。
+  - **外部存储权限强管控开关**：在“设置 -> 隐私防护与沙盒安全”中新增“允许将图库保存至外部存储”开关，**默认严格保持关闭**；支持手动一键“全量注入 .nomedia 保护”。
+
+### Fixed
+- **首页「主页」发现流空白与异步挂载时序修复 (Home Feed Async Database Race Condition)**：
+  - 彻底解决用户反馈“主页仅显示四个统计磁贴、无法渲染发现流”的问题。
+  - **根因分析**：由于 `DatabaseHolder` 采用后台 IO 协程异步热挂载数据库，`HomeFeedViewModel` 在进入页面瞬间初始化执行 `loadFeed()` 时数据库尚未挂载就绪（`DatabaseHolder.db == null`），导致查询静默回退为空对象且未重新拉取。
+  - **修复实现**：在 `DatabaseHolder` 中引入响应式 `isReadyFlow: StateFlow<Boolean>`；在 `HomeFeedViewModel` 中主动监听该流，一旦数据库就绪即刻自动触发发现流加载。
+  - 强化 `HomeFeedRepository` 各版块独立异常容错，在 `HomeFeedScreen` 顶栏增加手动刷新按钮与空状态重试卡片。
+
 ## [2.9.0] - 2026-09-29
 
 ### Added

@@ -10,6 +10,7 @@ import coil.fetch.Fetcher
 import coil.fetch.SourceResult
 import coil.request.Options
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 import okio.buffer
 import okio.source
@@ -219,7 +220,7 @@ class ZipImageFetcher(
         null
     }
 
-    private fun downloadAndCacheImage(
+    private suspend fun downloadAndCacheImage(
         context: Context,
         remoteUrl: String,
         relativePath: String,
@@ -244,24 +245,30 @@ class ZipImageFetcher(
                 val bytes = body.bytes()
                 if (bytes.size < 100) return null
 
-                // 优先尝试写回外部存储 physicalRoot (若已挂载且可写)
+                // 隐私沙盒隔离控制：仅在用户显式开启“允许保存至外部存储”时写回外部目录
+                val appSettings = com.gpdb.android.data.settings.AppSettingsRepository(context)
+                val allowExternal = appSettings.saveImagesToExternalFlow.firstOrNull() ?: false
+
                 var writtenFile: File? = null
-                if (physicalRoot.isNotBlank()) {
+                if (allowExternal && physicalRoot.isNotBlank()) {
                     try {
                         val pFile = File(physicalRoot, relativePath)
                         pFile.parentFile?.mkdirs()
                         if (pFile.parentFile?.canWrite() == true) {
                             pFile.writeBytes(bytes)
                             writtenFile = pFile
+                            com.gpdb.android.util.PrivacyHelper.ensureNoMedia(File(physicalRoot))
+                            com.gpdb.android.util.PrivacyHelper.ensureNoMedia(pFile.parentFile)
                         }
                     } catch (e: Exception) {
                         Log.d(TAG, "外部物理存储写入跳过: ${e.message}")
                     }
                 }
 
-                // 无论外部存储是否可写，均写入应用内部文件目录，确保持久离线可用
+                // 无论外部存储如何，均写回应用内部专属沙盒目录 (/data/user/0/.../files/image_cache)
                 val internalFile = File(context.filesDir, relativePath)
                 internalFile.parentFile?.mkdirs()
+                com.gpdb.android.util.PrivacyHelper.ensureNoMedia(internalFile.parentFile)
                 val tmpFile = File(context.filesDir, "$relativePath.tmp")
                 tmpFile.parentFile?.mkdirs()
                 tmpFile.writeBytes(bytes)

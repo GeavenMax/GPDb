@@ -69,6 +69,9 @@ fun HomeFeedScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.loadFeed() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    }
                     IconButton(onClick = onSearchClick) {
                         Icon(Icons.Default.Search, contentDescription = "搜索")
                     }
@@ -94,6 +97,37 @@ fun HomeFeedScreen(
                     .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(28.dp)
             ) {
+                // 若各板块暂无数据，显示一键重试卡片
+                if (feed.spotlightMovies.isEmpty() && feed.onThisDay.isEmpty() && feed.starSpotlight.isEmpty()) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
+                            Text("探索发现流尚未加载", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text("数据库正在建立索引或后台挂载中，点击下方按钮立即重新加载", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Button(
+                                onClick = { viewModel.loadFeed() },
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("立即刷新发现流")
+                            }
+                        }
+                    }
+                }
+
                 // 1. 焦点推荐轮播 (Hero Spotlight)
                 if (feed.spotlightMovies.isNotEmpty()) {
                     SpotlightSection(

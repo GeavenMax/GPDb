@@ -25,6 +25,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -391,6 +393,118 @@ fun SettingsScreen(
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("海报与视觉展示", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    val posterMode by viewModel.posterDisplayMode.collectAsState()
+                    var showPosterModeDialog by remember { mutableStateOf(false) }
+
+                    ListItem(
+                        headlineContent = { Text("影片档案海报展示方案") },
+                        supportingContent = { 
+                            Text(
+                                (if (posterMode == "flip_3d") "方案一：3D 拟真翻转卡片 (正面封面 + 封底 3D 旋转)" else "方案二：自适应画廊轮播 (多海报完整无裁切，高精度原比例)") +
+                                "\n注：轻触任意海报均可唤起全屏手势缩放灯箱（方案三）"
+                            ) 
+                        },
+                        modifier = Modifier.clickable { showPosterModeDialog = true }
+                    )
+
+                    if (showPosterModeDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showPosterModeDialog = false },
+                            title = { Text("选择影片档案海报展示方案") },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth().clickable {
+                                            viewModel.setPosterDisplayMode("adaptive_pager")
+                                            showPosterModeDialog = false
+                                        }.padding(vertical = 8.dp)
+                                    ) {
+                                        RadioButton(selected = posterMode == "adaptive_pager", onClick = {
+                                            viewModel.setPosterDisplayMode("adaptive_pager")
+                                            showPosterModeDialog = false
+                                        })
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text("方案二：自适应画廊轮播 (推荐)", fontWeight = FontWeight.Bold)
+                                            Text("完整呈现海报无裁切，支持正面/封底/多变体海报平滑滑动与分页指示器", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth().clickable {
+                                            viewModel.setPosterDisplayMode("flip_3d")
+                                            showPosterModeDialog = false
+                                        }.padding(vertical = 8.dp)
+                                    ) {
+                                        RadioButton(selected = posterMode == "flip_3d", onClick = {
+                                            viewModel.setPosterDisplayMode("flip_3d")
+                                            showPosterModeDialog = false
+                                        })
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text("方案一：3D 拟真翻转实体卡片", fontWeight = FontWeight.Bold)
+                                            Text("正面封面与封底封套 3D 空间立体旋转，高拟真还原实体碟片把玩质感", style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showPosterModeDialog = false }) { Text("关闭") }
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("隐私防护与沙盒安全", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    val saveExternal by viewModel.saveImagesToExternal.collectAsState()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("允许将图库保存至外部存储", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                "默认禁用（最高隐私安全）。开启后将网络拉取的图片写入挂载目录以便多端备份；关闭时图片 100% 隔离在应用专属私有沙盒内，其他 App 和系统相册绝对无权访问。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = saveExternal,
+                            onCheckedChange = { viewModel.setSaveImagesToExternal(it) }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.enforceExternalNoMedia()
+                            Toast.makeText(context, "已在挂载目录及所有子文件夹重新注入 .nomedia 保护文件！", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("在挂载目录重新注入 .nomedia 防扫描")
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
             
             Text("基本设置", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)

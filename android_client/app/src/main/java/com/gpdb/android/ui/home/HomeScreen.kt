@@ -175,7 +175,7 @@ fun HomeScreen(
                                         physicalRootPath = uiState.physicalRootPath,
                                         onClick = { onMovieClick(movie.id ?: 0) },
                                         onStudioClick = { studio -> onStudioClick(studio) },
-                                        isNew = (movie.releaseYear != null && movie.releaseYear >= 2026) || uiState.dateFilter == DateFilter.RECENT_SCRAPED
+                                        isNew = (movie.releaseYear != null && movie.releaseYear >= 2026) || uiState.dateFilter == DateFilter.LAST_SCRAPED
                                     )
                                 }
                                 if (uiState.isLoadingMore) {
@@ -217,7 +217,7 @@ fun HomeScreen(
                                         physicalRootPath = uiState.physicalRootPath,
                                         releaseDate = episode.releaseDate,
                                         studioName = episode.studioName,
-                                        isNew = (episode.releaseDate != null && episode.releaseDate.startsWith("2026")) || uiState.dateFilter == DateFilter.RECENT_SCRAPED,
+                                        isNew = (episode.releaseDate != null && episode.releaseDate.startsWith("2026")) || uiState.dateFilter == DateFilter.LAST_SCRAPED,
                                         onClick = { episode.id?.let(onEpisodeClick) }
                                     )
                                 }

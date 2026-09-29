@@ -80,8 +80,8 @@ class HomeFeedRepository {
         var totalPerformers = 0
         var totalStudios = 0
 
+        // 1. 焦点推荐电影 (Spotlight Movies: 12 部有封面且有剧情简介的高质量作品)
         try {
-            // 1. 焦点推荐电影 (Spotlight Movies: 12 部有封面且有剧情简介的高质量作品)
             val spotSql = """
                 SELECT id, title, title_zh, studio_name, director_name, release_year,
                        cover_full, cover_back, description_zh, description, rating, category
@@ -91,7 +91,7 @@ class HomeFeedRepository {
                 ORDER BY RANDOM()
                 LIMIT 12
             """.trimIndent()
-            sdb.query(spotSql, emptyArray<Any>()).use { c ->
+            sdb.query(spotSql).use { c ->
                 while (c.moveToNext()) {
                     spotlight.add(
                         HomeSpotlightMovie(
@@ -111,8 +111,13 @@ class HomeFeedRepository {
                     )
                 }
             }
+            Log.d(TAG, "加载焦点推荐完成: ${spotlight.size} 部")
+        } catch (e: Exception) {
+            Log.e(TAG, "加载焦点推荐异常: ${e.message}", e)
+        }
 
-            // 2. 往年今日 · 经典首映 (On This Day in History: 当天 MM-DD 发售的分集场景)
+        // 2. 往年今日 · 经典首映 (On This Day in History: 当天 MM-DD 发售的分集场景)
+        try {
             val sdf = SimpleDateFormat("MM-dd", Locale.getDefault())
             val todayMd = sdf.format(Date())
             val otdSql = """
@@ -179,8 +184,13 @@ class HomeFeedRepository {
                     }
                 }
             }
+            Log.d(TAG, "加载往年今日完成: ${onThisDay.size} 部")
+        } catch (e: Exception) {
+            Log.e(TAG, "加载往年今日异常: ${e.message}", e)
+        }
 
-            // 3. 今日星光 · 标志面孔 (Star Spotlight: 作品数 >= 5 的高活跃度演员)
+        // 3. 今日星光 · 标志面孔 (Star Spotlight: 作品数 >= 5 的高活跃度演员)
+        try {
             val perfSql = """
                 SELECT p.id, p.name, p.image_url, p.build, p.hair, COUNT(mp.movie_id) as works_count
                 FROM performers p
@@ -191,7 +201,7 @@ class HomeFeedRepository {
                 ORDER BY RANDOM()
                 LIMIT 20
             """.trimIndent()
-            sdb.query(perfSql, emptyArray<Any>()).use { c ->
+            sdb.query(perfSql).use { c ->
                 while (c.moveToNext()) {
                     starSpotlight.add(
                         HomeFeaturedPerformer(
@@ -205,15 +215,20 @@ class HomeFeedRepository {
                     )
                 }
             }
+            Log.d(TAG, "加载今日星光完成: ${starSpotlight.size} 位")
+        } catch (e: Exception) {
+            Log.e(TAG, "加载今日星光异常: ${e.message}", e)
+        }
 
-            // 4. 经典系列 (Series Collections: 热门多部曲大放送)
+        // 4. 经典系列 (Series Collections: 热门多部曲大放送)
+        try {
             val seriesSql = """
                 SELECT id, root_title, studio_name, movie_count, year_start, year_end, sample_covers
                 FROM series_collections
                 ORDER BY movie_count DESC
                 LIMIT 10
             """.trimIndent()
-            sdb.query(seriesSql, emptyArray<Any>()).use { c ->
+            sdb.query(seriesSql).use { c ->
                 while (c.moveToNext()) {
                     seriesList.add(
                         SeriesCollectionEntity(
@@ -228,36 +243,46 @@ class HomeFeedRepository {
                     )
                 }
             }
+            Log.d(TAG, "加载经典系列完成: ${seriesList.size} 组")
+        } catch (e: Exception) {
+            Log.e(TAG, "加载经典系列异常: ${e.message}", e)
+        }
 
-            // 5. 随心探索 · 盲盒发现 (Lucky Discovery: 随机 6 部影片)
+        // 5. 随心探索 · 盲盒发现 (Lucky Discovery: 随机 6 部影片)
+        try {
             val luckySql = """
                 SELECT * FROM movies
                 WHERE cover_full IS NOT NULL AND trim(cover_full) != ''
                 ORDER BY RANDOM()
                 LIMIT 6
             """.trimIndent()
-            sdb.query(luckySql, emptyArray<Any>()).use { c ->
+            sdb.query(luckySql).use { c ->
                 while (c.moveToNext()) {
                     luckyMovies.add(readMovieFromCursor(c))
                 }
             }
+            Log.d(TAG, "加载盲盒发现完成: ${luckyMovies.size} 部")
+        } catch (e: Exception) {
+            Log.e(TAG, "加载盲盒发现异常: ${e.message}", e)
+        }
 
-            // 6. 统计磁贴 (Quick Stats)
-            sdb.query("SELECT count(*) FROM movies", emptyArray<Any>()).use { c ->
+        // 6. 统计磁贴 (Quick Stats)
+        try {
+            sdb.query("SELECT count(*) FROM movies").use { c ->
                 if (c.moveToFirst()) totalMovies = c.getInt(0)
             }
-            sdb.query("SELECT count(*) FROM episodes", emptyArray<Any>()).use { c ->
+            sdb.query("SELECT count(*) FROM episodes").use { c ->
                 if (c.moveToFirst()) totalEpisodes = c.getInt(0)
             }
-            sdb.query("SELECT count(*) FROM performers", emptyArray<Any>()).use { c ->
+            sdb.query("SELECT count(*) FROM performers").use { c ->
                 if (c.moveToFirst()) totalPerformers = c.getInt(0)
             }
-            sdb.query("SELECT count(DISTINCT NULLIF(trim(studio_name), '')) FROM movies", emptyArray<Any>()).use { c ->
+            sdb.query("SELECT count(DISTINCT NULLIF(trim(studio_name), '')) FROM movies").use { c ->
                 if (c.moveToFirst()) totalStudios = c.getInt(0)
             }
-
+            Log.d(TAG, "加载统计磁贴完成: $totalMovies 部影片, $totalEpisodes 个分集")
         } catch (e: Exception) {
-            Log.e(TAG, "加载首页发现流数据异常: ${e.message}", e)
+            Log.e(TAG, "加载统计磁贴异常: ${e.message}", e)
         }
 
         HomeFeedData(
