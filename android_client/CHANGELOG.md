@@ -24,9 +24,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **界面一致性与简洁性保障**：
     - 严格复用 GPDb 的 Material 3 暗色调 / Zinc / Accent 配色系统与卡片材质；
     - 纯粹条件渲染：对于尚未收录 PBC 档案的普通演员，界面保持原汁原味的极简 GEVI 视图，不产生任何空白卡片或未匹配占位符。
-- **Room 数据库版本平滑升级与沙盒自愈机制**：
+- **全新曾用艺名 / 别名 (AKA) 独立徽章栏与动态折叠卡片 (`PerformerDetailScreen.kt`)**：
+  - 移至人物主卡片下方独立全宽展示，采用 Surface 玻璃拟态与标签设计，支持别名总数角标提示；
+  - 智能折叠机制：超过 8 个别名时自动折叠并提供「展开全部 / 收起」按钮，杜绝多艺名演员档案过度拉长；
+  - 聚合作品关联名、PBC 别名与 SmutJunkies 别名并执行不区分大小写的去重合并。
+- **SmutJunkies 演员资料与直达外链支持**：
+  - `PerformerEntity` 新增 `sj_url` 字段映射；
+  - `PerformerDetailViewModel` 自动读取 `performer_sj_profiles` 扩展表并提取 `sj_url` 与别名；
+  - 操作栏快捷区新增亮粉色 `SmutJunkies ↗` 外链按钮，一键直达 SmutJunkies 官方主页。
+- **Room 数据库版本平滑升级与数据层修复**：
   - Room 数据库升级至 Version 3，提供 `MIGRATION_2_3` 平滑迁移方案，新增 `performers.pbc_url` 字段与 `performer_pbc_profiles` 实体表结构。
   - `SandboxDatabaseInitializer` 自动保证初始沙盒环境包含 PBC 结构支持。
+  - **修复 `loadPbcProfile` 查询字段与 `performer_pbc_profiles` 表结构不匹配隐患**：对齐 `penis_size`、`roles_json`、`social_links_json`、`external_ids_json`、`performance_tags` 等字段名，确保真机环境下 100% 成功读取展示 PBC 百科全息数据。
 
 ## [2.13.0] - 2026-09-29
 

@@ -177,7 +177,7 @@ class PerformerDetailViewModel : ViewModel() {
                         performerDetail = sortedDetail,
                         episodes = episodesList,
                         pbcProfile = pbc,
-                        sjUrl = sjUrl ?: detail.performer.sjUrl,
+                        sjUrl = sjUrl,
                         allAliases = mergedAliases,
                         isFavorite = isFav
                     ) }

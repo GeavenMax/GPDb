@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.13.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.14.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -163,13 +163,13 @@ Im Bereich der Erwachsenenunterhaltung gehören persönliche Sehgewohnheiten, Fa
 
 ### Für Endanwender (Empfohlen)
 
-Laden Sie das aktuelle vorkompilierte Installationspaket **`v2.13.0`** direkt von der [Releases-Seite](https://github.com/GeavenMax/GPDb/releases) herunter:
+Laden Sie das aktuelle vorkompilierte Installationspaket **`v2.14.0`** direkt von der [Releases-Seite](https://github.com/GeavenMax/GPDb/releases) herunter:
 
 | Plattform | Installationspaket | Installation & Hinweise |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.13.0.dmg` | DMG öffnen, `GPDb.app` in den `Programme`-Ordner ziehen.<br>*(Falls beim ersten Start eine Warnung wegen fehlender Notarisierung erscheint: „Systemeinstellungen → Datenschutz & Sicherheit" → „Trotzdem öffnen", oder Terminal: `sudo xattr -cr /Applications/GPDb.app`)* |
-| **🪟 Windows** | `GPDb-Windows-v2.13.0.exe` | Installer doppelklicken und Installation abschließen. Nutzt NSIS-Einzelbenutzer-Architektur – keine Administratorrechte erforderlich. |
-| **🤖 Android** | `GPDb-Android-v2.13.0-signed.apk` | APK auf das Gerät laden und direkt installieren (offiziell signiert; bei Systemaufforderung „Installation aus unbekannten Quellen" erlauben). |
+| ** macOS** | `GPDb-macOS-v2.14.0.dmg` | DMG öffnen, `GPDb.app` in den `Programme`-Ordner ziehen.<br>*(Falls beim ersten Start eine Warnung wegen fehlender Notarisierung erscheint: „Systemeinstellungen → Datenschutz & Sicherheit" → „Trotzdem öffnen", oder Terminal: `sudo xattr -cr /Applications/GPDb.app`)* |
+| **🪟 Windows** | `GPDb-Windows-v2.14.0.exe` | Installer doppelklicken und Installation abschließen. Nutzt NSIS-Einzelbenutzer-Architektur – keine Administratorrechte erforderlich. |
+| **🤖 Android** | `GPDb-Android-v2.14.0-signed.apk` | APK auf das Gerät laden und direkt installieren (offiziell signiert; bei Systemaufforderung „Installation aus unbekannten Quellen" erlauben). |
 
 ---
 

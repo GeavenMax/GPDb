@@ -532,7 +532,7 @@ fun PerformerDetailScreen(
                                     }
                                 }
 
-                                val sjDirectUrl = performer.sjUrl ?: uiState.sjUrl
+                                val sjDirectUrl = uiState.sjUrl
                                 if (!sjDirectUrl.isNullOrBlank()) {
                                     Surface(
                                         shape = CircleShape,
@@ -664,6 +664,7 @@ fun PerformerDetailScreen(
                                     }
                                 }
                             }
+                        }
                     }
 
                     HorizontalDivider()
