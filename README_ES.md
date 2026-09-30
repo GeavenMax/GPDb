@@ -125,6 +125,8 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
 - **Integración de búsqueda BT Magnet**: Combina automáticamente el título original de la película y el nombre del estudio en una búsqueda estándar dirigida a motores de recursos externos.
 - **Interruptores independientes**: El centro de extensiones permite activar o desactivar de forma individual cada fuente de búsqueda externa con configuración detallada.
 - **Motor de scraping incremental y sincronización**: Compatible con scraping de actualización por red bajo demanda y caché offline local de pósteres y fotogramas.
+- **Motor de raspado wiki PBC — Porn Base Central** (`scrape_pbc_actors.py`): Indexa más de **1.200 perfiles de actores** con rastreo completo del motor MediaWiki, detección automática de revisiones incrementales para evitar trabajo redundante, comparación exhaustiva de más de **25 campos de atributos** por perfil y una tasa de coincidencia comprobada del **97,3 %**.
+- **Motor de raspado SmutJunkies** (`scrape_smutjunkies_actors.py`): Cubre más de **6.700 actores de cine gay adulto** con indexación completa del índice alfabético de 26 letras, algoritmo de alineación de datos de **4 niveles de alta resiliencia** ante cambios de estructura del sitio y sincronización incremental bidireccional que preserva las anotaciones locales existentes.
 
 ### 9. Internacionalización completa y sistema de trofeos gamificado con 77+ logros
 - **7 idiomas de interfaz disponibles**: Chino simplificado (`zh-CN`), Chino tradicional (`zh-TW`), Inglés (`en`), Italiano (`it`), Japonés (`ja`), Español (`es`) y Alemán (`de`).

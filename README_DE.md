@@ -59,6 +59,13 @@ Im Bereich der Erwachsenenunterhaltung gehören persönliche Sehgewohnheiten, Fa
   - Unterstützt „Alle", „Zuletzt hinzugefügt (nach Scraping-Zeitpunkt)", „Letzte 7 Tage", „Letzte 30 Tage", „Letzte 90 Tage" und „Dieses Jahr".
   - Veröffentlichungsdaten werden für Spielfilme (nach Jahr) und Einzelszenen (nach Datum) getrennt behandelt.
   - Neu hinzugefügte Einträge erhalten ein dynamisch animiertes `NEW`-Highlight-Badge.
+- **PBC (Porn Base Central) Wiki-Integration – Erweitertes Darstellerprofil**:
+  - **Geburtsname & Karrierebeginn**: Zeigt den bürgerlichen Namen sowie das Jahr des Karrierestarts direkt im Darstellerprofil an.
+  - **Aktiv/Inaktiv-Badge**: Dynamisches Statusabzeichen kennzeichnet auf einen Blick, ob ein Darsteller noch aktiv ist oder seine Karriere beendet hat.
+  - **Sternzeichen & Ethnizität**: Astrologisches Zeichen und ethnische Herkunft aus dem PBC-Wiki automatisch befüllt.
+  - **Performance-Tags**: Strukturierte Rollentags (z. B. Top / Bottom / Versatile) direkt aus der Wiki-Biografie extrahiert.
+  - **Wiki-Biografie-Karte**: Eingebettete Kurzbiografie aus dem PBC MediaWiki als kompakte Infobox im Darstellerprofil.
+  - **Externe Verlinkungen**: Direkt-Links zu IAFD, IMDb, X (Twitter), OnlyFans und Instagram – alle in einem zentralen Profilbereich zusammengeführt.
 
 ### 2. Streaming-ähnlicher Immersions-Startbildschirm & 3D-Sammlerkarten
 - **Fünf Entdeckungs-Streams**:
@@ -80,7 +87,7 @@ Im Bereich der Erwachsenenunterhaltung gehören persönliche Sehgewohnheiten, Fa
 - **Regisseur-Steckbriefe**: In der Filmdetailansicht lässt sich per Klick die vollständige Filmografie eines Regisseurs aufrufen, inklusive direkter Filterung in der Bibliothek.
 - **Umfassender Studio-Katalog**: Von klassischen Analogfilm-Pionieren (Falcon, Colt, Catalina u. a.) bis hin zu modernen Marktführern (Men.com, BelAmi, Lucas Entertainment, Corbin Fisher u. a.) – Filmchroniken und Stilmerkmale auf einen Blick.
 
-### 5. 📸 Screenshot-Datenschutzmodus & Hochwertige Glanz-Sharingkarten (Neu in v2.13.0)
+### 5. 📸 Screenshot-Datenschutzmodus & Hochwertige Glanz-Sharingkarten (Neu in v2.14.0)
 - **Globaler Ein-Klick-Screenshot-Datenschutzmodus**:
   - Die obere Navigationsleiste bietet einen Ein-Klick-Datenschutz-Augenschalter; unterstützt Tastenkürzel und sofortige Statusumschaltung (Datenschutz aktiv / Normales Browsing).
   - **Feingranulare Datenschutz-Maskierung**:

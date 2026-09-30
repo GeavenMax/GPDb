@@ -163,7 +163,7 @@
 
 ### 普通用户下载安装（推荐）
 
-直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载最新 **`v2.13.0`** 正式安装包：
+直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载最新 **`v2.14.0`** 正式安装包：
 
 | 平台 | 安装包文件名 | 安装方式与说明 |
 | :--- | :--- | :--- |

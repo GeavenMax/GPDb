@@ -165,13 +165,13 @@ I tre client — **macOS**, **Windows** e **Android** — condividono lo stesso 
 
 ### Per utenti finali (Consigliato)
 
-Scaricate il pacchetto di installazione più recente **`v2.13.0`** dalla pagina delle [Releases](https://github.com/GeavenMax/GPDb/releases) di questo repository:
+Scaricate il pacchetto di installazione più recente **`v2.14.0`** dalla pagina delle [Releases](https://github.com/GeavenMax/GPDb/releases) di questo repository:
 
 | Piattaforma | File di installazione | Modalità di installazione e note |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.13.0.dmg` | Aprite l'immagine disco e trascinate `GPDb.app` nella cartella `Applicazioni`.<br>*(Al primo avvio, se viene segnalato come non notarizzato, andate su «Impostazioni di Sistema → Privacy e sicurezza» e fate clic su «Apri comunque», oppure eseguite nel Terminale `sudo xattr -cr /Applications/GPDb.app`)* |
-| **🪟 Windows** | `GPDb-Windows-v2.13.0.exe` | Fate doppio clic sul programma di installazione per completare l'installazione. Utilizza l'architettura NSIS per singolo utente senza privilegi elevati: nessun permesso di amministratore richiesto, pronto all'uso immediatamente. |
-| **🤖 Android** | `GPDb-Android-v2.13.0-signed.apk` | Scaricate sul dispositivo e fate tap per installare (firmato con chiave pubblica ufficiale; se il sistema chiede di consentire l'installazione da origini sconosciute, confermate l'autorizzazione). |
+| ** macOS** | `GPDb-macOS-v2.14.0.dmg` | Aprite l'immagine disco e trascinate `GPDb.app` nella cartella `Applicazioni`.<br>*(Al primo avvio, se viene segnalato come non notarizzato, andate su «Impostazioni di Sistema → Privacy e sicurezza» e fate clic su «Apri comunque», oppure eseguite nel Terminale `sudo xattr -cr /Applications/GPDb.app`)* |
+| **🪟 Windows** | `GPDb-Windows-v2.14.0.exe` | Fate doppio clic sul programma di installazione per completare l'installazione. Utilizza l'architettura NSIS per singolo utente senza privilegi elevati: nessun permesso di amministratore richiesto, pronto all'uso immediatamente. |
+| **🤖 Android** | `GPDb-Android-v2.14.0-signed.apk` | Scaricate sul dispositivo e fate tap per installare (firmato con chiave pubblica ufficiale; se il sistema chiede di consentire l'installazione da origini sconosciute, confermate l'autorizzazione). |
 
 ---
 
