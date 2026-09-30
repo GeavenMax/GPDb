@@ -52,6 +52,8 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
   Agrupa automáticamente los nombres artísticos y alias que un mismo actor utilizó en diferentes productoras y épocas, para evitar omisiones por cambios de nombre.
 - **Distinción precisa entre películas completas (Films) y escenas (Scenes)**:
   Explore por separado las obras en las que el actor protagoniza largometrajes frente a sus apariciones en clips, episodios cortos o cameos, con una lista completa de sus créditos.
+- **Integración con la wiki PBC (Porn Base Central)**:
+  Los perfiles de actores se enriquecen automáticamente con los datos del raspado wiki: **nombre real**, **año de debut**, **distintivo activo / retirado**, **signo astrológico y etnia**, **etiquetas de estilo de interpretación**, **tarjeta biográfica completa al estilo wiki** y **perfiles vinculados** a IAFD, IMDb, X (Twitter), OnlyFans e Instagram.
 - **Motor de búsqueda multifuente con alta tolerancia a errores**:
   - Recuperación rápida FTS5 → degradación automática a consulta SQL multifuente → SQLite como respaldo, eliminando resultados vacíos por tokenización o tablas virtuales ausentes.
   - Una sola búsqueda abarca título original (`title`), título en chino (`title_zh`), nombre del estudio (`studio_name`), nombre del director (`director_name`), sinopsis en chino (`description_zh`) y el reparto completo.
