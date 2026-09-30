@@ -6,7 +6,9 @@ import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -529,8 +531,139 @@ fun PerformerDetailScreen(
                                         }
                                     }
                                 }
+
+                                val sjDirectUrl = performer.sjUrl ?: uiState.sjUrl
+                                if (!sjDirectUrl.isNullOrBlank()) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Color(0xFFEC4899).copy(alpha = 0.2f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEC4899).copy(alpha = 0.4f)),
+                                        modifier = Modifier.clickable {
+                                            uriHandler.openUri(sjDirectUrl)
+                                        }
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                            Icon(
+                                                Icons.Default.Public,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = Color(0xFFF472B6)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "SmutJunkies ↗",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = Color(0xFFF472B6),
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
+
+                        // 曾用艺名 / 别名 (AKA)
+                            if (uiState.allAliases.isNotEmpty()) {
+                                var isAliasesExpanded by remember { mutableStateOf(false) }
+                                val collapseThreshold = 8
+                                val visibleAliases = if (isAliasesExpanded || uiState.allAliases.size <= collapseThreshold) {
+                                    uiState.allAliases
+                                } else {
+                                    uiState.allAliases.take(collapseThreshold)
+                                }
+
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                ) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.Label,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(14.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                                Text(
+                                                    text = "曾用艺名 / 别名 (AKA)",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Surface(
+                                                    shape = CircleShape,
+                                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                                ) {
+                                                    Text(
+                                                        text = "共 ${uiState.allAliases.size} 个",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                            }
+
+                                            if (uiState.allAliases.size > collapseThreshold) {
+                                                Text(
+                                                    text = if (isAliasesExpanded) "收起" else "展开全部",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    fontWeight = FontWeight.Medium,
+                                                    modifier = Modifier.clickable { isAliasesExpanded = !isAliasesExpanded }
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(8.dp))
+
+                                        @OptIn(ExperimentalLayoutApi::class)
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            visibleAliases.forEach { alias ->
+                                                Surface(
+                                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                                ) {
+                                                    Text(
+                                                        text = alias,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                                    )
+                                                }
+                                            }
+                                            if (!isAliasesExpanded && uiState.allAliases.size > collapseThreshold) {
+                                                Surface(
+                                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                                                    modifier = Modifier.clickable { isAliasesExpanded = true }
+                                                ) {
+                                                    Text(
+                                                        text = "+${uiState.allAliases.size - collapseThreshold} 更多...",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                     }
 
                     HorizontalDivider()

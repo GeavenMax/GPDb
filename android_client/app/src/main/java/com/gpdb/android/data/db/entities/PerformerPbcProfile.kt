@@ -8,6 +8,7 @@ data class PerformerPbcProfile(
     val pbcUrl: String,
     val pbcId: String? = null,
     val birthName: String? = null,
+    val aliases: String? = null,
     val careerStart: Int? = null,
     val careerEnd: Int? = null,
     val careerStatus: String? = null,
