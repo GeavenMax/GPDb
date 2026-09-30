@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.13.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.14.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -52,6 +52,8 @@ In adult media, an individual's viewing history, curated collections, and person
   Intelligently reconciles alternate screen names and aliases used across different production companies and eras, preventing missed appearances due to name changes.
 - **Precise Film vs. Scene Distinction**:
   Seamlessly view a performer's appearances in feature-length movies (**Films**) separately from their standalone episodic vignettes (**Scenes**) — every credit accounted for at a glance.
+- **PBC Wiki Comprehensive Performer Data Integration**:
+  Performer profiles now integrate rich metadata sourced from the PBC (Porn Base Central) Wiki, including **birth name**, **career start year**, **active / retired status badge**, **astrology sign & ethnicity**, **performance style tags**, **wiki biography card**, and **cross-platform connected profiles** (IAFD / IMDb / X / OnlyFans / Instagram) — delivering a complete, authoritative reference card for every performer in your library.
 - **High-Tolerance Multi-Field Unified Search Engine**:
   - FTS5 high-speed recall → automatic fallback to standard SQL multi-field combined search → Room / SQLite safety net, eliminating empty results caused by tokenization or missing virtual tables.
   - A single query simultaneously searches the English title (`title`), Chinese title (`title_zh`), studio name (`studio_name`), director name (`director_name`), Chinese synopsis (`description_zh`), and the full performer cast.
@@ -125,6 +127,10 @@ In adult media, an individual's viewing history, curated collections, and person
 - **BT Magnet Search Integration**: Formats canonical movie titles and studio names into ready-made search queries for external resource engines.
 - **Modular Independent Toggles**: The Plugin Center allows granular enable/disable configuration for each individual external lookup source.
 - **Incremental Scrape & Sync Engine**: Supports on-demand network scraping updates and local poster/thumbnail offline caching.
+- **PBC (Porn Base Central) Wiki Scraper Engine** (`scrape_pbc_actors.py`):
+  A dedicated MediaWiki full-depth crawl engine targeting the PBC performer wiki. Covers **1,200+ performer profiles** with incremental revision detection to avoid redundant re-scrapes. Performs **25+ attribute field comparison** per profile update, achieving a **97.3% match rate** against existing library records. Automatically reconciles birth names, career timelines, active/retired status, astrology, ethnicity, performance style tags, biography text, and cross-platform profile links (IAFD / IMDb / X / OnlyFans / Instagram).
+- **SmutJunkies Scraper Engine** (`scrape_smutjunkies_actors.py`):
+  A full-site index scraper targeting the SmutJunkies gay performer directory. Covers **6,700+ gay adult performers** across **26-letter full-site index coverage** (A–Z). Employs a **4-tier high-resilience alignment algorithm** for robust name matching under spelling variants and aliases, with **bidirectional incremental sync** to detect both newly added and soft-deleted entries across successive scrape runs.
 
 ### 9. Full Localization & 77+ Gamified Achievement Trophies
 - **7 Fully Localized Interface Languages**: Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-TW`), English (`en`), Italian (`it`), Japanese (`ja`), Spanish (`es`), and German (`de`).
@@ -163,13 +169,13 @@ In adult media, an individual's viewing history, curated collections, and person
 
 ### For General Users (Recommended)
 
-Head directly to the repository's [Releases page](https://github.com/GeavenMax/GPDb/releases) to download the latest **`v2.13.0`** official installer:
+Head directly to the repository's [Releases page](https://github.com/GeavenMax/GPDb/releases) to download the latest **`v2.14.0`** official installer:
 
 | Platform | Installer Filename | Installation Notes |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.13.0.dmg` | Double-click to mount, then drag `GPDb.app` into your `Applications` folder.<br>*(On first launch, if macOS warns the app is not notarized, go to System Settings → Privacy & Security and click "Open Anyway", or run `sudo xattr -cr /Applications/GPDb.app` in Terminal.)* |
-| **🪟 Windows** | `GPDb-Windows-v2.13.0.exe` | Double-click the installer to complete setup. Uses NSIS single-user no-elevation architecture — no administrator privileges required. |
-| **🤖 Android** | `GPDb-Android-v2.13.0-signed.apk` | Download to your phone and tap to install. (Signed with the official release key. If prompted to allow installation from unknown sources, please permit it.) |
+| ** macOS** | `GPDb-macOS-v2.14.0.dmg` | Double-click to mount, then drag `GPDb.app` into your `Applications` folder.<br>*(On first launch, if macOS warns the app is not notarized, go to System Settings → Privacy & Security and click "Open Anyway", or run `sudo xattr -cr /Applications/GPDb.app` in Terminal.)* |
+| **🪟 Windows** | `GPDb-Windows-v2.14.0.exe` | Double-click the installer to complete setup. Uses NSIS single-user no-elevation architecture — no administrator privileges required. |
+| **🤖 Android** | `GPDb-Android-v2.14.0-signed.apk` | Download to your phone and tap to install. (Signed with the official release key. If prompted to allow installation from unknown sources, please permit it.) |
 
 ---
 
