@@ -735,4 +735,3 @@ fun PerformerDetailScreen(
             }
         }
     }
-}
