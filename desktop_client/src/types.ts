@@ -99,6 +99,52 @@ export interface Performer {
   aliases?: string[];
   /** Direct BoyfriendTV performer profile URL (from scrape_bftv_performers.py). When present, BFTV button jumps directly here. */
   bftv_url?: string | null;
+  /** Direct Porn Base Central wiki URL (from scrape_pbc_actors.py). When present, PBC button jumps directly here. */
+  pbc_url?: string | null;
+  /** Direct SmutJunkies profile URL (from scrape_smutjunkies_actors.py). When present, SmutJunkies button jumps directly here. */
+  sj_url?: string | null;
+  /** Rich wiki biographical data, physical measurements, and performance tags. */
+  pbc_profile?: PerformerPbcProfile | null;
+}
+
+export interface PerformerPbcProfile {
+  pbc_url: string;
+  pbc_name?: string | null;
+  birth_name?: string | null;
+  aliases?: string | null;
+  birth_date?: string | null;
+  age?: number | null;
+  astrology?: string | null;
+  birth_place?: string | null;
+  country?: string | null;
+  nationality?: string | null;
+  ethnicity?: string | null;
+  languages?: string | null;
+  career_start?: string | null;
+  career_status?: string | null;
+  height?: string | null;
+  weight?: string | null;
+  penis_size?: string | null;
+  foreskin?: string | null;
+  hair?: string | null;
+  eyes?: string | null;
+  build?: string | null;
+  skin?: string | null;
+  ass_type?: string | null;
+  butt?: string | null;
+  body_hair?: string | null;
+  facial_hair?: string | null;
+  tattoos?: string | null;
+  piercings?: string | null;
+  roles?: Record<string, string> | null;
+  roles_json?: string | null;
+  performance_tags?: string[] | string | null;
+  social_links?: Record<string, string> | null;
+  social_links_json?: string | null;
+  external_ids?: Record<string, string> | null;
+  external_ids_json?: string | null;
+  image_url?: string | null;
+  bio?: string | null;
 }
 
 /** Sort keys accepted by the studio library, on both the HTTP and Tauri paths. */

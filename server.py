@@ -986,6 +986,37 @@ class GPDbRequestHandler(BaseHTTPRequestHandler):
             """, (perf_id, perf_id, perf.get("name", ""))).fetchall()
             perf["aliases"] = [r[0] for r in a_rows]
 
+            # PBC Wiki rich profile metadata
+            try:
+                pbc_row = conn.execute(
+                    "SELECT * FROM performer_pbc_profiles WHERE performer_id = ?",
+                    (perf_id,)
+                ).fetchone()
+                if pbc_row:
+                    pbc_dict = dict(pbc_row)
+                    if pbc_dict.get("roles_json"):
+                        try:
+                            pbc_dict["roles"] = json.loads(pbc_dict["roles_json"])
+                        except Exception:
+                            pbc_dict["roles"] = {}
+                    if pbc_dict.get("social_links_json"):
+                        try:
+                            pbc_dict["social_links"] = json.loads(pbc_dict["social_links_json"])
+                        except Exception:
+                            pbc_dict["social_links"] = {}
+                    if pbc_dict.get("external_ids_json"):
+                        try:
+                            pbc_dict["external_ids"] = json.loads(pbc_dict["external_ids_json"])
+                        except Exception:
+                            pbc_dict["external_ids"] = {}
+                    if pbc_dict.get("performance_tags"):
+                        pbc_dict["performance_tags"] = [t.strip() for t in pbc_dict["performance_tags"].split(",") if t.strip()]
+                    perf["pbc_profile"] = pbc_dict
+                else:
+                    perf["pbc_profile"] = None
+            except Exception:
+                perf["pbc_profile"] = None
+
             self.send_json(perf)
 
     def handle_studio_works(self, studio_name: str):

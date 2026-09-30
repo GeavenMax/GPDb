@@ -258,6 +258,50 @@ pub struct Performer {
     /// Direct BoyfriendTV performer profile URL, populated by scrape_bftv_performers.py.
     /// If present, clicking BFTV button opens this URL directly instead of a search page.
     pub bftv_url: Option<String>,
+    /// Direct Porn Base Central (PBC) wiki URL, populated by scrape_pbc_actors.py.
+    pub pbc_url: Option<String>,
+    /// Direct SmutJunkies performer profile URL (from scrape_smutjunkies_actors.py).
+    pub sj_url: Option<String>,
+    /// Rich biographical and body data scraped from Porn Base Central wiki.
+    pub pbc_profile: Option<PerformerPbcProfile>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PerformerPbcProfile {
+    pub pbc_url: String,
+    pub pbc_name: Option<String>,
+    pub birth_name: Option<String>,
+    pub aliases: Option<String>,
+    pub birth_date: Option<String>,
+    pub age: Option<i64>,
+    pub astrology: Option<String>,
+    pub birth_place: Option<String>,
+    pub country: Option<String>,
+    pub nationality: Option<String>,
+    pub ethnicity: Option<String>,
+    pub languages: Option<String>,
+    pub career_start: Option<String>,
+    pub career_status: Option<String>,
+    pub height: Option<String>,
+    pub weight: Option<String>,
+    pub penis_size: Option<String>,
+    pub foreskin: Option<String>,
+    pub hair: Option<String>,
+    pub eyes: Option<String>,
+    pub build: Option<String>,
+    pub skin: Option<String>,
+    pub ass_type: Option<String>,
+    pub butt: Option<String>,
+    pub body_hair: Option<String>,
+    pub facial_hair: Option<String>,
+    pub tattoos: Option<String>,
+    pub piercings: Option<String>,
+    pub roles_json: Option<String>,
+    pub performance_tags: Option<String>,
+    pub social_links_json: Option<String>,
+    pub external_ids_json: Option<String>,
+    pub image_url: Option<String>,
+    pub bio: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

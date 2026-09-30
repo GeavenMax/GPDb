@@ -154,7 +154,7 @@ pub fn show_in_folder(path: &str) {
     }
 }
 
-fn get_unique_filepath(dir: &std::path::Path, stem: &str, ext: &str) -> std::path::PathBuf {
+pub(crate) fn get_unique_filepath(dir: &std::path::Path, stem: &str, ext: &str) -> std::path::PathBuf {
     let direct = dir.join(format!("{}.{}", stem, ext));
     if !direct.exists() {
         return direct;

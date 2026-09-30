@@ -24,6 +24,8 @@ translations.db-shm
 translations.db-wal
 pending_*.json
 sitemap_*.xml
+pbc_actors_*.json
+sj_*.json
 # Manual pre-scrape copies (`cp GPDb.db backups/gpdb-<date>.db`). Deliberately not
 # named GPDb.db.backup-* so the scraper's own prune (keep=5) cannot delete them.
 backups/

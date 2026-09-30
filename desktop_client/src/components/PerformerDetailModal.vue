@@ -7,7 +7,8 @@ import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
-import { pluginsConfig } from '../services/pluginManager';
+import { pluginsConfig, openPbcPerformer } from '../services/pluginManager';
+import { Sparkles, BookOpen, ExternalLink, Globe } from '@lucide/vue';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -53,11 +54,114 @@ function attrValues(key: string, fallback: string | null | undefined): string[] 
   return fallback.split(/<br\s*\/?>/i).map(s => s.trim()).filter(Boolean);
 }
 
-/**
- * The measurement fields (height / weight / dick size) hold "5ft 10in / 178cm"
- * strings. Their numbers need no translation but their units do, and the units are
- * the only part of the value in the glossary — see trMeasure.
- */
+// ── PBC 维基档案字典与转换器 ──────────────────────────────────────────────────
+const ASTRO_SIGNS: Record<string, string> = {
+  Aries: '白羊座 ♈', Taurus: '金牛座 ♉', Gemini: '双子座 ♊',
+  Cancer: '巨蟹座 ♋', Leo: '狮子座 ♌', Virgo: '处女座 ♍',
+  Libra: '天秤座 ♎', Scorpio: '天蝎座 ♏', Sagittarius: '射手座 ♐',
+  Capricorn: '摩羯座 ♑', Aquarius: '水瓶座 ♒', Pisces: '双鱼座 ♓',
+};
+function trAstrology(sign?: string | null): string {
+  if (!sign) return '';
+  return ASTRO_SIGNS[sign] || sign;
+}
+
+
+const ETHNICITY_MAP: Record<string, string> = {
+  Caucasian: '白人',
+  Latin: '拉丁裔',
+  Latino: '拉丁裔',
+  Hispanic: '拉丁裔',
+  Black: '非裔',
+  'African American': '非裔',
+  Asian: '亚裔',
+  'Middle Eastern': '中东裔',
+  Mixed: '混血',
+};
+function trEthnicity(eth?: string | null): string {
+  if (!eth) return '';
+  return ETHNICITY_MAP[eth] || eth;
+}
+
+const PERF_TAGS_MAP: Record<string, string> = {
+  Masturbation: '自慰',
+  'Close-Up': '特写',
+  Dildo: '假阳具/玩具',
+  Feet: '恋足',
+  Pissing: '圣水',
+  Watersports: '圣水',
+  'Ass fingering': '指交',
+  'Ass gaping': '扩肛',
+  Kissing: '接吻',
+  Blowjob: '口交',
+  'Deep throat': '深喉',
+  Rimming: '舔穴',
+  Facials: '颜射',
+  'Cum eating': '吞精',
+  Interracial: '跨种族',
+  Handjob: '手交',
+  'Double penetration': '双龙',
+  'Muscle fetish': '肌肉控',
+  Spanking: '打屁股',
+  Bondage: '束缚',
+  'Tickle torture': '挠痒',
+  Wrestling: '摔跤',
+  'Erotic massage': '诱惑按摩',
+};
+function trPerfTag(tag: string): string {
+  return PERF_TAGS_MAP[tag] || tag;
+}
+
+const pbcProfile = computed(() => props.performer?.pbc_profile);
+
+const pbcCareerStatus = computed(() => {
+  const status = pbcProfile.value?.career_status?.trim();
+  if (!status) return null;
+  const isAct = status.toLowerCase().includes('active');
+  return {
+    isActive: isAct,
+    text: isAct ? '活跃中 Active' : '已退役 Retired',
+  };
+});
+
+const pbcPerformanceTags = computed<string[]>(() => {
+  const prof = pbcProfile.value;
+  if (!prof) return [];
+  if (Array.isArray(prof.performance_tags)) return prof.performance_tags;
+  if (typeof prof.performance_tags === 'string') {
+    return prof.performance_tags.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+});
+
+const pbcSocialLinks = computed<Record<string, string>>(() => {
+  const prof = pbcProfile.value;
+  if (!prof) return {};
+  if (prof.social_links) return prof.social_links;
+  if (prof.social_links_json) {
+    try {
+      return typeof prof.social_links_json === 'string' ? JSON.parse(prof.social_links_json) : prof.social_links_json;
+    } catch {
+      return {};
+    }
+  }
+  return {};
+});
+
+const pbcExternalIds = computed<Record<string, string>>(() => {
+  const prof = pbcProfile.value;
+  if (!prof) return {};
+  if (prof.external_ids) return prof.external_ids;
+  if (prof.external_ids_json) {
+    try {
+      return typeof prof.external_ids_json === 'string' ? JSON.parse(prof.external_ids_json) : prof.external_ids_json;
+    } catch {
+      return {};
+    }
+  }
+  return {};
+});
+
 interface Spec {
   key: string;
   label: string;
@@ -71,17 +175,26 @@ interface Spec {
 const SPECS = computed<Spec[]>(() => {
   const p = props.performer;
   if (!p) return [];
+  const prof = p.pbc_profile;
+
+  const originParts = [prof?.nationality, prof?.country || prof?.birth_place].filter(Boolean);
+  const originStr = originParts.length > 0 ? originParts.join(' · ') : null;
+
   return [
-    { key: 'height', label: '身高', accent: false, measure: true, values: attrValues('height', p.height) },
-    { key: 'weight', label: '体重', accent: false, measure: true, values: attrValues('weight', p.weight) },
-    { key: 'bodyType', label: '体型', accent: false, values: attrValues('bodyType', p.build) },
-    { key: 'dickSize', label: '尺寸规格', accent: true, measure: true, values: attrValues('dickSize', p.dick_size) },
-    { key: 'skin', label: '肤色', accent: false, values: attrValues('skin', p.skin) },
-    { key: 'hair', label: '发色', accent: false, values: attrValues('hair', p.hair) },
-    { key: 'eyes', label: '瞳色', accent: false, values: attrValues('eyes', p.eyes) },
-    { key: 'bodyHair', label: '体毛', accent: false, values: attrValues('bodyHair', p.body_hair) },
-    { key: 'facialHair', label: '胡须', accent: false, values: attrValues('facialHair', p.facial_hair) },
-    { key: 'foreskin', label: '包皮', accent: false, values: attrValues('foreskin', p.foreskin) },
+    { key: 'birthDate', label: '出生', accent: false, values: prof?.birth_date ? [prof.age ? `${prof.birth_date} (${prof.age}岁)` : prof.birth_date] : [] },
+    { key: 'astrology', label: '星座', accent: false, values: prof?.astrology ? [trAstrology(prof.astrology)] : [] },
+    { key: 'origin', label: '国籍/原籍', accent: false, values: originStr ? [originStr] : [] },
+    { key: 'ethnicity', label: '族裔', accent: false, values: prof?.ethnicity ? [trEthnicity(prof.ethnicity)] : [] },
+    { key: 'height', label: '身高', accent: false, measure: true, values: attrValues('height', p.height || prof?.height) },
+    { key: 'weight', label: '体重', accent: false, measure: true, values: attrValues('weight', p.weight || prof?.weight) },
+    { key: 'bodyType', label: '体型', accent: false, values: attrValues('bodyType', p.build || prof?.build) },
+    { key: 'dickSize', label: '尺寸规格', accent: true, measure: true, values: attrValues('dickSize', p.dick_size || prof?.penis_size) },
+    { key: 'skin', label: '肤色', accent: false, values: attrValues('skin', p.skin || prof?.skin) },
+    { key: 'hair', label: '发色', accent: false, values: attrValues('hair', p.hair || prof?.hair) },
+    { key: 'eyes', label: '瞳色', accent: false, values: attrValues('eyes', p.eyes || prof?.eyes) },
+    { key: 'bodyHair', label: '体毛', accent: false, values: attrValues('bodyHair', p.body_hair || prof?.body_hair) },
+    { key: 'facialHair', label: '胡须', accent: false, values: attrValues('facialHair', p.facial_hair || prof?.facial_hair) },
+    { key: 'foreskin', label: '包皮', accent: false, values: attrValues('foreskin', p.foreskin || prof?.foreskin) },
   ].filter(s => s.values.length > 0);
 });
 
@@ -199,11 +312,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       <div class="p-6 md:p-8 bg-sunken border-b border-line space-y-4">
         <div class="flex items-start justify-between gap-5 flex-wrap">
           <div class="flex items-start gap-5 min-w-0 flex-1">
-            <!-- Portrait (issue #6), falls back to the letter tile when unscraped. -->
+            <!-- Portrait (issue #6), falls back to PBC portrait or the letter tile when unscraped. -->
             <div class="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-accent-fill/10 ring-1 ring-line-strong/60">
               <img
-                v-if="performer.image_url && !portraitError"
-                :src="getImageUrl(performer.image_url)"
+                v-if="(performer.image_url || pbcProfile?.image_url) && !portraitError"
+                :src="getImageUrl(performer.image_url || pbcProfile?.image_url)"
                 :alt="performer.name"
                 referrerpolicy="no-referrer"
                 data-zoom-click
@@ -219,26 +332,53 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
 
             <div class="min-w-0 flex-1">
-              <div class="text-xs font-semibold text-accent uppercase tracking-wider">演员档案</div>
-              <h1 class="text-2xl md:text-3xl font-extrabold text-fg truncate" :title="performer.name">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-accent uppercase tracking-wider">演员档案</span>
+                <span
+                  v-if="pbcCareerStatus"
+                  :class="[
+                    'px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1',
+                    pbcCareerStatus.isActive
+                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                      : 'bg-zinc-500/15 text-zinc-400 border-zinc-500/30'
+                  ]"
+                >
+                  <span class="w-1.5 h-1.5 rounded-full" :class="pbcCareerStatus.isActive ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-400'"></span>
+                  {{ pbcCareerStatus.text }}
+                </span>
+              </div>
+              <h1 class="text-2xl md:text-3xl font-extrabold text-fg truncate mt-0.5" :title="performer.name">
                 {{ performer.name }}
               </h1>
               <div class="text-xs text-fg-3 mt-1 flex items-center gap-3 flex-wrap">
                 <span>ID: #{{ performer.id }}</span>
                 <span
                   v-if="performer.works_count ?? performer.movies_count"
-                  class="text-accent/80"
+                  class="text-accent/80 font-medium"
                 >{{ performer.works_count ?? performer.movies_count }} 部作品</span>
-                <span v-if="!performer.image_url" class="text-fg-5">暂无照片</span>
+                <span v-if="pbcProfile?.birth_name && pbcProfile.birth_name !== performer.name" class="text-fg-4">
+                  本名: {{ pbcProfile.birth_name }}
+                </span>
+                <span v-if="pbcProfile?.career_start" class="text-fg-4">
+                  出道: {{ pbcProfile.career_start }}年
+                </span>
+                <span v-if="!performer.image_url && !pbcProfile?.image_url" class="text-fg-5">暂无照片</span>
               </div>
 
               <!-- Aliases / AKA and Notes -->
               <div
-                v-if="performer.aliases && performer.aliases.length > 0"
+                v-if="(performer.aliases && performer.aliases.length > 0) || (pbcProfile?.aliases)"
                 class="mt-2 text-[11px] text-fg-4 leading-relaxed max-w-xl"
               >
                 <span class="text-fg-5 font-medium">曾用艺名 / 别名 (AKA)：</span>
-                <span class="text-fg-3">{{ performer.aliases.join('、') }}</span>
+                <span class="text-fg-3">
+                  {{
+                    Array.from(new Set([
+                      ...(performer.aliases || []),
+                      ...(pbcProfile?.aliases ? pbcProfile.aliases.split(',').map(s => s.trim()) : [])
+                    ])).join('、')
+                  }}
+                </span>
               </div>
               <div
                 v-if="performer.notes"
@@ -249,10 +389,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
           </div>
 
-          <!-- Action buttons (BT Search + Fav) -->
+          <!-- Action buttons (BT Search + BFTV + PBC + Fav) -->
           <div class="mr-10 shrink-0 self-start flex items-center gap-2 flex-wrap">
             <template v-if="pluginsConfig.resourceSearchEnabled">
-              <ResourceSearchWidget type="performer" :title="performer.name" :bftvUrl="performer.bftv_url" />
+              <ResourceSearchWidget
+                type="performer"
+                :title="performer.name"
+                :bftvUrl="performer.bftv_url"
+                :pbcUrl="performer.pbc_url || pbcProfile?.pbc_url"
+                :sjUrl="performer.sj_url"
+              />
             </template>
 
             <button
@@ -274,7 +420,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div
           v-if="SPECS.length > 0"
           class="flex flex-wrap content-start gap-1.5 pt-1"
-          aria-label="身体属性档案"
+          aria-label="身体属性与档案"
         >
           <span
             v-for="spec in SPECS"
@@ -309,6 +455,82 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <div v-else class="text-xs text-fg-4 italic pt-1">
           该演员的详情页尚未抓取，暂无声色属性档案。
+        </div>
+
+        <!-- Performance tags row -->
+        <div v-if="pbcPerformanceTags.length > 0" class="flex flex-wrap items-center gap-1.5 pt-1">
+          <span class="text-[11px] text-fg-4 shrink-0 flex items-center gap-1">
+            <Sparkles class="w-3 h-3 text-purple-400" />
+            <span>表演标签:</span>
+          </span>
+          <span
+            v-for="tag in pbcPerformanceTags"
+            :key="tag"
+            class="px-2 py-0.5 rounded-md bg-surface/90 border border-line text-[10px] font-medium text-fg-3"
+          >
+            {{ trPerfTag(tag) }}
+          </span>
+        </div>
+
+        <!-- Wikipedia Biography Card -->
+        <div v-if="pbcProfile?.bio" class="mt-2 p-3.5 rounded-2xl bg-surface/60 border border-line/70 text-xs text-fg-3 leading-relaxed">
+          <div class="flex items-center justify-between gap-2 mb-1.5">
+            <div class="flex items-center gap-1.5 text-xs font-semibold text-purple-400">
+              <BookOpen class="w-3.5 h-3.5" />
+              <span>PBC 维基人物小传</span>
+            </div>
+            <button
+              v-if="performer.pbc_url || pbcProfile.pbc_url"
+              @click="openPbcPerformer(performer.pbc_url || pbcProfile.pbc_url)"
+              class="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 transition cursor-pointer"
+              title="在浏览器中查看完整维基词条"
+            >
+              <span>完整词条</span>
+              <ExternalLink class="w-2.5 h-2.5" />
+            </button>
+          </div>
+          <p class="text-fg-3/90 text-[11px] leading-relaxed">{{ pbcProfile.bio }}</p>
+        </div>
+
+        <!-- Social and External Database Links -->
+        <div v-if="Object.keys(pbcSocialLinks).length > 0 || Object.keys(pbcExternalIds).length > 0" class="flex flex-wrap items-center gap-2 pt-1">
+          <span class="text-[11px] text-fg-4 shrink-0 flex items-center gap-1">
+            <Globe class="w-3 h-3 text-fg-4" />
+            <span>互联档案:</span>
+          </span>
+          <a
+            v-for="(url, platform) in pbcSocialLinks"
+            :key="platform"
+            :href="url"
+            target="_blank"
+            rel="noreferrer"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition"
+          >
+            <ExternalLink class="w-2.5 h-2.5 opacity-60" />
+            <span>{{ platform.toUpperCase() }}</span>
+          </a>
+          <a
+            v-if="pbcExternalIds.iafd_id"
+            :href="`https://www.iafd.com/person.rme/perfid=${pbcExternalIds.iafd_id}/gender=m`"
+            target="_blank"
+            rel="noreferrer"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition"
+            title="在 IAFD (Internet Adult Film Database) 查看档案"
+          >
+            <ExternalLink class="w-2.5 h-2.5 opacity-60" />
+            <span>IAFD</span>
+          </a>
+          <a
+            v-if="pbcExternalIds.imdb_id"
+            :href="`https://www.imdb.com/name/nm${pbcExternalIds.imdb_id}`"
+            target="_blank"
+            rel="noreferrer"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition"
+            title="在 IMDb 查看档案"
+          >
+            <ExternalLink class="w-2.5 h-2.5 opacity-60" />
+            <span>IMDb</span>
+          </a>
         </div>
       </div>
 

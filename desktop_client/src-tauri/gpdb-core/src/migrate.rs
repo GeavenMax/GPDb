@@ -40,6 +40,8 @@ const MOVIE_COLUMNS: &[(&str, &str)] = &[
 /// so only the newer ones go here. Adding a column means adding it in both places.
 const PERFORMER_COLUMNS: &[(&str, &str)] = &[
     ("bftv_url", "TEXT"),
+    ("pbc_url", "TEXT"),
+    ("sj_url", "TEXT"),
 ];
 
 /// Tables this crate reads. Verbatim from `schema.sql` §11 and §12.

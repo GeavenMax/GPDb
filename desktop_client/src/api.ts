@@ -1247,6 +1247,49 @@ export const api = {
       recommendations: [],
     };
   },
+
+  async saveShareCardImage(filename: string, base64Png: string): Promise<string> {
+    if (isTauri) {
+      return await tauriInvoke<string>('save_share_card_image', { filename, base64Png });
+    }
+    return new Promise<string>((resolve, reject) => {
+      try {
+        const arr = base64Png.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+        const bstr = atob(arr[1] || arr[0]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        resolve(`${filename}.png`);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  },
+
+  async copyImageToClipboard(base64Png: string): Promise<boolean> {
+    if (isTauri) {
+      try {
+        await tauriInvoke('copy_image_to_clipboard', { base64Png });
+        return true;
+      } catch (e) {
+        console.warn('Native copy to clipboard failed:', e);
+      }
+    }
+    return false;
+  },
 };
+
 
 

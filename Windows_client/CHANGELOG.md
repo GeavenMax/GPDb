@@ -5,6 +5,36 @@ All notable changes to the GPDb Windows Client project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2026-09-30
+
+### Added
+- **Windows 客户端演员档案页深度整合 PBC 百科全维度资料 (`PerformerDetailModal.vue`)**：
+  - **严格冲突优先级与已有数据无损原则 (GEVI-First Non-Destructive Resolution)**：
+    - 生理规格（身高、体重、尺寸规格、体型、肤色、包皮、发色、瞳色、体毛、胡须、纹身）：严格执行 `p.field || pbc.field`。**只要 GEVI 原始字段有值，100% 保持 GEVI 不变**；仅当 GEVI 字段缺失时，才无缝由 PBC 权威数据填补，绝不丢失已有数据。
+    - 艺名与别名（Aliases）：执行去重并集合并，聚合呈现 GEVI 与 PBC 的全量艺名表。
+    - 本名（Birth Name）：若与艺名不同，在作品数旁以次级柔和色调呈现 `本名: xxx`。
+    - 出道年份（Career Start）：清晰呈现 `出道: 2008年`。
+    - 活跃状态微标（Career Status）：顶部直观展示绿色脉冲微光徽标 `活跃中 Active` 或灰色 `已退役 Retired`。
+    - 出生日期与年龄（Birth Date & Age）：以属性胶囊形式规范呈现 `出生: 1983-02-11 (43岁)`。
+    - 星座与族裔（Astrology & Ethnicity）：内置标准化汉化映射，如 `星座: 水瓶座`、`族裔: 白人`。
+    - 表演风格特色（Performance Tags）：汉化展示演出标签，如 `无套 (Bareback)`、`内射 (Creampie)`、`双龙` 等。
+    - 维基生平人物小传（Bio Card）：极简半透明玻璃拟态卡片呈现人物生平，支持一键点击 `完整词条 ↗` 直达原百科网页。
+    - 全网互联档案徽标（Connected Profiles）：底部聚合展示 `IAFD ↗`、`IMDb ↗`、`X (Twitter) ↗`、`OnlyFans ↗`、`Instagram ↗` 快捷胶囊。
+    - 操作栏快捷入口：操作区部署 `PBC 百科 ↗` 快捷入口，一键呼出浏览器查看完整词条。
+  - **界面一致性与简洁性保障**：
+    - 严格复用 GPDb 的 Surface / Zinc / Accent 配色系统与毛玻璃材质；
+    - 移除视觉干扰项：精简移除来自 PBC 的浅紫色攻受角色胶囊（无套定位、安全套定位、内射角色），保持档案信息聚焦克制；
+    - 纯粹条件渲染：对于尚未收录 PBC 档案的普通演员，界面保持原汁原味的极简 GEVI 视图，不产生任何空白卡片或未匹配占位符。
+- **底层数据库自动迁移支持 SmutJunkies 扩展架构**：
+  - `gpdb-core` 的 `migrate.rs` 自动保证 `performers.sj_url` 字段存在，全面支持后续 SmutJunkies 扩展数据对接。
+
+### Fixed
+- **Windows Rust/Tauri 构建依赖修复**：
+  - 补充 `Windows_client/src-tauri/Cargo.toml` 中缺失的 `base64 = "0.22"` 依赖。
+  - 修正 `database.rs` 中 `get_unique_filepath` 模块私有可见性问题。
+  - 修复 `system.rs` 中原生剪贴板跨平台兼容性代码。
+  - 通过 `npx vue-tsc -b` 检查与 `cargo check` 编译。
+
 ---
 
 ## [2.13.0] - 2026-09-29

@@ -72,6 +72,9 @@ data class PerformerEntity(
     @ColumnInfo(name = "bftv_url")
     val bftvUrl: String? = null,
 
+    @ColumnInfo(name = "pbc_url")
+    val pbcUrl: String? = null,
+
     @ColumnInfo(name = "scraped_at", defaultValue = "CURRENT_TIMESTAMP")
     val scrapedAt: String? = null,
 )

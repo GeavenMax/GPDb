@@ -281,6 +281,15 @@ export async function openBftvPerformer(_name: string, bftvUrl?: string | null) 
   }
 }
 
+/**
+ * Open a performer's PBC (Porn Base Central) wiki page directly.
+ */
+export async function openPbcPerformer(pbcUrl?: string | null) {
+  if (pbcUrl && pbcUrl.trim()) {
+    await openUrlExternal(pbcUrl.trim());
+  }
+}
+
 export async function openBftvMovie(title: string) {
   if (!title || !title.trim()) return;
   await openUrlExternal(buildBftvMovieUrl(title));

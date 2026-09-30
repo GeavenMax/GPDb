@@ -63,8 +63,95 @@ CREATE TABLE IF NOT EXISTS performers (
     tattoos TEXT,
     notes TEXT,
     image_url TEXT,                 -- 演员头像 images/Stars/performer{N}.jpg (NULL = 该演员无照片)
+    bftv_url TEXT,                  -- BoyfriendTV 个人主页直链
+    pbc_url TEXT,                   -- Porn Base Central 维基档案直链
+    sj_url TEXT,                    -- SmutJunkies 演员主页直链
     scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 2b. 演员 PBC 维基全维度档案扩展表
+CREATE TABLE IF NOT EXISTS performer_pbc_profiles (
+    performer_id INTEGER PRIMARY KEY,
+    pbc_url TEXT NOT NULL,
+    pbc_name TEXT NOT NULL,
+    birth_name TEXT,
+    aliases TEXT,
+    birth_date TEXT,
+    age INTEGER,
+    astrology TEXT,
+    birth_place TEXT,
+    country TEXT,
+    nationality TEXT,
+    ethnicity TEXT,
+    languages TEXT,
+    career_start TEXT,
+    career_status TEXT,
+    height TEXT,
+    weight TEXT,
+    penis_size TEXT,
+    foreskin TEXT,
+    hair TEXT,
+    eyes TEXT,
+    build TEXT,
+    skin TEXT,
+    ass_type TEXT,
+    butt TEXT,
+    body_hair TEXT,
+    facial_hair TEXT,
+    tattoos TEXT,
+    piercings TEXT,
+    roles_json TEXT,
+    performance_tags TEXT,
+    social_links_json TEXT,
+    external_ids_json TEXT,
+    image_url TEXT,
+    bio TEXT,
+    pbc_last_edited TEXT,
+    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (performer_id) REFERENCES performers(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_pbc_profiles_name ON performer_pbc_profiles(pbc_name);
+
+-- 2c. 演员 SmutJunkies 详细个人信息扩展表
+CREATE TABLE IF NOT EXISTS performer_sj_profiles (
+    performer_id INTEGER PRIMARY KEY,
+    sj_url TEXT NOT NULL,
+    sj_name TEXT NOT NULL,
+    model_id TEXT,
+    tagline TEXT,
+    aliases TEXT,
+    years_active TEXT,
+    decades TEXT,
+    studios TEXT,
+    nationality TEXT,
+    height TEXT,
+    weight TEXT,
+    hair TEXT,
+    eyes TEXT,
+    build TEXT,
+    dick_size TEXT,
+    dick_type TEXT,
+    foreskin TEXT,
+    position TEXT,
+    sexuality TEXT,
+    zodiac TEXT,
+    age TEXT,
+    shoe TEXT,
+    body_hair TEXT,
+    tattoos TEXT,
+    piercings TEXT,
+    social_links_json TEXT,
+    image_url TEXT,
+    bio TEXT,
+    filmography_json TEXT,
+    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (performer_id) REFERENCES performers(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sj_profiles_name ON performer_sj_profiles(sj_name);
+CREATE INDEX IF NOT EXISTS idx_sj_profiles_model_id ON performer_sj_profiles(model_id);
 
 CREATE INDEX IF NOT EXISTS idx_performers_name ON performers(name);
 CREATE INDEX IF NOT EXISTS idx_performers_build ON performers(build);

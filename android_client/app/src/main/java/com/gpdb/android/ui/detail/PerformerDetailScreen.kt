@@ -21,6 +21,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.gpdb.android.data.db.entities.toImageCachePath
@@ -87,14 +88,17 @@ fun PerformerDetailScreen(
             } else {
                 val detail = uiState.performerDetail!!
                 val performer = detail.performer
+                val pbc = uiState.pbcProfile
                 val context = LocalContext.current
+                val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
 
-                val relativePath = performer.imageUrl.toImageCachePath()
-                val imageData = remember(performer.id, physicalRootPath) {
+                val effImageUrl = performer.imageUrl?.takeIf { it.isNotBlank() } ?: pbc?.imageUrl
+                val relativePath = effImageUrl.toImageCachePath()
+                val imageData = remember(performer.id, physicalRootPath, effImageUrl) {
                     GpdbImageData(
                         relativePath = relativePath ?: "image_cache/Performers/${performer.id}.jpg",
                         physicalRoot = physicalRootPath,
-                        fallbackUrl = performer.imageUrl
+                        fallbackUrl = effImageUrl
                     )
                 }
 
@@ -121,161 +125,411 @@ fun PerformerDetailScreen(
                     }
                 }
 
+                val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+                val isChinese = currentLang == com.gpdb.android.util.AppLanguage.ZH_CN || currentLang == com.gpdb.android.util.AppLanguage.ZH_TW
+
+                val pbcTags = remember(pbc?.tags) {
+                    if (!pbc?.tags.isNullOrBlank()) {
+                        pbc.tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
+                    } else emptyList()
+                }
+
+                val externalLinks = remember(pbc?.socialLinks, pbc?.externalIds) {
+                    val links = mutableListOf<Pair<String, String>>()
+                    if (!pbc?.socialLinks.isNullOrBlank()) {
+                        try {
+                            val json = org.json.JSONObject(pbc.socialLinks)
+                            val keys = json.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                val u = json.optString(key)
+                                if (u.isNotBlank()) links.add(key.uppercase() to u)
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    if (!pbc?.externalIds.isNullOrBlank()) {
+                        try {
+                            val json = org.json.JSONObject(pbc.externalIds)
+                            val iafd = json.optString("iafd_id")
+                            if (iafd.isNotBlank()) {
+                                links.add("IAFD" to "https://www.iafd.com/person.rme/perfid=$iafd/gender=m")
+                            }
+                            val imdb = json.optString("imdb_id")
+                            if (imdb.isNotBlank()) {
+                                links.add("IMDb" to "https://www.imdb.com/name/nm$imdb")
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    links
+                }
+
                 Column(modifier = Modifier.fillMaxSize().nestedScroll(nestedScrollConnection)) {
                     // 头部档案卡
                     androidx.compose.animation.AnimatedVisibility(visible = isHeaderVisible) {
                         Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(imageData)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = performer.name,
-                            contentScale = ContentScale.Crop,
-                            alignment = Alignment.TopCenter, // 修复头部被裁切
-                            modifier = Modifier
-                                .size(100.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .privacyBlurImage()
-                                .clickable { showFullImage = true }
-                        )
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Column {
-                            Text(
-                                text = performer.name,
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            val currentLang = com.gpdb.android.util.LocalAppLanguage.current
-                            val isChinese = currentLang == com.gpdb.android.util.AppLanguage.ZH_CN || currentLang == com.gpdb.android.util.AppLanguage.ZH_TW
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(imageData)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = performer.name,
+                                    contentScale = ContentScale.Crop,
+                                    alignment = Alignment.TopCenter,
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .privacyBlurImage()
+                                        .clickable { showFullImage = true }
+                                )
 
-                            val basicDetails = listOfNotNull(
-                                performer.height?.takeIf { it.isNotBlank() && it != "none available" }?.let {
-                                    "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("height", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
-                                },
-                                performer.weight?.takeIf { it.isNotBlank() && it != "none available" }?.let {
-                                    "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("weight", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
-                                },
-                                performer.build?.takeIf { it.isNotBlank() && it != "none available" }?.let {
-                                    "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("build", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.translate(it, isChinese)}"
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = performer.name,
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        if (!pbc?.careerStatus.isNullOrBlank()) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            val isActive = pbc?.careerStatus?.equals("active", ignoreCase = true) == true
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = if (isActive) Color(0xFF10B981).copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant,
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isActive) Color(0xFF10B981) else MaterialTheme.colorScheme.outline)
+                                            ) {
+                                                Text(
+                                                    text = if (isActive) "活跃" else "退役",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = if (isActive) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.padding(top = 2.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "ID: #${performer.id}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        if (!pbc?.birthName.isNullOrBlank() && pbc.birthName != performer.name) {
+                                            Text(
+                                                text = "本名: ${pbc.birthName}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        if (pbc?.careerStart != null) {
+                                            Text(
+                                                text = "出道: ${pbc.careerStart}年",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    val basicDetails = listOfNotNull(
+                                        (performer.height?.takeIf { it.isNotBlank() && it != "none available" }
+                                            ?: pbc?.height?.takeIf { it.isNotBlank() })?.let {
+                                            "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("height", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
+                                        },
+                                        (performer.weight?.takeIf { it.isNotBlank() && it != "none available" }
+                                            ?: pbc?.weight?.takeIf { it.isNotBlank() })?.let {
+                                            "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("weight", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
+                                        },
+                                        performer.build?.takeIf { it.isNotBlank() && it != "none available" }?.let {
+                                            "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("build", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.translate(it, isChinese)}"
+                                        }
+                                    )
+
+                                    @OptIn(ExperimentalLayoutApi::class)
+                                    if (basicDetails.isNotEmpty()) {
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            basicDetails.forEach { detailText ->
+                                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                                                    Text(
+                                                        text = detailText,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                            )
-                            
-                            @OptIn(ExperimentalLayoutApi::class)
-                            if (basicDetails.isNotEmpty()) {
+                            }
+
+                            // 详细生理与背景特征 (默认展开展示)
+                            fun formatAstro(astro: String?): String? {
+                                if (astro.isNullOrBlank()) return null
+                                return when (astro.lowercase()) {
+                                    "aries" -> "白羊座 ♈"
+                                    "taurus" -> "金牛座 ♉"
+                                    "gemini" -> "双子座 ♊"
+                                    "cancer" -> "巨蟹座 ♋"
+                                    "leo" -> "狮子座 ♌"
+                                    "virgo" -> "处女座 ♍"
+                                    "libra" -> "天秤座 ♎"
+                                    "scorpio" -> "天蝎座 ♏"
+                                    "sagittarius" -> "射手座 ♐"
+                                    "capricorn" -> "摩羯座 ♑"
+                                    "aquarius" -> "水瓶座 ♒"
+                                    "pisces" -> "双鱼座 ♓"
+                                    else -> astro
+                                }
+                            }
+
+                            fun formatBirth(birth: String?): String? {
+                                if (birth.isNullOrBlank()) return null
+                                val match = Regex("""^(\d{4})""").find(birth)
+                                val ageSuffix = match?.value?.toIntOrNull()?.let { birthYear ->
+                                    val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+                                    val age = currentYear - birthYear
+                                    if (age in 18..99) " (${age}岁)" else ""
+                                } ?: ""
+                                return "$birth$ageSuffix"
+                            }
+
+                            val advancedDetails = listOfNotNull(
+                                formatBirth(pbc?.birthDate)?.let { "生日" to it },
+                                formatAstro(pbc?.astrology)?.let { "星座" to it },
+                                pbc?.birthPlace?.takeIf { it.isNotBlank() }?.let { "籍贯" to it },
+                                pbc?.ethnicity?.takeIf { it.isNotBlank() }?.let { "族裔" to it },
+                                performer.hair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("hair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                                performer.eyes?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("eyes", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                                performer.facialHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("facialHair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                                performer.bodyHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("bodyHair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                                performer.skin?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("skin", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                                (performer.dickSize?.takeIf { it.isNotBlank() && it != "none available" }
+                                    ?: pbc?.dickSize?.takeIf { it.isNotBlank() })?.let {
+                                    com.gpdb.android.util.GlossaryHelper.getCleanLabel("dickSize", isChinese) to com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)
+                                },
+                                (performer.foreskin?.takeIf { it.isNotBlank() && it != "none available" }
+                                    ?: pbc?.foreskin?.takeIf { it.isNotBlank() })?.let {
+                                    com.gpdb.android.util.GlossaryHelper.getCleanLabel("foreskin", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese)
+                                },
+                                (performer.tattoos?.takeIf { it.isNotBlank() && it != "none available" }
+                                    ?: pbc?.tattoos?.takeIf { it.isNotBlank() })?.let {
+                                    com.gpdb.android.util.GlossaryHelper.getCleanLabel("tattoos", isChinese) to com.gpdb.android.util.GlossaryHelper.trTattoo(it, isChinese)
+                                }
+                            ).filter { it.second.isNotBlank() && it.second != "none available" }
+
+                            if (advancedDetails.isNotEmpty()) {
+                                @OptIn(ExperimentalLayoutApi::class)
                                 FlowRow(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    advancedDetails.forEach { (label, value) ->
+                                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                                            Text(
+                                                text = "$label: $value",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 表演标签
+                            if (pbcTags.isNotEmpty()) {
+                                @OptIn(ExperimentalLayoutApi::class)
+                                FlowRow(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "表演标签:",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                    )
+                                    pbcTags.forEach { tag ->
+                                        Surface(
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                        ) {
+                                            Text(
+                                                text = tag,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // PBC 维基人物小传
+                            if (!pbc?.bio.isNullOrBlank()) {
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "PBC 维基人物小传",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFFA78BFA)
+                                            )
+                                            val pbcLink = performer.pbcUrl ?: pbc.pbcUrl
+                                            if (!pbcLink.isNullOrBlank()) {
+                                                Text(
+                                                    text = "完整词条 ↗",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color(0xFFA78BFA),
+                                                    modifier = Modifier.clickable { uriHandler.openUri(pbcLink) }
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = pbc.bio,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            lineHeight = 18.sp
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 互联档案外链 (IAFD, IMDb, X)
+                            if (externalLinks.isNotEmpty()) {
+                                @OptIn(ExperimentalLayoutApi::class)
+                                FlowRow(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 4.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
-                                    basicDetails.forEach { detail ->
-                                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                                    Text(
+                                        text = "互联档案:",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                    )
+                                    externalLinks.forEach { (name, linkUrl) ->
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            modifier = Modifier.clickable { uriHandler.openUri(linkUrl) }
+                                        ) {
                                             Text(
-                                                text = detail,
-                                                style = MaterialTheme.typography.bodySmall,
+                                                text = "$name ↗",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                             )
                                         }
                                     }
                                 }
                             }
-                        }
-                    }
 
-                    // 详细生理特征 (默认全部展开展示并全量汉化)
-                    val currentLang = com.gpdb.android.util.LocalAppLanguage.current
-                    val isChinese = currentLang == com.gpdb.android.util.AppLanguage.ZH_CN || currentLang == com.gpdb.android.util.AppLanguage.ZH_TW
-
-                    val advancedDetails = listOfNotNull(
-                        performer.hair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("hair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.eyes?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("eyes", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.facialHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("facialHair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.bodyHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("bodyHair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.skin?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("skin", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.dickSize?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("dickSize", isChinese) to com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese) },
-                        performer.foreskin?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("foreskin", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.tattoos?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("tattoos", isChinese) to com.gpdb.android.util.GlossaryHelper.trTattoo(it, isChinese) }
-                    ).filter { it.second.isNotBlank() && it.second != "none available" }
-
-                    if (advancedDetails.isNotEmpty()) {
-                        @OptIn(ExperimentalLayoutApi::class)
-                        FlowRow(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            advancedDetails.forEach { (label, value) ->
-                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-                                    Text(
-                                        text = "$label: $value",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Buttons: BT4G 搜索 and BoyfriendTV
-                    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-                    @OptIn(ExperimentalLayoutApi::class)
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            modifier = Modifier.clickable {
-                                val encodedName = java.net.URLEncoder.encode(performer.name, "UTF-8")
-                                uriHandler.openUri("https://bt4gprx.com/search?q=$encodedName")
-                            }
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "BT4G 搜索",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                )
-                            }
-                        }
-                        
-                        if (!performer.bftvUrl.isNullOrBlank()) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                modifier = Modifier.clickable {
-                                    uriHandler.openUri(performer.bftvUrl)
-                                }
+                            // Buttons: BT4G 搜索, BoyfriendTV, PBC 百科
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                                    Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "BoyfriendTV",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    )
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.errorContainer,
+                                    modifier = Modifier.clickable {
+                                        val encodedName = java.net.URLEncoder.encode(performer.name, "UTF-8")
+                                        uriHandler.openUri("https://bt4gprx.com/search?q=$encodedName")
+                                    }
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                        Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "BT4G 搜索",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                        )
+                                    }
+                                }
+
+                                if (!performer.bftvUrl.isNullOrBlank()) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                                        modifier = Modifier.clickable {
+                                            uriHandler.openUri(performer.bftvUrl)
+                                        }
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                            Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "BoyfriendTV",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                            )
+                                        }
+                                    }
+                                }
+
+                                val pbcDirectUrl = performer.pbcUrl ?: pbc?.pbcUrl
+                                if (!pbcDirectUrl.isNullOrBlank()) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = Color(0xFF8B5CF6).copy(alpha = 0.2f),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF8B5CF6).copy(alpha = 0.4f)),
+                                        modifier = Modifier.clickable {
+                                            uriHandler.openUri(pbcDirectUrl)
+                                        }
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                                            Spacer(modifier = Modifier.width(2.dp))
+                                            Text(
+                                                text = "PBC 百科 ↗",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = Color(0xFFC4B5FD),
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-
                         }
                     }
 

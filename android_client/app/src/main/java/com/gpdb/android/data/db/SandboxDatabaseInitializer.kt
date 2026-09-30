@@ -150,6 +150,7 @@ object SandboxDatabaseInitializer {
                         notes TEXT,
                         image_url TEXT,
                         bftv_url TEXT,
+                        pbc_url TEXT,
                         scraped_at TEXT DEFAULT CURRENT_TIMESTAMP
                     );
                 """.trimIndent())
@@ -161,6 +162,36 @@ object SandboxDatabaseInitializer {
                 db.execSQL("CREATE INDEX IF NOT EXISTS idx_performers_body_hair ON performers(body_hair);")
                 db.execSQL("CREATE INDEX IF NOT EXISTS idx_performers_facial_hair ON performers(facial_hair);")
                 db.execSQL("CREATE INDEX IF NOT EXISTS idx_performers_image ON performers(image_url);")
+
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS performer_pbc_profiles (
+                        performer_id INTEGER PRIMARY KEY,
+                        pbc_url TEXT NOT NULL,
+                        pbc_id TEXT,
+                        birth_name TEXT,
+                        career_start INTEGER,
+                        career_end INTEGER,
+                        career_status TEXT,
+                        bio TEXT,
+                        birth_date TEXT,
+                        birth_place TEXT,
+                        ethnicity TEXT,
+                        astrology TEXT,
+                        height TEXT,
+                        weight TEXT,
+                        dick_size TEXT,
+                        foreskin TEXT,
+                        tattoos TEXT,
+                        piercings TEXT,
+                        roles TEXT,
+                        social_links TEXT,
+                        external_ids TEXT,
+                        tags TEXT,
+                        image_url TEXT,
+                        scraped_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(performer_id) REFERENCES performers(id) ON DELETE CASCADE
+                    );
+                """.trimIndent())
 
                 db.execSQL("""
                     CREATE TABLE IF NOT EXISTS movie_performers (

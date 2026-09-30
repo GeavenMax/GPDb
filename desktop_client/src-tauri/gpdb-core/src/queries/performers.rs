@@ -233,6 +233,70 @@ pub fn get_performer_detail(conn: &Connection,
             let aliases: Vec<String> = a_iter.filter_map(|r| r.ok()).collect();
             p.aliases = Some(aliases);
 
+            // Rich biographical and body data from Porn Base Central wiki
+            if let Ok(mut pbc_stmt) = conn.prepare(
+                "SELECT pbc_url, pbc_name, birth_name, aliases, birth_date, age, astrology, \
+                        birth_place, country, nationality, ethnicity, languages, career_start, \
+                        career_status, height, weight, penis_size, foreskin, hair, eyes, build, \
+                        skin, ass_type, butt, body_hair, facial_hair, tattoos, piercings, \
+                        roles_json, performance_tags, social_links_json, external_ids_json, \
+                        image_url, bio \
+                 FROM performer_pbc_profiles WHERE performer_id = ?1"
+            ) {
+                if let Ok(prof) = pbc_stmt.query_row(params![id], |r| {
+                    Ok(crate::models::PerformerPbcProfile {
+                        pbc_url: r.get(0)?,
+                        pbc_name: r.get(1)?,
+                        birth_name: r.get(2)?,
+                        aliases: r.get(3)?,
+                        birth_date: r.get(4)?,
+                        age: r.get(5)?,
+                        astrology: r.get(6)?,
+                        birth_place: r.get(7)?,
+                        country: r.get(8)?,
+                        nationality: r.get(9)?,
+                        ethnicity: r.get(10)?,
+                        languages: r.get(11)?,
+                        career_start: r.get(12)?,
+                        career_status: r.get(13)?,
+                        height: r.get(14)?,
+                        weight: r.get(15)?,
+                        penis_size: r.get(16)?,
+                        foreskin: r.get(17)?,
+                        hair: r.get(18)?,
+                        eyes: r.get(19)?,
+                        build: r.get(20)?,
+                        skin: r.get(21)?,
+                        ass_type: r.get(22)?,
+                        butt: r.get(23)?,
+                        body_hair: r.get(24)?,
+                        facial_hair: r.get(25)?,
+                        tattoos: r.get(26)?,
+                        piercings: r.get(27)?,
+                        roles_json: r.get(28)?,
+                        performance_tags: r.get(29)?,
+                        social_links_json: r.get(30)?,
+                        external_ids_json: r.get(31)?,
+                        image_url: r.get(32)?,
+                        bio: r.get(33)?,
+                    })
+                }) {
+                    if p.pbc_url.is_none() {
+                        p.pbc_url = Some(prof.pbc_url.clone());
+                    }
+                    p.pbc_profile = Some(prof);
+                }
+            }
+
+            // Direct SmutJunkies profile URL if present
+            if let Ok(sj_url) = conn.query_row(
+                "SELECT sj_url FROM performers WHERE id = ?1",
+                params![id],
+                |r| r.get::<_, Option<String>>(0),
+            ) {
+                p.sj_url = sj_url;
+            }
+
             Ok(Some(p))
         }
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),

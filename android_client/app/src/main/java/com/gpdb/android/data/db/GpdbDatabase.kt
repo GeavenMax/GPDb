@@ -39,7 +39,7 @@ import androidx.room.migration.Migration
         EpisodeEntity::class,
         EpisodePerformerEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class GpdbDatabase : RoomDatabase() {
@@ -54,13 +54,33 @@ abstract class GpdbDatabase : RoomDatabase() {
     companion object {
         private const val TAG = "GpdbDatabase"
 
-        private val MIGRATION_0_2 = object : Migration(0, 2) {
+        private val MIGRATION_0_3 = object : Migration(0, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // 当从 macOS 外部导入原始 GPDb.db (user_version = 0) 时触发：
-                // 物理表已由 macOS/Python 建好，无需实际 SQL ALTER 语句。
-                // 留空即可，Room 跑完后会自动建立 room_master_table 并将 user_version 升至 2。
                 Log.i(TAG, "检测到外部 macOS GPDb.db (version 0)，已自动平滑挂载并建立 Room 元数据索引")
+                try {
+                    database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;")
+                } catch (_: Exception) {}
             }
+        }
+
+        private val MIGRATION_1_3 = object : Migration(1, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try {
+                    database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;")
+                } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try {
+                    database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;")
+                } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_0_2 = object : Migration(0, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {}
         }
 
         private val MIGRATION_0_1 = object : Migration(0, 1) {
@@ -68,11 +88,7 @@ abstract class GpdbDatabase : RoomDatabase() {
         }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
-            override fun migrate(database: SupportSQLiteDatabase) {
-                // 实体类增加了 EpisodeEntity 和 EpisodePerformerEntity
-                // 物理表已经在外部 SQLite 中存在，无需实际的 SQL ALTER 语句
-                // 留空即可，Room 跑完后会自动更新 room_master_table 的哈希值以通过校验
-            }
+            override fun migrate(database: SupportSQLiteDatabase) {}
         }
 
         /**
@@ -91,7 +107,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                 GpdbDatabase::class.java,
                 dbFile.absolutePath // 绝对路径直连，零文件拷贝
             )
-                .addMigrations(MIGRATION_0_1, MIGRATION_0_2, MIGRATION_1_2)
+                .addMigrations(MIGRATION_0_1, MIGRATION_0_2, MIGRATION_1_2, MIGRATION_0_3, MIGRATION_1_3, MIGRATION_2_3)
                 // ★ 关键修复：强制使用 TRUNCATE 日志模式，彻底消除 FUSE 下 WAL 模式的 -shm / -wal ioctl 权限冲突
                 .setJournalMode(JournalMode.TRUNCATE)
                 .addCallback(object : Callback() {
@@ -101,6 +117,35 @@ abstract class GpdbDatabase : RoomDatabase() {
                             db.query("PRAGMA journal_mode = TRUNCATE;").close()
                             db.query("PRAGMA synchronous = NORMAL;").close()
                             db.query("PRAGMA foreign_keys = ON;").close()
+                            db.execSQL("""
+                                CREATE TABLE IF NOT EXISTS performer_pbc_profiles (
+                                    performer_id INTEGER PRIMARY KEY,
+                                    pbc_url TEXT NOT NULL,
+                                    pbc_id TEXT,
+                                    birth_name TEXT,
+                                    career_start INTEGER,
+                                    career_end INTEGER,
+                                    career_status TEXT,
+                                    bio TEXT,
+                                    birth_date TEXT,
+                                    birth_place TEXT,
+                                    ethnicity TEXT,
+                                    astrology TEXT,
+                                    height TEXT,
+                                    weight TEXT,
+                                    dick_size TEXT,
+                                    foreskin TEXT,
+                                    tattoos TEXT,
+                                    piercings TEXT,
+                                    roles TEXT,
+                                    social_links TEXT,
+                                    external_ids TEXT,
+                                    tags TEXT,
+                                    image_url TEXT,
+                                    scraped_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                                    FOREIGN KEY(performer_id) REFERENCES performers(id) ON DELETE CASCADE
+                                );
+                            """.trimIndent())
                             Log.i(TAG, "GPDb SQLite 成功就绪 (TRUNCATE mode on FUSE)")
                         } catch (e: Exception) {
                             Log.w(TAG, "配置 PRAGMA 出现警告: ${e.message}", e)

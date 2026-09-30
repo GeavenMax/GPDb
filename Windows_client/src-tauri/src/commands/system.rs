@@ -157,6 +157,122 @@ pub fn set_dock_icon_macos(png_bytes: &[u8]) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+pub fn save_share_card_image(filename: String, base64_png: String) -> Result<String, String> {
+    use base64::Engine;
+
+    let raw_b64 = if let Some(idx) = base64_png.find(',') {
+        &base64_png[idx + 1..]
+    } else {
+        &base64_png
+    };
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(raw_b64.trim())
+        .map_err(|e| format!("Base64 解码失败: {}", e))?;
+
+    let base_dir = dirs::download_dir()
+        .or_else(dirs::picture_dir)
+        .or_else(dirs::desktop_dir)
+        .or_else(dirs::home_dir)
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+
+    let stem = if filename.trim().is_empty() {
+        "GPDb_Share_Card".to_string()
+    } else {
+        filename
+            .chars()
+            .map(|c| if matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') { '_' } else { c })
+            .collect::<String>()
+    };
+
+    let dest_path = crate::commands::database::get_unique_filepath(&base_dir, &stem, "png");
+
+    std::fs::write(&dest_path, bytes)
+        .map_err(|e| format!("写入分享图片文件失败: {}", e))?;
+
+    let dest_str = dest_path.to_string_lossy().to_string();
+    crate::commands::database::show_in_folder(&dest_str);
+
+    log::info!("[save_share_card_image] Successfully saved share card to: {}", dest_str);
+    Ok(dest_str)
+}
+
+#[tauri::command]
+pub fn copy_image_to_clipboard(base64_png: String) -> Result<(), String> {
+    use base64::Engine;
+
+    let raw_b64 = if let Some(idx) = base64_png.find(',') {
+        &base64_png[idx + 1..]
+    } else {
+        &base64_png
+    };
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(raw_b64.trim())
+        .map_err(|e| format!("Base64 解码失败: {}", e))?;
+
+    #[cfg(target_os = "macos")]
+    {
+        use std::ffi::c_void;
+        type Id = *mut c_void;
+        type Sel = *mut c_void;
+
+        extern "C" {
+            fn objc_getClass(name: *const std::os::raw::c_char) -> Id;
+            fn sel_registerName(name: *const std::os::raw::c_char) -> Sel;
+            fn objc_msgSend();
+        }
+
+        unsafe {
+            let send_0: extern "C" fn(Id, Sel) -> Id = std::mem::transmute(objc_msgSend as *const ());
+            let send_data_create: extern "C" fn(Id, Sel, *const u8, usize) -> Id =
+                std::mem::transmute(objc_msgSend as *const ());
+            let send_set_data: extern "C" fn(Id, Sel, Id, Id) -> bool =
+                std::mem::transmute(objc_msgSend as *const ());
+            let send_str: extern "C" fn(Id, Sel, *const std::os::raw::c_char) -> Id =
+                std::mem::transmute(objc_msgSend as *const ());
+
+            let pb_class = objc_getClass(b"NSPasteboard\0".as_ptr() as *const _);
+            let gen_sel = sel_registerName(b"generalPasteboard\0".as_ptr() as *const _);
+            let pb: Id = send_0(pb_class, gen_sel);
+            if pb.is_null() {
+                return Err("获取 NSPasteboard 失败".to_string());
+            }
+
+            let clear_sel = sel_registerName(b"clearContents\0".as_ptr() as *const _);
+            let send_clear: extern "C" fn(Id, Sel) -> isize = std::mem::transmute(objc_msgSend as *const ());
+            let _: isize = send_clear(pb, clear_sel);
+
+            let data_class = objc_getClass(b"NSData\0".as_ptr() as *const _);
+            let data_sel = sel_registerName(b"dataWithBytes:length:\0".as_ptr() as *const _);
+            let ns_data: Id = send_data_create(data_class, data_sel, bytes.as_ptr(), bytes.len());
+
+            let str_class = objc_getClass(b"NSString\0".as_ptr() as *const _);
+            let str_sel = sel_registerName(b"stringWithUTF8String:\0".as_ptr() as *const _);
+            let png_type_str: Id = send_str(str_class, str_sel, b"public.png\0".as_ptr() as *const _);
+
+            let set_data_sel = sel_registerName(b"setData:forType:\0".as_ptr() as *const _);
+            let ok = send_set_data(pb, set_data_sel, ns_data, png_type_str);
+
+            let release_sel = sel_registerName(b"release\0".as_ptr() as *const _);
+            let _: Id = send_0(png_type_str, release_sel);
+            let _: Id = send_0(ns_data, release_sel);
+
+            if !ok {
+                return Err("写入系统剪贴板失败".to_string());
+            }
+        }
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = bytes;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

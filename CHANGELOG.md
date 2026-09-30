@@ -3,6 +3,74 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.14.0] - 2026-09-30
+
+### Added
+- **全新 PBC (Porn Base Central) 演员维基高精刮削与增量更新同步引擎 (`scrape_pbc_actors.py`)**：
+  - **MediaWiki 分类全量深度爬取**：直连 `https://pbc.xxx/wiki/Category:Pornographic_actors`，全量解析 1,200+ 名演员主页，提取结构化维基百科数据。
+  - **动态增量同步与编辑修订侦测 (`--recent`, `--update-library`)**：
+    - 集成 MediaWiki `Special:RecentChanges` 接口，支持回溯指定天数（`--days`）与条目上限（`--recent-limit`）检索最新修订页面；
+    - 支持 `--update-library` 本地库内巡检模式，深度回访已有演员主页并逐字段对比；
+    - 内置 `compare_actor_with_db` 细粒度差异侦测算法，覆盖 25+ 项属性对比，仅在数据真正变更时执行 `UPDATE`，精准输出字段变动日志（如 `birth_date: '1985' -> '1985-04-12'`），无变动条目自动标记 `[UNCHANGED]`。
+  - **全量无损整合入库与对齐**：
+    - 成功对齐并持久化 1,195 位知名演员档案至 `GPDb.db` 的 `performer_pbc_profiles` 扩展表与 `performers.pbc_url`，匹配率高达 97.3%；
+    - 严格遵循 GEVI 原始数据优先原则（GEVI-First Non-Destructive Resolution），保证已有数据 100% 完好无损。
+  - **零依赖与多种安全模式**：
+    - 基于 Python 3 原生标准库实现，纯零第三方 pip 依赖；
+    - 提供 `--preview`（默认只读预览）、`--apply`（写入数据库）、`--only-new`（仅抓取新演员）、`--force`（强制更新）、`--backfill`（回填主表缺失字段）与 `--save-json`（离线导出）等灵活操作参数。
+
+- **全新 SmutJunkies 演员信息高精刮削与增量更新同步引擎 (`scrape_smutjunkies_actors.py`)**：
+  - **首波动监控与更新同步 (`--home`)**：实时抓取 `https://www.smutjunkies.com/home.html` 推荐与编辑更新的演员档案 (~106+ 位)，支持一键巡检最新演员。
+  - **全站目录与字母索引覆盖 (`--letter <A-Z>`, `--all`)**：完整支持 SmutJunkies 26 个字母索引目录，覆盖全站 6,700+ 位男同成人演员档案。
+  - **全维度深度属性提取**：
+    - 基础标识：主艺名（Name）、内部模型编号（Model ID）、全尺寸高清 WebP 人物大图（Image URL）；
+    - 演艺履历：头衔简介（Tagline）、活跃年限（Years Active，如 `2024 – 2026`）、出道年代标签（Decades，如 `2010's`, `2020's`）；
+    - 厂牌与原籍：所属制片厂牌（Studios，如 BelAmi, Falcon, Men.com, Voyr 等）、国籍/族裔（Nationality）；
+    - 细粒度身体与演出特征：身高、体重、丁丁尺寸、丁丁厚度/形态、包皮状态（Cut/Uncut）、体型、演出体位与攻受偏好、性取向、星座、年龄、鞋码、体毛、纹身与穿孔；
+    - 社交与传记：官方社交档案直链（X/Twitter, Instagram, OnlyFans）、百科生平传记（Bio）与代表作片目（Filmography）。
+  - **多级高容错精准对齐算法**：
+    - 1级：精确主名匹配（大小写无关）；
+    - 2级：归一化前缀匹配（自动兼容 GEVI 中带年代/厂牌后缀的演员名，如 `Dick Dawson (bgew)`）；
+    - 3级：已知艺名与别名（Aliases / AKA）多向交叉反查；
+    - 4级：URL Slug 关键字跨名深度匹配（如 `nikolai-lazaro-tyler-myers` 自动对齐至 GEVI 中的 `Tyler Myers`）。
+  - **双向增量同步与编辑修订侦测 (Incremental Update & Diff Detection)**：
+    - 新演员自动入库并打标 `[INSERTED]` / `[NEW]`；
+    - 已收录演员逐字段对比差异，智能侦测网站修订（如活跃年限变更、厂牌增加、身体特征补充），记录具体变更项（如 `years_active: '2024' -> '2024 – 2026'`）并更新 `updated_at` 时间戳；若数据无变动则自动标记 `[UNCHANGED]`。
+  - **安全预览与数据导出模式**：
+    - 默认以 `--preview` 安全只读模式运行，不污染本地数据库，终端打印清晰的匹配报告与属性摘要；
+    - 支持 `--save-json <path>` 导出结构化抓取结果；
+    - 传入 `--apply` 参数时正式将新增与修订条目持久化写入 `GPDb.db`。
+  - **数据库架构与三端底层支持**：
+    - `schema.sql`、`db_manager.py` 与三端底层自动迁移新增 `performers.sj_url` 字段与 `performer_sj_profiles` 扩展表及其索引结构。
+
+- **三大客户端演员档案页深度整合 PBC 百科全维度资料 (`desktop_client` / `Windows_client` / `android_client`)**：
+  - **全平台一致性覆盖**：在 macOS 桌面端 (`PerformerDetailModal.vue`)、Windows 客户端 (`PerformerDetailModal.vue`) 与 Android 原生移动端 (`PerformerDetailScreen.kt`) 同步落地。
+  - **严格冲突优先级与已有数据无损原则 (GEVI-First Non-Destructive Resolution)**：
+    - 生理规格（身高、体重、尺寸规格、体型、肤色、包皮、发色、瞳色、体毛、胡须、纹身）：严格执行 `p.field || pbc.field`。**只要 GEVI 原始字段有值，100% 保持 GEVI 不变**；仅当 GEVI 字段缺失时，才无缝由 PBC 权威数据填补，绝不丢失已有数据。
+    - 艺名与别名（Aliases）：执行去重并集合并，聚合呈现 GEVI 与 PBC 的全量艺名表。
+    - 本名（Birth Name）：若与艺名不同，在作品数旁以次级柔和色调呈现 `本名: xxx`。
+    - 出道年份（Career Start）：清晰呈现 `出道: 2008年`。
+    - 活跃状态微标（Career Status）：顶部直观展示绿色脉冲微光徽标 `活跃中 Active` 或灰色 `已退役 Retired`。
+    - 出生日期与年龄（Birth Date & Age）：以属性胶囊形式规范呈现 `出生: 1983-02-11 (43岁)`。
+    - 星座与族裔（Astrology & Ethnicity）：内置标准化汉化映射，如 `星座: 水瓶座`、`族裔: 白人`。
+    - 表演风格特色（Performance Tags）：汉化展示演出标签，如 `无套 (Bareback)`、`内射 (Creampie)`、`双龙` 等。
+    - 维基生平人物小传（Bio Card）：极简半透明玻璃拟态卡片呈现人物生平，支持一键点击 `完整词条 ↗` 直达原百科网页。
+    - 全网互联档案徽标（Connected Profiles）：底部聚合展示 `IAFD ↗`、`IMDb ↗`、`X (Twitter) ↗`、`OnlyFans ↗`、`Instagram ↗` 快捷胶囊。
+    - 操作栏快捷入口：操作区部署 `PBC 百科 ↗` 快捷入口，一键呼出浏览器查看完整词条。
+  - **界面一致性与简洁性保障**：
+    - 严格复用 GPDb 的 Surface / Zinc / Accent 配色系统与毛玻璃材质；
+    - 移除视觉干扰项：精简移除来自 PBC 的浅紫色攻受角色胶囊（无套定位、安全套定位、内射角色），保持档案信息聚焦克制；
+    - 纯粹条件渲染：对于尚未收录 PBC 档案的普通演员，界面保持原汁原味的极简 GEVI 视图，不产生任何空白卡片或未匹配占位符。
+
+### Fixed
+- **Rust / Tauri 桌面端编译依赖修复**：
+  - 修复 `desktop_client/src-tauri/Cargo.toml` 与 `Windows_client/src-tauri/Cargo.toml` 中 `base64 = "0.22"` 依赖缺失导致的编译阻断。
+  - 修复 `database.rs` 中 `get_unique_filepath` 模块私有可见性问题，提升为 `pub(crate)`。
+  - 修复 macOS 原生系统剪贴板写入实现中 `objc_msgSend` 函数指针 transmute 类型安全问题。
+  - 通过全量 69 项 Rust 核心单元与一致性测试、前端 Vue-tsc 检查与 Android Gradle 编译。
+- **SQLite FTS5 全文索引一致性修复**：
+  - 重建 `movies_fts` 虚表全文检索索引 (`INSERT INTO movies_fts(movies_fts) VALUES('rebuild')`)，确保数据库经 `PRAGMA integrity_check` 校验返回 `ok`，排除索引与实体表记录不同步隐患。
+
 ## [v2.13.0] - 2026-09-29
 
 ### Added

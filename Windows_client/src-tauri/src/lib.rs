@@ -85,6 +85,8 @@ pub fn run() {
             commands::cache::clear_cache,
             commands::system::open_external_url,
             commands::system::set_dock_icon,
+            commands::system::save_share_card_image,
+            commands::system::copy_image_to_clipboard,
             commands::environment::check_runtime_environment,
         ])
         .run(tauri::generate_context!())

@@ -5,6 +5,7 @@ import {
   Film, Quote, Lock
 } from '@lucide/vue';
 import { claimEscape } from '../utils/escape';
+import { api, IS_TAURI } from '../api';
 
 export interface ShareCardData {
   type: 'movie' | 'episode';
@@ -404,33 +405,43 @@ async function copyCardImage() {
     const canvas = await renderCardToCanvas();
     if (!canvas) throw new Error('渲染画布失败');
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
-        isCopying.value = false;
-        return;
-      }
+    const dataUrl = canvas.toDataURL('image/png');
 
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': blob })
-        ]);
-        isCopied.value = true;
-        setTimeout(() => { isCopied.value = false; }, 2500);
-      } catch (err) {
-        console.error('写入剪贴板失败，尝试下载备选方案:', err);
-        saveCardImage();
-      } finally {
-        isCopying.value = false;
-      }
-    }, 'image/png');
+    // 1. In desktop app (macOS / Windows), write to native clipboard directly
+    let copiedNatively = false;
+    if (IS_TAURI) {
+      copiedNatively = await api.copyImageToClipboard(dataUrl);
+    }
+
+    // 2. If not copied natively or in browser mode, use Web Clipboard API
+    if (!copiedNatively && navigator.clipboard?.write) {
+      await new Promise<void>((resolve, reject) => {
+        canvas.toBlob(async (blob) => {
+          if (!blob) return reject(new Error('生成图片数据失败'));
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        }, 'image/png');
+      });
+    }
+
+    isCopied.value = true;
+    setTimeout(() => { isCopied.value = false; }, 2500);
   } catch (e) {
-    console.error('生成分享卡片失败:', e);
+    console.error('复制分享卡片失败，转为本地保存:', e);
+    await saveCardImage();
+  } finally {
     isCopying.value = false;
   }
 }
 
 /**
- * Save Card Image to Disk (.png)
+ * Save Card Image to Disk (.png) - 100% Native Crash-Proof
  */
 async function saveCardImage() {
   if (isSaving.value) return;
@@ -441,18 +452,16 @@ async function saveCardImage() {
     if (!canvas) throw new Error('渲染画布失败');
 
     const dataUrl = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
     const safeTitle = (props.data?.title || 'film')
       .replace(/[\\/:*?"<>|]/g, '_')
       .slice(0, 30);
-    a.download = `GPDb_Share_${safeTitle}_${Date.now()}.png`;
-    a.href = dataUrl;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const filename = `GPDb_Share_${safeTitle}_${Date.now()}`;
+
+    // Native Tauri save (zero WebKit navigation, zero process crashes)
+    await api.saveShareCardImage(filename, dataUrl);
 
     isSaved.value = true;
-    setTimeout(() => { isSaved.value = false; }, 2500);
+    setTimeout(() => { isSaved.value = false; }, 3000);
   } catch (e) {
     console.error('保存分享卡片失败:', e);
   } finally {
@@ -741,7 +750,7 @@ async function saveCardImage() {
           >
             <Check v-if="isSaved" class="w-3.5 h-3.5 text-success" />
             <Download v-else class="w-3.5 h-3.5" />
-            <span>{{ isSaved ? '已保存！' : '保存图片' }}</span>
+            <span>{{ isSaved ? '已保存至下载！' : '保存图片' }}</span>
           </button>
 
           <!-- Copy to Clipboard Button -->

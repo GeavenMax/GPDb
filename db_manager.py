@@ -122,6 +122,8 @@ class DatabaseManager:
         "performers": [
             ("image_url", "TEXT"),
             ("bftv_url", "TEXT"),  # BoyfriendTV 演员个人页直链，由 scrape_bftv_performers.py 批量填充
+            ("pbc_url", "TEXT"),   # Porn Base Central 演员百科主页直链
+            ("sj_url", "TEXT"),    # SmutJunkies 演员主页直链
         ],
         "episodes": [
             ("description_zh", "TEXT"),
