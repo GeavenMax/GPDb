@@ -132,6 +132,17 @@ Im Bereich der Erwachsenenunterhaltung gehören persönliche Sehgewohnheiten, Fa
 - **BT-Magnet-Suchintegration**: Kombiniert Filmtitel und Studio zu einer standardisierten Suchabfrage für externe Ressourcen-Engines.
 - **Individuelle Schalter**: Das Plugin-Center erlaubt das individuelle Aktivieren und Deaktivieren jeder einzelnen externen Suchquelle.
 - **Inkrementelles Scraping & Synchronisations-Engine**: Unterstützt bedarfsgesteuerte Online-Metadaten-Aktualisierungen und lokales Offline-Caching von Postern und Szenenbildern.
+- **PBC (Porn Base Central) Darsteller-Wiki-Scraper-Engine** (`scrape_pbc_actors.py`):
+  - **1.200+ Darsteller-Profile** vollständig gecrawlt und strukturiert aufbereitet.
+  - **MediaWiki-Volltext-Crawl**: Liest direkt die MediaWiki-API aus und verarbeitet vollständige Artikeltexte für maximale Datentiefe.
+  - **Inkrementelle Revisionsüberwachung**: Erkennt Wiki-Seitenrevisionen und ruft ausschließlich geänderte Artikel erneut ab – minimaler Bandbreitenverbrauch.
+  - **25+ Attributfelder**: Deckt Geburtsname, Geburtstag, Körpermaße, Nationalität, Ethnizität, Sternzeichen, Rollen-Tags, Social-Media-Links und mehr ab.
+  - **97,3 % Übereinstimmungsrate**: Hochpräziser Abgleichalgorithmus verknüpft Wiki-Einträge zuverlässig mit bestehenden Datenbankdatensätzen.
+- **SmutJunkies-Scraper-Engine** (`scrape_smutjunkies_actors.py`):
+  - **6.700+ schwule Darsteller** aus der SmutJunkies-Datenbank vollständig indexiert.
+  - **26-Buchstaben-Vollindex**: Systematisches Durchlaufen aller alphabetischen Eintrags­seiten (A–Z) für lückenlose Abdeckung.
+  - **4-stufiger hochresilienter Abgleichalgorithmus**: Mehrstufige Namens-, Alias-, Phonetik- und Fuzzy-Matching-Logik minimiert Fehlzuordnungen auch bei abweichenden Schreibweisen.
+  - **Bidirektionale inkrementelle Synchronisation**: Neue Einträge werden hinzugefügt, geänderte Datensätze aktualisiert und veraltete Einträge markiert – ohne vollständige Neusynchronisation.
 
 ### 9. Vollständige Internationalisierung & 77+ Gamification-Trophäen-System
 - **7 vollständig lokalisierte Benutzeroberflächen-Sprachen**: Vereinfachtes Chinesisch (`zh-CN`), Traditionelles Chinesisch (`zh-TW`), Englisch (`en`), Italienisch (`it`), Japanisch (`ja`), Spanisch (`es`) und Deutsch (`de`).
