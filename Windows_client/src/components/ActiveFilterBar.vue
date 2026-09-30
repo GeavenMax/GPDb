@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { SlidersHorizontal, RotateCcw } from '@lucide/vue';
 import FilterChip from './FilterChip.vue';
 import type { FilterState, PerformerFilterState, EpisodeFilterState } from '../types';
-import { DATE_FILTER_OPTIONS } from '../types';
+import { DATE_FILTER_OPTIONS, EPISODE_DATE_FILTER_OPTIONS } from '../types';
 import { FACET_KEYS, FACET_LABELS } from '../api';
 import { trCategory } from '../utils/glossary';
 
@@ -152,7 +152,7 @@ const activeChips = computed<ChipItem[]>(() => {
       });
     }
     if (ef.dateFilter && ef.dateFilter !== 'all') {
-      const opt = DATE_FILTER_OPTIONS.find(o => o.id === ef.dateFilter);
+      const opt = EPISODE_DATE_FILTER_OPTIONS.find(o => o.id === ef.dateFilter);
       chips.push({
         id: `ep-date-${ef.dateFilter}`,
         label: '时间:',

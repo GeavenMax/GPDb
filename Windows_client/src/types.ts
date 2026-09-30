@@ -411,6 +411,15 @@ export const DATE_FILTER_OPTIONS: DateFilterOption[] = [
   { id: 'recent_year', label: '本年度' },
 ];
 
+export const EPISODE_DATE_FILTER_OPTIONS: DateFilterOption[] = [
+  { id: 'all', label: '全部' },
+  { id: 'last_scraped', label: '上次入库' },
+  { id: 'recent_7', label: '最近7天发行' },
+  { id: 'recent_30', label: '最近30天发行' },
+  { id: 'recent_90', label: '最近90天发行' },
+  { id: 'recent_year', label: '本年度发行' },
+];
+
 export interface FilterState {
   query: string;
   studio: string;

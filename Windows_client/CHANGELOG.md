@@ -25,8 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - 严格复用 GPDb 的 Surface / Zinc / Accent 配色系统与毛玻璃材质；
     - 移除视觉干扰项：精简移除来自 PBC 的浅紫色攻受角色胶囊（无套定位、安全套定位、内射角色），保持档案信息聚焦克制；
     - 纯粹条件渲染：对于尚未收录 PBC 档案的普通演员，界面保持原汁原味的极简 GEVI 视图，不产生任何空白卡片或未匹配占位符。
-- **底层数据库自动迁移支持 SmutJunkies 扩展架构**：
-  - `gpdb-core` 的 `migrate.rs` 自动保证 `performers.sj_url` 字段存在，全面支持后续 SmutJunkies 扩展数据对接。
+- **底层数据库与查询引擎深度支持 SmutJunkies 扩展架构 (`gpdb-core`)**：
+  - `migrate.rs` 自动保证 `performers.sj_url` 字段与 `performer_sj_profiles` 扩展表及其索引结构存在；
+  - `queries/performers.rs` 自动从 `performer_sj_profiles` 中合并别名，并在 `performers.sj_url` 缺失时自动回退提取扩展表 URL。
+- **全新曾用艺名 / 别名 (AKA) 独立徽章栏与动态折叠卡片 (`PerformerDetailModal.vue`)**：
+  - 移至人物主卡片下方独立全宽展示，采用 Surface 玻璃拟态与标签设计，支持别名总数角标提示；
+  - 智能折叠机制：超过 8 个别名时自动折叠并提供「展开全部 / 收起」按钮，杜绝多艺名演员档案过度拉长；
+  - 演员备注说明（Notes）独立全宽呈现，排版更加精致协调。
 
 ### Fixed
 - **Windows Rust/Tauri 构建依赖修复**：

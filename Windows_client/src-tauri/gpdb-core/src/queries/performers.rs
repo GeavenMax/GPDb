@@ -230,7 +230,21 @@ pub fn get_performer_detail(conn: &Connection,
             ).map_err(|e| e.to_string())?;
             let a_iter = a_stmt.query_map(params![id, p.name], |r| r.get::<_, String>(0))
                 .map_err(|e| e.to_string())?;
-            let aliases: Vec<String> = a_iter.filter_map(|r| r.ok()).collect();
+            let mut aliases: Vec<String> = a_iter.filter_map(|r| r.ok()).collect();
+
+            // Also merge aliases from SmutJunkies if available
+            if let Ok(sj_aliases) = conn.query_row(
+                "SELECT aliases FROM performer_sj_profiles WHERE performer_id = ?1 AND aliases IS NOT NULL AND trim(aliases) != ''",
+                params![id],
+                |r| r.get::<_, String>(0),
+            ) {
+                for alias in sj_aliases.split(',') {
+                    let trimmed = alias.trim().to_string();
+                    if !trimmed.is_empty() && trimmed != p.name && !aliases.iter().any(|a| a.eq_ignore_ascii_case(&trimmed)) {
+                        aliases.push(trimmed);
+                    }
+                }
+            }
             p.aliases = Some(aliases);
 
             // Rich biographical and body data from Porn Base Central wiki
@@ -288,13 +302,18 @@ pub fn get_performer_detail(conn: &Connection,
                 }
             }
 
-            // Direct SmutJunkies profile URL if present
+            // Direct SmutJunkies profile URL if present (from performers or performer_sj_profiles)
             if let Ok(sj_url) = conn.query_row(
-                "SELECT sj_url FROM performers WHERE id = ?1",
+                "SELECT COALESCE(p.sj_url, sj.sj_url) \
+                 FROM performers p \
+                 LEFT JOIN performer_sj_profiles sj ON p.id = sj.performer_id \
+                 WHERE p.id = ?1",
                 params![id],
                 |r| r.get::<_, Option<String>>(0),
             ) {
-                p.sj_url = sj_url;
+                if p.sj_url.is_none() {
+                    p.sj_url = sj_url;
+                }
             }
 
             Ok(Some(p))

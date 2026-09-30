@@ -505,6 +505,7 @@ export const api = {
         studio: filters.studio,
         hasZh: filters.hasZh,
         hasPerformers: filters.hasPerformers,
+        dateFilter: filters.dateFilter,
         page,
         pageSize,
       });
@@ -519,6 +520,7 @@ export const api = {
       if (filters.studio) params.set('studio', filters.studio);
       if (filters.hasZh) params.set('hasZh', '1');
       if (filters.hasPerformers) params.set('hasPerformers', '1');
+      if (filters.dateFilter) params.set('dateFilter', filters.dateFilter);
       const res = await fetch(`/api/episode-library?${params.toString()}`);
       if (res.ok) return await res.json();
     } catch {}
@@ -1288,5 +1290,6 @@ export const api = {
     return false;
   },
 };
+
 
 

@@ -865,7 +865,7 @@ onUnmounted(() => {
                 class="max-h-72 overflow-y-auto pr-2 -mr-2"
                 @scroll.passive="onDescriptionScroll"
               >
-                <p class="whitespace-pre-line">{{ displayedDescription }}</p>
+                <p class="whitespace-pre-line synopsis-text" data-privacy="text">{{ displayedDescription }}</p>
               </div>
 
               <!-- Fades in while there is more text below, so the cut-off is visible -->

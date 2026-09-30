@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
-import { X, Film, Layers, Heart, LayoutGrid, List } from '@lucide/vue';
+import { X, Film, Layers, Heart, LayoutGrid, List, Sparkles, BookOpen, ExternalLink, Globe, Tag, ChevronDown, ChevronUp } from '@lucide/vue';
 import type { Performer, Movie, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
@@ -8,7 +8,6 @@ import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
 import { pluginsConfig, openPbcPerformer } from '../services/pluginManager';
-import { Sparkles, BookOpen, ExternalLink, Globe } from '@lucide/vue';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -201,6 +200,51 @@ const SPECS = computed<Spec[]>(() => {
 const tattoos = computed(() => attrValues('tattoos', props.performer?.tattoos));
 
 /**
+ * Deduplicated aliases across credit records and PBC wiki profiles.
+ */
+const isAliasesExpanded = ref(false);
+const ALIASES_COLLAPSE_THRESHOLD = 8;
+
+const allAliases = computed<string[]>(() => {
+  const p = props.performer;
+  if (!p) return [];
+
+  const rawList: string[] = [];
+
+  if (p.aliases && Array.isArray(p.aliases)) {
+    rawList.push(...p.aliases);
+  }
+
+  if (pbcProfile.value?.aliases) {
+    rawList.push(...pbcProfile.value.aliases.split(','));
+  }
+
+  const seen = new Set<string>();
+  const currentName = p.name.trim().toLowerCase();
+  const result: string[] = [];
+
+  for (const item of rawList) {
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    const lower = trimmed.toLowerCase();
+    if (lower === currentName) continue;
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      result.push(trimmed);
+    }
+  }
+
+  return result;
+});
+
+const visibleAliases = computed(() => {
+  if (isAliasesExpanded.value || allAliases.value.length <= ALIASES_COLLAPSE_THRESHOLD) {
+    return allAliases.value;
+  }
+  return allAliases.value.slice(0, ALIASES_COLLAPSE_THRESHOLD);
+});
+
+/**
  * Studio filter for the works below.
  *
  * A performer's filmography can span a dozen studios, so the list is narrowed by a
@@ -265,6 +309,7 @@ watch(() => props.performer?.id, () => {
   portraitError.value = false;
   studioFilter.value = '';
   studiosExpanded.value = false;
+  isAliasesExpanded.value = false;
 });
 
 const visibleMovies = computed(() => {
@@ -347,7 +392,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                   {{ pbcCareerStatus.text }}
                 </span>
               </div>
-              <h1 class="text-2xl md:text-3xl font-extrabold text-fg truncate mt-0.5" :title="performer.name">
+              <h1 class="text-2xl md:text-3xl font-extrabold text-fg break-words mt-0.5 leading-tight" :title="performer.name">
                 {{ performer.name }}
               </h1>
               <div class="text-xs text-fg-3 mt-1 flex items-center gap-3 flex-wrap">
@@ -363,28 +408,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                   出道: {{ pbcProfile.career_start }}年
                 </span>
                 <span v-if="!performer.image_url && !pbcProfile?.image_url" class="text-fg-5">暂无照片</span>
-              </div>
-
-              <!-- Aliases / AKA and Notes -->
-              <div
-                v-if="(performer.aliases && performer.aliases.length > 0) || (pbcProfile?.aliases)"
-                class="mt-2 text-[11px] text-fg-4 leading-relaxed max-w-xl"
-              >
-                <span class="text-fg-5 font-medium">曾用艺名 / 别名 (AKA)：</span>
-                <span class="text-fg-3">
-                  {{
-                    Array.from(new Set([
-                      ...(performer.aliases || []),
-                      ...(pbcProfile?.aliases ? pbcProfile.aliases.split(',').map(s => s.trim()) : [])
-                    ])).join('、')
-                  }}
-                </span>
-              </div>
-              <div
-                v-if="performer.notes"
-                class="mt-1.5 text-[11px] text-fg-4/80 leading-relaxed italic max-w-xl"
-              >
-                {{ performer.notes }}
               </div>
             </div>
           </div>
@@ -414,6 +437,59 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
             </button>
           </div>
+        </div>
+
+        <!-- Aliases / AKA Badges (Full width, expandable) -->
+        <div
+          v-if="allAliases.length > 0"
+          class="w-full bg-surface/50 border border-line rounded-xl p-3 space-y-2"
+        >
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-2">
+              <Tag class="w-3.5 h-3.5 text-accent/80" />
+              <span class="text-xs font-semibold text-fg-3">曾用艺名 / 别名 (AKA)</span>
+              <span class="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-surface-2 text-fg-4 border border-line">
+                共 {{ allAliases.length }} 个
+              </span>
+            </div>
+
+            <!-- Expand / Collapse button if > ALIASES_COLLAPSE_THRESHOLD -->
+            <button
+              v-if="allAliases.length > ALIASES_COLLAPSE_THRESHOLD"
+              @click="isAliasesExpanded = !isAliasesExpanded"
+              class="inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:text-accent-hover transition cursor-pointer select-none"
+            >
+              <span>{{ isAliasesExpanded ? '收起部分别名' : `展开全部 (${allAliases.length} 个)` }}</span>
+              <component :is="isAliasesExpanded ? ChevronUp : ChevronDown" class="w-3 h-3" />
+            </button>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5 items-center">
+            <span
+              v-for="alias in visibleAliases"
+              :key="alias"
+              class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-2/80 hover:bg-surface-3 text-fg-2 border border-line-strong/60 transition select-text"
+              :title="`别名: ${alias}`"
+            >
+              {{ alias }}
+            </span>
+            <button
+              v-if="!isAliasesExpanded && allAliases.length > ALIASES_COLLAPSE_THRESHOLD"
+              @click="isAliasesExpanded = true"
+              class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent/25 transition cursor-pointer"
+            >
+              +{{ allAliases.length - ALIASES_COLLAPSE_THRESHOLD }} 更多...
+            </button>
+          </div>
+        </div>
+
+        <!-- Performer Notes (Full width) -->
+        <div
+          v-if="performer.notes"
+          class="w-full text-xs text-fg-3/90 bg-surface/40 border border-line/60 rounded-xl px-3.5 py-2 leading-relaxed italic"
+        >
+          <span class="text-fg-4 not-italic font-medium mr-1.5">备注说明:</span>
+          {{ performer.notes }}
         </div>
 
         <!-- Attribute profile as chips -->

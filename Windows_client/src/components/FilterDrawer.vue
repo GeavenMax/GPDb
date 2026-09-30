@@ -10,7 +10,7 @@ import type {
   EpisodeSortBy,
   DateFilter,
 } from '../types';
-import { DATE_FILTER_OPTIONS } from '../types';
+import { DATE_FILTER_OPTIONS, EPISODE_DATE_FILTER_OPTIONS } from '../types';
 import { FACET_KEYS, FACET_LABELS, EPISODE_SORTS } from '../api';
 import { tr, trCategory } from '../utils/glossary';
 
@@ -374,7 +374,7 @@ function resetAll() {
             <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">时间范围 / 批次</label>
             <div class="grid grid-cols-3 gap-1.5">
               <button
-                v-for="d in DATE_FILTER_OPTIONS"
+                v-for="d in EPISODE_DATE_FILTER_OPTIONS"
                 :key="d.id"
                 @click="patchEpisodeFilters({ dateFilter: (episodeFilters?.dateFilter || 'all') === d.id ? 'all' : d.id })"
                 :class="[
