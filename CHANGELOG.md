@@ -61,12 +61,21 @@
     - 严格复用 GPDb 的 Surface / Zinc / Accent 配色系统与毛玻璃材质；
     - 移除视觉干扰项：精简移除来自 PBC 的浅紫色攻受角色胶囊（无套定位、安全套定位、内射角色），保持档案信息聚焦克制；
     - 纯粹条件渲染：对于尚未收录 PBC 档案的普通演员，界面保持原汁原味的极简 GEVI 视图，不产生任何空白卡片或未匹配占位符。
-  - **全新曾用艺名 / 别名 (AKA) 独立徽章栏与动态折叠卡片 (`PerformerDetailModal.vue`)**：
-    - 移至人物主卡片下方独立全宽展示，采用 Surface 玻璃拟态与标签设计，支持别名总数角标提示；
-    - 智能折叠机制：超过 8 个别名时自动折叠并提供「展开全部 / 收起」按钮，杜绝多艺名演员档案过度拉长；
-    - 演员备注说明（Notes）独立全宽呈现，排版更加精致协调。
+  - **演员档案页界面全面排版重构与布局优化 (`PerformerDetailModal.vue`)**：
+    - **演员名全宽自适应排版，杜绝长名截断**：移除原有单行省略（`truncate`）限制，采用 `break-words leading-tight`，确保任意长度的复名、艺名以及外文长名完整优雅换行展示，不丢失任何文字。
+    - **曾用艺名 / 别名 (AKA) 栏目全宽卡片重构 (`w-full`)**：
+      - **彻底根治右侧大面积空白问题**：将原本堆叠于头像旁左列窄栏中的别名和备注独立移出，重构成全宽（`w-full`）独立卡片，放置于头像/身份行与操作按钮区正下方；
+      - **顶部首行高度平衡**：头像、姓名与身份徽章居左，资源检索与收藏操作栏居右，彻底消除因大量别名纵向拉伸左列而导致的操作栏下方大面积视觉空白；
+      - **高质感 Mini-Chip 徽章标签化呈现**：每个别名均渲染为精致独立的圆角徽标（`bg-surface-2/80 hover:bg-surface-3`），支持鼠标悬停、查看与高亮复制；
+      - **智能折叠与平滑展开机制**：别名超过 8 个时（如部分演员多达 30~45 个别名），默认收起多余别名并展示 `+N 更多...` 快捷胶囊与 `展开全部 (共 X 个) / 收起部分别名` 交互切换按钮，既保持界面紧凑清爽，又支持一键秒级展开全貌；
+      - **多源别名深度聚合去重**：合并影视作品表关联别名（`performer.aliases`）、SmutJunkies 别名（`performer_sj_profiles.aliases`）与 PBC 维基百科别名（`pbc_profile.aliases`），自动剔除自身当前姓名与重复项。
+    - **演员备注信息全宽化呈现**：将 `performer.notes` 从窄列移入全宽优雅的独立文本容器，避免窄栏多行堆叠。
+    - **全平台同步落地**：在桌面端 (`desktop_client/src/components/PerformerDetailModal.vue`) 与 Windows 客户端 (`Windows_client/src/components/PerformerDetailModal.vue`) 同步对齐。
 
 ### Fixed
+- **Rust 后端演员别名与 SmutJunkies 详情查询补全 (`gpdb-core/src/queries/performers.rs`)**：
+  - 在 `get_performer_detail` 查询中，自动合并读取 `performer_sj_profiles` 中的别名数据并填充至 `p.aliases`；
+  - 增加 `sj_url` 查询高容错回退机制，确保 `performers` 与 `performer_sj_profiles` 两表的 SmutJunkies 档案主页直链均能完整透传至前端操作栏。
 - **Rust / Tauri 桌面端编译依赖修复**：
   - 修复 `desktop_client/src-tauri/Cargo.toml` 与 `Windows_client/src-tauri/Cargo.toml` 中 `base64 = "0.22"` 依赖缺失导致的编译阻断。
   - 修复 `database.rs` 中 `get_unique_filepath` 模块私有可见性问题，提升为 `pub(crate)`。
