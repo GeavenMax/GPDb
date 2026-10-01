@@ -5,6 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.15.0] - 2026-10-01
+
+### Fixed
+- **演员档案页架构重构与网格遮盖缺陷根治 (`PerformerDetailScreen.kt`)**：
+  - 彻底移除不稳定的 `nestedScrollConnection` 动态滑动折叠与易被持久化隐藏的 `isHeaderVisible` 机制；
+  - 采用 Jetpack Compose 规范的单流滚动架构，将完整的演员人物档案板块（头像、生理特征、PBC 维基人物小传、互联档案、外链检索按钮、AKA 艺名）与「出演影片」「出演分集」分类 TabRow 作为顶置 Item 直接嵌入 `LazyVerticalGrid` 与 `LazyColumn`；
+  - 彻底解决了进入演员档案页时人物信息板块和出演影片/出演分集按钮被掩盖在网格后面或折叠消失、界面只显示孤立影片网格的严重交互 Bug。
+- **P0 级外部数据库挂载失败根治（Room 架构迁移与物理表自愈）**：
+  - 在 [`GpdbDatabase.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/data/db/GpdbDatabase.kt) 中将 Room 数据库版本由 3 升级至 4，补全 `MIGRATION_3_4` 及所有历史版本到 4 的迁移脚本（`ALTER TABLE performers ADD COLUMN sj_url TEXT`）；
+  - 实现挂载前置自愈机制 `ensureSchemaCompatibility`：在 Room 建立连接与执行架构校验之前，使用原生 SQLite 直连检查并就地无损补齐缺失列（`pbc_url`, `sj_url` 以及扩展表 `performer_pbc_profiles`, `performer_sj_profiles`）；
+  - 彻底解决了由于外部数据库缺乏 `sj_url` 列触发 `IllegalStateException: Migration didn't properly handle: performers` 导致数据库挂载失败的严重缺陷。
+- **P0 级致命闪退根治：收藏系列（LibraryScreen）点击瞬间 Crash 修复**：
+  - 在 [`LibraryScreen.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/ui/library/LibraryScreen.kt) 中将 `LazyVerticalGrid` 网格项键值由原有的 `it.rootTitle` 升级为全局复合唯一键：`key = { it.id ?: "${it.studioName}_${it.rootTitle}_${it.hashCode()}" }`；
+  - 在 [`BrowseRepository.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/data/repository/BrowseRepository.kt) 查询语句中补充 `SELECT DISTINCT s.*`，防止由于关联匹配条件产生重复数据项；
+  - 彻底根治了底层数据库中不同厂牌存在重名系列（如 `Auditions`、`Bad Boys`、`Bareback` 等）时触发 `IllegalArgumentException: Key was already used` 闪退崩溃的重大缺陷。
+- **系列路由标题解析格式化优化**：
+  - 在 [`FilteredMovieListScreen.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/ui/browse/FilteredMovieListScreen.kt) 中对复合系列标题进行正则拆分与格式化，剔除 `|||` 内部标记，友好展示为「系列名称（厂牌名）」。
+
+### Added
+- **全平台统一通用用户配置与数据备份/恢复机制 (`UserRepository.kt` & `UserAnalyticsRepository.kt` & `SettingsViewModel.kt` & `SettingsScreen.kt`)**：
+  - 设置页中新增「用户配置与数据备份/迁移 (跨设备通用 JSON)」功能行，接入 Android SAF (Storage Access Framework) 系统文件存储向导；
+  - 导出用户在 SQLite 数据库中的全部「我的收藏」条目与 DataStore 中的全部专注统计、探索计数及活跃天数等；
+  - 导出格式采用统一规范 `gpdb_universal_backup` JSON，跨平台无障碍兼容导入恢复。
+- **分享卡片支持封面与封底双海报并排展示 (`ShareCardDialog.kt` & `MovieDetailScreen.kt`)**：
+  - 分享卡片全面支持同时加载正向海报封面与反面封底（如有）；
+  - 采用 Compose 原生优雅并列卡片排版，左右标明「封面」与「封底」半透明质感胶囊，并无缝适配双离屏模糊保护与超清位图合成。
+- **分享卡片角落新增 Telegram 官方频道二维码 (`ShareCardDialog.kt`)**：
+  - 卡片底栏集成 27x27 高清点阵二维码，直连官方频道 `https://t.me/gpdbnews`；
+  - 采用白底圆角容器与原生 Compose Canvas 矢量栅格绘制，无论导出还是分享均呈现高精画质。
+- **主页顶部快捷防窥开关与即时模糊 (`HomeFeedScreen.kt`)**：
+  - 探索主页顶部标题栏新增「防窥模式」快捷图标按钮，支持一键在正常模式与防窥模糊模式间自由切换，并伴随即时 Toast 反馈；
+  - 开启后全库海报、封面、剧照及演员头像立即覆盖高级高斯模糊层。
+- **设置页新增「检查新版本更新」与在线升级 (`SettingsScreen.kt` & `AppUpdateManager.kt`)**：
+  - 设置「关于与软件更新」板块中提供手动「检查新版本更新」入口，支持随时异步调用 GitHub Releases API；
+  - 检查中呈现加载动画，最新版反馈「当前已是最新版本」，发现新版则拉起拟态更新弹窗供用户确认后下载 APK 并自动拉起系统安装。
+- **启动静默巡检 GitHub Releases 与内置增量升级 (`AppUpdateManager.kt` & `AppUpdateDialog.kt`)**：
+  - 启动 2.5 秒后异步巡检 GitHub API 最新版本，对比版本号，并在有新版本发布时弹出拟态更新弹窗；
+  - 展示新版特性日志、版本对比以及 APK 文件大小；
+  - 支持单线程断点进度条下载，并基于 `FileProvider` 安全生成 `content://` 临时权限 URI 自动唤起系统 APK 安装向导；
+  - 在 `AndroidManifest.xml` 中补全 `REQUEST_INSTALL_PACKAGES`权限，在 `file_paths.xml` 中完成下载目录安全映射。
+
+### Changed
+- **设置项更名：防窥模式 (`SettingsScreen.kt`)**：
+  - 将设置「隐私与安全」中的「截屏隐私打码模式」正式更名为「防窥模式」，并与主页顶部防窥开关实时联动。
+- **设置页顶部二级胶囊分类切换栏 (`SettingsScreen.kt`)**：
+  - 仿照 macOS 桌面端设计，在设置界面顶部引入横向二级胶囊菜单（全部、外观、统计、隐私、AI翻译、数据同步、关于更新）；
+  - 切换胶囊标签即时过滤呈现对应板块，大幅降低选项过多的阅读与检索负担。
+- **首页「今日星光 · 标志面孔」过滤优化 (`HomeFeedScreen.kt` & `GpdbAsyncImage.kt`)**：
+  - 对齐 macOS 桌面端优质呈现标准，在今日星光圆环头像模块中增加动态加载侦测过滤机制；
+  - 仅展示拥有真实头像图片且图片加载成功的演员，过滤所有无头像或加载失败的空白占位项，保证视觉高级感。
+- **设置页海报排版选择视觉化升级 (`SettingsScreen.kt`)**：
+  - 将原有海报排版模式（平铺自适应画廊 vs 3D 景深翻转卡片）的纯文本单选弹窗全面升级为直观的图示卡片式微缩示意图，点击卡片即时切换，所见即所得。
+- **连贯篇章系列大放送随机抽取展示 (`HomeFeedRepository.kt`)**：
+  - 首页「经典系列大放送 · 连贯篇章」由原有固定按影片数量降序（`ORDER BY movie_count DESC`）改为随机抽取（`ORDER BY RANDOM() LIMIT 10`），提升每次打开时的发现乐趣。
+- **分享卡片全维度自适应排版与纯粹流光背景 (`ShareCardDialog.kt`)**：
+  - 背景精简优化：统一保留视觉表现最优秀的「流光」动态自适应光晕背景；
+  - 分集剧照 16:9 宽屏无拉伸：分集卡片海报框比例自适应切换为 1.777f (16:9)，人物面部不再挤压形变；
+  - 演职员名单全量换行展示：移除 `take(5)` 与截断限制，完整呈现全部主演；
+  - 剧情简介全量完整呈现：移除原有的 `take(130)` 与 `maxLines = 3` 限制，卡片自动向下弹性膨胀并生成高保真长图。
+
 ## [2.14.0] - 2026-09-30
 
 ### Added

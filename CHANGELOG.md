@@ -3,6 +3,75 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.15.0] - 2026-10-01
+
+### Fixed
+- **Android 演员档案页架构重构与网格遮盖缺陷根治 (`PerformerDetailScreen.kt`)**：
+  - 彻底移除不稳定的 `nestedScrollConnection` 动态滑动折叠与易被持久化隐藏的 `isHeaderVisible` 机制；
+  - 采用 Jetpack Compose 规范的单流滚动架构，将完整的演员人物档案板块（头像、生理特征、PBC 维基人物小传、互联档案、外链检索按钮、AKA 艺名）与「出演影片」「出演分集」分类 TabRow 作为顶置 Item 直接嵌入 `LazyVerticalGrid` 与 `LazyColumn`；
+  - 彻底解决了进入演员档案页时人物信息板块和出演影片/出演分集按钮被掩盖在网格后面或折叠消失、界面只显示孤立影片网格的严重交互 Bug。
+- **P0 级致命内存崩溃根治：Objective-C 剪贴板 Over-Release 修复 (`desktop_client/src-tauri/src/commands/system.rs`)**：
+  - 修复 `copy_image_to_clipboard` 对 `+[NSData dataWithBytes:length:]` 与 `+[NSString stringWithUTF8String:]` 返回的 Autoreleased 对象显式调用 `release` 导致的 Double-Free 崩溃，彻底消除主线程死锁。
+- **全平台分享卡片选择模糊后保存未模糊 Bug 根除 (`ShareCardModal.vue` & `ShareCardDialog.kt`)**：
+  - 解决 macOS WebKit 与 Windows WebView2 下 Canvas filter 硬件加速静默失效的问题；
+  - 引入硬件中立的双离屏双线性多级降采样模糊算法，生成细腻柔和的磨砂打码质感，并在剧情简介处叠加半透明脱敏盖章。
+- **分集剧照分享比例拉伸形变修复**：
+  - 分集分享卡片自动切换为 16:9 横屏展板；实现纯 Canvas / Compose 版 `object-fit: cover` 居中裁剪算法，确保剧照中人物面部绝无挤压形变。
+- **Android 客户端数据库挂载失败根除 (Room 架构校验与物理列自愈)**：
+  - 在 [`GpdbDatabase.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/data/db/GpdbDatabase.kt) 中将 Room 数据库版本由 3 升级至 4，补全 `MIGRATION_3_4` 以及各历史版本到 4 的完整迁移脚本（补充 `ALTER TABLE performers ADD COLUMN sj_url TEXT`）；
+  - 引入外部数据库挂载前置自愈机制 `ensureSchemaCompatibility`：在 Room 执行 TableInfo 严格校验前，使用原生 SQLite 直连检查并就地无损补齐缺失列（`pbc_url`, `sj_url` 及扩展表 `performer_pbc_profiles`, `performer_sj_profiles`），彻底解决由于缺少 `sj_url` 列导致 `IllegalStateException: Migration didn't properly handle: performers` 挂载失败的缺陷。
+- **Android 收藏系列（LibraryScreen）点击瞬间闪退修复**：
+  - 将网格项键值升级为全局复合唯一键，查询语句增加 `SELECT DISTINCT`，彻底根治重名系列触发的闪退崩溃。
+
+### Added
+- **全平台统一通用用户配置与数据备份/恢复机制 (`GPDb_Backup.json`)**：
+  - macOS、Windows、Android 客户端设置中新增「用户配置与数据备份/迁移 (跨设备通用 JSON)」模块；
+  - 导出范围覆盖用户在 SQLite 数据库中的全部「我的收藏」（包含长片、分集、演员、导演、片商、系列等）、自定义标签、想看/已看状态与私密评星笔记，以及全量本地统计数据（总专注时长、各维度播放与探索计数、活跃天数等）与界面偏好；
+  - 导出格式采用统一规范 `gpdb_universal_backup` JSON，支持在 macOS、Windows、Android 与 iOS 四端通用互认，跨设备直接导入无缝迁移。
+- **PBC 与 SmutJunkies 演员刮削引擎深度集成与自动入库**：
+  - 在桌面端（macOS / Windows）Tauri 底层命令中完整集成 `scrape_pbc_actors.py` 与 `scrape_smutjunkies_actors.py` 执行流与进度捕获；
+  - 刮削执行完成自动以 `--apply` 与 `--backfill` / `--home` 将数据无损注入 SQLite 数据库。
+- **全端分享卡片支持封面与封底双海报并排展示 (`ShareCardModal.vue` & `ShareCardDialog.kt` & `ShareCardView.swift`)**：
+  - 影视分享卡片全面支持同时加载正向海报封面与反面封底（如有）；
+  - 采用优雅并列卡片排版，左右标明「封面」与「封底」半透明质感胶囊，并无缝适配双离屏模糊保护与高清导出。
+- **全端分享卡片角落新增 Telegram 官方频道二维码 (`ShareCardModal.vue` & `ShareCardDialog.kt` & `ShareCardView.swift`)**：
+  - 在卡片底部角落集成 27x27 高清点阵二维码，直连官方频道 `https://t.me/gpdbnews`；
+  - 采用白底圆角容器与高保真点阵矢量渲染，适配 Retina 2x 高清导出与预览，并搭配官方频道文字标示。
+- **全平台客户端设置中新增「检查更新」按钮与即时检测升级**：
+  - macOS、Windows 与 Android 客户端设置中统一新增「关于与软件更新」板块及「检查更新」功能按钮；
+  - 点击后异步调用 GitHub 官方仓库 Releases API 检测最新版本，若本地已是最新版则给出明确友好反馈，若发现新版则弹出更新视窗/对话框，经用户确认后一键下载更新安装包（macOS DMG 自动挂载 / Windows EXE 向导 / Android APK 安装器）；iOS 客户端亦内置异步检测服务。
+- **Android 探索主页顶部快捷防窥开关与即时模糊 (`HomeFeedScreen.kt`)**：
+  - 主页顶部操作栏新增「防窥模式」快捷图标按钮，支持一键在正常浏览与防窥模糊模式间自由切换，并伴随即时 Toast 反馈；开启后全库海报、封面、剧照及演员头像立即覆盖高级高斯模糊层。
+- **启动静默巡检 GitHub Releases 与内置增量升级**：
+  - 桌面端（macOS DMG 挂载、Windows EXE 向导）与移动端（Android APK 安装）启动后静默巡检新版本，支持断点续传与一键无缝更新。
+- **iOS 客户端目录脚手架与基础架构文件 (`iOS_client/`)**：
+  - 基于 SwiftUI + GRDB.swift + ZIPFoundation 搭建现代声明式 iOS 离线架构，支持 SQLite 原生读取、Zip 虚拟文件系统与防截屏安全保护。
+
+### Changed
+- **Android 设置项更名：防窥模式 (`SettingsScreen.kt`)**：
+  - 将设置「隐私与安全」中的「截屏隐私打码模式」正式更名为「防窥模式」，与主页快捷开关完全联动。
+- **Android 设置页顶部二级胶囊分类切换栏 (`SettingsScreen.kt`)**：
+  - 仿照 macOS 桌面端设计，在 Android 设置顶部增加二级胶囊菜单（全部、外观、统计、隐私、AI翻译、数据同步、关于更新），点击标签即时过滤对应板块，彻底消除设置项过多带来的臃肿感。
+- **桌面端设置页二级胶囊菜单新增「关于与更新」独立分类 (`App.vue`)**：
+  - 顶部胶囊导航新增「关于与更新」独立分类，便于用户快速切换直达版本更新与开源仓库专区。
+- **连贯篇章系列大放送随机抽取展示 (`HomeView.vue` & `HomeFeedRepository.kt` & `HomeFeedView.swift`)**：
+  - 首页「经典系列大放送 · 连贯篇章」由原有固定按影片数量降序（`ORDER BY movie_count DESC`）改为随机抽取排序（`ORDER BY RANDOM()`），并在桌面端标题栏增加「换一批」快捷随机刷新按钮。
+- **设置页排版升级与纯图示交互体验**：
+  - 移除 macOS 与 Windows 客户端设置页中关于「应用图标方案 (App Icon)」的冗长文字介绍；
+  - 将桌面端与 Android 客户端设置中关于「海报展示与翻转排版方案」的大段说明文本全面替换为直观交互的微缩图解（平铺自适应画廊 vs 3D 景深翻转卡片），所见即所得。
+- **Android 首页「今日星光 · 标志面孔」过滤优化 (`HomeFeedScreen.kt`)**：
+  - 严格对齐 macOS 桌面端优质呈现标准，在今日星光圆环头像模块中过滤所有无头像或加载失败的空白项，只呈现拥有真实头像的明星面孔。
+- **分享卡片全维度自适应排版与纯粹流光背景**：
+  - 统一保留视觉表现最佳的默认「流光 (vibrant)」渐变背景；演职员名单与剧情简介完整换行展开展示，移除截断限制；彻底解耦全局防窥模式。
+- **精简首页视觉与算力开销**：
+  - 移除首页顶部的「AI 专属定制导赏」Banner 模块，降低冷启动 GPU/CPU 占用。
+
+### Removed
+- **全平台彻底移除奖杯成就系统插件及全量关联代码**：
+  - 移除各端所有成就定义、监听与结算代码，侧边栏与插件管理器同步彻底净化。
+- **移除桌面端「全功能伪装计算器 & 紧急脱身 (Panic Switch)」功能及代码**：
+  - 移动端（Android / iOS）保留应用锁与安全防窥，桌面端全面剔除伪装计算器与紧急脱身快捷键，还原桌面纯粹典藏管理体验。
+
 ## [v2.14.0] - 2026-09-30
 
 ### Added
