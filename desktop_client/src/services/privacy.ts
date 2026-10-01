@@ -71,7 +71,6 @@ export function toggleScreenshotPrivacy() {
 
 // Runtime Security States
 export const isAppLocked = ref<boolean>(false);
-export const isFakeCalculatorActive = ref<boolean>(false);
 export const isWindowBlurred = ref<boolean>(false);
 
 let lastActiveTime = Date.now();
@@ -97,15 +96,6 @@ export function unlockApp(pin: string): boolean {
     return true;
   }
   return false;
-}
-
-export function triggerPanicMode() {
-  isFakeCalculatorActive.value = true;
-}
-
-export function dismissPanicMode() {
-  isFakeCalculatorActive.value = false;
-  updateLastActiveTime();
 }
 
 export function initPrivacyListeners() {
@@ -137,17 +127,5 @@ export function initPrivacyListeners() {
   // User activity tracker
   ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach((event) => {
     window.addEventListener(event, () => updateLastActiveTime(), { passive: true });
-  });
-
-  // Global Panic Shortcut: Cmd+Shift+P (Mac) or Ctrl+Shift+P (Win)
-  window.addEventListener('keydown', (e: KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
-      e.preventDefault();
-      if (isFakeCalculatorActive.value) {
-        dismissPanicMode();
-      } else {
-        triggerPanicMode();
-      }
-    }
   });
 }

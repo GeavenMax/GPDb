@@ -115,7 +115,7 @@ function onDragEnd() {
 
 /** Classes shared by the reorderable rows and the pinned bottom entries. */
 function tabClass(id: AppTab, active: boolean) {
-  const isBottom = id === 'settings' || id === 'analytics' || id === 'plugins' || id === 'trophies';
+  const isBottom = id === 'settings' || id === 'analytics' || id === 'plugins';
   return [
     'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition border',
     active

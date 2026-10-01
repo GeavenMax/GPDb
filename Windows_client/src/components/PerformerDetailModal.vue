@@ -7,7 +7,7 @@ import EpisodeRow from './EpisodeRow.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
-import { pluginsConfig, openPbcPerformer } from '../services/pluginManager';
+import { pluginsConfig, openPbcPerformer, openUrlExternal } from '../services/pluginManager';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -578,9 +578,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             v-for="(url, platform) in pbcSocialLinks"
             :key="platform"
             :href="url"
+            @click.prevent="openUrlExternal(url)"
             target="_blank"
             rel="noreferrer"
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition cursor-pointer"
           >
             <ExternalLink class="w-2.5 h-2.5 opacity-60" />
             <span>{{ platform.toUpperCase() }}</span>
@@ -588,9 +589,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <a
             v-if="pbcExternalIds.iafd_id"
             :href="`https://www.iafd.com/person.rme/perfid=${pbcExternalIds.iafd_id}/gender=m`"
+            @click.prevent="openUrlExternal(`https://www.iafd.com/person.rme/perfid=${pbcExternalIds.iafd_id}/gender=m`)"
             target="_blank"
             rel="noreferrer"
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition cursor-pointer"
             title="在 IAFD (Internet Adult Film Database) 查看档案"
           >
             <ExternalLink class="w-2.5 h-2.5 opacity-60" />
@@ -599,9 +601,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <a
             v-if="pbcExternalIds.imdb_id"
             :href="`https://www.imdb.com/name/nm${pbcExternalIds.imdb_id}`"
+            @click.prevent="openUrlExternal(`https://www.imdb.com/name/nm${pbcExternalIds.imdb_id}`)"
             target="_blank"
             rel="noreferrer"
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition"
+            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition cursor-pointer"
             title="在 IMDb 查看档案"
           >
             <ExternalLink class="w-2.5 h-2.5 opacity-60" />

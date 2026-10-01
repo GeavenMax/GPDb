@@ -6,7 +6,6 @@ import {
 } from '@lucide/vue';
 import { api } from '../api';
 import { getImageUrl } from '../utils/image';
-import { activeAiReport } from '../services/aiAnalysis';
 import SeriesCollageCover from '../components/SeriesCollageCover.vue';
 import type { HomeFeedData, HomeSpotlightMovie, AppTab, SeriesCollectionItem, Movie } from '../types';
 
@@ -110,12 +109,17 @@ const seriesList = ref<SeriesCollectionItem[]>([]);
 const luckyMovies = ref<Movie[]>([]);
 const isLuckyLoading = ref(false);
 
+const isSeriesRefreshing = ref(false);
+
 async function loadSeriesList() {
+  isSeriesRefreshing.value = true;
   try {
-    const res = await api.getSeriesCollections(undefined, undefined, 'count_desc', 1, 6);
+    const res = await api.getSeriesCollections(undefined, undefined, 'random', 1, 6);
     seriesList.value = res.items || [];
   } catch (err) {
     console.error('Failed to load series collections for home', err);
+  } finally {
+    isSeriesRefreshing.value = false;
   }
 }
 
@@ -295,50 +299,6 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <!-- 2. AI Personalized Taste Curation Banner -->
-    <section class="rounded-3xl p-6 bg-gradient-to-r from-indigo-950/30 via-purple-950/20 to-surface border border-indigo-500/20 shadow-sm relative overflow-hidden">
-      <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative z-10">
-        <div class="space-y-2">
-          <div class="flex items-center gap-2">
-            <div class="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              <Sparkles class="w-4 h-4" />
-            </div>
-            <span class="text-xs font-black tracking-wider uppercase text-indigo-400">
-              AI 专属定制导赏
-            </span>
-            <span v-if="activeAiReport" class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-200 font-extrabold border border-indigo-500/30">
-              {{ activeAiReport.archetype }}
-            </span>
-          </div>
-
-          <p v-if="activeAiReport" class="text-sm font-medium text-fg-2 italic">
-            “{{ activeAiReport.summary }}”
-          </p>
-          <p v-else class="text-xs text-fg-3">
-            基于您在本地媒体库中的真实收藏、标记与观影记录，大模型可深度析构出专属影视美学画像与冷门寻宝指南。
-          </p>
-
-          <!-- Keywords tags -->
-          <div v-if="activeAiReport?.keywords?.length" class="flex items-center gap-2 flex-wrap pt-1">
-            <span
-              v-for="kw in activeAiReport.keywords"
-              :key="kw"
-              class="text-[11px] px-2.5 py-0.5 rounded-lg bg-surface-2 text-indigo-200 border border-indigo-500/30 font-medium"
-            >
-              #{{ kw }}
-            </span>
-          </div>
-        </div>
-
-        <button
-          @click="emit('change-tab', 'plugins')"
-          class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs flex items-center gap-2 shadow-md transition shrink-0 cursor-pointer"
-        >
-          <span>{{ activeAiReport ? '查看完整画像与探索指南' : '一键开启 AI 影迷偏好画像' }}</span>
-          <ChevronRight class="w-4 h-4" />
-        </button>
-      </div>
-    </section>
 
     <!-- 3. 往年今日 (On This Day in History) -->
     <section v-if="feed.on_this_day.length > 0" class="space-y-4">
@@ -465,13 +425,25 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <button
-          @click="emit('change-tab', 'movies')"
-          class="text-xs text-accent hover:underline flex items-center gap-1 font-bold cursor-pointer"
-        >
-          <span>浏览全量影库</span>
-          <ChevronRight class="w-3.5 h-3.5" />
-        </button>
+        <div class="flex items-center gap-3">
+          <button
+            @click="loadSeriesList"
+            :disabled="isSeriesRefreshing"
+            class="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold cursor-pointer px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition disabled:opacity-50"
+            title="随机抽取换一批系列"
+          >
+            <RefreshCw class="w-3 h-3" :class="{ 'animate-spin': isSeriesRefreshing }" />
+            <span>换一批</span>
+          </button>
+
+          <button
+            @click="emit('change-tab', 'movies')"
+            class="text-xs text-accent hover:underline flex items-center gap-1 font-bold cursor-pointer"
+          >
+            <span>浏览全量影库</span>
+            <ChevronRight class="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">

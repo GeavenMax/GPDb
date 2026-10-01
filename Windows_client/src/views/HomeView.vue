@@ -110,12 +110,17 @@ const seriesList = ref<SeriesCollectionItem[]>([]);
 const luckyMovies = ref<Movie[]>([]);
 const isLuckyLoading = ref(false);
 
+const isSeriesRefreshing = ref(false);
+
 async function loadSeriesList() {
+  isSeriesRefreshing.value = true;
   try {
-    const res = await api.getSeriesCollections(undefined, undefined, 'count_desc', 1, 6);
+    const res = await api.getSeriesCollections(undefined, undefined, 'random', 1, 6);
     seriesList.value = res.items || [];
   } catch (err) {
     console.error('Failed to load series collections for home', err);
+  } finally {
+    isSeriesRefreshing.value = false;
   }
 }
 
@@ -465,13 +470,25 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <button
-          @click="emit('change-tab', 'movies')"
-          class="text-xs text-accent hover:underline flex items-center gap-1 font-bold cursor-pointer"
-        >
-          <span>浏览全量影库</span>
-          <ChevronRight class="w-3.5 h-3.5" />
-        </button>
+        <div class="flex items-center gap-3">
+          <button
+            @click="loadSeriesList"
+            :disabled="isSeriesRefreshing"
+            class="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold cursor-pointer px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition disabled:opacity-50"
+            title="随机抽取换一批系列"
+          >
+            <RefreshCw class="w-3 h-3" :class="{ 'animate-spin': isSeriesRefreshing }" />
+            <span>换一批</span>
+          </button>
+
+          <button
+            @click="emit('change-tab', 'movies')"
+            class="text-xs text-accent hover:underline flex items-center gap-1 font-bold cursor-pointer"
+          >
+            <span>浏览全量影库</span>
+            <ChevronRight class="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">

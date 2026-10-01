@@ -29,7 +29,7 @@ const scraperMessage = ref('');
 const scraperSuccess = ref<boolean | null>(null);
 
 const showCustomScraperOptions = ref(false);
-const scraperCustomMode = ref<'incremental' | 'bftv_catalog' | 'movies_boost' | 'movies_full' | 'performers_full'>('incremental');
+const scraperCustomMode = ref<'incremental' | 'bftv_catalog' | 'movies_boost' | 'movies_full' | 'performers_full' | 'pbc_actors' | 'smutjunkies_actors'>('incremental');
 const scraperCustomLimit = ref(1000);
 const scraperCustomStartId = ref(1);
 const scraperCustomEndId = ref(76000);
@@ -66,6 +66,10 @@ async function runCustomScraper() {
       await startScraperTask('movies_full', undefined, scraperCustomStartId.value, scraperCustomEndId.value);
     } else if (scraperCustomMode.value === 'performers_full') {
       await startScraperTask('performers_full');
+    } else if (scraperCustomMode.value === 'pbc_actors') {
+      await startScraperTask('pbc_actors', scraperCustomLimit.value);
+    } else if (scraperCustomMode.value === 'smutjunkies_actors') {
+      await startScraperTask('smutjunkies_actors', scraperCustomLimit.value);
     }
     scraperSuccess.value = true;
     scraperMessage.value = '刮削任务已在后台极速启动，数据将实时自动同步！';
@@ -266,6 +270,32 @@ function handleUpdateDailyTime(dailyTime: string) {
               </div>
               <div class="text-[10px] text-fg-4 mt-0.5">补齐已知演员身材与头像</div>
             </button>
+
+            <button
+              type="button"
+              @click="scraperCustomMode = 'pbc_actors'"
+              class="p-2.5 rounded-xl border text-left transition cursor-pointer"
+              :class="scraperCustomMode === 'pbc_actors' ? 'bg-amber-500/15 border-amber-500 text-amber-300' : 'bg-surface border-line text-fg-4 hover:text-fg'"
+            >
+              <div class="font-bold text-xs flex items-center gap-1.5">
+                <Sparkles class="w-3.5 h-3.5" />
+                <span>PBC 维基演员扩展</span>
+              </div>
+              <div class="text-[10px] text-fg-4 mt-0.5">回填身体数据、瞳色、肤色与社交主页</div>
+            </button>
+
+            <button
+              type="button"
+              @click="scraperCustomMode = 'smutjunkies_actors'"
+              class="p-2.5 rounded-xl border text-left transition cursor-pointer"
+              :class="scraperCustomMode === 'smutjunkies_actors' ? 'bg-pink-500/15 border-pink-500 text-pink-300' : 'bg-surface border-line text-fg-4 hover:text-fg'"
+            >
+              <div class="font-bold text-xs flex items-center gap-1.5">
+                <Globe class="w-3.5 h-3.5" />
+                <span>SmutJunkies 演员增量</span>
+              </div>
+              <div class="text-[10px] text-fg-4 mt-0.5">权威库最新更新巡检与增量入库</div>
+            </button>
           </div>
         </div>
 
@@ -308,6 +338,44 @@ function handleUpdateDailyTime(dailyTime: string) {
         <div v-else-if="scraperCustomMode === 'bftv_catalog'" class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] flex items-center gap-2">
           <Globe class="w-4 h-4 shrink-0" />
           <span>通过 BoyfriendTV 全网目录反向匹配，自动剥离别名后缀，3 秒内将万余位演员直达链接写入数据库！</span>
+        </div>
+
+        <div v-else-if="scraperCustomMode === 'pbc_actors'" class="space-y-3">
+          <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] flex items-center gap-2">
+            <Sparkles class="w-4 h-4 shrink-0" />
+            <span>深度对接 Porn Base Central 维基百科，自动提取身材尺码、瞳色、肤色、包皮、文身及权威外链，智能回填并入库！</span>
+          </div>
+          <div class="p-3 rounded-xl bg-surface/60 border border-line flex items-center gap-3">
+            <span class="text-fg-3">抓取条目上限：</span>
+            <input
+              type="number"
+              v-model.number="scraperCustomLimit"
+              min="10"
+              max="5000"
+              step="50"
+              class="px-2.5 py-1 rounded-lg bg-surface border border-line text-fg font-mono font-bold w-24 text-xs"
+            />
+            <span class="text-[11px] text-fg-4">位演员（设为 0 表示全量，默认 100）</span>
+          </div>
+        </div>
+
+        <div v-else-if="scraperCustomMode === 'smutjunkies_actors'" class="space-y-3">
+          <div class="p-3 rounded-xl bg-pink-500/10 border border-pink-500/20 text-pink-300 text-[11px] flex items-center gap-2">
+            <Globe class="w-4 h-4 shrink-0" />
+            <span>自动抓取 SmutJunkies 首页最新收录与修订演员条目，智能与本地影人对齐，自动整合入库！</span>
+          </div>
+          <div class="p-3 rounded-xl bg-surface/60 border border-line flex items-center gap-3">
+            <span class="text-fg-3">抓取条目上限：</span>
+            <input
+              type="number"
+              v-model.number="scraperCustomLimit"
+              min="10"
+              max="1000"
+              step="50"
+              class="px-2.5 py-1 rounded-lg bg-surface border border-line text-fg font-mono font-bold w-24 text-xs"
+            />
+            <span class="text-[11px] text-fg-4">位演员（默认首页全部最新条目）</span>
+          </div>
         </div>
 
         <!-- Launch button -->

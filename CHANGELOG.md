@@ -6,6 +6,9 @@
 ## [v2.15.0] - 2026-10-01
 
 ### Fixed
+- **桌面端（macOS & Windows）外链点击无法跳转浏览器缺陷修复 (`App.vue` & `PerformerDetailModal.vue` & `main.ts`)**：
+  - 根除 Tauri WebKit / WebView2 沙箱拦截原始 HTML `<a href="..." target="_blank">` 导致设置页「访问仓库 ↗」及演员档案页「互联档案」（IAFD、IMDb、X等）点击无响应的缺陷；
+  - 在 `main.ts` 中集成全局外链点击委托分发机制，显式为对应链接绑定 `@click.prevent="openUrlExternal(...)"`，通过系统命令原生安全唤起默认浏览器。
 - **Android 演员档案页架构重构与网格遮盖缺陷根治 (`PerformerDetailScreen.kt`)**：
   - 彻底移除不稳定的 `nestedScrollConnection` 动态滑动折叠与易被持久化隐藏的 `isHeaderVisible` 机制；
   - 采用 Jetpack Compose 规范的单流滚动架构，将完整的演员人物档案板块（头像、生理特征、PBC 维基人物小传、互联档案、外链检索按钮、AKA 艺名）与「出演影片」「出演分集」分类 TabRow 作为顶置 Item 直接嵌入 `LazyVerticalGrid` 与 `LazyColumn`；

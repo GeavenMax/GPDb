@@ -530,7 +530,6 @@ export type AppTab =
   | 'favorites'
   | 'analytics'
   | 'plugins'
-  | 'trophies'
   | 'settings';
 
 export interface HomeSpotlightMovie {
@@ -579,7 +578,7 @@ export interface HomeFeedData {
   total_studios: number;
 }
 
-export type ScraperMode = 'incremental' | 'movies_boost' | 'movies_full' | 'performers_full' | 'bftv_catalog';
+export type ScraperMode = 'incremental' | 'movies_boost' | 'movies_full' | 'performers_full' | 'bftv_catalog' | 'pbc_actors' | 'smutjunkies_actors';
 
 export interface ScraperStatus {
   running: boolean;

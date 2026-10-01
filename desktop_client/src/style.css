@@ -116,3 +116,17 @@ img {
   user-select: none !important;
   transition: filter 0.25s ease-in-out;
 }
+
+/* Explicitly insulate any containers marked with .no-privacy-blur or .share-card-container */
+.no-privacy-blur img,
+.no-privacy-blur [data-privacy],
+.no-privacy-blur .synopsis-text,
+.no-privacy-blur .description-text,
+.share-card-container img,
+.share-card-container [data-privacy],
+.share-card-container .synopsis-text,
+.share-card-container .description-text {
+  filter: none !important;
+  user-select: auto !important;
+}
+

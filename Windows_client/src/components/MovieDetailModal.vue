@@ -104,6 +104,7 @@ const shareCardData = computed<ShareCardData | null>(() => {
     title: titleMain.value,
     titleAlt: titleAlt.value,
     posterUrl: frontCoverUrl.value || currentCover.value || '',
+    coverBackUrl: backCoverUrl.value || null,
     category: categoryLabel.value,
     releaseDate: displayReleaseDate.value || (props.movie.release_year ? String(props.movie.release_year) : ''),
     durationMins: props.movie.duration_mins,

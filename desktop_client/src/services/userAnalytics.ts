@@ -1,7 +1,6 @@
 import { ref } from 'vue';
 import { api } from '../api';
 import { analytics } from './analytics';
-import { unlockedMap, TROPHIES } from './trophySystem';
 import type { FavoritesResponse, FavoriteItem } from '../types';
 
 export interface EraStat {
@@ -175,16 +174,6 @@ export async function exportUserDataBundle(): Promise<void> {
     analytics: analytics.value,
     favorites: favs,
     tags: userTags,
-    trophies: {
-      unlockedMap: unlockedMap.value,
-      totalUnlocked: Object.keys(unlockedMap.value).length,
-      unlockedList: TROPHIES.filter(t => unlockedMap.value[t.id]).map(t => ({
-        id: t.id,
-        tier: t.tier,
-        title: t.title,
-        unlockedAt: unlockedMap.value[t.id],
-      })),
-    },
   };
 
   const jsonStr = JSON.stringify(bundle, null, 2);

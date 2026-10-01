@@ -39,8 +39,6 @@ export interface PluginsConfig {
   autoSyncConfig: AutoSyncScheduleConfig;
   translationEnabled: boolean;
   translationConfig: TranslationPluginConfig;
-  trophiesEnabled: boolean;
-  trophiesSoundEnabled: boolean;
   aiInsightEnabled: boolean;
 }
 
@@ -90,8 +88,6 @@ const DEFAULT_CONFIG: PluginsConfig = {
     targetLanguage: 'zh-CN',
     customPromptTemplate: DEFAULT_TRANSLATION_PROMPT,
   },
-  trophiesEnabled: false,
-  trophiesSoundEnabled: true,
   aiInsightEnabled: true,
 };
 

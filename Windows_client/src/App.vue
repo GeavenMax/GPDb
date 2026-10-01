@@ -17,7 +17,8 @@ import ImageLightbox from './components/ImageLightbox.vue';
 import FilterDrawer from './components/FilterDrawer.vue';
 import ActiveFilterBar from './components/ActiveFilterBar.vue';
 import AppLockOverlay from './components/AppLockOverlay.vue';
-import FakeCalculatorModal from './components/FakeCalculatorModal.vue';
+import AppUpdateModal from './components/AppUpdateModal.vue';
+import { checkForAppUpdate, checkAppUpdateDetailed, type AppReleaseInfo } from './services/appUpdater';
 import { defineAsyncComponent } from 'vue';
 const SyncModal = defineAsyncComponent(() => import('./components/plugins/SyncModal.vue'));
 import PaginationBar from './components/PaginationBar.vue';
@@ -61,7 +62,7 @@ import { titlePrimary, titleSecondary, sceneFilm } from './utils/bilingual';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
-  Megaphone, FolderOpen, Search, Globe, Shield, Eye, EyeOff, Lock, Calculator,
+  Megaphone, FolderOpen, Search, Globe, Shield, Eye, EyeOff, Lock,
   Bookmark, CheckCircle2, ChevronDown, ChevronRight, ChevronsUpDown, Star, Info,
   SlidersHorizontal
 } from '@lucide/vue';
@@ -69,16 +70,15 @@ import HomeView from './views/HomeView.vue';
 import { t, currentLocale, setLocale, SUPPORTED_LANGUAGES } from './i18n';
 import AnalyticsView from './views/AnalyticsView.vue';
 import PluginsView from './views/PluginsView.vue';
-import TrophiesView from './views/TrophiesView.vue';
-import TrophyToast from './components/TrophyToast.vue';
-import { pluginsConfig } from './services/pluginManager';
+import { pluginsConfig, openUrlExternal } from './services/pluginManager';
 import {
-  privacySettings, savePrivacySettings, isAppLocked, isFakeCalculatorActive,
-  isWindowBlurred, initPrivacyListeners, triggerPanicMode
+  privacySettings, savePrivacySettings, isAppLocked,
+  isWindowBlurred, initPrivacyListeners
 } from './services/privacy';
 import { DATE_FILTER_OPTIONS } from './types';
 import type { DateFilter } from './types';
 import {
+  analytics, importAnalyticsData,
   startFocusTracker, recordMovieView, recordPerformerView,
   recordEpisodeView, recordDirectorView, recordStudioView,
   clearSearchHistory, clearBrowseHistory, resetAllAnalytics,
@@ -88,8 +88,33 @@ import {
 import { initScraperService, onScraperDataChange } from './services/scraper';
 import { initAutoSyncSchedule } from './services/autoSync';
 
-type SettingsSubTab = 'all' | 'appearance' | 'localization' | 'data' | 'privacy';
+type SettingsSubTab = 'all' | 'appearance' | 'localization' | 'data' | 'privacy' | 'about';
 const settingsSubTab = ref<SettingsSubTab>('all');
+
+const appReleaseInfo = ref<AppReleaseInfo | null>(null);
+const isCheckingUpdate = ref(false);
+const manualUpdateCheckMsg = ref<{ text: string; isError: boolean } | null>(null);
+
+async function handleManualCheckUpdate() {
+  if (isCheckingUpdate.value) return;
+  isCheckingUpdate.value = true;
+  manualUpdateCheckMsg.value = null;
+  try {
+    const res = await checkAppUpdateDetailed();
+    if (res.hasUpdate && res.release) {
+      appReleaseInfo.value = res.release;
+      manualUpdateCheckMsg.value = { text: `发现新版本 v${res.release.versionName}！请在弹出的更新窗口中确认安装。`, isError: false };
+    } else if (res.error) {
+      manualUpdateCheckMsg.value = { text: `检查更新失败: ${res.error}`, isError: true };
+    } else {
+      manualUpdateCheckMsg.value = { text: `当前已是最新版本 (v${res.currentVersion})，无需更新。`, isError: false };
+    }
+  } catch (e: any) {
+    manualUpdateCheckMsg.value = { text: `检查更新异常: ${e?.message || '网络连接超时'}`, isError: true };
+  } finally {
+    isCheckingUpdate.value = false;
+  }
+}
 
 const pinEditInput = ref(privacySettings.value.pinCode || '');
 const disguiseTitleInput = ref(privacySettings.value.disguiseAppName || 'GPDb');
@@ -668,30 +693,48 @@ async function handleBatchDownloadCache() {
 }
 
 async function handleExportUserData() {
-  if (IS_TAURI) {
-    try {
-      const dest = await api.exportUserDataFile();
-      if (dest) {
-        importStatusMsg.value = `个人标记与片单备份成功导出至：${dest}`;
-        setTimeout(() => { importStatusMsg.value = ''; }, 6000);
+  try {
+    // 1. Fetch raw SQLite database user data (favorites, tags, movie_user_data)
+    const dbUserData = await api.exportUserData();
+
+    // 2. Build Universal Cross-Platform Backup JSON Bundle
+    const universalBackup = {
+      format: 'gpdb_universal_backup',
+      version: 2,
+      app_version: '2.15.0',
+      exported_at: new Date().toISOString(),
+      platform: typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows') ? 'windows' : 'macos',
+      favorites: dbUserData?.favorites || [],
+      tags: dbUserData?.tags || [],
+      movie_user_data: dbUserData?.movie_user_data || [],
+      analytics: analytics.value,
+      settings: {
+        descLang: descLang.value,
+        pageSize: pageSize.value,
+        gridCols: gridCols.value,
+        listCols: listCols.value,
+        listMode: listMode.value,
+        translateMode: translateMode.value
       }
-      return;
-    } catch (err: any) {
-      console.warn('Native exportUserDataFile failed, falling back to download:', err);
-    }
+    };
+
+    const jsonStr = JSON.stringify(universalBackup, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const dateStr = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`;
+    a.href = url;
+    a.download = `GPDb_Backup_${dateStr}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    const favCount = (universalBackup.favorites || []).length;
+    importStatusMsg.value = `用户配置与数据备份成功导出 (已打包 ${favCount} 条收藏、全量统计时长与浏览数据)！`;
+    setTimeout(() => { importStatusMsg.value = ''; }, 6000);
+  } catch (err: any) {
+    alert('导出用户配置备份失败：' + (err?.message || err));
   }
-  const data = await api.exportUserData();
-  if (!data) {
-    alert('导出标记备份失败：未能获取到用户数据');
-    return;
-  }
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `gpdb_user_backup_${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 const dbBackupStatusMsg = ref('');
@@ -752,17 +795,31 @@ async function handleImportFile(e: Event) {
   reader.onload = async (evt) => {
     try {
       const json = JSON.parse(evt.target?.result as string);
+
+      // 1. Restore/merge analytics data if present
+      if (json.analytics) {
+        importAnalyticsData(json.analytics);
+      }
+
+
+      // 3. Restore SQLite database user tables (favorites, tags, movie_user_data)
       const res = await api.importUserData(json);
+
+      const favCount = res?.favorites_imported ?? (Array.isArray(json.favorites) ? json.favorites.length : 0);
+      const tagCount = res?.tags_imported ?? 0;
+      const movieCount = res?.movies_updated ?? 0;
+
       importStatusMsg.value =
-        `导入成功: 恢复了 ${res.tags_imported} 个标签、${res.movies_updated} 部影片的用户标记` +
-        (res.favorites_imported ? `，以及 ${res.favorites_imported} 条收藏` : '') + '！';
-      setTimeout(() => { importStatusMsg.value = ''; }, 5000);
-      // Favorites come from the server snapshot now, so both caches need rebuilding.
+        `跨端配置导入成功：恢复了 ${favCount} 条“我的收藏”、${tagCount} 个自定义标签、${movieCount} 部影片笔记与打分，以及全量统计时长！`;
+      setTimeout(() => { importStatusMsg.value = ''; }, 6000);
+
+      // 4. Reload local keys and views
       loadFavoriteKeys();
       if (currentTab.value === 'favorites') loadFavorites();
       fetchMovies();
+      loadStats();
     } catch (err: any) {
-      alert('导入失败，请检查 JSON 格式是否正确: ' + err.message);
+      alert('导入失败，请检查备份 JSON 格式是否正确: ' + (err?.message || err));
     }
   };
   reader.readAsText(file);
@@ -1612,6 +1669,18 @@ onMounted(async () => {
 
   // Perform initial runtime environment health check
   checkInitialEnvironment();
+
+  // Check for GitHub Release update after 3 seconds
+  setTimeout(async () => {
+    try {
+      const info = await checkForAppUpdate();
+      if (info) {
+        appReleaseInfo.value = info;
+      }
+    } catch (e) {
+      console.warn('Update check failed:', e);
+    }
+  }, 3000);
 });
 
 onUnmounted(() => {
@@ -3112,6 +3181,7 @@ onUnmounted(() => {
                 { id: 'localization', labelKey: 'settings.localization', label: '语言与本地化', icon: Globe },
                 { id: 'data', labelKey: 'settings.data', label: '数据与存储', icon: HardDrive },
                 { id: 'privacy', labelKey: 'settings.privacy', label: '隐私与安全', icon: Shield },
+                { id: 'about', labelKey: 'settings.about', label: '关于与更新', icon: Info },
               ]"
               :key="st.id"
               @click="settingsSubTab = (st.id as SettingsSubTab)"
@@ -3181,7 +3251,7 @@ onUnmounted(() => {
                 <Sparkles class="w-5 h-5 text-accent" />
                 <div>
                   <div class="text-sm font-bold text-fg">应用图标方案 (App Icon)</div>
-                  <div class="text-xs text-fg-3">提供四套独具文化认同与典藏质感的定制图标设计，支持一键切换与预览（默认预设方案 A）</div>
+                  <div class="text-xs text-fg-3">支持一键切换应用图标与实时预览（默认方案 A）</div>
                 </div>
               </div>
               <span class="text-xs px-2.5 py-1 rounded-full bg-accent-fill/15 text-accent font-semibold border border-accent-fill/30">
@@ -3236,11 +3306,6 @@ onUnmounted(() => {
                     </div>
                   </div>
                 </div>
-
-                <!-- Description -->
-                <p class="text-xs text-fg-3 leading-relaxed">
-                  {{ scheme.description }}
-                </p>
 
                 <!-- Footer tags & action -->
                 <div class="flex items-center justify-between pt-1 border-t border-line/40 text-[11px]">
@@ -3309,11 +3374,22 @@ onUnmounted(() => {
                     </span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded bg-accent-fill/20 text-accent font-bold">默认推荐</span>
                   </div>
-                  <p class="text-[11px] text-fg-4 mt-1.5 leading-relaxed">
-                    双面海报无损无黑边裁剪，分段式胶囊指示器，点击或拖拽流畅切换正面/反面，支持双击一键呼出全屏缩放灯箱。
-                  </p>
+                  <!-- Visual Demo: Adaptive Pager -->
+                  <div class="my-2.5 p-3 rounded-xl bg-sunken/60 border border-line flex items-center justify-center gap-3">
+                    <div class="relative w-14 h-18 rounded-lg bg-surface-2 border border-accent/40 shadow-md flex flex-col items-center justify-between p-1.5 overflow-hidden">
+                      <div class="w-full h-10 rounded bg-accent/20 flex items-center justify-center text-[9px] text-accent font-bold">正面</div>
+                      <div class="flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                        <span class="w-1.5 h-1.5 rounded-full bg-fg-5"></span>
+                      </div>
+                    </div>
+                    <div class="text-[10px] text-fg-3 flex flex-col gap-0.5">
+                      <span class="font-semibold text-fg-2">平滑横向滑动</span>
+                      <span class="text-fg-4">正面/反面双面无缝平铺</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="mt-3 pt-2 border-t border-line/40 flex items-center gap-2 text-[10px] text-fg-4">
+                <div class="mt-2 pt-2 border-t border-line/40 flex items-center gap-2 text-[10px] text-fg-4">
                   <Check v-if="privacySettings.posterDisplayMode === 'adaptive_pager'" class="w-3.5 h-3.5 text-accent shrink-0" />
                   <span>画廊式平铺 · 极速图片渲染</span>
                 </div>
@@ -3333,11 +3409,24 @@ onUnmounted(() => {
                     </span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-bold">沉浸式</span>
                   </div>
-                  <p class="text-[11px] text-fg-4 mt-1.5 leading-relaxed">
-                    高拟真实体 DVD/蓝光盒物理卡片，60fps CSS 3D 景深透视翻转，配备环境氛围泛光和边框质感，极具收藏质感。
-                  </p>
+                  <!-- Visual Demo: 3D Physical Flip -->
+                  <div class="my-2.5 p-3 rounded-xl bg-sunken/60 border border-line flex items-center justify-center gap-3">
+                    <div style="perspective: 260px;" class="w-14 h-18 flex items-center justify-center">
+                      <div
+                        class="w-12 h-16 rounded-lg bg-gradient-to-br from-indigo-900/60 to-purple-950/80 border border-indigo-400/50 shadow-xl flex flex-col items-center justify-between p-1.5"
+                        style="transform: rotateY(-18deg) rotateX(4deg); box-shadow: -4px 6px 12px rgba(0,0,0,0.5);"
+                      >
+                        <div class="w-full h-8 rounded bg-indigo-500/30 flex items-center justify-center text-[9px] text-indigo-300 font-bold">3D</div>
+                        <div class="text-[8px] text-indigo-200/80 font-mono">实体翻转</div>
+                      </div>
+                    </div>
+                    <div class="text-[10px] text-fg-3 flex flex-col gap-0.5">
+                      <span class="font-semibold text-fg-2">60fps 景深透视</span>
+                      <span class="text-fg-4">拟真实体蓝光盒质感</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="mt-3 pt-2 border-t border-line/40 flex items-center gap-2 text-[10px] text-fg-4">
+                <div class="mt-2 pt-2 border-t border-line/40 flex items-center gap-2 text-[10px] text-fg-4">
                   <Check v-if="privacySettings.posterDisplayMode === 'flip_3d'" class="w-3.5 h-3.5 text-accent shrink-0" />
                   <span>3D 景深物理透视 · 实体翻转胶囊</span>
                 </div>
@@ -3612,29 +3701,6 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- Fake Calculator Panic Mode -->
-              <div class="p-4 rounded-xl bg-surface border border-line space-y-3">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <Calculator class="w-4 h-4 text-accent" />
-                    <div>
-                      <div class="text-xs font-semibold text-fg-2">全功能伪装计算器 & 紧急脱身 (Panic Switch)</div>
-                      <div class="text-[11px] text-fg-4">一键瞬间伪装为 Apple 标准计算器（快捷键: <kbd class="px-1.5 py-0.5 rounded bg-surface-2 font-mono text-[10px] border border-line">Cmd + Shift + P</kbd>）</div>
-                    </div>
-                  </div>
-                  <button
-                    @click="triggerPanicMode"
-                    class="px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-accent transition flex items-center gap-1.5 cursor-pointer shrink-0"
-                    title="立即测试进入计算器伪装模式"
-                  >
-                    <Calculator class="w-3.5 h-3.5" />
-                    <span>呼出伪装计算器</span>
-                  </button>
-                </div>
-                <div class="text-[11px] text-fg-4 leading-relaxed bg-surface-2/60 p-2.5 rounded-lg border border-line/40">
-                  💡 <strong>解锁机制：</strong>在计算器中输入您的 PIN 码（默认 <code class="font-mono">1234</code>）并按下 <code class="font-mono font-bold">=</code> 号，或在计算器顶部连击 4 次即可安全解锁返回 GPDb。
-                </div>
-              </div>
 
               <!-- Window Disguise Title -->
               <div class="p-3.5 rounded-xl bg-surface border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -4036,15 +4102,15 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- Panel B: Personal User Data (JSON) -->
+              <!-- Panel B: Universal Personal User Data (JSON) -->
               <div class="p-4 rounded-xl bg-surface-2/60 border border-line-strong space-y-3 flex flex-col justify-between">
                 <div>
                   <div class="text-xs font-bold text-fg flex items-center gap-1.5">
                     <Bookmark class="w-4 h-4 text-accent" />
-                    <span>个人扩展标记与片单 (JSON)</span>
+                    <span>用户配置与数据备份/迁移 (跨设备通用 JSON)</span>
                   </div>
                   <p class="text-[11px] text-fg-4 mt-1 leading-relaxed">
-                    仅导出轻量用户个人数据（私密评星、想看/已看状态、自定义标签、私密笔记与收藏夹）。
+                    完整导出/导入“我的收藏”全部条目、个人统计时长、浏览历史、想看/已看状态、评星与私密标签。导出的备份文件在 macOS、Windows、Android 与 iOS 四端完全通用，无缝迁移！
                   </p>
                 </div>
 
@@ -4054,7 +4120,7 @@ onUnmounted(() => {
                     class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Download class="w-3.5 h-3.5 text-accent" />
-                    <span>导出标记备份 (JSON)</span>
+                    <span>导出通用配置备份 (JSON)</span>
                   </button>
 
                   <button
@@ -4062,32 +4128,67 @@ onUnmounted(() => {
                     class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Upload class="w-3.5 h-3.5 text-accent" />
-                    <span>导入恢复标记 (JSON)</span>
+                    <span>导入通用配置恢复 (JSON)</span>
                   </button>
                   <input ref="fileInputRef" type="file" accept=".json" class="hidden" @change="handleImportFile" />
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- Section 5: Software Version & Update -->
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'about'"
+            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4"
+          >
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-3">
+                <Info class="w-5 h-5 text-accent" />
+                <div>
+                  <div class="text-sm font-bold text-fg">关于与软件更新</div>
+                  <div class="text-xs text-fg-3">当前版本: v2.15.0 · 巡检 GitHub Releases 官方发布并在线升级</div>
+                </div>
+              </div>
+              <button
+                @click="handleManualCheckUpdate"
+                :disabled="isCheckingUpdate"
+                class="px-4 py-2 rounded-xl bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs shadow-sm flex items-center gap-2 transition disabled:opacity-50 cursor-pointer"
+              >
+                <Loader2 v-if="isCheckingUpdate" class="w-3.5 h-3.5 animate-spin" />
+                <RefreshCw v-else class="w-3.5 h-3.5" />
+                <span>{{ isCheckingUpdate ? '正在检查…' : '检查更新' }}</span>
+              </button>
+            </div>
+            <div v-if="manualUpdateCheckMsg" class="p-3 rounded-xl border text-xs flex items-center gap-2" :class="manualUpdateCheckMsg.isError ? 'bg-danger-fill/10 border-danger-fill/20 text-danger-soft' : 'bg-success-fill/10 border-success-fill/20 text-success-soft'">
+              <span>{{ manualUpdateCheckMsg.text }}</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-surface-2/60 border border-line text-xs flex items-center justify-between">
+              <div>
+                <span class="text-fg-3">开源代码仓库：</span>
+                <span class="font-mono text-fg-2">github.com/GeavenMax/GPDb</span>
+              </div>
+              <a
+                href="https://github.com/GeavenMax/GPDb"
+                @click.prevent="openUrlExternal('https://github.com/GeavenMax/GPDb')"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-accent hover:underline text-xs cursor-pointer"
+              >访问仓库 ↗</a>
+            </div>
+          </div>
         </div>
 
         <!-- 7. Local Analytics Tab -->
         <div v-else-if="currentTab === 'analytics'" class="space-y-6">
-          <AnalyticsView @open-trophies="currentTab = 'trophies'" />
+          <AnalyticsView />
         </div>
 
         <div v-else-if="currentTab === 'plugins'" class="space-y-6">
           <PluginsView
-            @open-trophies="currentTab = 'trophies'"
             @open-sync="isSyncOpen = true"
             @open-environment-check="showEnvironmentModal = true"
             @refresh-movies="loadStats(); fetchMovies(true);"
           />
-        </div>
-
-        <!-- 9. PSN 77 Trophies Hall Tab -->
-        <div v-else-if="currentTab === 'trophies'" class="space-y-6">
-          <TrophiesView @back="currentTab = 'plugins'" />
         </div>
       </main>
     </div>
@@ -4224,9 +4325,6 @@ onUnmounted(() => {
     <!-- Above the whole modal stack: it is opened from inside those modals. -->
     <ImageLightbox />
 
-    <!-- PSN Fluid Glass Trophy Unlock Toast Notification -->
-    <TrophyToast />
-
     <!-- First launch / Folder permission explanation modal -->
     <PermissionExplainModal
       :show="showPermissionModal"
@@ -4245,13 +4343,19 @@ onUnmounted(() => {
       @open-database-setup="showPermissionModal = true; showEnvironmentModal = false"
     />
 
+    <!-- GitHub Release In-App Update Modal -->
+    <AppUpdateModal
+      v-if="appReleaseInfo"
+      :release="appReleaseInfo"
+      @close="appReleaseInfo = null"
+    />
+
     <!-- Security Overlays (Aligned with Android 2.10) -->
     <AppLockOverlay v-if="isAppLocked" />
-    <FakeCalculatorModal v-if="isFakeCalculatorActive" />
 
     <!-- Window Blur Privacy Protection Mask -->
     <div
-      v-if="isWindowBlurred && privacySettings.blurOnWindowBlur && !isAppLocked && !isFakeCalculatorActive"
+      v-if="isWindowBlurred && privacySettings.blurOnWindowBlur && !isAppLocked"
       class="fixed inset-0 z-[280] bg-scrim/80 backdrop-blur-2xl flex flex-col items-center justify-center select-none text-fg p-4 cursor-pointer"
       @click="isWindowBlurred = false"
     >

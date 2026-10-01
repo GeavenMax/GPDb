@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { analytics, resetAllAnalytics } from '../services/analytics';
-import { trophyStats, resetUnlockedTrophies } from '../services/trophySystem';
-import { pluginsConfig } from '../services/pluginManager';
 import {
   deepInsights, loadDeepInsights, exportUserDataBundle, isInsightsLoading
 } from '../services/userAnalytics';
@@ -10,40 +8,30 @@ import { t } from '../i18n';
 import {
   Clock, Film, Users, Layers, Search, Bookmark,
   Star, Flame, Moon, Trash2, AlertTriangle,
-  Trophy, Tag, Languages, Sparkles, ChevronRight,
+  Tag, Languages,
   BarChart3, Activity, Heart, ShieldCheck, Download, PieChart,
   Building2, Calendar
 } from '@lucide/vue';
 
 const emit = defineEmits<{
-  (e: 'open-trophies'): void;
+  (e: 'change-tab', tab: string): void;
 }>();
 
-type AnalyticsSubTab = 'overview' | 'footprint' | 'interaction' | 'insights' | 'trophies';
+type AnalyticsSubTab = 'overview' | 'footprint' | 'interaction' | 'insights';
 const activeSubTab = ref<AnalyticsSubTab>('overview');
 const showConfirmReset = ref(false);
 
 const availableTabs = computed(() => {
-  const tabs: Array<{ id: AnalyticsSubTab; label: string; icon: any }> = [
-    { id: 'overview', label: '概览汇总', icon: BarChart3 },
-    { id: 'footprint', label: '观影足迹', icon: Film },
-    { id: 'interaction', label: '互动偏好', icon: Star },
-    { id: 'insights', label: '深度画像', icon: PieChart },
+  return [
+    { id: 'overview' as AnalyticsSubTab, label: '概览汇总', icon: BarChart3 },
+    { id: 'footprint' as AnalyticsSubTab, label: '观影足迹', icon: Film },
+    { id: 'interaction' as AnalyticsSubTab, label: '互动偏好', icon: Star },
+    { id: 'insights' as AnalyticsSubTab, label: '深度画像', icon: PieChart },
   ];
-  if (pluginsConfig.value.trophiesEnabled) {
-    tabs.push({ id: 'trophies', label: '典藏奖杯', icon: Trophy });
-  }
-  return tabs;
 });
 
 onMounted(() => {
   loadDeepInsights();
-});
-
-watch(() => pluginsConfig.value.trophiesEnabled, (enabled) => {
-  if (!enabled && activeSubTab.value === 'trophies') {
-    activeSubTab.value = 'overview';
-  }
 });
 
 const formattedFocusTime = computed(() => {
@@ -64,7 +52,6 @@ const firstLaunchFormatted = computed(() => {
 
 function confirmReset() {
   resetAllAnalytics();
-  resetUnlockedTrophies();
   showConfirmReset.value = false;
 }
 
@@ -124,13 +111,6 @@ function formatHistoryTime(ts: number): string {
       >
         <component :is="tab.icon" class="w-3.5 h-3.5" />
         <span>{{ tab.label }}</span>
-        <span
-          v-if="tab.id === 'trophies'"
-          class="text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold"
-          :class="activeSubTab === tab.id ? 'bg-black/20 text-on-fill' : 'bg-purple-500/15 text-purple-300'"
-        >
-          {{ trophyStats.unlocked }}/{{ trophyStats.total }}
-        </span>
       </button>
     </div>
 
@@ -235,34 +215,6 @@ function formatHistoryTime(ts: number): string {
         </div>
       </div>
 
-      <!-- Trophies Highlight Banner -->
-      <div
-        v-if="pluginsConfig.trophiesEnabled"
-        class="p-6 rounded-3xl bg-gradient-to-r from-purple-500/10 via-accent/5 to-transparent border border-purple-500/20 flex items-center justify-between gap-4 flex-wrap"
-      >
-        <div class="flex items-center gap-4">
-          <div class="p-3 rounded-2xl bg-purple-500/15 text-purple-300 border border-purple-500/30 shrink-0">
-            <Trophy class="w-7 h-7" />
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h3 class="text-base font-bold text-fg">典藏成就奖杯系统</h3>
-              <span class="text-xs font-bold text-purple-300 font-mono">
-                {{ trophyStats.unlocked }} / {{ trophyStats.total }} ({{ trophyStats.percentage }}%)
-              </span>
-            </div>
-            <p class="text-xs text-fg-4 mt-0.5">77 座流体玻璃风格专属奖杯，记录你的每一步探索传奇</p>
-          </div>
-        </div>
-
-        <button
-          @click="emit('open-trophies')"
-          class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-lg shadow-purple-600/20 cursor-pointer"
-        >
-          <span>进入奖杯陈列馆</span>
-          <ChevronRight class="w-4 h-4" />
-        </button>
-      </div>
 
       <!-- Secondary Insights: Night Owl & Privacy Notice -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -643,88 +595,7 @@ function formatHistoryTime(ts: number): string {
       </div>
     </div>
 
-    <!-- 4. Trophies Tab -->
-    <div v-else-if="activeSubTab === 'trophies'" class="space-y-6">
-      <!-- Big Completion Progress Card -->
-      <div class="p-8 rounded-3xl bg-gradient-to-br from-purple-500/15 via-surface/90 to-surface border border-purple-500/30 space-y-6 shadow-xl">
-        <div class="flex items-start justify-between gap-4 flex-wrap">
-          <div class="flex items-center gap-4">
-            <div class="p-4 rounded-2xl bg-purple-500/20 text-purple-300 border border-purple-500/30 shadow-inner">
-              <Trophy class="w-10 h-10" />
-            </div>
-            <div>
-              <div class="flex items-center gap-2.5">
-                <h2 class="text-2xl font-extrabold text-fg tracking-tight">典藏成就奖杯陈列馆</h2>
-                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  全 77 座
-                </span>
-              </div>
-              <p class="text-xs text-fg-4 mt-1">包含白金、金、银、铜四大等级，忠实见证你在此片数据库中的每一步足迹</p>
-            </div>
-          </div>
 
-          <button
-            @click="emit('open-trophies')"
-            class="px-5 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm flex items-center gap-2 transition shadow-xl shadow-purple-600/30 cursor-pointer"
-          >
-            <Sparkles class="w-4 h-4" />
-            <span>进入完整奖杯陈列馆</span>
-            <ChevronRight class="w-4 h-4" />
-          </button>
-        </div>
-
-        <!-- Progress Bar -->
-        <div class="space-y-2">
-          <div class="flex items-center justify-between text-xs font-bold">
-            <span class="text-fg-3">总收集进度</span>
-            <span class="font-mono text-purple-300 text-sm">
-              {{ trophyStats.unlocked }} / {{ trophyStats.total }} ({{ trophyStats.percentage }}%)
-            </span>
-          </div>
-          <div class="w-full h-3.5 rounded-full bg-sunken overflow-hidden p-0.5 border border-line">
-            <div
-              class="h-full rounded-full bg-gradient-to-r from-purple-500 via-accent to-accent-soft transition-all duration-700"
-              :style="{ width: `${trophyStats.percentage}%` }"
-            ></div>
-          </div>
-        </div>
-
-        <!-- Tier breakdown badges -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-          <div class="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-between">
-            <div>
-              <div class="text-xs font-bold text-cyan-300">白金神级</div>
-              <div class="text-lg font-black text-fg font-mono mt-0.5">{{ trophyStats.platinum }} / 1</div>
-            </div>
-            <Trophy class="w-5 h-5 text-cyan-300" />
-          </div>
-
-          <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
-            <div>
-              <div class="text-xs font-bold text-amber-300">金牌成就</div>
-              <div class="text-lg font-black text-fg font-mono mt-0.5">{{ trophyStats.gold }} / 6</div>
-            </div>
-            <Trophy class="w-5 h-5 text-amber-300" />
-          </div>
-
-          <div class="p-4 rounded-2xl bg-slate-300/10 border border-slate-300/30 flex items-center justify-between">
-            <div>
-              <div class="text-xs font-bold text-slate-200">银牌荣耀</div>
-              <div class="text-lg font-black text-fg font-mono mt-0.5">{{ trophyStats.silver }} / 20</div>
-            </div>
-            <Trophy class="w-5 h-5 text-slate-300" />
-          </div>
-
-          <div class="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-between">
-            <div>
-              <div class="text-xs font-bold text-orange-300">铜牌印记</div>
-              <div class="text-lg font-black text-fg font-mono mt-0.5">{{ trophyStats.bronze }} / 50</div>
-            </div>
-            <Trophy class="w-5 h-5 text-orange-400" />
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Confirm Modal -->
     <div

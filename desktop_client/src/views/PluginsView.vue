@@ -5,18 +5,15 @@ import { pluginsConfig, savePluginsConfig, DEFAULT_TRANSLATION_PROMPT } from '..
 import { generateAiPersonaInsight, clearAiReport, activeAiReport, isAiAnalyzing, aiAnalysisError, exportAiReportMarkdown } from '../services/aiAnalysis';
 import { t, TARGET_TRANSLATION_LANGUAGES } from '../i18n';
 import type { TranslationStats, TranslationProfile, TranslationPreset } from '../types';
-import { Blocks, Sparkles, Compass, RefreshCw, Languages, Trophy, AlertCircle, CheckCircle2, SlidersHorizontal, Download, Upload, Trash2, Volume2, VolumeX, ChevronRight } from '@lucide/vue';
-import TrophyResetModal from '../components/TrophyResetModal.vue';
-import { trophyStats } from '../services/trophySystem';
+import { Blocks, Sparkles, Compass, RefreshCw, Languages, AlertCircle, CheckCircle2, SlidersHorizontal, Download, Upload, Trash2 } from '@lucide/vue';
 import { recordPluginVisit } from '../services/analytics';
 const emit = defineEmits<{
-  (e: 'open-trophies'): void;
   (e: 'refresh-movies'): void;
   (e: 'open-sync'): void;
   (e: 'open-environment-check'): void;
 }>();
 
-type PluginSubTab = 'all' | 'ai' | 'bt' | 'scraper' | 'translate' | 'trophy';
+type PluginSubTab = 'all' | 'ai' | 'bt' | 'scraper' | 'translate';
 const activePluginTab = ref<PluginSubTab>('all');
 
 const BtSearchConfigPanel = defineAsyncComponent(() => import('../components/plugins/BtSearchConfigPanel.vue'));
@@ -295,17 +292,7 @@ async function handleRunGlossary(dryRun: boolean) {
   glossaryBusy.value = false;
 }
 
-// --- 4. Trophies Plugin ---
 
-const showTrophyResetModal = ref(false);
-
-function toggleTrophySound() {
-  savePluginsConfig({ trophiesSoundEnabled: !pluginsConfig.value.trophiesSoundEnabled });
-}
-
-function handleResetTrophies() {
-  showTrophyResetModal.value = true;
-}
 
 // --- 5. AI Taste & Persona Insight Plugin ---
 const showAiPromptCustomizer = ref(false);
@@ -385,12 +372,11 @@ onMounted(() => {
     <div class="flex items-center gap-2 flex-wrap">
       <button
         v-for="tab in [
-          { id: 'all', label: '全部插件', count: 5, icon: Blocks },
+          { id: 'all', label: '全部插件', count: 4, icon: Blocks },
           { id: 'ai', label: 'AI 影迷偏好洞察', count: 1, icon: Sparkles },
           { id: 'bt', label: t('plugins.resourceSearch', '资源搜索与扩展'), count: 1, icon: Compass },
           { id: 'scraper', label: '数据搜刮', count: 1, icon: RefreshCw },
           { id: 'translate', label: 'AI 翻译引擎', count: 1, icon: Languages },
-          { id: 'trophy', label: '典藏成就奖杯', count: 1, icon: Trophy },
         ]"
         :key="tab.id"
         @click="activePluginTab = (tab.id as PluginSubTab)"
@@ -1020,84 +1006,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- 4. Exploration Trophy System (77 Trophies, Clean & Configurable) -->
-      <div
-        v-if="activePluginTab === 'all' || activePluginTab === 'trophy'"
-        class="p-6 rounded-3xl bg-surface/80 border border-line space-y-4 shadow-sm"
-      >
-        <div class="flex items-start justify-between gap-4">
-          <div class="flex items-center gap-3.5">
-            <div class="p-3 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <Trophy class="w-6 h-6" />
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h3 class="text-base font-bold text-fg">{{ t('plugins.trophies') }}</h3>
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-bold border border-purple-500/20">77 奖杯</span>
-              </div>
-              <p class="text-xs text-fg-4 mt-0.5">{{ t('plugins.trophiesDesc') }}</p>
-            </div>
-          </div>
-
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              v-model="pluginsConfig.trophiesEnabled"
-              @change="savePluginsConfig({ trophiesEnabled: pluginsConfig.trophiesEnabled })"
-              class="sr-only peer"
-            />
-            <div class="w-11 h-6 bg-surface-3 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-fill"></div>
-          </label>
-        </div>
-
-        <div v-if="pluginsConfig.trophiesEnabled" class="pt-4 border-t border-line/60 space-y-4 animate-fade-in">
-          <div class="flex items-center justify-between flex-wrap gap-4">
-            <div class="flex items-center gap-3">
-              <span class="text-xs text-fg-4">已解锁奖杯：</span>
-              <span class="text-base font-extrabold text-accent font-mono">{{ trophyStats.unlocked }} / 77 ({{ trophyStats.percentage }}%)</span>
-            </div>
-
-            <!-- Trophies sound and reset controls -->
-            <div class="flex items-center gap-2.5 flex-wrap">
-              <!-- Sound toggle -->
-              <button
-                @click="toggleTrophySound"
-                class="px-3 py-1.5 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 shadow-xs"
-                :class="pluginsConfig.trophiesSoundEnabled ? 'bg-surface-2 text-fg border-line hover:bg-surface-3' : 'bg-surface-2/40 text-fg-5 border-line/60'"
-                :title="pluginsConfig.trophiesSoundEnabled ? '解锁音效已开启' : '解锁音效已静音'"
-              >
-                <component :is="pluginsConfig.trophiesSoundEnabled ? Volume2 : VolumeX" class="w-3.5 h-3.5 text-accent" />
-                <span>{{ pluginsConfig.trophiesSoundEnabled ? '解锁音效: 开' : '解锁音效: 关' }}</span>
-              </button>
-
-              <!-- Reset trophies button -->
-              <button
-                @click="handleResetTrophies"
-                class="px-3 py-1.5 rounded-xl text-xs font-semibold border border-danger-fill/30 bg-danger-fill/10 text-danger-soft hover:bg-danger-fill/20 transition flex items-center gap-1.5 shadow-xs"
-                title="清空当前已解锁奖杯记录，从头开始"
-              >
-                <RotateCcw class="w-3.5 h-3.5" />
-                <span>{{ t('plugins.resetTrophies') }}</span>
-              </button>
-
-              <button
-                @click="emit('open-trophies')"
-                class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs font-bold text-fg flex items-center gap-1.5 transition shadow-xs"
-              >
-                <span>进入奖杯陈列馆</span>
-                <ChevronRight class="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
-
-    <!-- Trophy Reset Modal -->
-    <TrophyResetModal
-      v-if="showTrophyResetModal"
-      @close="showTrophyResetModal = false"
-    />
 
     <!-- AI Persona Analysis Progress Modal -->
     <AiAnalysisModal

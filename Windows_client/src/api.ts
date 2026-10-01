@@ -1289,6 +1289,19 @@ export const api = {
     }
     return false;
   },
+
+  async saveUpdateFile(filename: string, base64Data: string): Promise<string> {
+    if (isTauri) {
+      return await tauriInvoke<string>('save_update_file', { filename, base64Data });
+    }
+    return filename;
+  },
+
+  async installUpdateFile(filepath: string): Promise<void> {
+    if (isTauri) {
+      await tauriInvoke('install_update_file', { filepath });
+    }
+  },
 };
 
 

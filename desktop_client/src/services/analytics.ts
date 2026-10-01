@@ -125,23 +125,8 @@ export function startFocusTracker() {
   }
 }
 
-// Callbacks for trophy unlock checks
-type TrophyCheckCallback = (a: UserAnalytics) => void;
-const trophyCheckListeners: TrophyCheckCallback[] = [];
-
-export function onAnalyticsEvent(cb: TrophyCheckCallback) {
-  trophyCheckListeners.push(cb);
-}
-
 function notifyListeners() {
   persist();
-  for (const listener of trophyCheckListeners) {
-    try {
-      listener(analytics.value);
-    } catch (e) {
-      console.error('Trophy check error:', e);
-    }
-  }
 }
 
 export function recordMovieView(id: number, title: string) {
@@ -323,5 +308,77 @@ export function resetAllAnalytics() {
     gridAdjustedCount: 0,
     btUsedCount: 0,
   };
+  persist();
+}
+
+/**
+ * Universal cross-platform analytics import & merge
+ */
+export function importAnalyticsData(data: Partial<UserAnalytics>): void {
+  if (!data || typeof data !== 'object') return;
+  const cur = analytics.value;
+
+  if (typeof data.totalFocusTimeSeconds === 'number') {
+    cur.totalFocusTimeSeconds = Math.max(cur.totalFocusTimeSeconds, data.totalFocusTimeSeconds);
+  }
+  if (typeof data.movieViewsCount === 'number') {
+    cur.movieViewsCount = Math.max(cur.movieViewsCount, data.movieViewsCount);
+  }
+  if (typeof data.episodeViewsCount === 'number') {
+    cur.episodeViewsCount = Math.max(cur.episodeViewsCount, data.episodeViewsCount);
+  }
+  if (typeof data.performerViewsCount === 'number') {
+    cur.performerViewsCount = Math.max(cur.performerViewsCount, data.performerViewsCount);
+  }
+  if (typeof data.directorViewsCount === 'number') {
+    cur.directorViewsCount = Math.max(cur.directorViewsCount, data.directorViewsCount);
+  }
+  if (typeof data.studioViewsCount === 'number') {
+    cur.studioViewsCount = Math.max(cur.studioViewsCount, data.studioViewsCount);
+  }
+  if (typeof data.searchesCount === 'number') {
+    cur.searchesCount = Math.max(cur.searchesCount, data.searchesCount);
+  }
+  if (typeof data.favoritesAddedCount === 'number') {
+    cur.favoritesAddedCount = Math.max(cur.favoritesAddedCount, data.favoritesAddedCount);
+  }
+  if (typeof data.ratingsCount === 'number') {
+    cur.ratingsCount = Math.max(cur.ratingsCount, data.ratingsCount);
+  }
+  if (typeof data.tagsCreatedCount === 'number') {
+    cur.tagsCreatedCount = Math.max(cur.tagsCreatedCount, data.tagsCreatedCount);
+  }
+  if (typeof data.translationsCount === 'number') {
+    cur.translationsCount = Math.max(cur.translationsCount, data.translationsCount);
+  }
+  if (typeof data.nightOwlViewsCount === 'number') {
+    cur.nightOwlViewsCount = Math.max(cur.nightOwlViewsCount, data.nightOwlViewsCount);
+  }
+
+  if (Array.isArray(data.uniqueMoviesViewed)) {
+    const set = new Set([...cur.uniqueMoviesViewed, ...data.uniqueMoviesViewed]);
+    cur.uniqueMoviesViewed = Array.from(set);
+  }
+  if (Array.isArray(data.uniquePerformersViewed)) {
+    const set = new Set([...cur.uniquePerformersViewed, ...data.uniquePerformersViewed]);
+    cur.uniquePerformersViewed = Array.from(set);
+  }
+  if (Array.isArray(data.activeDays)) {
+    const set = new Set([...cur.activeDays, ...data.activeDays]);
+    cur.activeDays = Array.from(set).sort();
+  }
+  if (Array.isArray(data.searchHistory)) {
+    const set = new Set([...data.searchHistory, ...cur.searchHistory]);
+    cur.searchHistory = Array.from(set).slice(0, 50);
+  }
+  if (Array.isArray(data.browseHistory)) {
+    const existingIds = new Set(cur.browseHistory.map(b => `${b.type}:${b.id}`));
+    for (const item of data.browseHistory) {
+      if (item && item.type && item.id && !existingIds.has(`${item.type}:${item.id}`)) {
+        cur.browseHistory.push(item);
+      }
+    }
+  }
+
   persist();
 }
