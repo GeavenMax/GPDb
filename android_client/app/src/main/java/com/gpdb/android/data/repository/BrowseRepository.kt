@@ -94,8 +94,8 @@ class BrowseRepository(private val browseDao: BrowseDao) {
     suspend fun getFavoriteSeries(limit: Int = 50, offset: Int = 0, search: String? = null): List<SeriesCollectionEntity> {
         val searchCondition = if (!search.isNullOrBlank()) "AND s.root_title LIKE ?" else ""
         val args = if (!search.isNullOrBlank()) arrayOf("%${search}%", limit, offset) else arrayOf(limit, offset)
-        // Match either the full identifier or fallback to root_title for backward compatibility
-        val sql = "SELECT s.* FROM series_collections s JOIN user_favorites f ON (IFNULL(s.studio_name, '') || '|||' || s.root_title = f.entity_key OR s.root_title = f.entity_key) WHERE f.entity_type = 'series' $searchCondition ORDER BY f.created_at DESC LIMIT ? OFFSET ?"
+        // Match either the full identifier or fallback to root_title for backward compatibility, DISTINCT to prevent dupes
+        val sql = "SELECT DISTINCT s.* FROM series_collections s JOIN user_favorites f ON (IFNULL(s.studio_name, '') || '|||' || s.root_title = f.entity_key OR s.root_title = f.entity_key) WHERE f.entity_type = 'series' $searchCondition ORDER BY f.created_at DESC LIMIT ? OFFSET ?"
         return browseDao.getFavoriteSeries(SimpleSQLiteQuery(sql, args))
     }
     suspend fun getMoviesBySeries(studio: String?, seriesRoot: String, limit: Int = 50, offset: Int = 0): List<MovieEntity> {

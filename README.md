@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.14.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.15.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -82,15 +82,19 @@
 - **导演专属履历**：影片详情一键唤起执导导演专属卡片，展示其历史执导全量片单，并支持一键前往片库按导演筛选。
 - **厂牌专属收录**：覆盖各大经典胶片制片厂牌（Falcon, Colt, Catalina 等）至现代主流厂牌（Men.com, BelAmi, Lucas Entertainment, Corbin Fisher 等），作品编年史与风格标签一览无余。
 
-### 5. 📸 截屏防窥模式与高颜值流光分享卡片 (v2.14.0 全新升级)
+### 5. 📸 截屏防窥模式与高颜值流光分享卡片 (v2.15.0 全新升级)
 - **全局一键截屏防窥模式**：
   - 顶部导航栏提供一键“截屏防窥”眼睛开关；支持快捷键与即时状态切换（防窥中 / 正常浏览）。
+  - **Android 探索主页顶部一键防窥模式切换**：移动端在「探索主页」顶部常驻快速眼睛防窥切换开关，单手轻触即可瞬间脱敏。
   - **细粒度隐私脱敏控制**：
     - `模糊海报与剧照图片`：全局高斯模糊 (`blur(24px)`) 所有影视封面、剧照、演职员头像等敏感视觉画面，杜绝截屏或社媒分享时泄露画面；
     - `模糊剧情介绍与敏感文字`：高斯模糊 (`blur(7px)`) 影视简介、分集梗概等敏感文字并禁止文本选中，防止剧透与涉密内容外泄。
   - Android 移动端基于 `LocalPrivacyBlur` 响应式状态流驱动，全屏秒级即时生效。
 - **自适应海报流光分享卡片生成器**：
   - 影片与分集详情一键生成 Apple Music / Spotify 级流光分享卡片。
+  - **封面与封底双海报并排展示**：长片支持自动提取或并排展示 Front / Back 封面与封底海报，兼顾视觉饱满度与艺术收藏感。
+  - **底部角落集成 Telegram 官方频道二维码**：分享卡片右下角精致嵌入官方频道二维码与标识，方便社群传播与资源溯源。
+  - **纯离屏双线性模糊与 16:9 分集居中裁切防拉伸**：采用离屏纯算法渲染背景模糊光晕，剧照与分集图片实施智能 16:9 居中无畸变裁切，彻底告别画面拉伸变形。
   - 背景光晕直接从封面自适应提取色相并实施高精度大半径高斯模糊 (`blur(45px~60px)`)，提供“流光 (Vibrant)”、“深黑 (Dark)”、“午夜 (Midnight)”三种专属光晕预设。
   - **分享前安全隐私脱敏**：独立勾选「模糊海报」与「模糊文字」，确保安全分享至社交群聊与公开网络。
   - **双端无损导出**：
@@ -98,16 +102,11 @@
     - **移动端**：采用 Compose 1.8 硬件加速位图捕获引擎，支持一键无损保存至系统相册 (`MediaStore`)，并通过 `FileProvider` 唤起 Android 原生分享面板。
 
 ### 6. 🛡️ 全维度隐私安防套件 (Enterprise-Grade Privacy & Security)
-- **PIN 码数字锁屏与失焦防护**：
-  - 支持设置独立 4~6 位数字 PIN 码应用锁，失焦或超时（1/5/15/30分钟）自动覆盖玻璃拟态锁屏界面 (`AppLockOverlay.vue`)。
+- **桌面端精简设计专注归档**：
+  - 桌面客户端全面精简移除了过往的伪装紧急计算器，专注回归纯粹、高效、极简的离线影视媒体资产管理与档案归纳。
+- **移动端 PIN 码与生物识别锁屏防护**：
+  - Android 移动端支持设置独立 4~6 位数字 PIN 码应用锁与指纹/面容生物识别解锁，失焦或超时（1/5/15/30分钟）自动覆盖安全拟态锁屏界面。
   - 窗口失焦或切换其他应用时瞬间覆盖高斯毛玻璃防窥层。
-- **紧急一键脱身伪装计算器 (Panic Switch)**：
-  - 极速切换为 Apple 风格真实可用暗黑计算器 (`FakeCalculatorModal.vue`)，支持真实四则运算。
-  - 桌面端支持快捷键 <kbd>Cmd + Shift + P</kbd> 极速呼出；移动端支持手势（屏幕翻转反扣）极速唤出。
-  - 在计算器中输入正确 PIN 码并按 `=`，或连击顶部标题 4 次即可安全解锁重返影库。
-- **无害化应用标题与桌面图标伪装**：
-  - 支持自定义窗口标题（如 "Calculator", "Notes"），防止系统任务切换器暴露。
-  - 内置多套高端设计主题图标（如「双雄火星图腾」、「黑曜石胶片之匣」）及无害伪装图标（便签、记账、计算器）。
 - **移动端系统级物理绝缘**：
   - 接入 Android 系统级 `FLAG_SECURE` 防录屏、防截屏与防系统多任务卡片预览。
   - 物理沙盒存储隔离，目录递归注入 `.nomedia` 防护，彻底绝缘第三方相册扫描。
@@ -137,13 +136,20 @@
   - 采用 **4 级高容错精准对齐算法**（精确匹配 → 规范化模糊匹配 → 别名交叉核验 → 人工审核队列），确保跨数据源的高置信度对齐；
   - 支持**双向增量同步**：新增条目自动入库，已有档案字段级差异更新，存量数据零损耗。
 
-### 9. 全语言国际化与 77+ 游戏化成就奖杯系统
+### 9. 全语言国际化与轻量化纯粹体验 (Internationalization & Streamlined UX)
 - **7 种全界面可选语言**：简体中文 (`zh-CN`)、繁体中文 (`zh-TW`)、English (`en`)、Italiano (`it`)、日本語 (`ja`)、Español (`es`)、Deutsch (`de`)。
-- **PlayStation 风格成就奖杯系统**：
-  - 内置 77+ 项探索、检索、专注与收藏成就，解锁时触发 PSN 风格流体动效弹窗。
-  - 基于真实行为指标追踪，支持独立的奖杯数据重置与检定管理。
+- **PlayStation 成就奖杯系统全面精简移除**：
+  - 为保持数据库管理核心工具的轻量、纯粹与高效，现已跨全平台（macOS / Windows / Android）彻底干净移除旧版 PlayStation 风格成就奖杯系统与后台行为轮询检定，消除冗余计算开销与无用代码。
 
-### 10. 全平台覆盖与三端数据协同 (macOS / Windows / Android)
+### 10. 通用用户数据跨端无缝备份与全平台客户端一键升级 (Cross-Platform Backup & Seamless Update)
+- **通用用户数据与配置跨端无缝备份/迁移 (`GPDb_Backup.json`)**：
+  - 提供标准统一的通用 JSON 备份架构，一键导出与导入所有个人收藏、观影足迹、打标评分、大模型 API 配置及系统偏好。
+  - 彻底打通 macOS、Windows 与 Android 跨平台数据孤岛，换机、重装系统或跨设备同步仅需单个备份文件，瞬时无缝迁移。
+- **全平台客户端一键检查更新与断点续传增量升级**：
+  - 桌面端与移动端均内置全自动/手动版本侦测模块，实时比对最新 Release 状态并清晰展示版本更新日志。
+  - 深度集成断点续传高速下载引擎，下载完成后一键引导平滑升级与安装，保持客户端始终处于最新稳定状态。
+
+### 11. 全平台覆盖与三端数据协同 (macOS / Windows / Android)
 - **macOS 原生桌面端 (`desktop_client/`)**：通过 Tauri v2 + Rust 架构完美支持 Apple Silicon 与 Intel 架构，原生玻璃拟态与键盘快捷键交互。
 - **Windows 原生桌面端 (`Windows_client/`)**：专有独立目录解耦，内置多路径 Python 智能解析引擎、控制台黑框抑制 (`CREATE_NO_WINDOW`)、微软雅黑字体平滑优化、纤细滚动条、Win11 分屏贴靠与 NSIS 免提权单用户轻量化安装。
 - **原生 Android 移动端 (`android_client/`)**：采用 Kotlin + Jetpack Compose + Room 现代化技术栈纯原生构建，与桌面端数据模式无缝融合，满足随身随时随地离线查阅与打标收藏的需求。
@@ -174,13 +180,13 @@
 
 ### 普通用户下载安装（推荐）
 
-直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载最新 **`v2.14.0`** 正式安装包：
+直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载最新 **`v2.15.0`** 正式安装包：
 
 | 平台 | 安装包文件名 | 安装方式与说明 |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.14.0.dmg` | 双击挂载后将 `GPDb.app` 拖入 `Applications`（应用程序）文件夹即可。<br>*(首次打开若提示未公证，可在「系统设置 → 隐私与安全性」点击「仍要打开」，或终端执行 `sudo xattr -cr /Applications/GPDb.app`)* |
-| **🪟 Windows** | `GPDb-Windows-v2.14.0.exe` | 双击安装程序完成安装。采用 NSIS 单用户免提权架构，无需管理员权限，随装随用。 |
-| **🤖 Android** | `GPDb-Android-v2.14.0-signed.apk` | 手机下载后直接点击安装（已通过官方公钥强签名，如系统提示允许未知来源安装，请予以允许）。 |
+| ** macOS** | `GPDb-macOS-v2.15.0.dmg` | 双击挂载后将 `GPDb.app` 拖入 `Applications`（应用程序）文件夹即可。<br>*(首次打开若提示未公证，可在「系统设置 → 隐私与安全性」点击「仍要打开」，或终端执行 `sudo xattr -cr /Applications/GPDb.app`)* |
+| **🪟 Windows** | `GPDb-Windows-v2.15.0.exe` | 双击安装程序完成安装。采用 NSIS 单用户免提权架构，无需管理员权限，随装随用。 |
+| **🤖 Android** | `GPDb-Android-v2.15.0-signed.apk` | 手机下载后直接点击安装（已通过官方公钥强签名，如系统提示允许未知来源安装，请予以允许）。 |
 
 ---
 

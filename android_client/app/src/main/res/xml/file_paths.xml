@@ -2,4 +2,7 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <cache-path name="shared_cards" path="shared_cards/" />
     <external-cache-path name="ext_shared_cards" path="shared_cards/" />
+    <cache-path name="apk_cache" path="apk_updates/" />
+    <external-cache-path name="apk_ext_cache" path="apk_updates/" />
+    <external-files-path name="download_files" path="Download/" />
 </paths>

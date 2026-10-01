@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.14.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.15.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -52,15 +52,15 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
   Agrupa automáticamente los nombres artísticos y alias que un mismo actor utilizó en diferentes productoras y épocas, para evitar omisiones por cambios de nombre.
 - **Distinción precisa entre películas completas (Films) y escenas (Scenes)**:
   Explore por separado las obras en las que el actor protagoniza largometrajes frente a sus apariciones en clips, episodios cortos o cameos, con una lista completa de sus créditos.
-- **Integración con la wiki PBC (Porn Base Central)**:
-  Los perfiles de actores se enriquecen automáticamente con los datos del raspado wiki: **nombre real**, **año de debut**, **distintivo activo / retirado**, **signo astrológico y etnia**, **etiquetas de estilo de interpretación**, **tarjeta biográfica completa al estilo wiki** y **perfiles vinculados** a IAFD, IMDb, X (Twitter), OnlyFans e Instagram.
 - **Motor de búsqueda multifuente con alta tolerancia a errores**:
-  - Recuperación rápida FTS5 → degradación automática a consulta SQL multifuente → SQLite como respaldo, eliminando resultados vacíos por tokenización o tablas virtuales ausentes.
+  - Recuperación rápida FTS5 → degradación automática a consulta SQL multifuente → Room / SQLite como respaldo, eliminando resultados vacíos por tokenización o tablas virtuales ausentes.
   - Una sola búsqueda abarca título original (`title`), título en chino (`title_zh`), nombre del estudio (`studio_name`), nombre del director (`director_name`), sinopsis en chino (`description_zh`) y el reparto completo.
 - **Filtros temporales y de incorporación multidimensionales**:
   - Opciones: «Todos», «Última incorporación (por fecha de scraping)», «Publicados en los últimos 7 días», «30 días», «90 días» y «Este año».
   - Granularidad temporal diferenciada: largometrajes por año, escenas por fecha exacta.
   - Las entradas recién incorporadas muestran una etiqueta dinámica `NEW` con degradado animado.
+- **Integración con la enciclopedia wiki PBC**:
+  Los perfiles de actores se enriquecen automáticamente con los datos de Porn Base Central Wiki: **nombre real, año de debut, distintivo activo / retirado, signo astrológico y etnia, etiquetas de estilo de interpretación, biografía completa estilo wiki** y **perfiles vinculados** a IAFD, IMDb, X, OnlyFans e Instagram para una investigación profunda y verificación cruzada.
 
 ### 2. Portada inmersiva con calidad de streaming y tarjetas 3D de colección
 - **Cinco flujos de descubrimiento y recomendación**:
@@ -82,32 +82,31 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
 - **Historial exclusivo del director**: Desde el detalle de una película, acceda con un clic a la ficha del director con su filmografía completa y filtrado directo en la biblioteca.
 - **Catálogo histórico de estudios**: Desde los grandes clásicos del celuloide (Falcon, Colt, Catalina, etc.) hasta los líderes contemporáneos (Men.com, BelAmi, Lucas Entertainment, Corbin Fisher, etc.), con cronología de obras y etiquetas de estilo.
 
-### 5. 📸 Modo antiespionaje y tarjetas de compartición luminosas (Novedad v2.13.0)
+### 5. 📸 Modo antiespionaje y tarjetas de compartición luminosas (Nueva actualización v2.15.0)
 - **Modo antiespionaje global con un solo clic**:
   - La barra de navegación superior ofrece un interruptor de «ojo» antiespionaje; compatible con atajos de teclado y cambio de estado instantáneo (Protegido / Navegación normal).
+  - **Botón de acceso rápido de privacidad en Android**: La pantalla de exploración cuenta con un botón permanente de acceso rápido con icono de ojo en la barra superior para activar el modo de privacidad al instante con un solo toque.
   - **Control granular de privacidad**:
-    - `Desenfoque de pósteres e imágenes`: Desenfoque gaussiano global (`blur(24px)`) sobre todas las portadas, fotogramas, avatares de actores y demás imágenes sensibles, evitando su exposición en capturas de pantalla o publicaciones en redes sociales.
-    - `Desenfoque de sinopsis y texto sensible`: Desenfoque gaussiano (`blur(7px)`) sobre sinopsis de películas, resúmenes de escenas y texto sensible, con selección de texto deshabilitada para prevenir filtraciones.
+    - `Desenfoque de pósteres e imágenes`: Desenfoque gaussiano global (`blur(24px)`) sobre todas las portadas, fotogramas, avatares de actores y demás imágenes sensibles, evitando su exposición en capturas de pantalla o publicaciones en redes sociales;
+    - `Desenfoque de sinopsis y texto sensible`: Desenfoque gaussiano (`blur(7px)`) sobre sinopsis de películas, resúmenes de escenas y texto sensible, con selección de texto deshabilitada para prevenir filtraciones y spoilers.
   - En Android, el estado de privacidad se gestiona mediante el flujo reactivo `LocalPrivacyBlur`, con efecto instantáneo en toda la pantalla.
 - **Generador de tarjetas de compartición luminosas y adaptativas**:
   - Genera tarjetas de compartición al estilo Apple Music / Spotify desde el detalle de películas y escenas con un solo clic.
+  - **Exhibición paralela de carátula frontal y posterior**: Muestra lado a lado la carátula frontal y la posterior (si está disponible) en largometrajes, combinando plenitud visual y valor estético de colección.
+  - **Código QR del canal oficial de Telegram**: Código QR de matriz de puntos vectoriales integrado con precisión en la esquina inferior de la tarjeta junto a la marca oficial, facilitando la difusión en comunidades y la consulta de la fuente original.
+  - **Desenfoque bilineal fuera de pantalla y preservación de proporción 16:9 para escenas**: Renderizado de halo desenfocado mediante algoritmo puro fuera de pantalla (offscreen); las capturas de escenas y episodios aplican recorte centrado inteligente 16:9 sin distorsión, evitando por completo cualquier deformación por estiramiento.
   - El halo de fondo extrae adaptativamente el tono de la portada y aplica un desenfoque gaussiano de alta precisión y gran radio (`blur(45px–60px)`), con tres presets de halo exclusivos: «Vibrante (Vibrant)», «Negro profundo (Dark)» y «Medianoche (Midnight)».
-  - **Privacidad segura antes de compartir**: Marque de forma independiente «Desenfocar póster» y «Desenfocar texto» para compartir con seguridad en grupos y redes sociales.
+  - **Privacidad segura antes de compartir**: Marque de forma independiente «Desenfocar póster» y «Desenfocar texto» para compartir con total seguridad en grupos y redes sociales.
   - **Exportación sin pérdidas en ambas plataformas**:
-    - **Escritorio**: Motor HTML5 Canvas 2D offline, rasterización en resolución Retina 2x, copia PNG al portapapeles del sistema (compatible con WeChat/QQ/Telegram/Discord/X) o guardado local.
-    - **Móvil**: Motor de captura de bitmap acelerado por hardware Compose 1.8, guardado sin pérdidas en la galería del sistema (`MediaStore`) y panel nativo de compartición Android mediante `FileProvider`.
+    - **Escritorio**: Motor HTML5 Canvas 2D offline con rasterización Retina 2x de ultra alta definición, copia PNG con un clic al portapapeles del sistema (compatible con Telegram, Discord, X, WeChat, QQ) o guardado local.
+    - **Móvil**: Motor de captura de bitmap acelerado por hardware Compose 1.8, guardado sin pérdidas en la galería del sistema (`MediaStore`) y panel nativo de compartición de Android mediante `FileProvider`.
 
 ### 6. 🛡️ Suite completa de privacidad y seguridad (Enterprise-Grade Privacy & Security)
-- **PIN numérico de bloqueo y protección por desenfoque de ventana**:
-  - Establezca un PIN de 4–6 dígitos para bloquear la aplicación; al perder el foco o tras el tiempo de espera configurado (1/5/15/30 minutos), se activa automáticamente la pantalla de bloqueo con efecto de vidrio esmerilado (`AppLockOverlay.vue`).
-  - Al minimizar la ventana o cambiar a otra aplicación, se superpone instantáneamente una capa antiespionaje de vidrio esmerilado gaussiano.
-- **Interruptor de pánico: calculadora camuflada (Panic Switch)**:
-  - Cambia al instante a una calculadora oscura real y funcional al estilo Apple (`FakeCalculatorModal.vue`), con soporte para las cuatro operaciones aritméticas.
-  - En escritorio, el atajo <kbd>Cmd + Shift + P</kbd> activa el modo pánico; en móvil, mediante un gesto (voltear el dispositivo boca abajo).
-  - Introduzca el PIN correcto en la calculadora y pulse `=`, o toque el título superior 4 veces seguidas, para desbloquear y regresar a la biblioteca de forma segura.
-- **Camuflaje del título y del icono de la aplicación**:
-  - Personalice el título de la ventana (p. ej., «Calculator», «Notes») para evitar que aparezca en el selector de tareas del sistema.
-  - Incluye varios temas de icono de diseño premium (como «Tótem Marciano Dual» y «Estuche de Película de Obsidiana»), así como iconos camuflados inofensivos (notas, contabilidad, calculadora).
+- **Diseño simplificado en escritorio centrado en la catalogación**:
+  - El cliente de escritorio ha simplificado su arquitectura eliminando la antigua calculadora camuflada de emergencia, volviendo a una gestión de activos audiovisuales offline pura, eficiente y minimalista.
+- **Bloqueo por PIN y protección biométrica en móviles**:
+  - En Android, permite configurar un bloqueo numérico por PIN de 4–6 dígitos y desbloqueo biométrico por huella o reconocimiento facial; al perder el foco o tras el tiempo de espera configurado (1/5/15/30 minutos), se activa automáticamente la pantalla de bloqueo de seguridad.
+  - Al perder el foco la ventana o cambiar a otra aplicación, se superpone instantáneamente una capa de vidrio esmerilado gaussiano antiespionaje.
 - **Aislamiento físico a nivel de sistema en Android**:
   - Integración con `FLAG_SECURE` del sistema Android para bloquear grabación de pantalla, capturas y vistas previas en la tarjeta de multitarea del sistema.
   - Almacenamiento en sandbox físico aislado, con inyección recursiva de `.nomedia` en directorios para bloquear completamente el escaneo de galerías de terceros.
@@ -127,18 +126,32 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
 - **Integración de búsqueda BT Magnet**: Combina automáticamente el título original de la película y el nombre del estudio en una búsqueda estándar dirigida a motores de recursos externos.
 - **Interruptores independientes**: El centro de extensiones permite activar o desactivar de forma individual cada fuente de búsqueda externa con configuración detallada.
 - **Motor de scraping incremental y sincronización**: Compatible con scraping de actualización por red bajo demanda y caché offline local de pósteres y fotogramas.
-- **Motor de raspado wiki PBC — Porn Base Central** (`scrape_pbc_actors.py`): Indexa más de **1.200 perfiles de actores** con rastreo completo del motor MediaWiki, detección automática de revisiones incrementales para evitar trabajo redundante, comparación exhaustiva de más de **25 campos de atributos** por perfil y una tasa de coincidencia comprobada del **97,3 %**.
-- **Motor de raspado SmutJunkies** (`scrape_smutjunkies_actors.py`): Cubre más de **6.700 actores de cine gay adulto** con indexación completa del índice alfabético de 26 letras, algoritmo de alineación de datos de **4 niveles de alta resiliencia** ante cambios de estructura del sitio y sincronización incremental bidireccional que preserva las anotaciones locales existentes.
+- **Motor de raspado wiki PBC (Porn Base Central)** (`scrape_pbc_actors.py`):
+  - Indexa más de **1.200 perfiles de actores** con rastreo en profundidad basado en la API de MediaWiki;
+  - Detección automática de revisiones incrementales para sincronizar únicamente los artículos modificados desde la última ejecución, reduciendo drásticamente el consumo de ancho de banda;
+  - Comparación detallada de más de **25 campos de atributos** (nombre real, año de debut, etnia, signo zodiacal, estado de actividad, enlaces a plataformas externas, etc.);
+  - Tasa de coincidencia comprobada de nombres de actores del **97,3 %**.
+- **Motor de raspado SmutJunkies** (`scrape_smutjunkies_actors.py`):
+  - Cubre más de **6.700 actores de cine gay adulto** con indexación completa del catálogo alfabético de 26 letras de la A a la Z;
+  - Algoritmo de alineación de alta tolerancia de **4 niveles** (coincidencia exacta → coincidencia difusa normalizada → verificación cruzada de alias → cola de revisión manual), asegurando una correlación de alta confianza entre fuentes;
+  - Soporte de **sincronización incremental bidireccional**: incorporación automática de nuevas entradas y actualización a nivel de campo sin pérdida de datos locales existentes.
 
-### 9. Internacionalización completa y sistema de trofeos gamificado con 77+ logros
+### 9. Internacionalización completa y experiencia ligera depurada (Internationalization & Streamlined UX)
 - **7 idiomas de interfaz disponibles**: Chino simplificado (`zh-CN`), Chino tradicional (`zh-TW`), Inglés (`en`), Italiano (`it`), Japonés (`ja`), Español (`es`) y Alemán (`de`).
-- **Sistema de trofeos estilo PlayStation**:
-  - Más de 77 logros de exploración, búsqueda, enfoque y colección integrados; al desbloquearlos se activa una notificación emergente con animación fluida al estilo PSN.
-  - Seguimiento basado en métricas de comportamiento reales, con soporte para reinicio y gestión independiente de los datos de trofeos.
+- **Eliminación completa del sistema de logros y trofeos**:
+  - Para preservar la ligereza, pureza y máxima eficiencia de la herramienta de gestión de bases de datos, se ha eliminado de forma limpia en todas las plataformas (macOS / Windows / Android) el antiguo sistema de trofeos estilo PlayStation y sus consultas de sondeo en segundo plano, suprimiendo la sobrecarga de procesamiento innecesaria y el código redundante.
 
-### 10. Cobertura multiplataforma y sincronización de datos en tres dispositivos (macOS / Windows / Android)
+### 10. Copia de seguridad universal entre dispositivos y actualización fluida (Cross-Platform Backup & Seamless Update)
+- **Copia de seguridad y restauración universal entre dispositivos (`GPDb_Backup.json`)**:
+  - Arquitectura de respaldo en formato JSON estándar y unificado para exportar e importar con un solo clic todas las colecciones personales, historial de visualización, puntuaciones y etiquetas, configuración de API de modelos de lenguaje y preferencias del sistema.
+  - Elimina por completo los silos de datos entre macOS, Windows y Android: cambiar de dispositivo, reinstalar el sistema o sincronizar datos solo requiere un único archivo de respaldo, con migración fluida e instantánea.
+- **Botón «Buscar actualizaciones» directo y actualización incremental con reanudación de descargas**:
+  - Tanto la versión de escritorio como la versión móvil integran detección de versiones automática y manual directamente en Configuración («Buscar actualizaciones»), comparando en tiempo real con las últimas Releases de GitHub y mostrando el registro de cambios detallado.
+  - Motor de descarga de alta velocidad con soporte para reanudación de descargas interrumpidas, guiando al usuario tras la descarga para completar la actualización de forma fluida y mantener la aplicación siempre en su versión más estable.
+
+### 11. Cobertura multiplataforma y sincronización de datos en tres dispositivos (macOS / Windows / Android)
 - **Cliente de escritorio macOS nativo (`desktop_client/`)**: Mediante la arquitectura Tauri v2 + Rust, compatible perfectamente con Apple Silicon e Intel, con efecto de vidrio esmerilado nativo y atajos de teclado.
-- **Cliente de escritorio Windows nativo (`Windows_client/`)**: Directorio independiente desacoplado, motor de análisis Python inteligente con múltiples rutas, supresión de consola (`CREATE_NO_WINDOW`), optimización de fuente Microsoft YaHei, barra de desplazamiento delgada, ajuste de ventana Win11 y instalación ligera de usuario único sin privilegios de administrador mediante NSIS.
+- **Cliente de escritorio Windows nativo (`Windows_client/`)**: Directorio independiente desacoplado, motor de análisis Python inteligente con múltiples rutas, supresión de consola (`CREATE_NO_WINDOW`), optimización de fuente Microsoft YaHei, barra de desplazamiento delgada, ajuste de ventana Win11 y proceso de instalación ligero de usuario único sin privilegios de administrador mediante NSIS.
 - **Cliente móvil Android nativo (`android_client/`)**: Desarrollado nativamente con la pila moderna Kotlin + Jetpack Compose + Room, integrado a la perfección con el esquema de datos del escritorio para consultas, etiquetado y colección offline en cualquier momento y lugar.
 
 ---
@@ -167,13 +180,13 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
 
 ### Para usuarios finales (Recomendado)
 
-Descargue el instalador precompilado de la versión **`v2.14.0`** desde la sección de [Releases](https://github.com/GeavenMax/GPDb/releases):
+Descargue el instalador precompilado de la versión **`v2.15.0`** desde la sección de [Releases](https://github.com/GeavenMax/GPDb/releases):
 
 | Plataforma | Archivo de instalación | Instrucciones |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.14.0.dmg` | Haga doble clic para montar el archivo y arrastre `GPDb.app` a la carpeta `Aplicaciones`.<br>*(Si al abrir por primera vez aparece una advertencia de notarización, vaya a «Configuración del sistema → Privacidad y seguridad» y haga clic en «Abrir de todas formas», o ejecute `sudo xattr -cr /Applications/GPDb.app` en la terminal)* |
-| **🪟 Windows** | `GPDb-Windows-v2.14.0.exe` | Haga doble clic en el instalador para completar la instalación. Arquitectura NSIS de usuario único sin privilegios de administrador: listo para usar de inmediato. |
-| **🤖 Android** | `GPDb-Android-v2.14.0-signed.apk` | Descargue el archivo en su dispositivo y toque para instalar (firmado con clave oficial; si el sistema solicita permitir instalación desde fuentes desconocidas, acéptelo). |
+| ** macOS** | `GPDb-macOS-v2.15.0.dmg` | Haga doble clic para montar el archivo y arrastre `GPDb.app` a la carpeta `Aplicaciones`.<br>*(Si al abrir por primera vez aparece una advertencia de notarización, vaya a «Configuración del sistema → Privacidad y seguridad» y haga clic en «Abrir de todas formas», o ejecute `sudo xattr -cr /Applications/GPDb.app` en la terminal)* |
+| **🪟 Windows** | `GPDb-Windows-v2.15.0.exe` | Haga doble clic en el instalador para completar la instalación. Arquitectura NSIS de usuario único sin privilegios de administrador: listo para usar de inmediato. |
+| **🤖 Android** | `GPDb-Android-v2.15.0-signed.apk` | Descargue el archivo en su dispositivo y toque para instalar (firmado con clave oficial; si el sistema solicita permitir instalación desde fuentes desconocidas, acéptelo). |
 
 ---
 

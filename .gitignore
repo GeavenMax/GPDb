@@ -85,3 +85,7 @@ local.properties
 .DS_Store
 .vscode/
 .idea/
+*.app/
+desktop_client/GPDb.app/
+GPDb_Images.zip
+

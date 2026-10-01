@@ -121,7 +121,7 @@ fun LibraryScreen(
                         LibraryTab.FAV_SERIES -> {
                             items(
                                 items = uiState.series,
-                                key = { it.rootTitle },
+                                key = { it.id ?: "${it.studioName}_${it.rootTitle}_${it.hashCode()}" },
                                 contentType = { "series" }
                             ) { s ->
                                 com.gpdb.android.ui.browse.SeriesGridItem(

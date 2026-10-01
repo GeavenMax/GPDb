@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.14.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.15.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -66,8 +66,8 @@ Nell'ambito dei contenuti per adulti, la cronologia di visione, i segnalibri e l
 - **Cinque flussi di scoperta**:
   - **Carosello poster panoramico (Hero Carousel)**: Scorrimento fluido ad alta definizione con raffinati effetti di parallasse interattiva.
   - **Accadde oggi · Prime storiche (On This Day)**: Confronto intelligente con il calendario storico per rivivere le anteprime classiche dello stesso giorno (anni '80, '90, 2000).
-  - **Stelle di oggi · Volti iconici (Star Spotlight)**: Verifica fisica dei file poster sul disco locale, mettendo in evidenza i volti iconici con immagini ad alta definizione autentiche, escludendo segnaposto testuali.
-  - **Grandi saghe cinematografiche (Iconic Series)**: Recupero automatico delle serie iconiche che si estendono su oltre dieci capitoli.
+  - **Stelle di oggi · Volti iconici (Star Spotlight)**: Verifica fisica dei file poster sul disco locale, mettendo in evidenza solo i volti iconici dotati di autentiche immagini ad alta definizione, escludendo rigorosamente segnaposto o voci prive di foto.
+  - **Grandi saghe cinematografiche (Iconic Series)**: Selezione ad estrazione casuale delle serie iconiche articolate su numerosi capitoli, con pratico pulsante «Mostra altre» per esplorare nuove saghe.
   - **Scoperta casuale · Tesori nascosti (Lucky Discovery)**: Un tasto per lanciare i dadi e scovare titoli rari tra oltre 60.000 opere in archivio.
 - **Due layout poster e lightbox a schermo intero con zoom gestuale/rotella**:
   - Supporto per **galleria adattiva ad alta definizione (`adaptive_pager`)** e **schede tridimensionali fisiche (`flip_3d`)**: con prospettiva fisica CSS 3D a 60 fps, pulsanti girevoli e illuminazione ambientale da collezione.
@@ -82,35 +82,31 @@ Nell'ambito dei contenuti per adulti, la cronologia di visione, i segnalibri e l
 - **Filmografia dedicata al regista**: Apertura istantanea della scheda regista dalla pagina del film, con la filmografia completa e la possibilità di filtrare direttamente l'archivio per regista.
 - **Catalogo storico degli studi**: Dai pionieri classici della pellicola (Falcon, Colt, Catalina, ecc.) ai leader del digitale contemporaneo (Men.com, BelAmi, Lucas Entertainment, Corbin Fisher, ecc.), con cronologia delle opere e tag di genere.
 
-### 5. 📸 Modalità privacy schermata e schede di condivisione luminose (Novità v2.13.0)
-- **Modalità privacy schermata globale con un solo tocco**:
-  - La barra di navigazione superiore offre un interruttore a forma di occhio per la «privacy schermata»; supporta scorciatoie da tastiera e commutazione istantanea dello stato (privacy attiva / navigazione normale).
-  - **Controllo granulare della desensibilizzazione della privacy**:
-    - `Oscura poster e fotogrammi`: sfocatura gaussiana globale (`blur(24px)`) su tutte le copertine, fotogrammi e avatar di attori e registi, impedendo la divulgazione di immagini sensibili tramite screenshot o condivisione social.
-    - `Oscura sinossi e testo sensibile`: sfocatura gaussiana (`blur(7px)`) sulle sinossi e le trame delle scene, con selezione del testo disabilitata, per prevenire la divulgazione di contenuti riservati.
-  - Sul client Android, basato sul flusso di stato reattivo `LocalPrivacyBlur`, l'effetto è applicato a schermo intero in tempo reale.
-- **Generatore adattivo di schede di condivisione con effetto luce**:
-  - Dalle pagine dei film e delle scene, generate con un solo tocco schede di condivisione di livello Apple Music / Spotify.
-  - L'alone di sfondo viene estratto adattivamente dall'immagine di copertina con una sfocatura gaussiana ad ampio raggio e alta precisione (`blur(45px~60px)`), disponibile nei preset «Vibrante (Vibrant)», «Scuro (Dark)» e «Mezzanotte (Midnight)».
-  - **Desensibilizzazione sicura prima della condivisione**: selezionate indipendentemente «Oscura poster» e «Oscura testo» per una condivisione sicura nei gruppi social e sulle reti pubbliche.
-  - **Esportazione senza perdite su entrambe le piattaforme**:
-    - **Client desktop**: Basato sul motore HTML5 Canvas 2D offline, rasterizza in risoluzione ultra-HD 2x Retina, con copia PNG negli appunti di sistema con un clic (incolla direttamente su WeChat/QQ/Telegram/Discord/X) oppure esportazione e salvataggio in locale.
-    - **Client mobile**: Utilizza il motore di acquisizione bitmap con accelerazione hardware di Compose 1.8, supporta il salvataggio senza perdite nell'album di sistema (`MediaStore`) con un solo tocco e il pannello di condivisione nativo Android tramite `FileProvider`.
+### 5. 📸 Schede di condivisione e privacy dello schermo (Novità v2.15.0)
+- **Modalità privacy globale e interruttore rapido con un tocco**:
+  - **Schermata Home di Android**: Nuovo pulsante a forma di occhio nella barra superiore dell'app bar per attivare/disattivare la modalità privacy con un tocco, accompagnato da notifica Toast immediata; applica istantaneamente la sfocatura su tutte le copertine, fotogrammi e avatar della libreria.
+  - **Client desktop**: Interruttore rapido nella barra di navigazione e supporto a scorciatoie da tastiera per commutare all'istante tra navigazione normale e modalità protetta.
+  - **Controllo granulare della desensibilizzazione**:
+    - `Oscura poster e fotogrammi`: sfocatura gaussiana globale (`blur(24px)`) su tutte le locandine, scene e volti dei modelli per impedire la diffusione involontaria di immagini esplicite.
+    - `Oscura sinossi e testo sensibile`: sfocatura gaussiana (`blur(7px)`) su trame e descrizioni, con disattivazione della selezione del testo per prevenire spoiler o fughe di dettagli.
+- **Generatore di schede di condivisione ad alta fedeltà con doppia locandina e QR Telegram**:
+  - **Doppia locandina affiancata (fronte e retro)**: Possibilità di visualizzare contemporaneamente e affiancate la locandina frontale e il retro della copertina (ove presente), complete di badge satinati «Fronte» e «Retro».
+  - **Adattamento 16:9 senza distorsioni per le singole scene**: Le schede delle scene passano automaticamente al layout orizzontale 16:9, applicando un algoritmo di ritaglio centrato (`object-fit: cover`) sia in ambiente Canvas desktop che Jetpack Compose mobile, garantendo che i volti e i dettagli non subiscano stiramenti o compressioni.
+  - **Codice QR ufficiale Telegram nell'angolo**: QR code ad alta densità (27x27) posizionato nell'angolo inferiore per un accesso istantaneo al canale ufficiale `@gpdbnews`, renderizzato con precisione vettoriale ideale per esportazioni su display Retina 2x.
+  - **Sfocatura bilineare offscreen affidabile**: Implementazione di un algoritmo di sfocatura a doppio passaggio su buffer offscreen indipendente dall'hardware, che aggira i difetti di accelerazione hardware di WebKit e WebView2 garantendo un effetto satinato perfetto sia nell'anteprima che nel file esportato.
+  - Sfondo adattivo a fascio di luce estratto dalle tinte della copertina nei preset «Vibrante (Vibrant)», «Scuro (Dark)» e «Mezzanotte (Midnight)».
+  - Esportazione senza perdita (2x Retina su desktop con copia diretta PNG negli appunti o salvataggio; accelerazione Compose 1.8 su Android con salvataggio in galleria tramite `MediaStore` e condivisione nativa via `FileProvider`).
 
 ### 6. 🛡️ Suite completa di sicurezza e privacy (Enterprise-Grade Privacy & Security)
-- **Blocco schermo PIN e protezione dalla perdita di focus**:
-  - Supporta un PIN numerico da 4 a 6 cifre per il blocco dell'app; in caso di perdita di focus o timeout (1/5/15/30 minuti) viene applicata automaticamente una schermata di blocco con effetto vetro satinato (`AppLockOverlay.vue`).
-  - Quando la finestra perde il focus o si passa ad un'altra app, viene istantaneamente sovrapposto uno strato protettivo con effetto vetro smerigliato.
-- **Interruttore di emergenza – Calcolatrice camuffata (Panic Switch)**:
-  - Commutazione istantanea verso una calcolatrice nera in stile Apple, pienamente funzionante (`FakeCalculatorModal.vue`), con supporto per le quattro operazioni aritmetiche.
-  - Sul client desktop, la scorciatoia <kbd>Cmd + Shift + P</kbd> attiva l'interruttore di emergenza; sul client mobile è sufficiente un gesto (capovolgere il dispositivo).
-  - Inserite il PIN corretto nella calcolatrice e premete `=`, oppure toccate rapidamente il titolo in alto per 4 volte, per sbloccare e tornare all'archivio.
-- **Camuffamento del titolo dell'app e dell'icona sul desktop**:
-  - Supporta la personalizzazione del titolo della finestra (ad es. "Calculator", "Notes") per evitare che il selettore attività del sistema riveli l'app.
-  - Icone tematiche premium integrate (come «Totem dei Due Eroi» e «Cassetta di Pellicola in Ossidiana»), oltre a icone innocue (note, contabilità, calcolatrice).
-- **Isolamento fisico a livello di sistema sul mobile**:
-  - Integrazione con il flag di sistema Android `FLAG_SECURE` per prevenire registrazione schermo, screenshot e anteprima nelle miniature del multitasking.
-  - Archiviazione in sandbox fisicamente isolata, con iniezione ricorsiva di `.nomedia` nelle directory per bloccare completamente la scansione da parte di gallerie fotografiche di terze parti.
+- **Blocco schermo con PIN e protezione alla perdita di focus**:
+  - Supporto per codice PIN numerico (4~6 cifre) e timer di inattività configurabile (1/5/15/30 minuti) protetto da interfaccia in vetro smerigliato (`AppLockOverlay.vue`).
+  - Schermatura immediata con effetto satinato non appena la finestra perde il focus o si passa a un'altra applicazione.
+- **Isolamento fisico a livello di sistema su mobile**:
+  - Integrazione con il flag nativo Android `FLAG_SECURE` per inibire screenshot, registrazione video dello schermo e anteprime nelle schede del multitasking.
+  - Isolamento in sandbox con file `.nomedia` posizionati ricorsivamente in tutte le cartelle per precludere la scansione da parte di app galleria esterne.
+  - Gesto rapido di emergenza su dispositivi mobili (capovolgimento del dispositivo con lo schermo rivolto verso il basso).
+- **Architettura desktop snella e focalizzata**:
+  - Completa rimozione della finta calcolatrice (panic switch) sui client desktop a vantaggio di un'esperienza d'uso purificata, essenziale e performante, salvaguardando il blocco PIN, la privacy dello schermo e la sicurezza su mobile.
 
 ### 7. Analisi del gusto con IA e traduzione multilingue con grandi modelli linguistici
 - **Analisi del gusto con IA e ritratto estetico (AI Persona Insights)**:
@@ -130,16 +126,21 @@ Nell'ambito dei contenuti per adulti, la cronologia di visione, i segnalibri e l
 - **Motore di scraping wiki PBC (Porn Base Central)** (`scrape_pbc_actors.py`): Acquisisce e indicizza oltre **1.200 profili attori** dall'enciclopedia wiki PBC tramite crawl completo delle pagine MediaWiki. Implementa il rilevamento delle revisioni incrementali per aggiornare solo i profili effettivamente modificati, riducendo al minimo il traffico di rete. Il confronto degli attributi copre **oltre 25 campi** (nome, pseudonimi, nazionalità, corporatura, misure fisiche, link ai profili esterni, ecc.) con un tasso di corrispondenza verificato del **97,3%**.
 - **Motore di scraping SmutJunkies** (`scrape_smutjunkies_actors.py`): Indicizza oltre **6.700 attori gay adulti** dall'indice completo del sito SmutJunkies, con copertura dell'intero alfabeto su **26 sezioni per lettera**. L'algoritmo di allineamento a **4 livelli ad alta resilienza** (corrispondenza esatta → normalizzazione → fuzzy matching → disambiguazione manuale) garantisce la massima precisione di abbinamento anche in presenza di varianti ortografiche e pseudonimi multipli. Supporta la **sincronizzazione incrementale bidirezionale**: i record già presenti nel database locale vengono aggiornati selettivamente senza sovrascrivere dati arricchiti manualmente dall'utente.
 
-### 9. Internazionalizzazione completa e sistema di 77+ trofei gamificati
-- **7 lingue selezionabili per tutta l'interfaccia**: Cinese semplificato (`zh-CN`), Cinese tradizionale (`zh-TW`), Inglese (`en`), Italiano (`it`), Giapponese (`ja`), Spagnolo (`es`) e Tedesco (`de`).
-- **Sistema di trofei stile PlayStation**:
-  - Oltre 77 obiettivi di esplorazione, ricerca, focus e collezione integrati; al momento dello sblocco viene attivato un popup con animazione fluida in stile PSN.
-  - Basato su metriche comportamentali reali, con supporto al reset indipendente e alla gestione della verifica dei dati trofeo.
+### 9. Internazionalizzazione completa e ottimizzazione prestazionale
+- **7 lingue selezionabili per l'intera interfaccia**: Cinese semplificato (`zh-CN`), Cinese tradizionale (`zh-TW`), Inglese (`en`), Italiano (`it`), Giapponese (`ja`), Spagnolo (`es`) e Tedesco (`de`).
+- **Codice snello e rimozione completa dei trofei**:
+  - Rimozione integrale del sistema di trofei ludici e delle relative routine di monitoraggio in background; il client si focalizza interamente su reattività, leggerezza, pulizia del design e massima efficienza delle prestazioni.
 
-### 10. Copertura multipiattaforma e sincronizzazione dati su tre client (macOS / Windows / Android)
+### 10. Copertura multipiattaforma, backup universale e aggiornamenti integrati (macOS / Windows / Android)
 - **Client desktop macOS nativo (`desktop_client/`)**: Tramite l'architettura Tauri v2 + Rust, supporta perfettamente Apple Silicon e architettura Intel, con vetro satinato nativo e interazione tramite scorciatoie da tastiera.
 - **Client desktop Windows nativo (`Windows_client/`)**: Directory dedicata e indipendente, con motore di analisi Python intelligente multi-percorso integrato, soppressione della console nera (`CREATE_NO_WINDOW`), ottimizzazione del font Microsoft YaHei, barra di scorrimento sottile, aggancio a schermo diviso di Win11 e installazione NSIS leggera per singolo utente senza privilegi elevati.
 - **App Android nativa (`android_client/`)**: Costruita nativamente con il moderno stack Kotlin + Jetpack Compose + Room, si integra perfettamente con il modello dati del client desktop, per consultare e catalogare l'archivio ovunque e in qualsiasi momento in modalità offline.
+- **Backup e ripristino universale tra dispositivi (`GPDb_Backup.json`)**:
+  - Sezione dedicata nelle impostazioni di tutti i client per esportare e importare la configurazione completa dell'utente in un formato JSON unificato (`gpdb_universal_backup`).
+  - Copertura integrale dei preferiti (film, scene, attori, registi, studi, saghe), tag personalizzati, note private con valutazione a stelle, stato di visione e statistiche di utilizzo, garantendo una migrazione fluida e senza perdite tra desktop e dispositivi mobili.
+- **Pulsante «Verifica aggiornamenti» integrato e aggiornamento in-app**:
+  - Nuova sezione «Info e aggiornamenti» nelle impostazioni di macOS, Windows e Android con pulsante dedicato per interrogare in tempo reale le release ufficiali su GitHub.
+  - Notifica immediata di nuove versioni disponibili e download facilitato dei pacchetti ufficiali di aggiornamento (montaggio DMG su macOS, installer EXE su Windows, APK su Android).
 
 ---
 
@@ -169,13 +170,13 @@ I tre client — **macOS**, **Windows** e **Android** — condividono lo stesso 
 
 ### Per utenti finali (Consigliato)
 
-Scaricate il pacchetto di installazione più recente **`v2.14.0`** dalla pagina delle [Releases](https://github.com/GeavenMax/GPDb/releases) di questo repository:
+Scaricate il pacchetto di installazione più recente **`v2.15.0`** dalla pagina delle [Releases](https://github.com/GeavenMax/GPDb/releases) di questo repository:
 
 | Piattaforma | File di installazione | Modalità di installazione e note |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.14.0.dmg` | Aprite l'immagine disco e trascinate `GPDb.app` nella cartella `Applicazioni`.<br>*(Al primo avvio, se viene segnalato come non notarizzato, andate su «Impostazioni di Sistema → Privacy e sicurezza» e fate clic su «Apri comunque», oppure eseguite nel Terminale `sudo xattr -cr /Applications/GPDb.app`)* |
-| **🪟 Windows** | `GPDb-Windows-v2.14.0.exe` | Fate doppio clic sul programma di installazione per completare l'installazione. Utilizza l'architettura NSIS per singolo utente senza privilegi elevati: nessun permesso di amministratore richiesto, pronto all'uso immediatamente. |
-| **🤖 Android** | `GPDb-Android-v2.14.0-signed.apk` | Scaricate sul dispositivo e fate tap per installare (firmato con chiave pubblica ufficiale; se il sistema chiede di consentire l'installazione da origini sconosciute, confermate l'autorizzazione). |
+| ** macOS** | `GPDb-macOS-v2.15.0.dmg` | Aprite l'immagine disco e trascinate `GPDb.app` nella cartella `Applicazioni`.<br>*(Al primo avvio, se viene segnalato come non notarizzato, andate su «Impostazioni di Sistema → Privacy e sicurezza» e fate clic su «Apri comunque», oppure eseguite nel Terminale `sudo xattr -cr /Applications/GPDb.app`)* |
+| **🪟 Windows** | `GPDb-Windows-v2.15.0.exe` | Fate doppio clic sul programma di installazione per completare l'installazione. Utilizza l'architettura NSIS per singolo utente senza privilegi elevati: nessun permesso di amministratore richiesto, pronto all'uso immediatamente. |
+| **🤖 Android** | `GPDb-Android-v2.15.0-signed.apk` | Scaricate sul dispositivo e fate tap per installare (firmato con chiave pubblica ufficiale; se il sistema chiede di consentire l'installazione da origini sconosciute, confermate l'autorizzazione). |
 
 ---
 
@@ -194,7 +195,7 @@ cd GPDb
 
 # 2. Accedere alla cartella del client desktop
 cd desktop_client
-
+ 
 # 3. Installare le dipendenze frontend
 npm install
 

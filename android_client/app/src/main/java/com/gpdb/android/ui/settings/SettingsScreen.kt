@@ -4,10 +4,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +39,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+enum class SettingsTab(val label: String, val icon: ImageVector) {
+    ALL("全部", Icons.Default.Settings),
+    APPEARANCE("外观", Icons.Default.Palette),
+    ANALYTICS("统计", Icons.Default.Insights),
+    PRIVACY("隐私", Icons.Default.Security),
+    TRANSLATE("AI翻译", Icons.Default.Translate),
+    SYNC("数据同步", Icons.Default.Storage),
+    ABOUT("关于更新", Icons.Default.Info)
+}
 
 fun changeAppIcon(context: Context, scope: CoroutineScope, newIcon: String) {
     val pm = context.packageManager
@@ -130,6 +145,29 @@ fun SettingsScreen(
     var showPinDialog by remember { mutableStateOf(false) }
     var showTimeoutDialog by remember { mutableStateOf(false) }
     var showPanicActionDialog by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(SettingsTab.ALL) }
+    var isCheckingAppUpdate by remember { mutableStateOf(false) }
+    var activeAppUpdateRelease by remember { mutableStateOf<com.gpdb.android.util.AppReleaseInfo?>(null) }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportUserDataToFile(context, uri) { _, msg ->
+                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.importUserDataFromFile(context, uri) { _, msg ->
+                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -157,27 +195,67 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── Section 1: 外观与个性化 ─────────────────────────────────
-            SectionHeader(
-                icon = Icons.Default.Palette,
-                title = I18n.string("settings.appearance"),
-                subtitle = I18n.string("settings.themeDesc")
-            )
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            // 顶部二级胶囊分类切换栏 (仿照 macOS SettingsSubTab)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    val currentTheme = AppTheme.fromId(themeChoice)
-                    SettingItemRow(
-                        title = I18n.string("settings.theme"),
-                        subtitle = currentTheme.label,
-                        icon = Icons.Default.Brightness4,
+                SettingsTab.entries.forEach { tab ->
+                    val isSelected = selectedTab == tab
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedTab = tab },
+                        label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.outline
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), thickness = 0.5.dp)
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // ── Section 1: 外观与个性化 ─────────────────────────────────
+                if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.APPEARANCE) {
+                    SectionHeader(
+                        icon = Icons.Default.Palette,
+                        title = I18n.string("settings.appearance"),
+                        subtitle = I18n.string("settings.themeDesc")
+                    )
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column {
+                            val currentTheme = AppTheme.fromId(themeChoice)
+                            SettingItemRow(
+                                title = I18n.string("settings.theme"),
+                                subtitle = currentTheme.label,
+                                icon = Icons.Default.Brightness4,
                         onClick = { showThemeDialog = true }
                     ) {
                         ThemeSwatchesMini(theme = currentTheme)
@@ -223,8 +301,10 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
 
-            // ── Section 2: 本地使用统计 ─────────────────────────────────
+        // ── Section 2: 本地使用统计 ─────────────────────────────────
+        if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.ANALYTICS) {
             SectionHeader(
                 icon = Icons.Default.Insights,
                 title = I18n.string("settings.analytics"),
@@ -273,8 +353,10 @@ fun SettingsScreen(
                     )
                 }
             }
+        }
 
-            // ── Section 3: 隐私与安全 ─────────────────────────────────
+        // ── Section 3: 隐私与安全 ─────────────────────────────────
+        if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.PRIVACY) {
             SectionHeader(
                 icon = Icons.Default.Security,
                 title = I18n.string("settings.privacy"),
@@ -297,8 +379,8 @@ fun SettingsScreen(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     SettingSwitchRow(
-                        title = "截屏隐私打码模式",
-                        subtitle = if (screenshotPrivacyBlurEnabled) "已开启：所有界面图片与介绍文字高斯模糊" else "未开启：正常显示",
+                        title = "防窥模式",
+                        subtitle = if (screenshotPrivacyBlurEnabled) "已开启：所有界面图片与介绍文字高斯模糊" else "未开启：正常显示（主页顶部亦可快捷开关）",
                         icon = Icons.Default.BlurOn,
                         checked = screenshotPrivacyBlurEnabled,
                         onCheckedChange = { viewModel.setScreenshotPrivacyBlurEnabled(it) }
@@ -421,8 +503,10 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
 
-            // ── Section 4: AI 智能直白翻译 ─────────────────────────────
+        // ── Section 4: AI 智能直白翻译 ─────────────────────────────
+        if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.TRANSLATE) {
             SectionHeader(
                 icon = Icons.Default.Translate,
                 title = "AI 智能翻译引擎",
@@ -475,8 +559,10 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
 
-            // ── Section 5: 同步与数据存储 ───────────────────────────────
+        // ── Section 5: 同步与数据存储 ───────────────────────────────
+        if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.SYNC) {
             SectionHeader(
                 icon = Icons.Default.Storage,
                 title = "同步与数据存储",
@@ -574,12 +660,125 @@ fun SettingsScreen(
                         icon = Icons.Default.FolderOpen,
                         onClick = onRemountClick
                     )
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+                    SettingItemRow(
+                        title = "导出通用配置备份 (JSON)",
+                        subtitle = "导出“我的收藏”、统计时长与用户个人数据，四端通用",
+                        icon = Icons.Default.FileDownload,
+                        onClick = {
+                            val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault())
+                            val filename = "GPDb_Backup_${sdf.format(java.util.Date())}.json"
+                            exportLauncher.launch(filename)
+                        }
+                    )
+
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+                    SettingItemRow(
+                        title = "导入通用配置恢复 (JSON)",
+                        subtitle = "从 macOS、Windows、iOS 或其他设备备份导入收藏与统计",
+                        icon = Icons.Default.FileUpload,
+                        onClick = {
+                            importLauncher.launch(arrayOf("application/json", "*/*"))
+                        }
+                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
         }
+
+        // ── Section 6: 关于与软件更新 ───────────────────────────────
+        if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.ABOUT) {
+            SectionHeader(
+                icon = Icons.Default.Info,
+                title = "关于与软件更新",
+                subtitle = "当前版本: v${com.gpdb.android.BuildConfig.VERSION_NAME} · 巡检 GitHub Releases 官方版本"
+            )
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                Column {
+                    SettingItemRow(
+                        title = "检查新版本更新",
+                        subtitle = if (isCheckingAppUpdate) "正在连接 GitHub 巡检最新版本..." else "点击立即检测官方仓库是否有新版本",
+                        icon = if (isCheckingAppUpdate) Icons.Default.CloudSync else Icons.Default.SystemUpdate,
+                        onClick = {
+                            if (!isCheckingAppUpdate) {
+                                isCheckingAppUpdate = true
+                                scope.launch {
+                                    when (val res = com.gpdb.android.util.AppUpdateManager.checkAppUpdateDetailed()) {
+                                        is com.gpdb.android.util.AppUpdateCheckResult.UpdateAvailable -> {
+                                            isCheckingAppUpdate = false
+                                            activeAppUpdateRelease = res.info
+                                        }
+                                        is com.gpdb.android.util.AppUpdateCheckResult.AlreadyLatest -> {
+                                            isCheckingAppUpdate = false
+                                            Toast.makeText(context, "当前已是最新版本 (v${res.currentVersion})", Toast.LENGTH_SHORT).show()
+                                        }
+                                        is com.gpdb.android.util.AppUpdateCheckResult.Error -> {
+                                            isCheckingAppUpdate = false
+                                            Toast.makeText(context, "检查更新失败: ${res.message}", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    ) {
+                        if (isCheckingAppUpdate) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "开源代码仓库",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "github.com/GeavenMax/GPDb",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                val intent = android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse("https://github.com/GeavenMax/GPDb")
+                                )
+                                context.startActivity(intent)
+                            }
+                        ) {
+                            Text("访问 ↗")
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
+}
+}
 
     // ── Dialogs ──────────────────────────────────────────────────
     if (showThemeDialog) {
@@ -676,30 +875,96 @@ fun SettingsScreen(
     if (showPosterModeDialog) {
         AlertDialog(
             onDismissRequest = { showPosterModeDialog = false },
-            title = { Text("海报展示模式") },
+            title = { Text("海报展示与翻转排版方案") },
             text = {
-                Column {
-                    listOf("adaptive_pager" to "平铺自适应画廊 (完整海报，平滑翻页)", "flip_3d" to "3D 景深翻转卡片 (正背面翻转动画)").forEach { (mode, name) ->
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Option A: 自适应高清画廊
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (posterMode == "adaptive_pager") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        border = BorderStroke(1.dp, if (posterMode == "adaptive_pager") MaterialTheme.colorScheme.primary else Color.Transparent),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.setPosterDisplayMode("adaptive_pager")
+                                showPosterModeDialog = false
+                            }
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    viewModel.setPosterDisplayMode(mode)
-                                    showPosterModeDialog = false
-                                }
-                                .padding(vertical = 10.dp)
+                            modifier = Modifier.padding(12.dp)
                         ) {
+                            // Visual Illustration Box A
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 48.dp, height = 64.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.Black.copy(alpha = 0.4f))
+                                    .border(0.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Box(modifier = Modifier.size(3.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                                        Box(modifier = Modifier.size(3.dp).background(Color.White.copy(alpha = 0.4f), CircleShape))
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("平铺自适应画廊", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text("完整海报无裁切呈现，左右平滑滑动手势翻页", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                             RadioButton(
-                                selected = posterMode == mode,
+                                selected = posterMode == "adaptive_pager",
                                 onClick = {
-                                    viewModel.setPosterDisplayMode(mode)
+                                    viewModel.setPosterDisplayMode("adaptive_pager")
                                     showPosterModeDialog = false
                                 }
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(name, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+
+                    // Option B: 3D 景深翻转卡片
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (posterMode == "flip_3d") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        border = BorderStroke(1.dp, if (posterMode == "flip_3d") MaterialTheme.colorScheme.primary else Color.Transparent),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.setPosterDisplayMode("flip_3d")
+                                showPosterModeDialog = false
+                            }
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(12.dp)
+                        ) {
+                            // Visual Illustration Box B
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 48.dp, height = 64.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.Black.copy(alpha = 0.4f))
+                                    .border(0.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.FlipCameraAndroid, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("3D 景深翻转卡片", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                                Text("拟真实体卡带手感，点击卡片触发正背面 3D 翻转", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            RadioButton(
+                                selected = posterMode == "flip_3d",
+                                onClick = {
+                                    viewModel.setPosterDisplayMode("flip_3d")
+                                    showPosterModeDialog = false
+                                }
+                            )
                         }
                     }
                 }
@@ -931,6 +1196,13 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showLlmDialog = false }) { Text(I18n.string("common.cancel")) }
             }
+        )
+    }
+
+    activeAppUpdateRelease?.let { releaseInfo ->
+        com.gpdb.android.ui.components.AppUpdateDialog(
+            releaseInfo = releaseInfo,
+            onDismiss = { activeAppUpdateRelease = null }
         )
     }
 }

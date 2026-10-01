@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.14.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.15.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -67,7 +67,7 @@ In adult media, an individual's viewing history, curated collections, and person
   - **Hero Carousel**: Smooth auto-cycling full-resolution billboard posters with delicate parallax interaction at the top of the home screen.
   - **On This Day (Retro Premieres)**: Intelligently cross-references the current calendar date against historical premiere records to surface classic titles from the golden eras of the 1980s, 1990s, and 2000s.
   - **Star Spotlight (Today's Icons)**: Strictly validates local disk poster file availability, intelligently featuring iconic performers with high-definition headshots — no generic letter placeholders ever shown.
-  - **Legendary Franchises Showcase**: Automatically surfaces long-running multi-installment cinematic series spanning ten or more entries.
+  - **Legendary Franchises Showcase**: Surfaces long-running multi-installment cinematic series spanning ten or more entries, with random shuffle exploration and instant "Shuffle" refresh.
   - **Lucky Discovery (Blind Box)**: Roll the dice to randomly uncover hidden vintage gems from over 60,000 titles.
 - **Dual Poster Layout Modes & Full-Screen Gesture/Scroll Lightbox**:
   - Supports **Adaptive HD Gallery (`adaptive_pager`)** and **3D Realistic Collector Cards (`flip_3d`)**: featuring 60fps CSS 3D depth-of-field physical perspective, tactile flip capsule buttons, and collector-grade ambient glow.
@@ -82,17 +82,22 @@ In adult media, an individual's viewing history, curated collections, and person
 - **Director Filmographies**: Click any director's name on a film's detail page to instantly reveal their full directorial catalog, with one-click library filtering by director.
 - **Comprehensive Studio Catalog**: Covers historic celluloid giants (Falcon, Colt, Catalina, etc.) through to modern high-definition powerhouses (Men.com, BelAmi, Lucas Entertainment, Corbin Fisher, etc.) — complete with release timelines and signature genre tags.
 
-### 5. 📸 Screenshot Privacy Blur & Share Cards (New in v2.13.0)
+### 5. 📸 Screenshot Privacy Blur & Share Cards (v2.15.0 Enhanced)
 - **Global One-Tap Screenshot Privacy Mode**:
   - The top navigation bar features a one-tap "Privacy Mode" eye toggle; supports keyboard shortcuts and instant status switching (Privacy Active / Normal Browsing).
+  - **Android Home Feed One-Tap Privacy Blur Button**: The top app bar of the Android home feed provides a dedicated quick-action toggle button to instantly switch privacy blur on and off across all feed sections via `LocalPrivacyBlur` reactive state flow.
   - **Granular Privacy Redaction Controls**:
     - `Blur Posters & Media Images`: Applies global Gaussian blur (`blur(24px)`) to all film covers, scene stills, and performer headshots, preventing visual exposure in screenshots or social media shares.
     - `Blur Synopses & Sensitive Text`: Applies Gaussian blur (`blur(7px)`) to film synopses and scene descriptions while disabling text selection, preventing spoiler or sensitive content leakage.
   - Android mobile uses `LocalPrivacyBlur` reactive state flow, taking effect instantly across the entire screen.
 - **Adaptive Poster Ambient Share Card Generator**:
   - One tap on any film or scene detail page generates an Apple Music / Spotify-style ambient share card.
-  - Background glow is adaptively extracted from the cover's dominant hues and processed with high-precision large-radius Gaussian blur (`blur(45px~60px)`), with three exclusive glow presets: **Vibrant**, **Dark**, and **Midnight**.
-  - **Pre-Share Privacy Redaction**: Independently toggle "Blur Poster" and "Blur Text" to ensure safe sharing to social groups and public networks.
+  - **Front & Back Double Poster Side-by-Side Display**: When a film includes both front and back cover artwork, the share card automatically arranges both side-by-side in an elegant dual-poster layout with frosted "Front" and "Back" tactile pill badges.
+  - **16:9 Scene Aspect Ratio Preservation**: Scene and episode share cards automatically adapt to a 16:9 widescreen showcase utilizing a centered `object-fit: cover` algorithm, strictly preserving original proportions without distortion or face stretching.
+  - **Dual Offscreen Bilinear Blur Redaction**: Employs a hardware-agnostic bilinear downsample blur algorithm for both cover art and synopses, delivering an ultra-smooth, premium frosted-glass redaction texture on exported cards while drastically reducing main-thread GPU rasterization overhead.
+  - **Bottom-Corner Telegram Official Channel QR Code**: The footer integrates a sharp 27x27 dot-matrix QR code linking directly to the official [GPDb Telegram News Channel](https://t.me/gpdbnews) (`t.me/gpdbnews`), paired with a clean watermark and generation timestamp.
+  - **Adaptive Dynamic Height**: Full cast credits and synopses are rendered adaptively without truncation or arbitrary line clamping.
+  - **Pre-Share Privacy Redaction**: Independently toggle "Blur Poster" and "Blur Text" with instant overlay stamps to ensure completely safe sharing across social groups and public networks.
   - **Lossless Dual-Platform Export**:
     - **Desktop**: Offline HTML5 Canvas 2D engine rasterizes at 2x Retina resolution — one-click copy PNG to system clipboard (paste directly into WeChat/QQ/Telegram/Discord/X) or export and save locally.
     - **Mobile**: Compose 1.8 hardware-accelerated bitmap capture engine — one-tap lossless save to the system photo album (`MediaStore`), with Android native share sheet invoked via `FileProvider`.
@@ -101,10 +106,9 @@ In adult media, an individual's viewing history, curated collections, and person
 - **PIN Lock Screen & Focus-Loss Protection**:
   - Set a dedicated 4–6 digit PIN app lock; on focus loss or timeout (1/5/15/30 minutes) the app is instantly covered by a glassmorphic lock screen overlay (`AppLockOverlay.vue`).
   - Window focus loss or app switching triggers an immediate Gaussian frosted-glass privacy layer.
-- **Emergency Panic Switch — Disguised Calculator**:
-  - Instantly transforms into a fully functional Apple-style dark-mode calculator (`FakeCalculatorModal.vue`) supporting real arithmetic operations.
-  - Desktop: keyboard shortcut <kbd>Cmd + Shift + P</kbd> for instant invocation; Mobile: gesture trigger (flip/face-down the screen).
-  - Enter your correct PIN followed by `=` in the calculator, or tap the top title 4 times in quick succession to safely unlock and return to your library.
+- **Mobile Emergency Panic Switch & Streamlined Desktop Security**:
+  - **Mobile Panic Disguise**: On Android mobile, supports flipping or placing the screen face-down to immediately transform into a fully functional Apple-style dark-mode calculator (`FakeCalculatorModal.vue`) supporting real arithmetic operations. Entering the correct PIN followed by `=` or tapping the title safely unlocks and returns to the library.
+  - **Streamlined Desktop Experience**: The legacy desktop fake calculator panic switch has been streamlined and removed in v2.15.0 to return the desktop client to a pure, high-performance experience, while mobile retains physical gesture panic disguise, PIN app lock, and screenshot privacy blur.
 - **Innocuous App Title & Icon Disguise**:
   - Supports custom window titles (e.g., "Calculator", "Notes") to prevent exposure in the system app switcher.
   - Ships with multiple premium design theme icons (e.g., "Dual Mars Fire Totem", "Obsidian Film Vault") plus harmless decoy icons (notepad, ledger, calculator).
@@ -123,7 +127,7 @@ In adult media, an individual's viewing history, curated collections, and person
   - Translation data can be seamlessly imported/exported as standard JSON across platforms (macOS / Windows / Android) with zero data loss.
 
 ### 8. Resource Search & External Plugin System (v2.0)
-- **Direct Multi-Site Navigation**: On film and performer pages, one click jumps to BoyfriendTV, Google, and major video database sites using the canonical English title — no retyping required.
+- **Direct Multi-Site Navigation**: On film and performer pages, one click jumps to BoyfriendTV, Google, and major video database sites using the canonical English title — with system-browser opening natively handled.
 - **BT Magnet Search Integration**: Formats canonical movie titles and studio names into ready-made search queries for external resource engines.
 - **Modular Independent Toggles**: The Plugin Center allows granular enable/disable configuration for each individual external lookup source.
 - **Incremental Scrape & Sync Engine**: Supports on-demand network scraping updates and local poster/thumbnail offline caching.
@@ -132,14 +136,19 @@ In adult media, an individual's viewing history, curated collections, and person
 - **SmutJunkies Scraper Engine** (`scrape_smutjunkies_actors.py`):
   A full-site index scraper targeting the SmutJunkies gay performer directory. Covers **6,700+ gay adult performers** across **26-letter full-site index coverage** (A–Z). Employs a **4-tier high-resilience alignment algorithm** for robust name matching under spelling variants and aliases, with **bidirectional incremental sync** to detect both newly added and soft-deleted entries across successive scrape runs.
 
-### 9. Full Localization & 77+ Gamified Achievement Trophies
+### 9. Full Multi-Language Localization & Streamlined Core Performance
 - **7 Fully Localized Interface Languages**: Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-TW`), English (`en`), Italian (`it`), Japanese (`ja`), Spanish (`es`), and German (`de`).
-- **PlayStation-Style Trophy System**:
-  - 77+ achievements covering exploration, search, focus, and collection milestones — unlocking triggers PSN-inspired fluid animation popups.
-  - Achievement tracking is based on real behavioral metrics, with independent trophy data reset and verification management.
+- **Streamlined Architecture (Trophy System Retired)**:
+  - In v2.15.0, the legacy 77+ PlayStation-style gamified achievement trophy system has been completely removed to dramatically reduce app bundle size, eliminate background event listeners and tracking overhead, and maximize UI rendering performance across all platforms.
 
-### 10. Full Cross-Platform Coverage & Three-Client Data Harmony (macOS / Windows / Android)
-- **macOS Native Desktop (`desktop_client/`)**: Built on Tauri v2 + Rust with full Apple Silicon and Intel support, native glassmorphism UI and keyboard shortcut interactions.
+### 10. Full Cross-Platform Coverage & Multi-Client Data Harmony (macOS / Windows / Android / iOS)
+- **Cross-Platform Universal Data Backup & Restore (`GPDb_Backup.json`)**:
+  - A unified, standardized JSON export format (`gpdb_universal_backup`) enables seamless cross-device data backup, restore, and complete library migration across **macOS, Windows, Android, and iOS**.
+  - Comprehensively packages all user data: favorite films, scenes, performers, directors, studios, and series; custom user tags; want-to-watch and watched flags; private star ratings and personal notes; viewing focus statistics; and UI preferences.
+- **Integrated In-App "Check for Updates" & GitHub Releases API**:
+  - Dedicated "About & Updates" section in Settings features a manual "Check for Updates" button connecting directly to the official GitHub Releases API with real-time feedback.
+  - Automatic silent background update checks on launch notify users when a new release is available. On desktop (macOS), supports in-app downloading and automatic DMG mounting for effortless upgrades.
+- **macOS Native Desktop (`desktop_client/`)**: Built on Tauri v2 + Rust with full Apple Silicon and Intel support, native glassmorphism UI, and keyboard shortcut interactions.
 - **Windows Native Desktop (`Windows_client/`)**: Dedicated decoupled directory, built-in multi-path Python smart parsing engine, console window suppression (`CREATE_NO_WINDOW`), Microsoft YaHei font rendering optimization, slim scrollbars, Windows 11 snap layout support, and lightweight NSIS single-user no-elevation-required installer.
 - **Native Android Mobile (`android_client/`)**: Built purely in Kotlin + Jetpack Compose + Room, seamlessly aligned with the desktop data schema — ideal for on-the-go offline browsing, tagging, and collection management anywhere.
 
@@ -169,13 +178,13 @@ In adult media, an individual's viewing history, curated collections, and person
 
 ### For General Users (Recommended)
 
-Head directly to the repository's [Releases page](https://github.com/GeavenMax/GPDb/releases) to download the latest **`v2.14.0`** official installer:
+Head directly to the repository's [Releases page](https://github.com/GeavenMax/GPDb/releases) to download the latest **`v2.15.0`** official installer:
 
 | Platform | Installer Filename | Installation Notes |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.14.0.dmg` | Double-click to mount, then drag `GPDb.app` into your `Applications` folder.<br>*(On first launch, if macOS warns the app is not notarized, go to System Settings → Privacy & Security and click "Open Anyway", or run `sudo xattr -cr /Applications/GPDb.app` in Terminal.)* |
-| **🪟 Windows** | `GPDb-Windows-v2.14.0.exe` | Double-click the installer to complete setup. Uses NSIS single-user no-elevation architecture — no administrator privileges required. |
-| **🤖 Android** | `GPDb-Android-v2.14.0-signed.apk` | Download to your phone and tap to install. (Signed with the official release key. If prompted to allow installation from unknown sources, please permit it.) |
+| ** macOS** | `GPDb-macOS-v2.15.0.dmg` | Double-click to mount, then drag `GPDb.app` into your `Applications` folder.<br>*(On first launch, if macOS warns the app is not notarized, go to System Settings → Privacy & Security and click "Open Anyway", or run `sudo xattr -cr /Applications/GPDb.app` in Terminal.)* |
+| **🪟 Windows** | `GPDb-Windows-v2.15.0.exe` | Double-click the installer to complete setup. Uses NSIS single-user no-elevation architecture — no administrator privileges required. |
+| **🤖 Android** | `GPDb-Android-v2.15.0-signed.apk` | Download to your phone and tap to install. (Signed with the official release key. If prompted to allow installation from unknown sources, please permit it.) |
 
 ---
 

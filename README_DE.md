@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.14.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.15.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -87,35 +87,37 @@ Im Bereich der Erwachsenenunterhaltung gehören persönliche Sehgewohnheiten, Fa
 - **Regisseur-Steckbriefe**: In der Filmdetailansicht lässt sich per Klick die vollständige Filmografie eines Regisseurs aufrufen, inklusive direkter Filterung in der Bibliothek.
 - **Umfassender Studio-Katalog**: Von klassischen Analogfilm-Pionieren (Falcon, Colt, Catalina u. a.) bis hin zu modernen Marktführern (Men.com, BelAmi, Lucas Entertainment, Corbin Fisher u. a.) – Filmchroniken und Stilmerkmale auf einen Blick.
 
-### 5. 📸 Screenshot-Datenschutzmodus & Hochwertige Glanz-Sharingkarten (Neu in v2.14.0)
-- **Globaler Ein-Klick-Screenshot-Datenschutzmodus**:
-  - Die obere Navigationsleiste bietet einen Ein-Klick-Datenschutz-Augenschalter; unterstützt Tastenkürzel und sofortige Statusumschaltung (Datenschutz aktiv / Normales Browsing).
+### 5. 📸 Blickschutzmodus & Hochwertige Glanz-Sharing-Karten (v2.15.0 Erweitert)
+- **Globaler Ein-Klick-Blickschutzmodus (Screenshot- & Leseschutz)**:
+  - Die obere Navigationsleiste auf dem Desktop und eine dedizierte Schnell-Blickschutztaste direkt in der oberen Leiste des Android Home-Feeds ermöglichen das sofortige Umschalten zwischen geschützter und normaler Ansicht (inkl. Toast-Rückmeldung und nativer DataStore-Synchronisierung).
   - **Feingranulare Datenschutz-Maskierung**:
-    - `Poster und Szenenbilder unscharf`: Globale Gaußsche Unschärfe (`blur(24px)`) auf alle Filmcover, Szenenbilder und Darsteller-Avatare – verhindert die versehentliche Preisgabe sensibler Bilder bei Screenshots oder Social-Media-Shares.
-    - `Handlungsbeschreibungen und sensiblen Text unscharf`: Gaußsche Unschärfe (`blur(7px)`) auf Filmsynopsen und Szenenbeschreibungen, Textauswahl deaktiviert – schützt vor unbeabsichtigten Inhaltsleaks.
-  - Android-Mobile-Ende: Basiert auf dem reaktiven `LocalPrivacyBlur`-Zustandsfluss für sofortige vollbildschirmweite Wirksamkeit.
-- **Adaptiver Poster-Glanz-Sharingkarten-Generator**:
-  - Erstellt mit einem Klick Apple-Music-/Spotify-artige Glanz-Sharingkarten direkt aus Film- und Szenendetailansichten.
-  - Hintergrundleuchten wird direkt aus dem Cover-Farbton extrahiert und mit hochpräziser Gaußscher Großradius-Unschärfe (`blur(45px–60px)`) gerendert – drei exklusive Glow-Voreinstellungen: „Vibrant (Leuchtend)", „Dark (Dunkel)" und „Midnight (Mitternacht)".
-  - **Datenschutz vor dem Teilen**: Separat anwählbar „Poster unscharf" und „Text unscharf" – für sicheres Teilen in Chats und im öffentlichen Netz.
-  - **Verlustfreier Export auf beiden Plattformen**:
-    - **Desktop**: HTML5-Canvas-2D-Engine (offline, 2x Retina) rastert die Karte in höchster Auflösung; Ein-Klick-Kopieren als PNG in die Systemzwischenablage (direkt einfügen in WeChat / QQ / Telegram / Discord / X) oder lokales Speichern.
-    - **Mobil**: Compose-1.8-Hardware-beschleunigte Bitmap-Aufnahme-Engine; Ein-Klick-Speichern ins Systemalbum (`MediaStore`) und Öffnen des nativen Android-Teilen-Panels via `FileProvider`.
+    - `Poster und Szenenbilder unscharf`: Globale Gaußsche Unschärfe (`blur(24px)`) auf alle Filmcover, Szenenbilder und Darsteller-Avatare – verhindert zuverlässig die visuelle Exposition bei Screenshots oder beim Teilen auf Social Media.
+    - `Handlungsbeschreibungen und sensiblen Text unscharf`: Gaußsche Unschärfe (`blur(7px)`) auf Filmsynopsen und Szenenbeschreibungen bei gleichzeitiger Deaktivierung der Textauswahl – schützt vor versehentlichen Spoilern und Text-Leaks.
+  - Auf Android über einen reaktiven `LocalPrivacyBlur`-Zustandsfluss und `privacyBlurImage()` gesteuert – vollflächig und latenzfrei wirksam.
+- **Adaptiver Poster-Glanz-Sharing-Karten-Generator (v2.15.0 Upgrade)**:
+  - **Vorder- und Rückseiten-Cover nebeneinander (Dual-Cover-Layout)**: Unterstützt die gleichzeitige, parallele Darstellung von Vorderseiten-Poster und Rückseiten-Cover (Back Cover) mit dezenten Kennzeichnungskapseln („Vorderseite" / „Rückseite"); bei Einzelfilmen oder Einzelszenen erfolgt eine elegante automatische Zentrierung.
+  - **16:9-Zuschnitt für Episoden-Stills**: Automatischer 16:9-Zuschnitt für Einzelszenen- und Episoden-Standbilder – verhindert unschöne Bildverzerrungen, die beim Einpassen in das standardmäßige 2:3-Filmplakatformat entstehen würden.
+  - **Bilinearer Offscreen-Weichzeichner (Bilinear Offscreen Blurring)**: Modernes duales Offscreen-Canvas-Rendering zur Vermeidung von WebKit-/Hardware-Beschleunigungsartefakten; garantiert zuverlässiges, hochauflösendes Mattglas-Weichzeichnen für sicheren Blickschutz vor dem Export.
+  - **Offizieller Telegram-Kanal-QR-Code**: In der unteren Ecke der Sharing-Karte ist ein präziser 27×27-Vektor-Punktmatrix-QR-Code integriert, der direkt zum offiziellen Kanal `https://t.me/gpdbnews` führt.
+  - **Adaptives Umgebungslicht**: Die Hintergrund-Aura wird dynamisch aus den dominanten Farbtönen des Covers extrahiert und mit großflächiger Gaußscher Unschärfe gerendert – drei exklusive Voreinstellungen: „Vibrant (Leuchtend)", „Dark (Dunkel)" und „Midnight (Mitternacht)".
+  - **Datenschutz vor dem Teilen**: Separat anwählbar „Poster unscharf" und „Text unscharf" – für absolut sicheres Teilen in Chats und im öffentlichen Netz.
+  - **Verlustfreier Export auf allen Plattformen**:
+    - **Desktop**: Offline-HTML5-Canvas-2D-Engine mit 2x Retina-Auflösung – Ein-Klick-Kopieren als PNG in die Systemzwischenablage (direkt einfügbar in Telegram / Discord / WhatsApp / X) oder lokales Speichern.
+    - **Mobil (Android)**: Compose-1.8-Hardware-beschleunigte Bitmap-Aufnahme; Ein-Klick-Speichern im System-Fotoalbum (`MediaStore`) und Aufruf des nativen Android-Teilen-Dialogs via `FileProvider`.
 
-### 6. 🛡️ Umfassendes Datenschutz- & Sicherheits-Suite (Enterprise-Grade Privacy & Security)
+### 6. 🛡️ Umfassendes Datenschutz- & Sicherheits-Paket (Enterprise-Grade Privacy & Security)
 - **PIN-Zahlencode-Sperrbildschirm & Fokusverlust-Schutz**:
-  - Unterstützt einen eigenständigen 4–6-stelligen numerischen PIN-App-Sperrmechanismus; bei Fokusverlust oder Zeitüberschreitung (1/5/15/30 Minuten) wird automatisch ein Glasmorphismus-Sperrbildschirm (`AppLockOverlay.vue`) eingeblendet.
-  - Bei Fensterfokusverlust oder App-Wechsel wird sofort eine Gaußsche Milchglas-Datenschutzebene darübergelegt.
-- **Notfall-Tarnmodus: Panic-Switch-Rechner**:
-  - Blitzschnelles Umschalten in einen Apple-Design-getreuen, voll funktionsfähigen Dunkelrechner (`FakeCalculatorModal.vue`) mit echter Grundrechenlogik.
-  - Desktop: Tastenkürzel <kbd>Cmd + Shift + P</kbd> für sofortigen Aufruf; Mobile: Geste (Bildschirm umdrehen/umklappen) für sofortigen Aufruf.
-  - Korrekten PIN im Rechner eingeben und `=` drücken, oder 4-mal auf den Kopftitel tippen, um sicher zurück zur Bibliothek zu gelangen.
-- **Harmlose App-Titel- & Desktop-Icon-Tarnung**:
-  - Unterstützt benutzerdefinierte Fenstertitel (z. B. „Calculator", „Notes"), um Preisgabe im System-Task-Switcher zu vermeiden.
-  - Integriert mehrere hochwertige Design-Theme-Icons (z. B. „Dual-Hero Mars Totem", „Obsidian Film Vault") sowie harmlose Tarnsymbole (Notizzettel, Buchführung, Taschenrechner).
-- **Mobile System-Level-Isolation**:
-  - Android-System-`FLAG_SECURE` gegen Bildschirmaufnahme, Screenshots und Multitasking-Kartenvorschauen.
-  - Physische Sandbox-Speicherisolierung; rekursive `.nomedia`-Injektion verhindert Drittanbieter-Galerie-Scans vollständig.
+  - Unterstützt einen eigenständigen 4–6-stelligen numerischen PIN-App-Sperrmechanismus; bei Fokusverlust oder konfigurierbarem Timeout (1/5/15/30 Minuten) wird automatisch eine elegante Glasmorphismus-Sperrebene (`AppLockOverlay.vue`) eingeblendet.
+  - Bei Fensterfokusverlust oder App-Wechsel wird sofort eine Gaußsche Milchglas-Datenschutzebene über die Benutzeroberfläche gelegt.
+- **Bereinigung des Desktop-Panic-Switches & Mobilgeräte-Schutz**:
+  - Zur Optimierung der Reaktionsgeschwindigkeit, Minimierung der Bundle-Größe und Wahrung architektonischer Klarheit wurde der experimentelle Desktop-Taschenrechner-Tarnmodus bereinigt.
+  - Auf Mobilgeräten bleiben die native PIN-Sperre, der Schnell-Blickschutz im Home-Feed sowie Gestensteuerungen vollumfänglich aktiv und optimiert.
+- **Neutrale App-Titel- & Desktop-Icon-Tarnung**:
+  - Unterstützt frei konfigurierbare Fenstertitel (z. B. „Calculator", „Notes"), um unerwünschte Einblicke in der Taskleiste oder im System-Task-Switcher zu verhindern.
+  - Enthält hochwertige Design-Theme-Icons (z. B. „Dual-Hero Mars Totem", „Obsidian Film Vault") sowie unauffällige neutrale Symbole (Notizen, Rechner).
+- **Mobile System-Level-Isolation & Anti-Capture**:
+  - Android-System-`FLAG_SECURE` gegen Bildschirmaufnahme, Screenshots und Vorschaubilder im Multitasking-App-Umschalter.
+  - Physische Sandbox-Speicherisolierung; rekursive `.nomedia`-Injektion schließt externe Galerie- und Medienserver-Scans vollständig aus.
 
 ### 7. KI-Vorlieben-Analyse & Mehrsprachige LLM-Übersetzung
 - **KI-Vorlieben-Analyse & Ästhetik-Profil (AI Persona Insights)**:
@@ -140,15 +142,21 @@ Im Bereich der Erwachsenenunterhaltung gehören persönliche Sehgewohnheiten, Fa
   - **97,3 % Übereinstimmungsrate**: Hochpräziser Abgleichalgorithmus verknüpft Wiki-Einträge zuverlässig mit bestehenden Datenbankdatensätzen.
 - **SmutJunkies-Scraper-Engine** (`scrape_smutjunkies_actors.py`):
   - **6.700+ schwule Darsteller** aus der SmutJunkies-Datenbank vollständig indexiert.
-  - **26-Buchstaben-Vollindex**: Systematisches Durchlaufen aller alphabetischen Eintrags­seiten (A–Z) für lückenlose Abdeckung.
+  - **26-Buchstaben-Vollindex**: Systematisches Durchlaufen aller alphabetischen Eintragsseiten (A–Z) für lückenlose Abdeckung.
   - **4-stufiger hochresilienter Abgleichalgorithmus**: Mehrstufige Namens-, Alias-, Phonetik- und Fuzzy-Matching-Logik minimiert Fehlzuordnungen auch bei abweichenden Schreibweisen.
   - **Bidirektionale inkrementelle Synchronisation**: Neue Einträge werden hinzugefügt, geänderte Datensätze aktualisiert und veraltete Einträge markiert – ohne vollständige Neusynchronisation.
 
-### 9. Vollständige Internationalisierung & 77+ Gamification-Trophäen-System
-- **7 vollständig lokalisierte Benutzeroberflächen-Sprachen**: Vereinfachtes Chinesisch (`zh-CN`), Traditionelles Chinesisch (`zh-TW`), Englisch (`en`), Italienisch (`it`), Japanisch (`ja`), Spanisch (`es`) und Deutsch (`de`).
-- **PlayStation-Stil-Trophäen-System**:
-  - Über 77 Entdeckungs-, Such-, Fokus- und Sammlungs-Errungenschaften; Entsperren löst PSN-artige Flüssig-Animations-Popups aus.
-  - Basiert auf echten Verhaltensmetriken; unterstützt unabhängiges Zurücksetzen und Prüfen von Trophäendaten.
+### 9. Vollständige Internationalisierung, Leistungsoptimierung & Plattformübergreifendes Backup
+- **7 vollständig lokalisierte Benutzeroberflächen-Sprachen**:
+  Vereinfachtes Chinesisch (`zh-CN`), Traditionelles Chinesisch (`zh-TW`), Englisch (`en`), Italienisch (`it`), Japanisch (`ja`), Spanisch (`es`) und Deutsch (`de`).
+- **Bereinigung des Trophäensystems zur Leistungssteigerung**:
+  Das frühere ressourcenintensive Gamification-Trophäensystem wurde vollständig aus dem Kern entfernt. Dadurch entfallen permanente Hintergrundüberwachungen, Datenbank-Trigger und Metrik-Polling, was zu drastisch reduzierten I/O-Laufzeiten, spürbar geringerer RAM-Belastung und maximaler Reaktionsfreudigkeit führt.
+- **Plattformübergreifendes universelles Benutzerdaten-Backup & Migration (`GPDb_Backup.json`)**:
+  - Vollständige Sicherung aller persönlichen Benutzerdaten: Sammlungsfavoriten (Filme, Einzelszenen, Darsteller, Regisseure, Serien, Filmstudios), Wiedergabe- und Fokus-Statistiken, persönliche Notizen, Sterne-Bewertungen sowie individuelle UI-Präferenzen nach dem standardisierten Schema (`format: gpdb_universal_backup`, Version 1).
+  - 100% interoperabler, verlustfreier Im- und Export zwischen macOS, Windows, Android und iOS – ermöglicht nahtlose Gerätewechsel ohne Datenverlust.
+- **Integrierte „Auf Updates prüfen“-Funktion (In-App Auto-Update)**:
+  - Direkte Versionsabfrage über die offizielle GitHub Releases API in den Einstellungen aller Clients.
+  - Transparente Anzeige von Release-Notes und Changelogs; ein Klick ermöglicht den direkten Download und die bequeme Ausführung der neuen Installationspakete (DMG, EXE oder APK).
 
 ### 10. Plattformübergreifende Abdeckung & Dreifach-Datensynchronisierung (macOS / Windows / Android)
 - **macOS nativer Desktop-Client (`desktop_client/`)**: Über Tauri v2 + Rust-Architektur vollständige Unterstützung von Apple Silicon und Intel; native Glasmorphismus-Ästhetik und Tastaturkürzel.
@@ -181,13 +189,13 @@ Im Bereich der Erwachsenenunterhaltung gehören persönliche Sehgewohnheiten, Fa
 
 ### Für Endanwender (Empfohlen)
 
-Laden Sie das aktuelle vorkompilierte Installationspaket **`v2.14.0`** direkt von der [Releases-Seite](https://github.com/GeavenMax/GPDb/releases) herunter:
+Laden Sie das aktuelle vorkompilierte Installationspaket **`v2.15.0`** direkt von der [Releases-Seite](https://github.com/GeavenMax/GPDb/releases) herunter:
 
 | Plattform | Installationspaket | Installation & Hinweise |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.14.0.dmg` | DMG öffnen, `GPDb.app` in den `Programme`-Ordner ziehen.<br>*(Falls beim ersten Start eine Warnung wegen fehlender Notarisierung erscheint: „Systemeinstellungen → Datenschutz & Sicherheit" → „Trotzdem öffnen", oder Terminal: `sudo xattr -cr /Applications/GPDb.app`)* |
-| **🪟 Windows** | `GPDb-Windows-v2.14.0.exe` | Installer doppelklicken und Installation abschließen. Nutzt NSIS-Einzelbenutzer-Architektur – keine Administratorrechte erforderlich. |
-| **🤖 Android** | `GPDb-Android-v2.14.0-signed.apk` | APK auf das Gerät laden und direkt installieren (offiziell signiert; bei Systemaufforderung „Installation aus unbekannten Quellen" erlauben). |
+| ** macOS** | `GPDb-macOS-v2.15.0.dmg` | DMG öffnen, `GPDb.app` in den `Programme`-Ordner ziehen.<br>*(Falls beim ersten Start eine Warnung wegen fehlender Notarisierung erscheint: „Systemeinstellungen → Datenschutz & Sicherheit" → „Trotzdem öffnen", oder Terminal: `sudo xattr -cr /Applications/GPDb.app`)* |
+| **🪟 Windows** | `GPDb-Windows-v2.15.0.exe` | Installer doppelklicken und Installation abschließen. Nutzt NSIS-Einzelbenutzer-Architektur – keine Administratorrechte erforderlich. |
+| **🤖 Android** | `GPDb-Android-v2.15.0-signed.apk` | APK auf das Gerät laden und direkt installieren (offiziell signiert; bei Systemaufforderung „Installation aus unbekannten Quellen" erlauben). |
 
 ---
 

@@ -1,5 +1,6 @@
 package com.gpdb.android.ui.settings
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gpdb.android.data.db.DatabaseHolder
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SettingsViewModel(
     private val appPreferences: AppPreferences,
@@ -281,6 +283,107 @@ class SettingsViewModel(
     fun setScreenshotPrivacyBlurText(enabled: Boolean) {
         viewModelScope.launch {
             appSettingsRepository.setScreenshotPrivacyBlurText(enabled)
+        }
+    }
+
+    fun exportUserDataToFile(context: Context, uri: android.net.Uri, onComplete: (Boolean, String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val db = DatabaseHolder.db ?: throw IllegalStateException("数据库未挂载")
+                val userRepo = com.gpdb.android.data.repository.UserRepository(db, db.userActionDao())
+                val favList = userRepo.exportFavorites()
+                val analyticsRepo = com.gpdb.android.data.analytics.UserAnalyticsRepository.getInstance(context)
+                val analyticsMap = analyticsRepo.exportAnalyticsMap()
+
+                val rootJson = org.json.JSONObject()
+                rootJson.put("format", "gpdb_universal_backup")
+                rootJson.put("version", 2)
+                rootJson.put("app_version", "2.15.0")
+                rootJson.put("platform", "android")
+                rootJson.put("exported_at", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).format(java.util.Date()))
+
+                val favArr = org.json.JSONArray()
+                for (fav in favList) {
+                    val obj = org.json.JSONObject()
+                    obj.put("entity_type", fav.entity_type)
+                    obj.put("entity_key", fav.entity_key)
+                    if (fav.created_at != null) obj.put("created_at", fav.created_at)
+                    favArr.put(obj)
+                }
+                rootJson.put("favorites", favArr)
+
+                val analyticsObj = org.json.JSONObject()
+                for ((k, v) in analyticsMap) {
+                    analyticsObj.put(k, v)
+                }
+                rootJson.put("analytics", analyticsObj)
+
+                context.contentResolver.openOutputStream(uri)?.use { os ->
+                    os.write(rootJson.toString(2).toByteArray(Charsets.UTF_8))
+                }
+
+                withContext(Dispatchers.Main) {
+                    onComplete(true, "导出成功：已备份 ${favList.size} 条收藏与全量统计数据！")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    onComplete(false, "导出失败: ${e.message}")
+                }
+            }
+        }
+    }
+
+    fun importUserDataFromFile(context: Context, uri: android.net.Uri, onComplete: (Boolean, String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val db = DatabaseHolder.db ?: throw IllegalStateException("数据库未挂载")
+                val jsonStr = context.contentResolver.openInputStream(uri)?.use {
+                    it.bufferedReader(Charsets.UTF_8).readText()
+                } ?: throw IllegalStateException("无法读取文件内容")
+
+                val rootJson = org.json.JSONObject(jsonStr)
+
+                // 1. Import favorites
+                var favImported = 0
+                if (rootJson.has("favorites")) {
+                    val favArr = rootJson.getJSONArray("favorites")
+                    val favList = mutableListOf<com.gpdb.android.data.repository.FavoriteBackupItem>()
+                    for (i in 0 until favArr.length()) {
+                        val obj = favArr.getJSONObject(i)
+                        val type = obj.optString("entity_type", "")
+                        val key = obj.optString("entity_key", "")
+                        val time = if (obj.has("created_at")) obj.getString("created_at") else null
+                        if (type.isNotBlank() && key.isNotBlank()) {
+                            favList.add(com.gpdb.android.data.repository.FavoriteBackupItem(type, key, time))
+                        }
+                    }
+                    val userRepo = com.gpdb.android.data.repository.UserRepository(db, db.userActionDao())
+                    favImported = userRepo.importFavorites(favList)
+                }
+
+                // 2. Import analytics
+                if (rootJson.has("analytics")) {
+                    val analyticsObj = rootJson.getJSONObject("analytics")
+                    val analyticsMap = mutableMapOf<String, Any>()
+                    val keys = analyticsObj.keys()
+                    while (keys.hasNext()) {
+                        val k = keys.next()
+                        analyticsMap[k] = analyticsObj.get(k)
+                    }
+                    val analyticsRepo = com.gpdb.android.data.analytics.UserAnalyticsRepository.getInstance(context)
+                    analyticsRepo.importAnalyticsMap(analyticsMap)
+                }
+
+                withContext(Dispatchers.Main) {
+                    onComplete(true, "导入成功：已恢复 $favImported 条收藏与用户统计时长！")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    onComplete(false, "导入失败: ${e.message}")
+                }
+            }
         }
     }
 }

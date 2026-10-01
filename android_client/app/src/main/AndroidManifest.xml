@@ -14,8 +14,11 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
 
-    <!-- 网络访问（演员图片网络降级 Coil L3 层使用） -->
+    <!-- 网络访问（演员图片网络降级与版本更新下载） -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- 允许安装从 GitHub Releases 下载的更新 APK -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- 振动（触觉反馈，可选） -->
     <uses-permission android:name="android.permission.VIBRATE" />

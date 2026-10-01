@@ -203,6 +203,23 @@ class MainActivity : FragmentActivity() {
                             }
                         }
 
+                        // 启动 2.5 秒后异步静默检测 GitHub Releases 新版本
+                        var appUpdateInfo by remember { mutableStateOf<com.gpdb.android.util.AppReleaseInfo?>(null) }
+                        LaunchedEffect(Unit) {
+                            kotlinx.coroutines.delay(2500)
+                            val info = com.gpdb.android.util.AppUpdateManager.checkForAppUpdate()
+                            if (info != null) {
+                                appUpdateInfo = info
+                            }
+                        }
+
+                        if (appUpdateInfo != null) {
+                            com.gpdb.android.ui.components.AppUpdateDialog(
+                                releaseInfo = appUpdateInfo!!,
+                                onDismiss = { appUpdateInfo = null }
+                            )
+                        }
+
                         if (isMounted) {
                             com.gpdb.android.ui.navigation.GpdbNavGraph(
                                 homeViewModel = homeViewModel,

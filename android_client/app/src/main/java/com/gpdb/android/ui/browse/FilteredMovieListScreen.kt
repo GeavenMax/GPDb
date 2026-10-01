@@ -33,11 +33,19 @@ fun FilteredMovieListScreen(
     }
 
     val gridState = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
+    val displayTitle = remember(uiState.title) {
+        if (uiState.title.contains("|||")) {
+            val parts = uiState.title.split("|||")
+            if (parts.size > 1 && parts[0].isNotBlank()) "${parts[1]} (${parts[0]})" else parts.last()
+        } else {
+            uiState.title
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.title) },
+                title = { Text(displayTitle, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")

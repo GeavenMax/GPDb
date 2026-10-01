@@ -342,6 +342,33 @@ pub fn start_scraper(
             }
             ("batch_scraper.py", a)
         }
+        "pbc_actors" => {
+            let mut a = vec![
+                "--db".to_string(), db_path.clone(),
+                "--apply".to_string(),
+                "--backfill".to_string(),
+            ];
+            if let Some(l) = limit {
+                a.push("--limit".to_string());
+                a.push(l.to_string());
+            } else {
+                a.push("--limit".to_string());
+                a.push("100".to_string());
+            }
+            ("scrape_pbc_actors.py", a)
+        }
+        "smutjunkies_actors" => {
+            let mut a = vec![
+                "--db".to_string(), db_path.clone(),
+                "--apply".to_string(),
+                "--home".to_string(),
+            ];
+            if let Some(l) = limit {
+                a.push("--limit".to_string());
+                a.push(l.to_string());
+            }
+            ("scrape_smutjunkies_actors.py", a)
+        }
         _ => return Err(format!("未知的刮削模式: {}", mode)),
     };
 
@@ -485,6 +512,27 @@ pub fn start_scraper(
                         if let Some(open_paren) = before_pct.rfind('(') {
                             mgr.status.percent = before_pct[open_paren + 1..].trim().parse().unwrap_or(mgr.status.percent);
                         }
+                    }
+                    mgr.status.message = trimmed.clone();
+                }
+                // 2.8 PBC & SmutJunkies progress: "[12/100] ..."
+                else if trimmed.starts_with('[') && trimmed.contains('/') && trimmed.contains(']') {
+                    if let Some(end_bracket) = trimmed.find(']') {
+                        let bracket_content = &trimmed[1..end_bracket];
+                        if let Some(slash_idx) = bracket_content.find('/') {
+                            let cur_str = &bracket_content[..slash_idx];
+                            let tot_str = &bracket_content[slash_idx + 1..];
+                            if let (Ok(cur), Ok(tot)) = (cur_str.trim().parse::<u32>(), tot_str.trim().parse::<u32>()) {
+                                mgr.status.processed_count = cur;
+                                mgr.status.target_total = tot;
+                                if tot > 0 {
+                                    mgr.status.percent = ((cur as f64) / (tot as f64) * 100.0).min(100.0);
+                                }
+                            }
+                        }
+                    }
+                    if trimmed.contains("首次入库建档") || trimmed.contains("INSERT") || trimmed.contains("UPDATE") || trimmed.contains("变动") {
+                        mgr.status.new_performers += 1;
                     }
                     mgr.status.message = trimmed.clone();
                 }

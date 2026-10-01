@@ -59,6 +59,10 @@ fun HomeFeedScreen(
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appSettingsRepo = remember { com.gpdb.android.data.settings.AppSettingsRepository(context) }
+    val privacyBlurEnabled by appSettingsRepo.screenshotPrivacyBlurEnabledFlow.collectAsState(initial = false)
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -69,6 +73,25 @@ fun HomeFeedScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                val nextState = !privacyBlurEnabled
+                                appSettingsRepo.setScreenshotPrivacyBlurEnabled(nextState)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    if (nextState) "防窥模式已开启" else "防窥模式已关闭",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (privacyBlurEnabled) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (privacyBlurEnabled) "防窥模式 (已开启)" else "防窥模式 (已关闭)",
+                            tint = if (privacyBlurEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     IconButton(onClick = { viewModel.loadFeed() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
@@ -520,6 +543,15 @@ private fun StarSpotlightSection(
     onPerformerClick: (Long) -> Unit,
     onViewAllClick: () -> Unit
 ) {
+    if (performers.isEmpty()) return
+
+    val brokenAvatarIds = remember { mutableStateListOf<Long>() }
+    val displayPerformers = remember(performers, brokenAvatarIds.size) {
+        performers.filter { !it.imageUrl.isNullOrBlank() && it.id !in brokenAvatarIds }
+    }
+
+    if (displayPerformers.isEmpty()) return
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             modifier = Modifier
@@ -542,7 +574,7 @@ private fun StarSpotlightSection(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            items(performers, key = { it.id }) { perf ->
+            items(displayPerformers, key = { it.id }) { perf ->
                 Column(
                     modifier = Modifier
                         .width(76.dp)
@@ -564,7 +596,12 @@ private fun StarSpotlightSection(
                             defaultFolder = "Pornstars",
                             contentScale = ContentScale.Crop,
                             alignment = Alignment.TopCenter,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            onError = {
+                                if (perf.id !in brokenAvatarIds) {
+                                    brokenAvatarIds.add(perf.id)
+                                }
+                            }
                         )
                     }
 

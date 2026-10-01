@@ -220,12 +220,13 @@ class HomeFeedRepository {
             Log.e(TAG, "加载今日星光异常: ${e.message}", e)
         }
 
-        // 4. 经典系列 (Series Collections: 热门多部曲大放送)
+        // 4. 经典系列 (Series Collections: 热门多部曲随机大放送)
         try {
             val seriesSql = """
                 SELECT id, root_title, studio_name, movie_count, year_start, year_end, sample_covers
                 FROM series_collections
-                ORDER BY movie_count DESC
+                WHERE movie_count >= 2
+                ORDER BY RANDOM()
                 LIMIT 10
             """.trimIndent()
             sdb.query(seriesSql).use { c ->

@@ -602,6 +602,7 @@ fun MovieDetailScreen(
                 title = movie.title,
                 titleZh = movie.titleZh,
                 posterUrl = movie.coverFull ?: movie.coverIcon,
+                coverBackUrl = movie.coverBack,
                 fallbackEntityId = movie.id,
                 defaultFolder = "Covers",
                 releaseYear = movie.releaseYear,

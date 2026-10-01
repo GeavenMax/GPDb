@@ -186,6 +186,7 @@ pub fn get_series_collections(
         Some("count_desc") => "movie_count DESC, root_title ASC",
         Some("title_asc") => "root_title ASC",
         Some("year_desc") => "COALESCE(year_end, 0) DESC, root_title ASC",
+        Some("random") => "RANDOM()",
         _ => "movie_count DESC, root_title ASC",
     };
 

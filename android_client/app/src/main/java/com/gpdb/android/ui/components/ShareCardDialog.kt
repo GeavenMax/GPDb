@@ -46,6 +46,7 @@ data class ShareCardData(
     val title: String,
     val titleZh: String? = null,
     val posterUrl: String? = null,
+    val coverBackUrl: String? = null,
     val fallbackEntityId: Long? = null,
     val defaultFolder: String = "Covers",
     val releaseYear: Int? = null,
@@ -74,6 +75,7 @@ fun ShareCardDialog(
     var blurPoster by remember { mutableStateOf(false) }
     var blurText by remember { mutableStateOf(false) }
     var posterBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var backCoverBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var dominantColor by remember { mutableStateOf(Color(0xFF1E222B)) }
     var isCapturing by remember { mutableStateOf(false) }
 
@@ -99,6 +101,30 @@ fun ShareCardDialog(
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    // 异步加载封底 Bitmap (若有)
+    LaunchedEffect(cardData.coverBackUrl) {
+        if (!cardData.coverBackUrl.isNullOrBlank()) {
+            withContext(Dispatchers.IO) {
+                try {
+                    val relPath = cardData.coverBackUrl.toImageCachePath()
+                    val imageData = relPath?.let { GpdbImageData(it, physicalRootPath, cardData.coverBackUrl) }
+                        ?: GpdbImageData(cardData.coverBackUrl, physicalRootPath, cardData.coverBackUrl)
+                    val request = ImageRequest.Builder(context)
+                        .data(imageData)
+                        .allowHardware(false)
+                        .build()
+                    val result = context.imageLoader.execute(request)
+                    val drawable = result.drawable
+                    if (drawable is BitmapDrawable) {
+                        backCoverBitmap = drawable.bitmap
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }
@@ -255,57 +281,163 @@ fun ShareCardDialog(
 
                                 Spacer(modifier = Modifier.height(16.dp))
 
-                                // 美观立体的核心海报框
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(0.72f)
-                                        .aspectRatio(0.70f)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(Color.Black.copy(alpha = 0.35f))
-                                        .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(16.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (posterBitmap != null) {
-                                        Image(
-                                            bitmap = posterBitmap!!.asImageBitmap(),
-                                            contentDescription = cardData.title,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .then(if (blurPoster) Modifier.blur(32.dp).clipToBounds() else Modifier)
-                                        )
-                                    } else {
-                                        CircularProgressIndicator(
-                                            color = Color.White.copy(alpha = 0.7f),
-                                            modifier = Modifier.size(28.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                    }
+                                // 美观立体的核心海报框 (支持双面封面排版与单封面)
+                                val hasBackCover = !cardData.isEpisode && !cardData.coverBackUrl.isNullOrBlank()
 
-                                    // 海报打码状态标识
-                                    if (blurPoster) {
-                                        Surface(
-                                            shape = RoundedCornerShape(20.dp),
-                                            color = Color.Black.copy(alpha = 0.7f),
-                                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f))
+                                if (hasBackCover) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(0.96f),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        // 封面 (Front Cover)
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .aspectRatio(0.70f)
+                                                .clip(RoundedCornerShape(14.dp))
+                                                .background(Color.Black.copy(alpha = 0.35f))
+                                                .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(14.dp)),
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            if (posterBitmap != null) {
+                                                Image(
+                                                    bitmap = posterBitmap!!.asImageBitmap(),
+                                                    contentDescription = cardData.title,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .then(if (blurPoster) Modifier.blur(32.dp).clipToBounds() else Modifier)
+                                                )
+                                            } else {
+                                                CircularProgressIndicator(
+                                                    color = Color.White.copy(alpha = 0.7f),
+                                                    modifier = Modifier.size(24.dp),
+                                                    strokeWidth = 2.dp
+                                                )
+                                            }
+                                            if (!blurPoster) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = Color.Black.copy(alpha = 0.65f),
+                                                    modifier = Modifier
+                                                        .align(Alignment.TopStart)
+                                                        .padding(6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "封面",
+                                                        color = Color.White.copy(alpha = 0.9f),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            } else {
+                                                Text("🔒 已打码", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+
+                                        // 封底 (Back Cover)
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .aspectRatio(0.70f)
+                                                .clip(RoundedCornerShape(14.dp))
+                                                .background(Color.Black.copy(alpha = 0.35f))
+                                                .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(14.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (backCoverBitmap != null) {
+                                                Image(
+                                                    bitmap = backCoverBitmap!!.asImageBitmap(),
+                                                    contentDescription = "${cardData.title} 封底",
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .then(if (blurPoster) Modifier.blur(32.dp).clipToBounds() else Modifier)
+                                                )
+                                            } else {
+                                                CircularProgressIndicator(
+                                                    color = Color.White.copy(alpha = 0.7f),
+                                                    modifier = Modifier.size(24.dp),
+                                                    strokeWidth = 2.dp
+                                                )
+                                            }
+                                            if (!blurPoster) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = Color.Black.copy(alpha = 0.65f),
+                                                    modifier = Modifier
+                                                        .align(Alignment.TopStart)
+                                                        .padding(6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "封底",
+                                                        color = Color.White.copy(alpha = 0.9f),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            } else {
+                                                Text("🔒 已打码", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // 单海报框 (电影 3:4.2，分集 16:9 宽屏无拉伸)
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(if (cardData.isEpisode) 0.92f else 0.72f)
+                                            .aspectRatio(if (cardData.isEpisode) 1.777f else 0.70f)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(Color.Black.copy(alpha = 0.35f))
+                                            .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(16.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (posterBitmap != null) {
+                                            Image(
+                                                bitmap = posterBitmap!!.asImageBitmap(),
+                                                contentDescription = cardData.title,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .then(if (blurPoster) Modifier.blur(32.dp).clipToBounds() else Modifier)
+                                            )
+                                        } else {
+                                            CircularProgressIndicator(
+                                                color = Color.White.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(28.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                        }
+
+                                        // 海报打码状态标识
+                                        if (blurPoster) {
+                                            Surface(
+                                                shape = RoundedCornerShape(20.dp),
+                                                color = Color.Black.copy(alpha = 0.7f),
+                                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f))
                                             ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Lock,
-                                                    contentDescription = null,
-                                                    tint = Color.White,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                                Text(
-                                                    text = "海报已安全打码",
-                                                    color = Color.White,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    fontWeight = FontWeight.Medium
-                                                )
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Lock,
+                                                        contentDescription = null,
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                    Text(
+                                                        text = "封面已安全防窥打码",
+                                                        color = Color.White,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Medium
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -322,9 +454,7 @@ fun ShareCardDialog(
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = Color.White,
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
+                                    textAlign = TextAlign.Center
                                 )
 
                                 if (secondaryTitle != null) {
@@ -333,9 +463,7 @@ fun ShareCardDialog(
                                         text = secondaryTitle,
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color.White.copy(alpha = 0.65f),
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        textAlign = TextAlign.Center
                                     )
                                 }
 
@@ -367,19 +495,19 @@ fun ShareCardDialog(
                                     }
                                 }
 
-                                // 出演演员列表
+                                // 出演演员列表 (全量自适应展示)
                                 if (cardData.performers.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(10.dp))
                                     Text(
-                                        text = "主演: " + cardData.performers.take(5).joinToString("  ") + (if (cardData.performers.size > 5) " 等" else ""),
+                                        text = "主演: " + cardData.performers.joinToString("  "),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.White.copy(alpha = 0.82f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        lineHeight = 16.sp,
+                                        textAlign = TextAlign.Center
                                     )
                                 }
 
-                                // 剧情简介卡片
+                                // 剧情简介卡片 (全量自适应完整展示)
                                 if (!cardData.description.isNullOrBlank()) {
                                     Spacer(modifier = Modifier.height(14.dp))
                                     Surface(
@@ -393,12 +521,10 @@ fun ShareCardDialog(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
-                                                text = cardData.description.take(130) + (if (cardData.description.length > 130) "..." else ""),
+                                                text = cardData.description,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = Color.White.copy(alpha = 0.75f),
                                                 lineHeight = 18.sp,
-                                                maxLines = 3,
-                                                overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.then(
                                                     if (blurText) Modifier.blur(14.dp).clipToBounds() else Modifier
                                                 )
@@ -435,24 +561,49 @@ fun ShareCardDialog(
 
                                 Spacer(modifier = Modifier.height(18.dp))
 
-                                // 水印与生成日期底栏
+                                // 分割线
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(0.5.dp)
+                                        .background(Color.White.copy(alpha = 0.15f))
+                                )
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // 水印与 Telegram 官方频道二维码底栏
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = "GPDb · 个人离线数字影库",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White.copy(alpha = 0.45f),
-                                        fontSize = 10.sp
-                                    )
-                                    Text(
-                                        text = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date()),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White.copy(alpha = 0.45f),
-                                        fontSize = 10.sp
-                                    )
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = "GPDb · 个人离线数字影库",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.85f),
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 11.sp
+                                        )
+                                        Text(
+                                            text = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date()) + "  ·  本地私有档案",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White.copy(alpha = 0.5f),
+                                            fontSize = 9.sp
+                                        )
+                                        Text(
+                                            text = "📢 官方频道: t.me/gpdbnews",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color(0xFFFCD34D),
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 9.sp
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    TelegramQrCode(modifier = Modifier.size(46.dp))
                                 }
                             }
                         }
@@ -578,5 +729,62 @@ private fun ShareMetaChip(text: String) {
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+// 27x27 Verified Binary Matrix for https://t.me/gpdbnews
+private val TG_QR_MATRIX = arrayOf(
+    "000000000000000000000000000",
+    "011111110111100100011111110",
+    "010000010101000000010000010",
+    "010111010111001001010111010",
+    "010111010001001001010111010",
+    "010111010101100101010111010",
+    "010000010000100101010000010",
+    "011111110101010101011111110",
+    "000000000010101001000000000",
+    "010011111101100111100101110",
+    "011101101010000010000111100",
+    "010010110110101010000110010",
+    "010101100101110101101011110",
+    "000010110110010010010000010",
+    "010111101010001011000100100",
+    "011000110000110010100111110",
+    "010011101000100010111011010",
+    "010010011001000111111101100",
+    "000000000101111001000101100",
+    "011111110100100001010100010",
+    "010000010111010111000100110",
+    "010111010111011111111100110",
+    "010111010110000110110000110",
+    "010111010001010101100111110",
+    "010000010011000100011101110",
+    "011111110110001111010010010",
+    "000000000000000000000000000"
+)
+
+@Composable
+private fun TelegramQrCode(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White)
+            .padding(3.dp)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val modSize = size.width / 27f
+            for (r in 0 until 27) {
+                val rowStr = TG_QR_MATRIX[r]
+                for (c in 0 until 27) {
+                    if (rowStr[c] == '1') {
+                        drawRect(
+                            color = Color.Black,
+                            topLeft = androidx.compose.ui.geometry.Offset(c * modSize, r * modSize),
+                            size = androidx.compose.ui.geometry.Size(modSize + 0.1f, modSize + 0.1f)
+                        )
+                    }
+                }
+            }
+        }
     }
 }

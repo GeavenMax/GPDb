@@ -69,4 +69,58 @@ class UserRepository(
             )
         }
     }
+
+    suspend fun exportFavorites(): List<FavoriteBackupItem> = withContext(Dispatchers.IO) {
+        val list = mutableListOf<FavoriteBackupItem>()
+        try {
+            val cursor = db.openHelper.readableDatabase.query("SELECT entity_type, entity_key, created_at FROM user_favorites")
+            cursor.use {
+                val typeIdx = it.getColumnIndex("entity_type")
+                val keyIdx = it.getColumnIndex("entity_key")
+                val timeIdx = it.getColumnIndex("created_at")
+                while (it.moveToNext()) {
+                    val type = if (typeIdx >= 0) it.getString(typeIdx) else ""
+                    val key = if (keyIdx >= 0) it.getString(keyIdx) else ""
+                    val time = if (timeIdx >= 0) it.getString(timeIdx) else null
+                    if (type.isNotBlank() && key.isNotBlank()) {
+                        list.add(FavoriteBackupItem(type, key, time))
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        list
+    }
+
+    suspend fun importFavorites(items: List<FavoriteBackupItem>): Int = withContext(Dispatchers.IO) {
+        var count = 0
+        try {
+            val wdb = db.openHelper.writableDatabase
+            wdb.beginTransaction()
+            try {
+                for (item in items) {
+                    if (item.entity_type.isNotBlank() && item.entity_key.isNotBlank()) {
+                        wdb.execSQL(
+                            "INSERT OR IGNORE INTO user_favorites (entity_type, entity_key, created_at) VALUES (?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
+                            arrayOf(item.entity_type, item.entity_key, item.created_at)
+                        )
+                        count++
+                    }
+                }
+                wdb.setTransactionSuccessful()
+            } finally {
+                wdb.endTransaction()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        count
+    }
 }
+
+data class FavoriteBackupItem(
+    val entity_type: String,
+    val entity_key: String,
+    val created_at: String? = null
+)

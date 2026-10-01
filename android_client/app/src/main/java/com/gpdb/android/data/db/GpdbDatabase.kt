@@ -39,7 +39,7 @@ import androidx.room.migration.Migration
         EpisodeEntity::class,
         EpisodePerformerEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class GpdbDatabase : RoomDatabase() {
@@ -54,11 +54,43 @@ abstract class GpdbDatabase : RoomDatabase() {
     companion object {
         private const val TAG = "GpdbDatabase"
 
+        private val MIGRATION_0_4 = object : Migration(0, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "检测到外部 GPDb.db (version 0)，已执行 0->4 平滑迁移")
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_1_4 = object : Migration(1, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_2_4 = object : Migration(2, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "检测到外部 GPDb.db (version 3)，已执行 3->4 平滑迁移 (补齐 sj_url)")
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+            }
+        }
+
         private val MIGRATION_0_3 = object : Migration(0, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 Log.i(TAG, "检测到外部 macOS GPDb.db (version 0)，已自动平滑挂载并建立 Room 元数据索引")
                 try {
                     database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;")
+                } catch (_: Exception) {}
+                try {
+                    database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;")
                 } catch (_: Exception) {}
             }
         }
@@ -68,6 +100,9 @@ abstract class GpdbDatabase : RoomDatabase() {
                 try {
                     database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;")
                 } catch (_: Exception) {}
+                try {
+                    database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;")
+                } catch (_: Exception) {}
             }
         }
 
@@ -75,6 +110,9 @@ abstract class GpdbDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 try {
                     database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;")
+                } catch (_: Exception) {}
+                try {
+                    database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;")
                 } catch (_: Exception) {}
             }
         }
@@ -92,6 +130,145 @@ abstract class GpdbDatabase : RoomDatabase() {
         }
 
         /**
+         * 前置兼容性检查与物理列自动补全：
+         * 针对外部传入的 SQLite 文件，先使用 Android 原生 SQLite 进行无损检测与轻量 ALTER TABLE，
+         * 确保即使目标库此前已被 Room 或其他客户端写入了不同的版本元数据，performers/movies 表依然具备
+         * 当前代码所需的全部列，彻底防止 Room TableInfo 验证阶段报 Migration didn't properly handle。
+         */
+        private fun ensureSchemaCompatibility(dbFile: File) {
+            var rawDb: android.database.sqlite.SQLiteDatabase? = null
+            try {
+                rawDb = android.database.sqlite.SQLiteDatabase.openDatabase(
+                    dbFile.absolutePath,
+                    null,
+                    android.database.sqlite.SQLiteDatabase.OPEN_READWRITE
+                )
+
+                // 确保 TRUNCATE 日志模式，避免 FUSE 文件系统生成 -wal / -shm 触发 ioctl 权限异常
+                try {
+                    rawDb.rawQuery("PRAGMA journal_mode = TRUNCATE;", null)?.close()
+                } catch (e: Exception) {
+                    Log.w(TAG, "设置 journal_mode=TRUNCATE 警告: ${e.message}")
+                }
+
+                // 1. 检查并补全 performers 表字段
+                val perfCursor = rawDb.rawQuery("PRAGMA table_info(performers)", null)
+                val perfCols = mutableSetOf<String>()
+                val nameIdx = perfCursor.getColumnIndex("name")
+                while (perfCursor.moveToNext()) {
+                    if (nameIdx >= 0) perfCols.add(perfCursor.getString(nameIdx).lowercase())
+                }
+                perfCursor.close()
+
+                if (!perfCols.contains("pbc_url")) {
+                    try {
+                        rawDb.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;")
+                        Log.i(TAG, "前置自愈: 已补齐 performers.pbc_url 字段")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "补齐 pbc_url 异常: ${e.message}")
+                    }
+                }
+                if (!perfCols.contains("sj_url")) {
+                    try {
+                        rawDb.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;")
+                        Log.i(TAG, "前置自愈: 已补齐 performers.sj_url 字段")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "补齐 sj_url 异常: ${e.message}")
+                    }
+                }
+
+                // 2. 检查并补全 movies 表可能缺失的字段
+                val movieCursor = rawDb.rawQuery("PRAGMA table_info(movies)", null)
+                val movieCols = mutableSetOf<String>()
+                val mNameIdx = movieCursor.getColumnIndex("name")
+                while (movieCursor.moveToNext()) {
+                    if (mNameIdx >= 0) movieCols.add(movieCursor.getString(mNameIdx).lowercase())
+                }
+                movieCursor.close()
+
+                if (!movieCols.contains("cover_back")) {
+                    try { rawDb.execSQL("ALTER TABLE movies ADD COLUMN cover_back TEXT;") } catch (_: Exception) {}
+                }
+                if (!movieCols.contains("title_zh")) {
+                    try { rawDb.execSQL("ALTER TABLE movies ADD COLUMN title_zh TEXT;") } catch (_: Exception) {}
+                }
+                if (!movieCols.contains("title_attempts")) {
+                    try { rawDb.execSQL("ALTER TABLE movies ADD COLUMN title_attempts INTEGER DEFAULT 0;") } catch (_: Exception) {}
+                }
+                if (!movieCols.contains("description_zh")) {
+                    try { rawDb.execSQL("ALTER TABLE movies ADD COLUMN description_zh TEXT;") } catch (_: Exception) {}
+                }
+                if (!movieCols.contains("translation_attempts")) {
+                    try { rawDb.execSQL("ALTER TABLE movies ADD COLUMN translation_attempts INTEGER DEFAULT 0;") } catch (_: Exception) {}
+                }
+                if (!movieCols.contains("covers_json")) {
+                    try { rawDb.execSQL("ALTER TABLE movies ADD COLUMN covers_json TEXT;") } catch (_: Exception) {}
+                }
+                if (!movieCols.contains("director_id")) {
+                    try { rawDb.execSQL("ALTER TABLE movies ADD COLUMN director_id INTEGER;") } catch (_: Exception) {}
+                }
+                if (!movieCols.contains("director_name")) {
+                    try { rawDb.execSQL("ALTER TABLE movies ADD COLUMN director_name TEXT;") } catch (_: Exception) {}
+                }
+
+                // 3. 补齐扩展档案表结构
+                rawDb.execSQL("""
+                    CREATE TABLE IF NOT EXISTS performer_pbc_profiles (
+                        performer_id INTEGER PRIMARY KEY,
+                        pbc_url TEXT NOT NULL,
+                        pbc_id TEXT,
+                        birth_name TEXT,
+                        career_start INTEGER,
+                        career_end INTEGER,
+                        career_status TEXT,
+                        bio TEXT,
+                        birth_date TEXT,
+                        birth_place TEXT,
+                        ethnicity TEXT,
+                        astrology TEXT,
+                        height TEXT,
+                        weight TEXT,
+                        dick_size TEXT,
+                        foreskin TEXT,
+                        tattoos TEXT,
+                        piercings TEXT,
+                        roles TEXT,
+                        social_links TEXT,
+                        external_ids TEXT,
+                        tags TEXT,
+                        image_url TEXT,
+                        scraped_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(performer_id) REFERENCES performers(id) ON DELETE CASCADE
+                    );
+                """.trimIndent())
+
+                rawDb.execSQL("""
+                    CREATE TABLE IF NOT EXISTS performer_sj_profiles (
+                        performer_id INTEGER PRIMARY KEY,
+                        sj_url TEXT NOT NULL,
+                        sj_id TEXT,
+                        hair TEXT,
+                        eyes TEXT,
+                        height TEXT,
+                        weight TEXT,
+                        ethnicity TEXT,
+                        dick_size TEXT,
+                        scraped_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(performer_id) REFERENCES performers(id) ON DELETE CASCADE
+                    );
+                """.trimIndent())
+
+                Log.i(TAG, "前置架构自愈检查完成，数据库物理列已就绪")
+            } catch (e: Exception) {
+                Log.w(TAG, "前置架构自愈检查告警 (不阻断正常挂载): ${e.message}", e)
+            } finally {
+                try {
+                    rawDb?.close()
+                } catch (_: Exception) {}
+            }
+        }
+
+        /**
          * 基于外部物理路径就地挂载 Room 数据库实例
          */
         fun buildFromExternalFile(context: Context, absoluteDbPath: String): GpdbDatabase {
@@ -102,12 +279,19 @@ abstract class GpdbDatabase : RoomDatabase() {
 
             Log.i(TAG, "正在以 TRUNCATE 日志模式直连挂载外部 SQLite: $absoluteDbPath")
 
+            // ★ 关键前置步骤：在 Room 连接前完成底层物理表列完整性校验与自动补齐
+            ensureSchemaCompatibility(dbFile)
+
             return Room.databaseBuilder(
                 context.applicationContext,
                 GpdbDatabase::class.java,
                 dbFile.absolutePath // 绝对路径直连，零文件拷贝
             )
-                .addMigrations(MIGRATION_0_1, MIGRATION_0_2, MIGRATION_1_2, MIGRATION_0_3, MIGRATION_1_3, MIGRATION_2_3)
+                .addMigrations(
+                    MIGRATION_0_1, MIGRATION_0_2, MIGRATION_1_2,
+                    MIGRATION_0_3, MIGRATION_1_3, MIGRATION_2_3,
+                    MIGRATION_0_4, MIGRATION_1_4, MIGRATION_2_4, MIGRATION_3_4
+                )
                 // ★ 关键修复：强制使用 TRUNCATE 日志模式，彻底消除 FUSE 下 WAL 模式的 -shm / -wal ioctl 权限冲突
                 .setJournalMode(JournalMode.TRUNCATE)
                 .addCallback(object : Callback() {
@@ -142,6 +326,21 @@ abstract class GpdbDatabase : RoomDatabase() {
                                     external_ids TEXT,
                                     tags TEXT,
                                     image_url TEXT,
+                                    scraped_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                                    FOREIGN KEY(performer_id) REFERENCES performers(id) ON DELETE CASCADE
+                                );
+                            """.trimIndent())
+                            db.execSQL("""
+                                CREATE TABLE IF NOT EXISTS performer_sj_profiles (
+                                    performer_id INTEGER PRIMARY KEY,
+                                    sj_url TEXT NOT NULL,
+                                    sj_id TEXT,
+                                    hair TEXT,
+                                    eyes TEXT,
+                                    height TEXT,
+                                    weight TEXT,
+                                    ethnicity TEXT,
+                                    dick_size TEXT,
                                     scraped_at TEXT DEFAULT CURRENT_TIMESTAMP,
                                     FOREIGN KEY(performer_id) REFERENCES performers(id) ON DELETE CASCADE
                                 );

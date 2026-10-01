@@ -255,10 +255,6 @@ pub fn copy_image_to_clipboard(base64_png: String) -> Result<(), String> {
             let set_data_sel = sel_registerName(b"setData:forType:\0".as_ptr() as *const _);
             let ok = send_set_data(pb, set_data_sel, ns_data, png_type_str);
 
-            let release_sel = sel_registerName(b"release\0".as_ptr() as *const _);
-            let _: Id = send_0(png_type_str, release_sel);
-            let _: Id = send_0(ns_data, release_sel);
-
             if !ok {
                 return Err("写入系统剪贴板失败".to_string());
             }
@@ -272,6 +268,64 @@ pub fn copy_image_to_clipboard(base64_png: String) -> Result<(), String> {
         Ok(())
     }
 }
+
+#[tauri::command]
+pub fn save_update_file(filename: String, base64_data: String) -> Result<String, String> {
+    use base64::Engine;
+
+    let raw_b64 = if let Some(idx) = base64_data.find(',') {
+        &base64_data[idx + 1..]
+    } else {
+        &base64_data
+    };
+
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(raw_b64.trim())
+        .map_err(|e| format!("Base64 解码失败: {}", e))?;
+
+    let dest_dir = std::env::temp_dir();
+    let safe_filename = filename
+        .chars()
+        .map(|c| if matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') { '_' } else { c })
+        .collect::<String>();
+
+    let dest_path = dest_dir.join(&safe_filename);
+    std::fs::write(&dest_path, bytes)
+        .map_err(|e| format!("写入安装包失败: {}", e))?;
+
+    let dest_str = dest_path.to_string_lossy().to_string();
+    log::info!("[save_update_file] Saved update package to: {}", dest_str);
+    Ok(dest_str)
+}
+
+#[tauri::command]
+pub fn install_update_file(filepath: String) -> Result<(), String> {
+    log::info!("[install_update_file] Launching installer for: {}", filepath);
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&filepath)
+            .spawn()
+            .map_err(|e| format!("打开安装文件失败: {}", e))?;
+        Ok(())
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new(&filepath)
+            .spawn()
+            .map_err(|e| format!("启动安装程序失败: {}", e))?;
+        std::process::exit(0);
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&filepath)
+            .spawn()
+            .map_err(|e| format!("打开安装文件失败: {}", e))?;
+        Ok(())
+    }
+}
+
 
 
 #[cfg(test)]

@@ -28,7 +28,8 @@ fun GpdbAsyncImage(
     fallbackEntityId: Long? = null,
     defaultFolder: String = "Covers", // "Covers" | "Performers" | "Episodes"
     alignment: Alignment = Alignment.Center,
-    contentScale: ContentScale = ContentScale.Crop
+    contentScale: ContentScale = ContentScale.Crop,
+    onError: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val relPath = remember(url, fallbackEntityId, defaultFolder) {
@@ -43,6 +44,11 @@ fun GpdbAsyncImage(
         model = ImageRequest.Builder(context)
             .data(imageData)
             .crossfade(true)
+            .apply {
+                if (onError != null) {
+                    listener(onError = { _, _ -> onError() })
+                }
+            }
             .build(),
         contentDescription = contentDescription,
         alignment = alignment,

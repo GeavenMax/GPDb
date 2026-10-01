@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -299,6 +300,76 @@ class UserAnalyticsRepository private constructor(private val context: Context) 
                 val newArr = JSONArray().apply { put(today) }
                 prefs[KEY_ACTIVE_DAYS] = newArr.toString()
             }
+        }
+    }
+
+    suspend fun exportAnalyticsMap(): Map<String, Any> {
+        val prefs = context.analyticsDataStore.data.first()
+        return mapOf(
+            "totalFocusTimeSeconds" to (prefs[KEY_FOCUS_TIME_SECONDS] ?: 0L),
+            "movieViewsCount" to (prefs[KEY_MOVIE_VIEWS] ?: 0),
+            "uniqueMoviesJson" to (prefs[KEY_UNIQUE_MOVIES] ?: "[]"),
+            "episodeViewsCount" to (prefs[KEY_EPISODE_VIEWS] ?: 0),
+            "performerViewsCount" to (prefs[KEY_PERFORMER_VIEWS] ?: 0),
+            "uniquePerformersJson" to (prefs[KEY_UNIQUE_PERFORMERS] ?: "[]"),
+            "directorViewsCount" to (prefs[KEY_DIRECTOR_VIEWS] ?: 0),
+            "studioViewsCount" to (prefs[KEY_STUDIO_VIEWS] ?: 0),
+            "searchesCount" to (prefs[KEY_SEARCHES] ?: 0),
+            "favoritesCount" to (prefs[KEY_FAVORITES] ?: 0),
+            "ratingsCount" to (prefs[KEY_RATINGS] ?: 0),
+            "translationsCount" to (prefs[KEY_TRANSLATIONS] ?: 0),
+            "nightOwlViewsCount" to (prefs[KEY_NIGHT_OWL_VIEWS] ?: 0),
+            "firstLaunchTime" to (prefs[KEY_FIRST_LAUNCH] ?: System.currentTimeMillis()),
+            "activeDaysJson" to (prefs[KEY_ACTIVE_DAYS] ?: "[]")
+        )
+    }
+
+    suspend fun importAnalyticsMap(data: Map<String, Any>) {
+        context.analyticsDataStore.edit { prefs ->
+            val newFocus = (data["totalFocusTimeSeconds"] as? Number)?.toLong() ?: 0L
+            prefs[KEY_FOCUS_TIME_SECONDS] = maxOf(prefs[KEY_FOCUS_TIME_SECONDS] ?: 0L, newFocus)
+
+            val newMovieViews = (data["movieViewsCount"] as? Number)?.toInt() ?: 0
+            prefs[KEY_MOVIE_VIEWS] = maxOf(prefs[KEY_MOVIE_VIEWS] ?: 0, newMovieViews)
+
+            val newEpisodeViews = (data["episodeViewsCount"] as? Number)?.toInt() ?: 0
+            prefs[KEY_EPISODE_VIEWS] = maxOf(prefs[KEY_EPISODE_VIEWS] ?: 0, newEpisodeViews)
+
+            val newPerformerViews = (data["performerViewsCount"] as? Number)?.toInt() ?: 0
+            prefs[KEY_PERFORMER_VIEWS] = maxOf(prefs[KEY_PERFORMER_VIEWS] ?: 0, newPerformerViews)
+
+            val newDirectorViews = (data["directorViewsCount"] as? Number)?.toInt() ?: 0
+            prefs[KEY_DIRECTOR_VIEWS] = maxOf(prefs[KEY_DIRECTOR_VIEWS] ?: 0, newDirectorViews)
+
+            val newStudioViews = (data["studioViewsCount"] as? Number)?.toInt() ?: 0
+            prefs[KEY_STUDIO_VIEWS] = maxOf(prefs[KEY_STUDIO_VIEWS] ?: 0, newStudioViews)
+
+            val newSearches = (data["searchesCount"] as? Number)?.toInt() ?: 0
+            prefs[KEY_SEARCHES] = maxOf(prefs[KEY_SEARCHES] ?: 0, newSearches)
+
+            val newRatings = (data["ratingsCount"] as? Number)?.toInt() ?: 0
+            prefs[KEY_RATINGS] = maxOf(prefs[KEY_RATINGS] ?: 0, newRatings)
+
+            val newTranslations = (data["translationsCount"] as? Number)?.toInt() ?: 0
+            prefs[KEY_TRANSLATIONS] = maxOf(prefs[KEY_TRANSLATIONS] ?: 0, newTranslations)
+
+            // Merge active days
+            val existingDays = try {
+                val arr = JSONArray(prefs[KEY_ACTIVE_DAYS] ?: "[]")
+                (0 until arr.length()).map { arr.getString(it) }.toMutableSet()
+            } catch (_: Exception) { mutableSetOf<String>() }
+
+            val importedDays = (data["activeDays"] as? List<*>)?.mapNotNull { it?.toString() }
+                ?: (data["activeDaysJson"] as? String)?.let { json ->
+                    try {
+                        val arr = JSONArray(json)
+                        (0 until arr.length()).map { arr.getString(it) }
+                    } catch (_: Exception) { null }
+                } ?: emptyList()
+            existingDays.addAll(importedDays)
+            val mergedDaysArr = JSONArray()
+            existingDays.forEach { mergedDaysArr.put(it) }
+            prefs[KEY_ACTIVE_DAYS] = mergedDaysArr.toString()
         }
     }
 }
