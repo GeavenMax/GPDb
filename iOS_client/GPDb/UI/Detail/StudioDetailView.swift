@@ -52,6 +52,7 @@ public struct StudioDetailView: View {
         .dynamicAmbientBackground(imagePath: movies.first?.coverFull ?? movies.first?.coverIcon ?? episodes.first?.thumbnailUrl)
         .navigationTitle(cleanTitle(studioName))
         .inlineNavigationTitle()
+        .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 MarqueeText(text: cleanTitle(studioName), font: .headline, weight: .bold, speed: 25)
@@ -98,7 +99,7 @@ public struct StudioDetailView: View {
     }
 
     private var moviesGrid: some View {
-        ScrollView {
+        WaterfallScrollView {
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: environment.layoutColumns),
                 spacing: 14
@@ -138,7 +139,7 @@ public struct StudioDetailView: View {
     }
 
     private var episodesList: some View {
-        ScrollView {
+        WaterfallScrollView {
             LazyVStack(spacing: 14) {
                 ForEach(episodes) { ep in
                     NavigationLink(destination: EpisodeDetailView(episodeId: ep.id)) {

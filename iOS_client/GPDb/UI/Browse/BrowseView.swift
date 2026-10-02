@@ -76,6 +76,7 @@ public struct BrowseView: View {
             }
             .navigationTitle("影视库")
             .searchable(text: $searchText, prompt: "搜索\(selectedCategory.rawValue)...")
+            .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     HStack(spacing: 12) {
@@ -139,7 +140,7 @@ public struct BrowseView: View {
     }
 
     private var movieGrid: some View {
-        ScrollView {
+        WaterfallScrollView {
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: environment.layoutColumns),
                 spacing: 14
@@ -190,7 +191,7 @@ public struct BrowseView: View {
     }
 
     private var episodesListSection: some View {
-        ScrollView {
+        WaterfallScrollView {
             LazyVStack(spacing: 14) {
                 ForEach(Array(episodes.enumerated()), id: \.element.id) { index, ep in
                     NavigationLink(destination: EpisodeDetailView(episodeId: ep.id)) {
@@ -252,7 +253,7 @@ public struct BrowseView: View {
     }
 
     private var performerGrid: some View {
-        ScrollView {
+        WaterfallScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 14)], spacing: 16) {
                 ForEach(Array(performers.enumerated()), id: \.element.id) { index, performer in
                     NavigationLink(destination: PerformerDetailView(performerId: performer.id)) {

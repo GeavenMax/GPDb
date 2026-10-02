@@ -42,16 +42,28 @@ public struct AppNavigation: View {
                     HomeFeedView()
                         .tabItem { Label("主页", systemImage: "house") }
                         .tag(MainTab.feed)
+                        .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
 
                     BrowseView()
                         .tabItem { Label("影视库", systemImage: "film.stack") }
                         .tag(MainTab.browse)
+                        .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
 
                     LibraryView()
                         .tabItem { Label("我的影库", systemImage: "bookmark") }
                         .tag(MainTab.library)
+                        .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
                 }
                 .tint(.amber)
+                .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
+                .animation(.easeInOut(duration: 0.25), value: environment.isTabBarHidden)
+                .onChange(of: selectedTab) { _, _ in
+                    if environment.isTabBarHidden {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            environment.isTabBarHidden = false
+                        }
+                    }
+                }
             }
         }
     }

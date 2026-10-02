@@ -34,12 +34,13 @@
 		71908B14F7C64127B7E107AE /* MovieRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC06298E84FB66CDDFD8D47E /* MovieRepository.swift */; };
 		739D779E4276060EC60DA850 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 66409A50C88DB51BC06F77FC /* Assets.xcassets */; };
 		7654297779E418EE4F204215 /* MarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF9B78A360C2611E698D28F /* MarqueeText.swift */; };
-		83DA67B82260B5F4A6129C02 /* DatabaseLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83DA67B82260B5F4A6129C01 /* DatabaseLoadingView.swift */; };
 		7D32D1000357663D826793AD /* PerformerRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EE4EF44BE4A1EBE1DE92742 /* PerformerRepository.swift */; };
 		7F21961AA40EB4EADE149D33 /* GitHubUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC9FC3135181E0A2A691B795 /* GitHubUpdateService.swift */; };
 		7FF9A8B522AE04E49646B93F /* GpdbImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A3934AB1E02C5BC2FE3CDF /* GpdbImageView.swift */; };
+		8D86F5CBF8CCCAF752DE8165 /* DatabaseLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6DEADB4012AD9884D3E9DA3 /* DatabaseLoadingView.swift */; };
 		A474B0D43119FD73382BC29D /* FilteredMovieListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C8190C7C44ADE96A474C04F /* FilteredMovieListView.swift */; };
 		A65297A4654BD716F0AE6B8E /* DatabaseHolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7495D8B3867250F15C741B9 /* DatabaseHolder.swift */; };
+		B33FF8A3AADED253D64801CD /* WaterfallScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077E4B1C45F274A3A6B43E60 /* WaterfallScrollView.swift */; };
 		B348F9855C23AEEA51D9B16E /* StudioDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D873097E559D9B16244E76D8 /* StudioDetailView.swift */; };
 		BCA51AC146828F0E9FA26DE1 /* UserRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78806F3CE81E053E1336E96E /* UserRecord.swift */; };
 		C1EED25F883CEF47DB65F9C4 /* UserRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D51F80EF3CD0ACAB1BC13D4C /* UserRepository.swift */; };
@@ -59,6 +60,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		077E4B1C45F274A3A6B43E60 /* WaterfallScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterfallScrollView.swift; sourceTree = "<group>"; };
 		0C8190C7C44ADE96A474C04F /* FilteredMovieListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilteredMovieListView.swift; sourceTree = "<group>"; };
 		10B4DEF2AD630A9E7A21AA7B /* PerformerRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformerRecord.swift; sourceTree = "<group>"; };
 		13632904A53EEFAB76018C36 /* FilterSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterSheetView.swift; sourceTree = "<group>"; };
@@ -71,7 +73,7 @@
 		3D67968341755A080068CC68 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		43425C9179C75ED62D33D255 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		4572DA7CA32EB5B5751B8042 /* SectionIndexBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionIndexBar.swift; sourceTree = "<group>"; };
-		49739F8B981DAE0F648F84D8 /* GPDb.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GPDb.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		49739F8B981DAE0F648F84D8 /* GPDb.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = GPDb.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4AED9D5D86E53C9170E0A1B1 /* PaletteExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteExtractor.swift; sourceTree = "<group>"; };
 		54C21C6D92A7815DB3AEB659 /* DynamicAmbientBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicAmbientBackground.swift; sourceTree = "<group>"; };
 		56D6AE26D5BA58C4E7CAE13D /* GlossaryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlossaryHelper.swift; sourceTree = "<group>"; };
@@ -88,7 +90,6 @@
 		9EE4EF44BE4A1EBE1DE92742 /* PerformerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformerRepository.swift; sourceTree = "<group>"; };
 		A8E75DBF87BF96CD76AC3FCE /* ZipImageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipImageProvider.swift; sourceTree = "<group>"; };
 		AAF9B78A360C2611E698D28F /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
-		83DA67B82260B5F4A6129C01 /* DatabaseLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseLoadingView.swift; sourceTree = "<group>"; };
 		ADC5B2591B49D5F6AF757760 /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
 		B3CD99B77092FC6CD9794B3A /* SeriesRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeriesRecord.swift; sourceTree = "<group>"; };
 		BFBDA2290DF31DC1B29D7F4D /* HomeFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeedView.swift; sourceTree = "<group>"; };
@@ -96,6 +97,7 @@
 		C8A355D2B77D29EF6E915AB0 /* LibraryAnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryAnalyticsView.swift; sourceTree = "<group>"; };
 		D51F80EF3CD0ACAB1BC13D4C /* UserRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserRepository.swift; sourceTree = "<group>"; };
 		D6B1B69A139D408929537966 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		D6DEADB4012AD9884D3E9DA3 /* DatabaseLoadingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseLoadingView.swift; sourceTree = "<group>"; };
 		D873097E559D9B16244E76D8 /* StudioDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioDetailView.swift; sourceTree = "<group>"; };
 		DBFBD919DFBF0BCE261CB504 /* EpisodeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EpisodeDetailView.swift; sourceTree = "<group>"; };
 		DC183A7665748B95729D31C8 /* PerformerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformerDetailView.swift; sourceTree = "<group>"; };
@@ -243,12 +245,13 @@
 			isa = PBXGroup;
 			children = (
 				73D79AFFEB70CFADB3E6BD96 /* ColumnSwitchButton.swift */,
-				83DA67B82260B5F4A6129C01 /* DatabaseLoadingView.swift */,
+				D6DEADB4012AD9884D3E9DA3 /* DatabaseLoadingView.swift */,
 				54C21C6D92A7815DB3AEB659 /* DynamicAmbientBackground.swift */,
 				32E4F61760603AD2CC614ADF /* FlowLayout.swift */,
 				AAF9B78A360C2611E698D28F /* MarqueeText.swift */,
 				4572DA7CA32EB5B5751B8042 /* SectionIndexBar.swift */,
 				ADC5B2591B49D5F6AF757760 /* ViewExtensions.swift */,
+				077E4B1C45F274A3A6B43E60 /* WaterfallScrollView.swift */,
 				5DDE4B98CE57E016C2823C79 /* ZoomableImageViewer.swift */,
 			);
 			path = Common;
@@ -364,6 +367,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					C6CB9F2F5F65D7FC7833A51A = {
+						DevelopmentTeam = U95LQ6T7VN;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -415,7 +419,7 @@
 				DAE3A64930DF6B9792E92645 /* BrowseView.swift in Sources */,
 				220559C7855BD6BDF068A160 /* ColumnSwitchButton.swift in Sources */,
 				A65297A4654BD716F0AE6B8E /* DatabaseHolder.swift in Sources */,
-				83DA67B82260B5F4A6129C02 /* DatabaseLoadingView.swift in Sources */,
+				8D86F5CBF8CCCAF752DE8165 /* DatabaseLoadingView.swift in Sources */,
 				63BD350F0A58CA579C3C65A1 /* DynamicAmbientBackground.swift in Sources */,
 				1AD3A654D7D77C737121B379 /* EpisodeDetailView.swift in Sources */,
 				DE24A9BFFCE38800689FF85E /* EpisodeRecord.swift in Sources */,
@@ -450,6 +454,7 @@
 				BCA51AC146828F0E9FA26DE1 /* UserRecord.swift in Sources */,
 				C1EED25F883CEF47DB65F9C4 /* UserRepository.swift in Sources */,
 				F6B211CDAFBD484CCEE8EA69 /* ViewExtensions.swift in Sources */,
+				B33FF8A3AADED253D64801CD /* WaterfallScrollView.swift in Sources */,
 				EDD26383C54600DE5BF5276F /* ZipArchiveService.swift in Sources */,
 				2CDD725FA88CF0E43218EA83 /* ZipImageProvider.swift in Sources */,
 				143AF36D7B54F42EC2AB5A61 /* ZoomableImageViewer.swift in Sources */,
@@ -465,7 +470,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 725FXPRUGF;
+				DEVELOPMENT_TEAM = U95LQ6T7VN;
 				INFOPLIST_FILE = GPDb/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -543,7 +548,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 725FXPRUGF;
+				DEVELOPMENT_TEAM = U95LQ6T7VN;
 				INFOPLIST_FILE = GPDb/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -30,33 +30,35 @@ public struct PerformerDetailView: View {
     }
 
     public var body: some View {
-        ScrollView {
+        WaterfallScrollView {
             if isLoading {
                 ProgressView()
                     .padding(.top, 60)
             } else if let data = detailData {
-                // 单流式 Lazy 布局：将人物全息档案与分类 TabRow 置于统一流中
-                LazyVStack(spacing: 16, pinnedViews: [.sectionHeaders]) {
+                // 单流式 Lazy 布局：将人物全息档案与作品内容区置于统一流中
+                LazyVStack(spacing: 16) {
                     // 1. 演员人物全息档案卡片
                     performerProfileHeader(data: data)
                         .padding(.horizontal)
 
-                    // 2. 吸顶分类标签栏与作品内容区
-                    Section {
-                        if selectedTab == .movies {
-                            moviesGrid(movies: data.movies)
-                        } else {
-                            episodesList(episodes: data.episodes)
-                        }
-                    } header: {
-                        tabHeader(data: data)
+                    // 2. 作品内容区 (电影网格 / 分集列表)
+                    if selectedTab == .movies {
+                        moviesGrid(movies: data.movies)
+                    } else {
+                        episodesList(episodes: data.episodes)
                     }
                 }
-                .padding(.bottom, 32)
+                .padding(.bottom, 16)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if let data = detailData {
+                tabHeader(data: data)
             }
         }
         .dynamicAmbientBackground(imagePath: detailData?.performer.imageUrl)
         .inlineNavigationTitle()
+        .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 12) {
@@ -301,6 +303,9 @@ public struct PerformerDetailView: View {
 
     private func tabHeader(data: PerformerDetailData) -> some View {
         VStack(spacing: 0) {
+            Divider()
+                .opacity(0.35)
+
             HStack(spacing: 12) {
                 ForEach(PerformerTab.allCases) { tab in
                     let isSelected = selectedTab == tab
@@ -355,9 +360,6 @@ public struct PerformerDetailView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-
-            Divider()
-                .opacity(0.4)
         }
         .background(.ultraThinMaterial)
     }

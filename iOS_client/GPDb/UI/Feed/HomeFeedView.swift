@@ -18,7 +18,7 @@ public struct HomeFeedView: View {
 
     public var body: some View {
         NavigationStack {
-            ScrollView {
+            WaterfallScrollView {
                 VStack(spacing: 24) {
                     if isLoading {
                         homeFeedLoadingSkeleton
@@ -57,6 +57,7 @@ public struct HomeFeedView: View {
             )
             .navigationTitle("主页")
             .inlineNavigationTitle()
+            .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     Button {

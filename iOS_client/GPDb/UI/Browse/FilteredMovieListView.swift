@@ -19,7 +19,7 @@ public struct FilteredMovieListView: View {
     }
 
     public var body: some View {
-        ScrollView {
+        WaterfallScrollView {
             if isLoading {
                 ProgressView()
                     .padding(.top, 40)
@@ -66,6 +66,7 @@ public struct FilteredMovieListView: View {
         }
         .dynamicAmbientBackground(imagePath: movies.first?.coverFull ?? movies.first?.coverIcon)
         .navigationTitle(cleanTitle(title))
+        .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 ColumnSwitchButton()

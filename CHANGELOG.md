@@ -6,6 +6,14 @@
 ## [v2.16.1] - 2026-10-02
 
 ### Optimized
+- **演员档案页作品分类切换栏移至底部导航栏上方沉浸吸附 (`PerformerDetailView.swift`)**：
+  - 将原置于页面滚动流内部的「出演电影」「出演分集」分类横条解耦，改为通过 `.safeAreaInset(edge: .bottom)` 优雅悬浮于底部导航栏（TabBar）正上方；
+  - 配备顶部微光分界线与 `.ultraThinMaterial` 高级毛玻璃半透明质感，单手大拇指触手可及，大幅提升在长篇幅影视作品与分集之间切换的交互舒适度。
+- **瀑布流滑动时底部导航栏自动收缩与展开动效 (`WaterfallScrollView.swift`, `AppEnvironment.swift`, `AppNavigation.swift`)**：
+  - 新增专用沉浸式滚动容器 `WaterfallScrollView`，深度绑定 `AppEnvironment.isTabBarHidden` 与 SwiftUI 系统级 `.toolbar(visibility, for: .tabBar)`；
+  - 当用户在瀑布流或网格中向下滑动浏览作品时，底部导航栏自动平滑收起隐藏（配合 22pt 滤波防抖阈值，杜绝微颤抖动），最大化纵向浏览视野与沉浸感；
+  - 当用户向上滑动或触达顶部时，底部导航栏即时自动展开浮现；切换 Tab 或退出页面时安全自愈恢复可见；
+  - 全量装配至主页 Feed、影视库全部二级分类、我的影库、片商档案以及分类过滤瀑布流。
 - **冷启动数据库装载性能极限优化与冷启主线程零冻结 (`DatabaseHolder.swift`, `AppEnvironment.swift`, `ZipArchiveService.swift`, `HomeFeedRepository.swift`)**：
   - **SQLite PRAGMA 高性能连接参数注入**：GRDB 连接池全面配置 WAL 预写日志模式（`PRAGMA journal_mode = WAL;`）、`PRAGMA synchronous = NORMAL;`、内存临时库（`PRAGMA temp_store = MEMORY;`）、256MB 内存映射（`PRAGMA mmap_size = 268435456;`）以及 64MB 页面缓存（`PRAGMA cache_size = -64000;`），将冷启动大文件数据库读写与索引查询性能提升 3~10 倍；
   - **Schema 自愈检查极速直通**：在 `ensureSchemaCompatibility` 中引入 `sqlite_master` 索引表直通判定，已自愈就绪的数据库 0.1ms 立即返回，杜绝每次冷启动重复解析与执行全套 15 张数据表 DDL 语句的 CPU 开销；
@@ -25,6 +33,10 @@
     - **染色外观 (`AppIcon-1024-tinted.png`)**：严格遵循 Apple HIG 规范，采用高对比度单图层黑白灰度渐变与中性深灰底色（`#161618`），用户在 iOS 18 桌面选取任意个性化主题色时，系统可对高光与符号精确着色，呈现浑然一体的高级感。
 
 ### Fixed
+- **跑马灯长文本从屏幕最右侧跳入 Bug 根除与左边缘锚定无缝循环重构 (`MarqueeText.swift`)**：
+  - **根因深度定位**：排查发现原 `GeometryReader` 内嵌未限定宽度的 2 倍宽 `HStack` 时，SwiftUI 默认对超宽子视图采取居中排布，导致文本起始 X 坐标被强制推向屏幕负坐标，首个文本被左侧截断，而次级文本从屏幕右侧突兀滑入；且 `.repeatForever` 在状态更新时未能可靠重置；
+  - **严格左边缘固定锚定**：对轮播 `HStack` 与容器包裹 `.frame(width: cWidth, alignment: .leading)`，确保进入页面、切换条目或重绘时初始位移严格为 0（即文字开头与普通 Text 完全一致，严格靠左自然对齐）；
+  - **停留静读与无缝循环**：使用非阻塞异步任务在每次进入或回跳时静态停留 1.5 秒，让用户舒适阅读标题开头；随后单次匀速线性平滑滚向末尾，末尾接壤后即时无感对齐首部，彻底杜绝从屏幕最右侧横跨飞入的视觉缺陷。
 - **片商档案页分集与作品加载截断修复与独立作品总数查询 (`StudioDetailView.swift` & `BrowseRepository.swift`)**：
   - 修复原硬编码 `pageSize: 10000` 导致大于一万条记录的大型片商作品被截断的缺陷；
   - 在 `BrowseRepository` 新增专门获取片商作品总数（电影数与分集数）的专用接口 `getStudioWorksCounts(studio:)`，并在标签栏准确显示真实数据库总数；

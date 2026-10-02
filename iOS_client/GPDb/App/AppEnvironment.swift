@@ -35,6 +35,9 @@ public final class AppEnvironment: ObservableObject {
     @Published public var layoutColumns: Int = 2
     @Published public var use3DFlipCards: Bool = false
 
+    // 底部导航栏联动 (瀑布流滑动自动收缩与展开)
+    @Published public var isTabBarHidden: Bool = false
+
     // 在线更新
     @Published public var availableUpdate: GitHubReleaseInfo? = nil
     @Published public var isCheckingUpdates: Bool = false

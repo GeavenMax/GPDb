@@ -62,6 +62,7 @@ public struct LibraryView: View {
                 }
             }
             .navigationTitle("我的影库")
+            .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     HStack(spacing: 12) {
@@ -111,7 +112,7 @@ public struct LibraryView: View {
     }
 
     private var moviesGrid: some View {
-        ScrollView {
+        WaterfallScrollView {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: environment.layoutColumns), spacing: 14) {
                 ForEach(favoriteMovies) { movie in
                     NavigationLink(destination: MovieDetailView(movieId: movie.id)) {
@@ -132,7 +133,7 @@ public struct LibraryView: View {
     }
 
     private var performersGrid: some View {
-        ScrollView {
+        WaterfallScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 14)], spacing: 16) {
                 ForEach(favoritePerformers) { performer in
                     NavigationLink(destination: PerformerDetailView(performerId: performer.id)) {

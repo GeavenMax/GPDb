@@ -40,7 +40,7 @@ public struct MarqueeText: View {
 
     public var body: some View {
         GeometryReader { geo in
-            let cWidth = geo.size.width
+            let cWidth = max(geo.size.width, 0)
 
             ZStack(alignment: .leading) {
                 if shouldAnimate {
@@ -49,16 +49,17 @@ public struct MarqueeText: View {
                         singleTextItem
                     }
                     .fixedSize()
+                    .frame(width: cWidth, alignment: .leading)
                     .offset(x: offset)
-                    .id(animationKey)
                     .task(id: animationKey) {
-                        runAnimation()
+                        await startMarqueeAnimation()
                     }
                 } else {
                     singleTextItem
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(width: cWidth, alignment: .leading)
                 }
             }
+            .frame(width: cWidth, height: geo.size.height, alignment: .leading)
             .clipped()
             .onAppear {
                 containerWidth = cWidth
@@ -70,6 +71,7 @@ public struct MarqueeText: View {
                 let wasAnimating = shouldAnimate
                 containerWidth = newWidth
                 if shouldAnimate != wasAnimating || shouldAnimate {
+                    resetOffsetInstant()
                     animationKey = UUID()
                 }
             }
@@ -96,11 +98,12 @@ public struct MarqueeText: View {
                 self.textHeight = size.height
             }
             if abs(prevWidth - size.width) > 1 && shouldAnimate {
+                resetOffsetInstant()
                 animationKey = UUID()
             }
         }
         .onChange(of: text) { _, _ in
-            offset = 0
+            resetOffsetInstant()
             animationKey = UUID()
         }
     }
@@ -114,21 +117,39 @@ public struct MarqueeText: View {
             .fixedSize(horizontal: true, vertical: false)
     }
 
-    private func runAnimation() {
-        guard shouldAnimate else {
+    private func resetOffsetInstant() {
+        var tx = Transaction()
+        tx.disablesAnimations = true
+        withTransaction(tx) {
             offset = 0
+        }
+    }
+
+    @MainActor
+    private func startMarqueeAnimation() async {
+        guard shouldAnimate else {
+            resetOffsetInstant()
             return
         }
+
         let distance = textWidth + spacing
         let duration = max(Double(distance) / speed, 2.5)
 
-        Task { @MainActor in
-            offset = 0
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
-            guard !Task.isCancelled, shouldAnimate else { return }
-            withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
+        while !Task.isCancelled && shouldAnimate {
+            resetOffsetInstant()
+
+            // 停留 1.5 秒让用户舒适阅读首部
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled, shouldAnimate else { break }
+
+            // 平滑线性滚动至末尾，Item 2 精准接替 Item 1 位置
+            withAnimation(.linear(duration: duration)) {
                 offset = -distance
             }
+
+            // 等待本次滚动结束
+            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+            guard !Task.isCancelled, shouldAnimate else { break }
         }
     }
 }
