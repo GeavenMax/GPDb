@@ -378,4 +378,12 @@ public final class AppEnvironment: ObservableObject {
         self.use3DFlipCards.toggle()
         defaults.set(self.use3DFlipCards, forKey: k3DFlip)
     }
+
+    public func setTabBarHidden(_ hidden: Bool, animated: Bool = true) {
+        guard isTabBarHidden != hidden else { return }
+        self.isTabBarHidden = hidden
+        #if canImport(UIKit)
+        TabBarManager.setTabBarHidden(hidden, animated: animated)
+        #endif
+    }
 }

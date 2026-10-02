@@ -18,6 +18,7 @@
 		2902C7CE42C743CF5C360C37 /* MovieDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9EE05BFA2931C399300EE89 /* MovieDetailView.swift */; };
 		2A6446B794BD9D0532DE53A1 /* GlossaryHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D6AE26D5BA58C4E7CAE13D /* GlossaryHelper.swift */; };
 		2CDD725FA88CF0E43218EA83 /* ZipImageProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E75DBF87BF96CD76AC3FCE /* ZipImageProvider.swift */; };
+		2FA721B0650D37C4D4DEC7B2 /* TabBarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A146F6CA552BF95DC7A11596 /* TabBarManager.swift */; };
 		46AF1AC5A01772334EE4BD69 /* SeriesRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3CD99B77092FC6CD9794B3A /* SeriesRecord.swift */; };
 		488B4D6D08ADF99B2892ECF8 /* PaletteExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AED9D5D86E53C9170E0A1B1 /* PaletteExtractor.swift */; };
 		4ABCBC096DA9D91F9398DFBA /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 731C4344646F96FBE039058C /* SettingsView.swift */; };
@@ -88,6 +89,7 @@
 		79731211CB6D92B9B4A504D1 /* GlossaryRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlossaryRecord.swift; sourceTree = "<group>"; };
 		7E1C1B0A567BBF83A4887674 /* AppNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNavigation.swift; sourceTree = "<group>"; };
 		9EE4EF44BE4A1EBE1DE92742 /* PerformerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformerRepository.swift; sourceTree = "<group>"; };
+		A146F6CA552BF95DC7A11596 /* TabBarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarManager.swift; sourceTree = "<group>"; };
 		A8E75DBF87BF96CD76AC3FCE /* ZipImageProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipImageProvider.swift; sourceTree = "<group>"; };
 		AAF9B78A360C2611E698D28F /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
 		ADC5B2591B49D5F6AF757760 /* ViewExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewExtensions.swift; sourceTree = "<group>"; };
@@ -250,6 +252,7 @@
 				32E4F61760603AD2CC614ADF /* FlowLayout.swift */,
 				AAF9B78A360C2611E698D28F /* MarqueeText.swift */,
 				4572DA7CA32EB5B5751B8042 /* SectionIndexBar.swift */,
+				A146F6CA552BF95DC7A11596 /* TabBarManager.swift */,
 				ADC5B2591B49D5F6AF757760 /* ViewExtensions.swift */,
 				077E4B1C45F274A3A6B43E60 /* WaterfallScrollView.swift */,
 				5DDE4B98CE57E016C2823C79 /* ZoomableImageViewer.swift */,
@@ -449,6 +452,7 @@
 				4ABCBC096DA9D91F9398DFBA /* SettingsView.swift in Sources */,
 				6E6085654AC72DF14F9CDE66 /* ShareCardView.swift in Sources */,
 				B348F9855C23AEEA51D9B16E /* StudioDetailView.swift in Sources */,
+				2FA721B0650D37C4D4DEC7B2 /* TabBarManager.swift in Sources */,
 				EE351917266D03D79FEDCB54 /* UserAnalyticsRepository.swift in Sources */,
 				7036539F288B51FD55AFD9B4 /* UserBackupService.swift in Sources */,
 				BCA51AC146828F0E9FA26DE1 /* UserRecord.swift in Sources */,

@@ -54,6 +54,8 @@ public struct PerformerDetailView: View {
         .safeAreaInset(edge: .bottom) {
             if let data = detailData {
                 tabHeader(data: data)
+                    .offset(y: environment.isTabBarHidden ? 49 : 0)
+                    .animation(.easeInOut(duration: 0.28), value: environment.isTabBarHidden)
             }
         }
         .dynamicAmbientBackground(imagePath: detailData?.performer.imageUrl)

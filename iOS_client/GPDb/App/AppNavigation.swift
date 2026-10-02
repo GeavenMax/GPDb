@@ -58,11 +58,7 @@ public struct AppNavigation: View {
                 .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
                 .animation(.easeInOut(duration: 0.25), value: environment.isTabBarHidden)
                 .onChange(of: selectedTab) { _, _ in
-                    if environment.isTabBarHidden {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            environment.isTabBarHidden = false
-                        }
-                    }
+                    environment.setTabBarHidden(false, animated: false)
                 }
             }
         }

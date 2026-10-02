@@ -11,10 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **演员档案页作品分类切换栏移至底部导航栏上方沉浸吸附 (`PerformerDetailView.swift`)**：
   - 将原置于页面滚动流内部的「出演电影」「出演分集」分类横条解耦，改为通过 `.safeAreaInset(edge: .bottom)` 优雅悬浮于底部导航栏（TabBar）正上方；
   - 配备顶部微光分界线与 `.ultraThinMaterial` 高级毛玻璃半透明质感，单手大拇指触手可及，大幅提升在长篇幅影视作品与分集之间切换的交互舒适度。
-- **瀑布流滑动时底部导航栏自动收缩与展开动效 (`WaterfallScrollView.swift`, `AppEnvironment.swift`, `AppNavigation.swift`)**：
-  - 新增专用沉浸式滚动容器 `WaterfallScrollView`，深度绑定 `AppEnvironment.isTabBarHidden` 与 SwiftUI 系统级 `.toolbar(visibility, for: .tabBar)`；
-  - 当用户在瀑布流或网格中向下滑动浏览作品时，底部导航栏自动平滑收起隐藏（配合 22pt 滤波防抖阈值，杜绝微颤抖动），最大化纵向浏览视野与沉浸感；
-  - 当用户向上滑动或触达顶部时，底部导航栏即时自动展开浮现；切换 Tab 或退出页面时安全自愈恢复可见；
+- **瀑布流滑动时底部导航栏自动收缩与展开动效与底层穿透 (`WaterfallScrollView.swift`, `TabBarManager.swift`, `AppEnvironment.swift`, `AppNavigation.swift`)**：
+  - **TabBarManager 原生底层穿透**：排查发现 iOS 17/18 中 SwiftUI 自身的 `.toolbar(visibility, for: .tabBar)` 存在严重系统级限制（在 TabView/NavigationStack 根视图下动态修改状态不会触发任何 UIKit 动画），新增 `TabBarManager` 递归捕获 `UIWindow` 下真实 `UITabBar`，利用 `CGAffineTransform` 与 `alpha` 驱动丝滑原生位移收起与复位；
+  - **高频滚动探针与累积防抖优化 (`WaterfallScrollView.swift`)**：废除原动态 UUID 空间，统一使用静态坐标空间与 1-pt 顶部精确几何探针；针对 120Hz ProMotion 高频采样重构差值累积计算（未突破 $\pm 12\text{pt}$ 阈值前持续累加），杜绝小幅慢滑被逐帧重置清零的问题；
+  - **演员详情页横条位移动画同步 (`PerformerDetailView.swift`)**：当导航栏收起时，作品分类横条自动下沉贴合底部安全区，展开时平滑上浮归位；
   - 全量装配至主页 Feed、影视库全部二级分类、我的影库、片商档案以及分类过滤瀑布流。
 - **冷启动数据库装载性能极限优化与冷启主线程零冻结 (`DatabaseHolder.swift`, `AppEnvironment.swift`, `ZipArchiveService.swift`, `HomeFeedRepository.swift`)**：
   - **SQLite PRAGMA 高性能连接参数注入**：GRDB 连接池全面配置 WAL 预写日志模式（`PRAGMA journal_mode = WAL;`）、`PRAGMA synchronous = NORMAL;`、内存临时库（`PRAGMA temp_store = MEMORY;`）、256MB 内存映射（`PRAGMA mmap_size = 268435456;`）以及 64MB 页面缓存（`PRAGMA cache_size = -64000;`），将冷启动大文件数据库读写与索引查询性能提升 3~10 倍；
