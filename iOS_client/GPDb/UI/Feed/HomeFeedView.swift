@@ -21,8 +21,7 @@ public struct HomeFeedView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     if isLoading {
-                        ProgressView("正在装载离线影库...")
-                            .padding(.top, 60)
+                        homeFeedLoadingSkeleton
                     } else {
                         // 1. 焦点海报轮播 (Spotlight Banner)
                         if !feedData.spotlightMovies.isEmpty {
@@ -402,6 +401,80 @@ public struct HomeFeedView: View {
             }
             .padding(.horizontal)
         }
+    }
+
+    private var homeFeedLoadingSkeleton: some View {
+        VStack(spacing: 24) {
+            // 装载状态提示微光胶囊
+            HStack(spacing: 10) {
+                ProgressView()
+                    .tint(.amber)
+                    .scaleEffect(0.85)
+                Text("正在装载离线影库...")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.primary)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().stroke(Color.amber.opacity(0.35), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.15), radius: 8, y: 3)
+            .padding(.top, 8)
+
+            // 焦点海报骨架卡片
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.white.opacity(0.06))
+                .frame(height: 200)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                )
+                .padding(.horizontal, 16)
+
+            // 今日星光头像骨架屏
+            VStack(alignment: .leading, spacing: 12) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.white.opacity(0.08))
+                    .frame(width: 120, height: 16)
+                    .padding(.horizontal, 16)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(0..<6, id: \.self) { _ in
+                            VStack(spacing: 8) {
+                                Circle()
+                                    .fill(Color.white.opacity(0.07))
+                                    .frame(width: 66, height: 66)
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color.white.opacity(0.05))
+                                    .frame(width: 48, height: 10)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+
+            // 经典系列骨架屏
+            VStack(alignment: .leading, spacing: 12) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.white.opacity(0.08))
+                    .frame(width: 140, height: 16)
+                    .padding(.horizontal, 16)
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(0..<3, id: \.self) { _ in
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.white.opacity(0.06))
+                                .frame(width: 160, height: 96)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+        }
+        .padding(.vertical, 8)
     }
 
     private func refreshLuckyMovies() async {

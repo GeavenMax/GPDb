@@ -35,6 +35,16 @@ public final class DatabaseHolder {
         config.qos = .userInitiated
         config.foreignKeysEnabled = true
         config.readonly = !isWritable
+        config.prepareDatabase { db in
+            if isWritable {
+                try? db.execute(sql: "PRAGMA journal_mode = WAL;")
+                try? db.execute(sql: "PRAGMA synchronous = NORMAL;")
+            }
+            try? db.execute(sql: "PRAGMA temp_store = MEMORY;")
+            try? db.execute(sql: "PRAGMA mmap_size = 268435456;") // 256MB 内存映射
+            try? db.execute(sql: "PRAGMA cache_size = -64000;")   // 64MB 页面缓存
+            try? db.execute(sql: "PRAGMA read_uncommitted = 1;")
+        }
 
         let queue = try DatabaseQueue(path: path, configuration: config)
 
@@ -55,20 +65,32 @@ public final class DatabaseHolder {
         guard sqlite3_open(path, &db) == SQLITE_OK, let db = db else { return }
         defer { sqlite3_close(db) }
 
-        // 1. 检查 performers 表中是否存在 pbc_url 与 sj_url
-        var stmt: OpaquePointer?
+        // 极速前置检查：若关键表 user_favorites 已存在且 performers.pbc_url 存在，直接 0ms 返回，避免重复编译全量 DDL
+        var checkStmt: OpaquePointer?
+        var userFavExists = false
+        if sqlite3_prepare_v2(db, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='user_favorites';", -1, &checkStmt, nil) == SQLITE_OK {
+            if sqlite3_step(checkStmt) == SQLITE_ROW {
+                userFavExists = true
+            }
+            sqlite3_finalize(checkStmt)
+        }
+
         var hasPbcUrl = false
         var hasSjUrl = false
-
-        if sqlite3_prepare_v2(db, "PRAGMA table_info(performers);", -1, &stmt, nil) == SQLITE_OK {
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                if let namePtr = sqlite3_column_text(stmt, 1) {
+        var colStmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, "PRAGMA table_info(performers);", -1, &colStmt, nil) == SQLITE_OK {
+            while sqlite3_step(colStmt) == SQLITE_ROW {
+                if let namePtr = sqlite3_column_text(colStmt, 1) {
                     let colName = String(cString: namePtr)
                     if colName == "pbc_url" { hasPbcUrl = true }
                     if colName == "sj_url" { hasSjUrl = true }
                 }
             }
-            sqlite3_finalize(stmt)
+            sqlite3_finalize(colStmt)
+        }
+
+        if userFavExists && hasPbcUrl && hasSjUrl {
+            return
         }
 
         if !hasPbcUrl {

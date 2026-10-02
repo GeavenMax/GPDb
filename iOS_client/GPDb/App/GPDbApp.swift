@@ -12,12 +12,18 @@ struct GPDbApp: App {
                 if !environment.isUnlocked {
                     BiometricLockView()
                         .environmentObject(environment)
+                } else if environment.isColdBootMounting {
+                    DatabaseLoadingView()
+                        .environmentObject(environment)
+                        .transition(.opacity)
                 } else if environment.isDatabaseReady {
                     AppNavigation()
                         .environmentObject(environment)
+                        .transition(.opacity)
                 } else {
                     SetupView()
                         .environmentObject(environment)
+                        .transition(.opacity)
                 }
 
                 // 隐私保护高斯模糊遮罩层 (对标 Android FLAG_SECURE)
@@ -25,6 +31,8 @@ struct GPDbApp: App {
                     PrivacyProtectionView()
                 }
             }
+            .animation(.easeInOut(duration: 0.35), value: environment.isColdBootMounting)
+            .animation(.easeInOut(duration: 0.35), value: environment.isDatabaseReady)
             .onAppear {
                 environment.isPrivacyMaskActive = false
             }
@@ -103,13 +111,20 @@ struct SetupView: View {
             }
 
             if environment.isImportingDb {
-                VStack(spacing: 10) {
+                HStack(spacing: 12) {
                     ProgressView()
-                        .scaleEffect(1.2)
+                        .tint(.amber)
                     Text("正在安全导入并校验数据库...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.amber.opacity(0.3), lineWidth: 1)
+                )
                 .padding(.vertical, 4)
             }
 

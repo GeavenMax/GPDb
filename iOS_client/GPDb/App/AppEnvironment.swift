@@ -14,6 +14,11 @@ public final class AppEnvironment: ObservableObject {
     @Published public var imageZipPath: String? = nil
     @Published public var imagePhysicalRoot: String? = nil
 
+    // 冷启动与装载状态
+    @Published public var isColdBootMounting: Bool = true
+    @Published public var mountingProgressText: String = "正在装载核心数据库..."
+    @Published public var mountingSubText: String = "单机私有 · 零网络依赖 · 极速离线"
+
     // 交互与提示状态
     @Published public var isImportingDb: Bool = false
     @Published public var alertMessage: String? = nil
@@ -59,12 +64,9 @@ public final class AppEnvironment: ObservableObject {
 
         configureImageCache()
 
-        // 1. 优先扫描并自动装载 Documents 沙盒自带的文件 (iTunes / 文件 App 导入)
-        autoDetectDocumentsDirectory()
-
-        // 2. 否则通过安全书签恢复外部文件
-        if !isDatabaseReady {
-            restoreSecurityScopedBookmarks()
+        // 异步执行极速冷启动装载，绝不阻塞主线程
+        Task { [weak self] in
+            await self?.performInitialMount()
         }
     }
 
@@ -216,7 +218,28 @@ public final class AppEnvironment: ObservableObject {
         }
     }
 
+    public func performInitialMount() async {
+        isColdBootMounting = true
+        mountingProgressText = "正在扫描本地数据库..."
+        mountingSubText = "单机私有 · 零网络依赖 · 极速离线"
+
+        await autoDetectAndMountAsync()
+
+        // 保证平滑过渡动画，给 UI 极短时间呈现标志性呼吸动效
+        try? await Task.sleep(nanoseconds: 350_000_000)
+
+        withAnimation(.easeInOut(duration: 0.35)) {
+            self.isColdBootMounting = false
+        }
+    }
+
     public func autoDetectDocumentsDirectory() {
+        Task {
+            await autoDetectAndMountAsync()
+        }
+    }
+
+    private func autoDetectAndMountAsync() async {
         setupInitialDocumentsDirectory()
         guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
 
@@ -244,6 +267,10 @@ public final class AppEnvironment: ObservableObject {
             }
 
             if let dbToMount = foundDbPath {
+                let dbFileName = URL(fileURLWithPath: dbToMount).lastPathComponent
+                self.mountingProgressText = "正在挂载 \(dbFileName)..."
+                self.mountingSubText = "已配置 WAL 模式与 256MB 内存映射"
+
                 do {
                     try DatabaseHolder.shared.initialize(at: dbToMount)
                     self.dbPath = dbToMount
@@ -254,7 +281,12 @@ public final class AppEnvironment: ObservableObject {
             }
         }
 
-        // 2. 自动探测图片库
+        // 2. 否则通过安全书签恢复外部文件
+        if !isDatabaseReady {
+            restoreSecurityScopedBookmarks()
+        }
+
+        // 3. 自动探测图片库
         if imageZipPath == nil && imagePhysicalRoot == nil {
             let zipCandidate = docs.appendingPathComponent("GPDb_Images.zip")
             let folderCandidate = docs.appendingPathComponent("image_cache")
