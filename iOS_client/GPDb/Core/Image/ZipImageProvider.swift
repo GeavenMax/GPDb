@@ -8,8 +8,16 @@ public extension String {
 
     /// 将数据库中存储的 `images/Covers/xxx.jpg` 格式 URL 转换为本地相对路径
     public func toImageCachePath() -> String? {
-        let trimmed = self.trimmingCharacters(in: .whitespacesAndNewlines)
+        var trimmed = self.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return nil }
+
+        // 统一剥离多余开头斜杠与 URL 编码
+        while trimmed.hasPrefix("/") {
+            trimmed.removeFirst()
+        }
+        if let decoded = trimmed.removingPercentEncoding, !decoded.isEmpty {
+            trimmed = decoded
+        }
 
         if trimmed.hasPrefix("image_cache/") {
             return trimmed

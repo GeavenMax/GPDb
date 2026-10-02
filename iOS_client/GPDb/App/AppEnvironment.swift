@@ -228,8 +228,16 @@ public final class AppEnvironment: ObservableObject {
 
         await autoDetectAndMountAsync()
 
+        // 等待 ZIP 极速索引完成（通常仅需 100~250ms），确保主页首帧海报瞬间点亮
+        if imageZipPath != nil {
+            let startWait = Date()
+            while ZipArchiveService.shared.isIndexing && Date().timeIntervalSince(startWait) < 1.5 {
+                try? await Task.sleep(nanoseconds: 30_000_000)
+            }
+        }
+
         // 保证平滑过渡动画，给 UI 极短时间呈现标志性呼吸动效
-        try? await Task.sleep(nanoseconds: 350_000_000)
+        try? await Task.sleep(nanoseconds: 250_000_000)
 
         withAnimation(.easeInOut(duration: 0.35)) {
             self.isColdBootMounting = false
@@ -275,7 +283,9 @@ public final class AppEnvironment: ObservableObject {
                 self.mountingSubText = "已配置 WAL 模式与 256MB 内存映射"
 
                 do {
-                    try DatabaseHolder.shared.initialize(at: dbToMount)
+                    try await Task.detached(priority: .userInitiated) {
+                        try DatabaseHolder.shared.initialize(at: dbToMount)
+                    }.value
                     self.dbPath = dbToMount
                     self.isDatabaseReady = true
                 } catch {

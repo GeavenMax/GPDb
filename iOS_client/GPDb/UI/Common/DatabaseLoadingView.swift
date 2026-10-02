@@ -4,10 +4,6 @@ import SwiftUI
 public struct DatabaseLoadingView: View {
     @EnvironmentObject private var environment: AppEnvironment
 
-    @State private var isPulsing: Bool = false
-    @State private var rotateDegree: Double = 0
-    @State private var shimmerOffset: CGFloat = -1.0
-
     // 经典 24K 金与钛金渐变
     private let goldGradient = LinearGradient(
         colors: [Color(hex: "#fef08a"), Color(hex: "#fbbf24"), Color(hex: "#d97706"), Color(hex: "#78350f")],
@@ -52,42 +48,8 @@ public struct DatabaseLoadingView: View {
             VStack(spacing: 32) {
                 Spacer()
 
-                // 3. 动态呼吸双火星微光徽标
-                ZStack {
-                    // 外围静止微弱刻度环
-                    Circle()
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.white.opacity(0.08), Color.white.opacity(0.02)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            style: StrokeStyle(lineWidth: 1, dash: [4, 6])
-                        )
-                        .frame(width: 170, height: 170)
-
-                    // 旋转轨道微光粒子线
-                    Circle()
-                        .trim(from: 0.1, to: 0.35)
-                        .stroke(
-                            LinearGradient(
-                                colors: [Color.amber.opacity(0.6), Color.cyan.opacity(0.1)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            style: StrokeStyle(lineWidth: 2, lineCap: .round)
-                        )
-                        .frame(width: 156, height: 156)
-                        .rotationEffect(.degrees(rotateDegree))
-
-                    // 核心双火星交错符号
-                    TwinMarsLogo(goldGradient: goldGradient, titaniumGradient: titaniumGradient)
-                        .frame(width: 100, height: 100)
-                        .scaleEffect(isPulsing ? 1.04 : 0.96)
-                        .shadow(color: Color(hex: "#38bdf8").opacity(0.3), radius: 16, x: 0, y: 0)
-                        .shadow(color: Color.amber.opacity(0.3), radius: 24, x: 0, y: 8)
-                }
-                .frame(width: 180, height: 180)
+                // 3. 动态呼吸双火星微光徽标 (独立高刷新 TimelineView 驱动，永不因状态刷新卡顿)
+                LuminousTwinMarsBadge(goldGradient: goldGradient, titaniumGradient: titaniumGradient)
 
                 // 4. 品牌标题与副标题
                 VStack(spacing: 8) {
@@ -110,59 +72,113 @@ public struct DatabaseLoadingView: View {
 
                 Spacer()
 
-                // 5. 交互装载状态与流光进度条
+                // 5. 交互装载状态与极细流光药丸胶囊进度条
                 VStack(spacing: 16) {
-                    // 流光脉冲细进度条
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color.white.opacity(0.08))
-                            .frame(width: 200, height: 4)
-
-                        Capsule()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.clear,
-                                        Color(hex: "#38bdf8").opacity(0.8),
-                                        Color(hex: "#fbbf24"),
-                                        Color.clear
-                                    ],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
-                            .frame(width: 80, height: 4)
-                            .offset(x: (shimmerOffset + 1.0) / 2.0 * (200 - 80))
-                    }
-                    .clipShape(Capsule())
+                    // 独立流光脉冲细进度条 (采用 DisplayLink 级 TimelineView，彻底消除父视图重刷打断动画的 Bug)
+                    ShimmerPillCapsule()
 
                     // 动态状态文本
                     VStack(spacing: 6) {
                         Text(environment.mountingProgressText)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(Color.primary.opacity(0.9))
-                            .transition(.opacity)
+                            .animation(.easeInOut(duration: 0.25), value: environment.mountingProgressText)
 
                         Text(environment.mountingSubText)
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary.opacity(0.7))
                             .kerning(1)
+                            .animation(.easeInOut(duration: 0.25), value: environment.mountingSubText)
                     }
                 }
                 .padding(.bottom, 48)
             }
             .padding(.horizontal, 24)
         }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) {
-                isPulsing = true
+    }
+}
+
+/// 独立流光脉冲细进度条胶囊 (TimelineView 驱动，无 @State 动画事务依赖，杜绝停滞卡死)
+private struct ShimmerPillCapsule: View {
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let time = timeline.date.timeIntervalSinceReferenceDate
+            let cycle: Double = 1.4
+            let progress = (sin(time * (2.0 * .pi / cycle)) + 1.0) / 2.0
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.08))
+                    .frame(width: 200, height: 4)
+
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.clear,
+                                Color(hex: "#38bdf8").opacity(0.8),
+                                Color(hex: "#fbbf24"),
+                                Color.clear
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 80, height: 4)
+                    .offset(x: CGFloat(progress) * (200 - 80))
             }
-            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
-                rotateDegree = 360
+            .clipShape(Capsule())
+        }
+    }
+}
+
+/// 独立动态双火星微光徽标
+private struct LuminousTwinMarsBadge: View {
+    let goldGradient: LinearGradient
+    let titaniumGradient: LinearGradient
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let time = timeline.date.timeIntervalSinceReferenceDate
+            let rotate = (time.truncatingRemainder(dividingBy: 4.0) / 4.0) * 360.0
+            let pulseProgress = (sin(time * (2.0 * .pi / 1.8)) + 1.0) / 2.0
+            let pulseScale = 0.96 + 0.08 * pulseProgress
+
+            ZStack {
+                // 外围静止微弱刻度环
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.08), Color.white.opacity(0.02)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        style: StrokeStyle(lineWidth: 1, dash: [4, 6])
+                    )
+                    .frame(width: 170, height: 170)
+
+                // 旋转轨道微光粒子线
+                Circle()
+                    .trim(from: 0.1, to: 0.35)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.amber.opacity(0.6), Color.cyan.opacity(0.1)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                    )
+                    .frame(width: 156, height: 156)
+                    .rotationEffect(.degrees(rotate))
+
+                // 核心双火星交错符号
+                TwinMarsLogo(goldGradient: goldGradient, titaniumGradient: titaniumGradient)
+                    .frame(width: 100, height: 100)
+                    .scaleEffect(pulseScale)
+                    .shadow(color: Color(hex: "#38bdf8").opacity(0.3), radius: 16, x: 0, y: 0)
+                    .shadow(color: Color.amber.opacity(0.3), radius: 24, x: 0, y: 8)
             }
-            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
-                shimmerOffset = 1.0
-            }
+            .frame(width: 180, height: 180)
         }
     }
 }
