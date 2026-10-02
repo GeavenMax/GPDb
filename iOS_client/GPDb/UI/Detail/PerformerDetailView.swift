@@ -24,6 +24,7 @@ public struct PerformerDetailView: View {
     @State private var isAliasesExpanded: Bool = false
     @State private var isLoading: Bool = true
     @State private var lightboxImage: String? = nil
+    @Namespace private var tabNamespace
 
     public init(performerId: Int64) {
         self.performerId = performerId
@@ -304,66 +305,81 @@ public struct PerformerDetailView: View {
     }
 
     private func tabHeader(data: PerformerDetailData) -> some View {
-        VStack(spacing: 0) {
-            Divider()
-                .opacity(0.35)
+        HStack(spacing: 4) {
+            ForEach(PerformerTab.allCases) { tab in
+                let isSelected = selectedTab == tab
+                let count = tab == .movies ? data.movies.count : data.episodes.count
+                let icon = tab == .movies ? "film.fill" : "play.rectangle.fill"
 
-            HStack(spacing: 12) {
-                ForEach(PerformerTab.allCases) { tab in
-                    let isSelected = selectedTab == tab
-                    let count = tab == .movies ? data.movies.count : data.episodes.count
-                    let icon = tab == .movies ? "film.fill" : "play.rectangle.fill"
+                Button {
+                    #if canImport(UIKit)
+                    let generator = UISelectionFeedbackGenerator()
+                    generator.selectionChanged()
+                    #endif
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.76)) {
+                        selectedTab = tab
+                    }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: icon)
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
+                            .symbolRenderingMode(.hierarchical)
+                        
+                        Text(tab.rawValue)
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium))
 
-                    Button {
-                        #if canImport(UIKit)
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
-                        #endif
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                            selectedTab = tab
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: icon)
-                                .font(.system(size: 13, weight: .semibold))
-                            Text(tab.rawValue)
-                                .font(.subheadline.weight(.semibold))
-
-                            Text("\(count)")
-                                .font(.system(size: 11, weight: .bold))
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 2)
-                                .background(
-                                    Capsule().fill(isSelected ? Color.tintColor.opacity(0.18) : Color.secondary.opacity(0.15))
+                        Text("\(count)")
+                            .font(.system(size: 11, weight: .heavy, design: .rounded))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
+                            .background(
+                                Capsule()
+                                    .fill(isSelected ? Color.tintColor.opacity(0.18) : Color.primary.opacity(0.08))
+                            )
+                            .foregroundStyle(isSelected ? Color.tintColor : .secondary)
+                    }
+                    .foregroundStyle(isSelected ? Color.tintColor : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background {
+                        if isSelected {
+                            Capsule()
+                                .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                                .matchedGeometryEffect(id: "PerformerActiveTabPill", in: tabNamespace)
+                                .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 3)
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.tintColor.opacity(0.35), lineWidth: 1)
                                 )
-                                .foregroundStyle(isSelected ? Color.tintColor : Color.secondary)
-                        }
-                        .foregroundStyle(isSelected ? Color.tintColor : Color.secondary)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 14)
-                        .frame(maxWidth: .infinity)
-                        .background {
-                            if isSelected {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color(uiColor: .secondarySystemBackground))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .stroke(Color.tintColor.opacity(0.35), lineWidth: 1.5)
-                                    )
-                                    .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
-                            } else {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.primary.opacity(0.03))
-                            }
                         }
                     }
-                    .buttonStyle(.plain)
                 }
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
         }
-        .background(.ultraThinMaterial)
+        .padding(4)
+        .background(
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .shadow(color: Color.black.opacity(0.15), radius: 16, x: 0, y: 6)
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.35),
+                                    Color.white.opacity(0.08),
+                                    Color.white.opacity(0.02)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+        )
+        .padding(.horizontal, 20)
+        .padding(.bottom, 6)
     }
 
     private func moviesGrid(movies: [MovieRecord]) -> some View {
