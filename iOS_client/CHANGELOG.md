@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **沉浸式胶囊药丸岛造型**：彻底废弃此前平铺直述的通栏矩形切条与机械分割线，升级为悬浮于底部的极简流线型胶囊药丸岛（Floating Capsule Pill Island）；
   - **MatchedGeometryEffect 丝滑滑块联动**：引入 `@Namespace tabNamespace` 与 `.matchedGeometryEffect`，切换「出演电影」与「出演分集」时，高光选中胶囊指示器在选项间以弹簧物理动效（`response: 0.35, dampingFraction: 0.76`）平滑滑移变形，附带微光描边与精致阴影；
   - **多层微光流体毛玻璃质感**：外层包裹高通透 `.ultraThinMaterial` 毛玻璃，搭配 `LinearGradient` 微光渐变反光描边（White 35% -> 8% -> 2%）与 16pt 柔和阴影，单手大拇指触手可及，与页面动态背景浑然天成；
-  - **位置吸附与导航栏联动**：通过 `.safeAreaInset(edge: .bottom)` 优雅悬浮于底部导航栏（TabBar）正上方，当瀑布流滚动收起底部导航栏时，分类横条自动下沉贴合底部安全区，展开时平滑上浮归位。
+  - **位置吸附与避让小白条微调**：通过 `.safeAreaInset(edge: .bottom)` 优雅悬浮于底部导航栏（TabBar）正上方；当底部 TabBar 隐藏收起时，完全交由原生 safeArea 保护，彻底移除原硬编码多余下移 offset（`y: 49`），并微调底部间距为 `12pt`，确保药丸岛始终悬停在系统底部小白条（Home Indicator）上方安全透气区域，杜绝遮挡遮盖。
 - **瀑布流滑动时底部导航栏自动收缩与展开动效与底层穿透 (`WaterfallScrollView.swift`, `TabBarManager.swift`, `AppEnvironment.swift`, `AppNavigation.swift`)**：
   - **iOS 18+ 现代化滚动几何监听 (`WaterfallScrollView.swift`)**：重构滚动检测底层，引入 iOS 18+ 原生 `onScrollGeometryChange(for:action:)` API，直接追踪 `contentOffset.y`，彻底根除此前 `GeometryReader` + `PreferenceKey` 在 iOS 18+/26 复杂容器中滚动时仅触发单次 `0.0` 采样而无法持续触发的回调失效缺陷；同时保留 iOS 17 的 `GeometryReader` + 规格化初始零点基线回退机制；
   - **首帧安全区负偏移自动消除与布局平稳期保护**：排查并解决安全区与导航栏造成的首帧 `contentOffset.y = -116pt` 负偏移问题，引入布局稳定期基线采样与 `\pm 12\text{pt}` 差值阈值防抖，滚动向下时平滑收起底部导航栏，反向向上滑动或轻触拉回顶部时秒级自动展开复位；
