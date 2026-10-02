@@ -86,13 +86,13 @@ public struct FilteredMovieListView: View {
         isLoading = true
         do {
             if filterKey == "studio" {
-                self.movies = try await repository.getMovies(studio: filterValue, pageSize: 1000)
+                self.movies = try await repository.getMovies(studio: filterValue, pageSize: 50000)
             } else if filterKey == "director" {
-                self.movies = try await repository.getMovies(director: filterValue, pageSize: 1000)
+                self.movies = try await repository.getMovies(director: filterValue, pageSize: 50000)
             } else if filterKey == "series" {
                 // 系列标题可能包含 |||，取纯净标题模糊查询
                 let clean = filterValue.replacingOccurrences(of: "|||", with: " ")
-                self.movies = try await repository.getMovies(query: clean, pageSize: 1000)
+                self.movies = try await repository.getMovies(query: clean, pageSize: 50000)
             }
         } catch {
             print("加载过滤影片失败: \(error)")

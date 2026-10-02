@@ -21,6 +21,8 @@ public struct StudioDetailView: View {
     @State private var selectedTab: StudioTab = .movies
     @State private var movies: [MovieRecord] = []
     @State private var episodes: [EpisodeRecord] = []
+    @State private var totalMoviesCount: Int = 0
+    @State private var totalEpisodesCount: Int = 0
     @State private var isFavorite: Bool = false
     @State private var isLoading: Bool = true
 
@@ -32,8 +34,8 @@ public struct StudioDetailView: View {
         VStack(spacing: 0) {
             // 分类标签栏
             Picker("分类", selection: $selectedTab) {
-                Text("发行作品 (\(movies.count))").tag(StudioTab.movies)
-                Text("发行分集 (\(episodes.count))").tag(StudioTab.episodes)
+                Text("发行作品 (\(max(totalMoviesCount, movies.count)))").tag(StudioTab.movies)
+                Text("发行分集 (\(max(totalEpisodesCount, episodes.count)))").tag(StudioTab.episodes)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
@@ -185,13 +187,18 @@ public struct StudioDetailView: View {
     private func loadStudioData() async {
         isLoading = true
         do {
-            async let fetchMovies = repository.getMovies(studio: studioName, pageSize: 10000)
-            async let fetchEpisodes = repository.getEpisodes(studio: studioName, pageSize: 10000)
+            async let fetchCounts = repository.getStudioWorksCounts(studio: studioName)
+            async let fetchMovies = repository.getMovies(studio: studioName, pageSize: 50000)
+            async let fetchEpisodes = repository.getEpisodes(studio: studioName, pageSize: 50000)
             async let fetchFav = userRepo.isFavorite(entityType: "studio", entityKey: studioName)
 
-            self.movies = try await fetchMovies
-            self.episodes = try await fetchEpisodes
-            self.isFavorite = (try? await fetchFav) ?? false
+            let (counts, mList, epList, fav) = try await (fetchCounts, fetchMovies, fetchEpisodes, (try? await fetchFav) ?? false)
+
+            self.totalMoviesCount = counts.moviesCount
+            self.totalEpisodesCount = counts.episodesCount
+            self.movies = mList
+            self.episodes = epList
+            self.isFavorite = fav
         } catch {
             print("加载片商详情失败: \(error)")
         }

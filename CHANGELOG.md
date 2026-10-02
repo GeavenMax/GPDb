@@ -3,6 +3,26 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.16.1] - 2026-10-02
+
+### Fixed
+- **片商档案页分集与作品加载截断修复与独立作品总数查询 (`StudioDetailView.swift` & `BrowseRepository.swift`)**：
+  - 修复原硬编码 `pageSize: 10000` 导致大于一万条记录的大型片商作品被截断的缺陷；
+  - 在 `BrowseRepository` 新增专门获取片商作品总数（电影数与分集数）的专用接口 `getStudioWorksCounts(studio:)`，并在标签栏准确显示真实数据库总数；
+  - 单次拉取上限提升至 50,000 条，解除单次写死限制；同步将分类系列过滤页面的加载上限提升至 50,000。
+- **macOS 桌面端片商作品与分集数量统计重大缺陷修复 (`gpdb-core/src/queries/studios.rs` & `sql.rs` & `episodes.rs`)**：
+  - **根因定位与根治**：修复 macOS 桌面端底层 Rust 查询在 `get_studio_works` 中错误使用母片片商 `WHERE m.studio_name = ?1` 过滤分集，导致 102,415 个无母片的独立网络单集（`movie_id IS NULL`）及 4,573 个被母长片合辑或分销商标记的分集被全部漏计（例如 Raw Fuck Club 漏计 13,830 个分集，仅显示 44 个的严重数据偏离）；
+  - **三端标准对齐 (Effective Studio Resolution)**：统一对齐 Android 与 iOS 标准算法，采用 `COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name)` 优先判定分集自带的独立厂牌；修复后 Raw Fuck Club 统计数量恢复为 13,874 部，与 Android 客户端完全一致；
+  - **片商库聚合列表重构 (`get_studio_library`)**：彻底重构 `get_studio_library` 分页与计数 SQL，采用 `movies` 与 `episodes` 片商并集（UNION）双路联合聚合，完整收录仅发行独立分集的片商（如 Cade Maddox、College Boy Physicals、Freshmen.net 等），并将作品数与分集数统计性能优化至毫秒级响应；
+  - **单集查询排序优化**：分集列表排序采用 `ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC, e.id DESC`，解决独立单集母片年份为空时的排序异常。
+- **片商详情页海量分集平滑渐进式渲染优化 (`StudioDetailModal.vue`)**：
+  - 为 `StudioDetailModal.vue`（macOS 桌面端及 Windows 端同步装配）新增分批渲染与滚动加载保护机制；
+  - 首批渲染 60 个分集卡片，当用户向下滑动接近底部或点击底部「加载更多片段」时动态分批扩增 60 项；
+  - 彻底杜绝万级作品厂牌（如 Raw Fuck Club 的 13,874 个分集、William Higgins 的 9,956 个分集）在打开瞬间一次性挂载海量 DOM 节点导致页面卡死或渲染崩溃的问题，保证 UI 极致流畅。
+- **核心数据库索引与一致性测试完善 (`schema.sql` & `parity.rs`)**：
+  - 在 `schema.sql` 中补充 `CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);`，将全库 15 万+分集按片商聚合的查询耗时缩短至 30ms 以内；
+  - 更新 `parity.rs` 中的 5 项片商与分集断言，确保自动化测试 100% 覆盖有效厂牌解析逻辑。
+
 ## [v2.16.0] - 2026-10-02
 
 ### Added

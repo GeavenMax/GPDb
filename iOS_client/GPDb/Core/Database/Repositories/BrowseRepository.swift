@@ -185,6 +185,19 @@ public final class BrowseRepository {
         }
     }
 
+    /// 获取片商名下的作品总数（电影数与分集数）
+    public func getStudioWorksCounts(studio: String) async throws -> (moviesCount: Int, episodesCount: Int) {
+        guard let db = holder.database else { return (0, 0) }
+
+        return try await db.read { db in
+            let movieSql = "SELECT COUNT(*) FROM movies WHERE studio_name = ?"
+            let epSql = "SELECT COUNT(*) FROM episodes e LEFT JOIN movies m ON e.movie_id = m.id WHERE IFNULL(NULLIF(e.studio_name, ''), m.studio_name) = ?"
+            let mCount = try Int.fetchOne(db, sql: movieSql, arguments: [studio]) ?? 0
+            let eCount = try Int.fetchOne(db, sql: epSql, arguments: [studio]) ?? 0
+            return (mCount, eCount)
+        }
+    }
+
     /// 获取经典系列列表
     public func getSeries(query: String? = nil) async throws -> [SeriesCollectionRecord] {
         guard let db = holder.database else { return [] }
