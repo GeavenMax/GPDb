@@ -2,7 +2,11 @@ import SwiftUI
 #if canImport(UIKit)
 import UIKit
 
-/// 负责底层原生 UITabBar 的平滑位移动画与手势联动管理
+/// 底层 UITabBar 的原生位移动画管理器 (备用方案，当前未启用)
+///
+/// 注意: 在 iOS 18+ 上，SwiftUI 的 `.toolbar(.hidden, for: .tabBar)` 与 UIKit 的
+/// `CGAffineTransform` 存在冲突 — SwiftUI 会在布局阶段重置 transform。
+/// 当前版本使用纯 SwiftUI `withAnimation` + `.toolbar` 方案，此管理器保留备用。
 public enum TabBarManager {
     @MainActor
     public static func setTabBarHidden(_ hidden: Bool, animated: Bool = true) {

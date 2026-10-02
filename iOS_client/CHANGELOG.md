@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 将原置于页面滚动流内部的「出演电影」「出演分集」分类横条解耦，改为通过 `.safeAreaInset(edge: .bottom)` 优雅悬浮于底部导航栏（TabBar）正上方；
   - 配备顶部微光分界线与 `.ultraThinMaterial` 高级毛玻璃半透明质感，单手大拇指触手可及，大幅提升在长篇幅影视作品与分集之间切换的交互舒适度。
 - **瀑布流滑动时底部导航栏自动收缩与展开动效与底层穿透 (`WaterfallScrollView.swift`, `TabBarManager.swift`, `AppEnvironment.swift`, `AppNavigation.swift`)**：
-  - **TabBarManager 原生底层穿透**：排查发现 iOS 17/18 中 SwiftUI 自身的 `.toolbar(visibility, for: .tabBar)` 存在严重系统级限制（在 TabView/NavigationStack 根视图下动态修改状态不会触发任何 UIKit 动画），新增 `TabBarManager` 递归捕获 `UIWindow` 下真实 `UITabBar`，利用 `CGAffineTransform` 与 `alpha` 驱动丝滑原生位移收起与复位；
-  - **高频滚动探针与累积防抖优化 (`WaterfallScrollView.swift`)**：废除原动态 UUID 空间，统一使用静态坐标空间与 1-pt 顶部精确几何探针；针对 120Hz ProMotion 高频采样重构差值累积计算（未突破 $\pm 12\text{pt}$ 阈值前持续累加），杜绝小幅慢滑被逐帧重置清零的问题；
+  - **iOS 18+ 现代化滚动几何监听 (`WaterfallScrollView.swift`)**：重构滚动检测底层，引入 iOS 18+ 原生 `onScrollGeometryChange(for:action:)` API，直接追踪 `contentOffset.y`，彻底根除此前 `GeometryReader` + `PreferenceKey` 在 iOS 18+/26 复杂容器中滚动时仅触发单次 `0.0` 采样而无法持续触发的回调失效缺陷；同时保留 iOS 17 的 `GeometryReader` + 规格化初始零点基线回退机制；
+  - **首帧安全区负偏移自动消除与布局平稳期保护**：排查并解决安全区与导航栏造成的首帧 `contentOffset.y = -116pt` 负偏移问题，引入布局稳定期基线采样与 `\pm 12\text{pt}` 差值阈值防抖，滚动向下时平滑收起底部导航栏，反向向上滑动或轻触拉回顶部时秒级自动展开复位；
+  - **SwiftUI 纯声明式过渡动画协同 (`AppEnvironment.swift`)**：解除 UIKit `CGAffineTransform` 与 SwiftUI `.toolbar(for: .tabBar)` 之间的动画事务冲突，统一由 `withAnimation(.easeInOut(duration: 0.25))` 驱动状态流转，保证多级界面下 TabBar 收起/展开动效稳定连贯；
   - **演员详情页横条位移动画同步 (`PerformerDetailView.swift`)**：当导航栏收起时，作品分类横条自动下沉贴合底部安全区，展开时平滑上浮归位；
   - 全量装配至主页 Feed、影视库全部二级分类、我的影库、片商档案以及分类过滤瀑布流。
 - **冷启动数据库装载性能极限优化与冷启主线程零冻结 (`DatabaseHolder.swift`, `AppEnvironment.swift`, `ZipArchiveService.swift`, `HomeFeedRepository.swift`)**：

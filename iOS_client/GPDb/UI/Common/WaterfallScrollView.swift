@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 瀑布流滚动偏移量 PreferenceKey
+/// 瀑布流滚动偏移量 PreferenceKey (iOS 17 回退方案)
 public struct WaterfallScrollOffsetPreferenceKey: PreferenceKey {
     public static var defaultValue: CGFloat = 0
     public static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -8,16 +8,22 @@ public struct WaterfallScrollOffsetPreferenceKey: PreferenceKey {
     }
 }
 
-private let kWaterfallScrollSpace = "WaterfallScrollCoordinateSpace"
-
 /// 专为瀑布流设计的自适应沉浸式滚动容器
 /// 当用户向下滑动内容时自动收缩底部导航栏，向上滑动时自动展开还原；到达顶部时强制展开
+///
+/// iOS 18+ 使用 `onScrollGeometryChange` 高频精确追踪滚动偏移量；
+/// iOS 17 回退使用 `GeometryReader` + `PreferenceKey` 方案。
 public struct WaterfallScrollView<Content: View>: View {
     public let showsIndicators: Bool
     @ViewBuilder public let content: () -> Content
 
     @EnvironmentObject private var environment: AppEnvironment
-    @State private var lastOffset: CGFloat = 0
+    /// 上次触发隐藏/显示判定时的原始偏移量
+    @State private var lastRawOffset: CGFloat = 0
+    /// 静止状态 (顶部) 的原始偏移量基线——取初始化后的 contentOffset 稳定值
+    @State private var restingOffset: CGFloat = 0
+    /// 收到的帧数，用于跳过初始布局阶段不稳定的前几帧
+    @State private var frameCount: Int = 0
 
     public init(
         showsIndicators: Bool = true,
@@ -28,57 +34,94 @@ public struct WaterfallScrollView<Content: View>: View {
     }
 
     public var body: some View {
+        Group {
+            if #available(iOS 18.0, *) {
+                modernScrollView
+            } else {
+                legacyScrollView
+            }
+        }
+        .onDisappear {
+            environment.setTabBarHidden(false, animated: false)
+        }
+    }
+
+    // MARK: - iOS 18+ onScrollGeometryChange
+
+    @available(iOS 18.0, *)
+    private var modernScrollView: some View {
+        ScrollView(.vertical, showsIndicators: showsIndicators) {
+            content()
+        }
+        .onScrollGeometryChange(for: CGFloat.self) { geometry in
+            geometry.contentOffset.y
+        } action: { _, newValue in
+            handleRawOffset(newValue)
+        }
+    }
+
+    // MARK: - iOS 17 GeometryReader + PreferenceKey
+
+    private var legacyScrollView: some View {
         ScrollView(.vertical, showsIndicators: showsIndicators) {
             VStack(spacing: 0) {
-                // 1-pt 顶部精确锚点探针，持续高频追踪滚动几何坐标
                 Color.clear
                     .frame(width: 1, height: 1)
                     .background(
                         GeometryReader { proxy in
                             Color.clear.preference(
                                 key: WaterfallScrollOffsetPreferenceKey.self,
-                                value: proxy.frame(in: .named(kWaterfallScrollSpace)).minY
+                                value: proxy.frame(in: .named("WaterfallLegacyCoord")).minY
                             )
                         }
                     )
-
                 content()
             }
         }
-        .coordinateSpace(name: kWaterfallScrollSpace)
-        .onPreferenceChange(WaterfallScrollOffsetPreferenceKey.self) { currentY in
-            handleScroll(currentY)
-        }
-        .onDisappear {
-            // 离开当前视图时，恢复底部导航栏为可见状态
-            environment.setTabBarHidden(false, animated: false)
+        .coordinateSpace(name: "WaterfallLegacyCoord")
+        .onPreferenceChange(WaterfallScrollOffsetPreferenceKey.self) { rawY in
+            handleRawOffset(-rawY)
         }
     }
 
-    private func handleScroll(_ currentY: CGFloat) {
-        // 接近页面顶部 (拉至顶端或下拉刷新) 强制展开导航栏
-        if currentY >= -15 {
-            if environment.isTabBarHidden {
-                environment.setTabBarHidden(false, animated: true)
-            }
-            lastOffset = currentY
+    // MARK: - 统一偏移处理
+
+    private func handleRawOffset(_ rawOffset: CGFloat) {
+        frameCount += 1
+
+        // 前 3 帧为布局稳定期 — 只记录基线，不做判定
+        // (首帧 contentOffset.y 可能为 0，稳定后变为 -116 等受 safe area 影响的值)
+        if frameCount <= 3 {
+            restingOffset = rawOffset
+            lastRawOffset = rawOffset
             return
         }
 
-        let delta = currentY - lastOffset
-        // 设定 12pt 防抖阈值，未跨过阈值前保持累积，过滤微小帧抖动
-        if delta < -12 {
-            // 手指向下划，内容向上滚 -> 收起导航栏以拓展全屏浏览沉浸感
-            if !environment.isTabBarHidden {
-                environment.setTabBarHidden(true, animated: true)
-            }
-            lastOffset = currentY
-        } else if delta > 12 {
-            // 手指向上划，内容向下滚 -> 展开底部导航栏方便随时切换
+        // scrolledAmount: 相对于静止位置的滚动深度 (正值 = 已向下滚动)
+        let scrolledAmount = rawOffset - restingOffset
+
+        // 接近页面顶部 → 强制展开导航栏
+        if scrolledAmount <= 15 {
             if environment.isTabBarHidden {
                 environment.setTabBarHidden(false, animated: true)
             }
-            lastOffset = currentY
+            lastRawOffset = rawOffset
+            return
+        }
+
+        let delta = rawOffset - lastRawOffset
+        if delta > 12 {
+            // 手指向上划 → 内容向上滚 → 收起导航栏
+            if !environment.isTabBarHidden {
+                environment.setTabBarHidden(true, animated: true)
+            }
+            lastRawOffset = rawOffset
+        } else if delta < -12 {
+            // 手指向下划 → 内容向下滚 → 展开导航栏
+            if environment.isTabBarHidden {
+                environment.setTabBarHidden(false, animated: true)
+            }
+            lastRawOffset = rawOffset
         }
     }
 }

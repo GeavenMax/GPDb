@@ -391,9 +391,12 @@ public final class AppEnvironment: ObservableObject {
 
     public func setTabBarHidden(_ hidden: Bool, animated: Bool = true) {
         guard isTabBarHidden != hidden else { return }
-        self.isTabBarHidden = hidden
-        #if canImport(UIKit)
-        TabBarManager.setTabBarHidden(hidden, animated: animated)
-        #endif
+        if animated {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                self.isTabBarHidden = hidden
+            }
+        } else {
+            self.isTabBarHidden = hidden
+        }
     }
 }
