@@ -280,9 +280,7 @@ public struct MovieDetailView: View {
                                     .frame(width: 56, height: 56)
                                     .clipShape(Circle())
 
-                                Text(p.name)
-                                    .font(.caption2.bold())
-                                    .lineLimit(1)
+                                MarqueeText(text: p.name, font: .caption2, weight: .bold, speed: 20)
                                     .frame(width: 64)
                             }
                         }
@@ -305,9 +303,7 @@ public struct MovieDetailView: View {
                             .frame(width: 80, height: 50)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(ep.displayTitle)
-                                .font(.subheadline.bold())
-                                .lineLimit(1)
+                            MarqueeText(text: ep.displayTitle, font: .subheadline, weight: .bold, speed: 25)
 
                             if let desc = ep.displayDescription {
                                 Text(desc)

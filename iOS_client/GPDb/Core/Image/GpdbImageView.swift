@@ -79,6 +79,13 @@ public struct GpdbImageView: View {
             .diskCacheExpiration(.days(30))
             .fade(duration: 0.15)
             .placeholder { placeholderView }
+            .onSuccess { result in
+                #if canImport(UIKit)
+                if let path = rawPath {
+                    PaletteExtractor.shared.register(image: result.image, for: path)
+                }
+                #endif
+            }
             .resizable()
             .aspectRatio(contentMode: contentMode)
             .blur(radius: environment.isPrivacyModeActive ? 28 : 0)

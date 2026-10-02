@@ -13,7 +13,7 @@ public struct MarqueeText: View {
     public var speed: Double // 移动速度 (点/秒)
 
     @State private var textWidth: CGFloat = 0
-    @State private var textHeight: CGFloat = 26
+    @State private var textHeight: CGFloat = 18
     @State private var containerWidth: CGFloat = 0
     @State private var offset: CGFloat = 0
     @State private var animationKey: UUID = UUID()
@@ -74,7 +74,7 @@ public struct MarqueeText: View {
                 }
             }
         }
-        .frame(height: max(textHeight, 24))
+        .frame(height: max(textHeight, 18))
         .background(
             // 隐藏的测量视图，获取文字自然单行宽度与高度
             singleTextItem
@@ -111,6 +111,7 @@ public struct MarqueeText: View {
             .fontWeight(weight)
             .foregroundStyle(foregroundColor)
             .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     private func runAnimation() {
@@ -119,12 +120,15 @@ public struct MarqueeText: View {
             return
         }
         let distance = textWidth + spacing
-        let duration = max(Double(distance) / speed, 2.0)
+        let duration = max(Double(distance) / speed, 2.5)
 
-        offset = 0
-        // 平滑线性循环滚动，两段文本间距补齐后视觉无缝衔接
-        withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
-            offset = -distance
+        Task { @MainActor in
+            offset = 0
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            guard !Task.isCancelled, shouldAnimate else { return }
+            withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) {
+                offset = -distance
+            }
         }
     }
 }

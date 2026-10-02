@@ -110,11 +110,12 @@ public struct PerformerDetailView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(data.performer.name)
-                            .font(.title2.bold())
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.85)
+                    HStack(alignment: .center, spacing: 8) {
+                        MarqueeText(
+                            text: data.performer.name,
+                            font: .title2,
+                            weight: .bold
+                        )
 
                         if let pbc = data.pbcProfile, pbc.careerStatus != nil {
                             Text(pbc.isActive ? "活跃中" : "已退役")
@@ -123,6 +124,7 @@ public struct PerformerDetailView: View {
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background((pbc.isActive ? Color.green : Color.secondary).opacity(0.15), in: Capsule())
+                                .fixedSize()
                         }
                     }
 
@@ -298,27 +300,66 @@ public struct PerformerDetailView: View {
     }
 
     private func tabHeader(data: PerformerDetailData) -> some View {
-        HStack(spacing: 0) {
-            ForEach(PerformerTab.allCases) { tab in
-                let count = tab == .movies ? data.movies.count : data.episodes.count
-                Button {
-                    selectedTab = tab
-                } label: {
-                    VStack(spacing: 6) {
-                        Text("\(tab.rawValue) (\(count))")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(selectedTab == tab ? .primary : .secondary)
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                ForEach(PerformerTab.allCases) { tab in
+                    let isSelected = selectedTab == tab
+                    let count = tab == .movies ? data.movies.count : data.episodes.count
+                    let icon = tab == .movies ? "film.fill" : "play.rectangle.fill"
 
-                        Rectangle()
-                            .fill(selectedTab == tab ? Color.tintColor : Color.clear)
-                            .frame(height: 2)
+                    Button {
+                        #if canImport(UIKit)
+                        let generator = UISelectionFeedbackGenerator()
+                        generator.selectionChanged()
+                        #endif
+                        withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                            selectedTab = tab
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: icon)
+                                .font(.system(size: 13, weight: .semibold))
+                            Text(tab.rawValue)
+                                .font(.subheadline.weight(.semibold))
+
+                            Text("\(count)")
+                                .font(.system(size: 11, weight: .bold))
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule().fill(isSelected ? Color.tintColor.opacity(0.18) : Color.secondary.opacity(0.15))
+                                )
+                                .foregroundStyle(isSelected ? Color.tintColor : Color.secondary)
+                        }
+                        .foregroundStyle(isSelected ? Color.tintColor : Color.secondary)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 14)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            if isSelected {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color(uiColor: .secondarySystemBackground))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                            .stroke(Color.tintColor.opacity(0.35), lineWidth: 1.5)
+                                    )
+                                    .shadow(color: Color.black.opacity(0.08), radius: 4, x: 0, y: 2)
+                            } else {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color.primary.opacity(0.03))
+                            }
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
-                .frame(maxWidth: .infinity)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+            Divider()
+                .opacity(0.4)
         }
-        .padding(.horizontal)
-        .background(.regularMaterial)
+        .background(.ultraThinMaterial)
     }
 
     private func moviesGrid(movies: [MovieRecord]) -> some View {
@@ -335,9 +376,7 @@ public struct PerformerDetailView: View {
                             .clipped()
                             .clipShape(RoundedRectangle(cornerRadius: 10))
 
-                        Text(movie.displayTitle)
-                            .font(.caption.bold())
-                            .lineLimit(1)
+                        MarqueeText(text: movie.displayTitle, font: .caption, weight: .bold, speed: 25)
 
                         if let y = movie.releaseYear {
                             Text("\(y)年")
@@ -363,9 +402,7 @@ public struct PerformerDetailView: View {
                             .frame(width: 80, height: 50)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(ep.displayTitle)
-                                .font(.subheadline.bold())
-                                .lineLimit(1)
+                            MarqueeText(text: ep.displayTitle, font: .subheadline, weight: .bold, speed: 25)
                             if let d = ep.displayDescription {
                                 Text(d)
                                     .font(.caption2)

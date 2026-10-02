@@ -6,7 +6,21 @@
 ## [v2.16.0] - 2026-10-02
 
 ### Added
-- **全页面图片取色自适应动态氛围渐变色背景 (`PaletteExtractor.swift` & `DynamicAmbientBackground.swift`)**：
+- **主页焦点大图指示器防遮挡与悬浮药丸样式 (`HomeFeedView.swift`)**：
+  - 彻底废除 `TabView` 内嵌系统 `UIPageControl` 12 个小点直接遮挡卡片底部与“立即探索”按钮的问题，采用 `indexDisplayMode: .never`；
+  - 在轮播卡片正下方配备独立紧凑指示器条（当前选中项自适应展开为琥珀金药丸胶囊，未选中项为低对比圆点），呼吸动效平滑。
+- **演员档案页作品分类标签栏视觉重构与毛玻璃吸顶模糊 (`PerformerDetailView.swift`)**：
+  - 废除原简陋下划线设计，升级为原生级圆角双胶囊切换器，融合分类图标（`film.fill` 与 `play.rectangle.fill`）及动态数量气泡徽章；
+  - 点击加入系统震动触感反馈与弹性过渡；
+  - 容器包裹完整 `.ultraThinMaterial` 高级毛玻璃材质与微渐变分界线，在瀑布流向下滚动触发 Header 吸顶时，下方及穿行内容呈现优雅半透明高斯模糊。
+- **全页面长文本循环滚动跑马灯覆盖 (`MarqueeText.swift` & 全局各视图)**：
+  - 对标移动端最佳体验，全面装配至演员、导演、影片、分集、片商名字显示处（涵盖档案页标题、网格海报标题、列表项、主页焦点图与盲盒）；
+  - 首屏留白 1.2 秒给用户充分阅读开头，随后平滑匀速无缝循环滚动全名；文本未超出容器宽度时保持静态左对齐。
+- **全页面图片取色自适应动态氛围渐变色背景内核加固 (`PaletteExtractor.swift` & `DynamicAmbientBackground.swift`)**：
+  - 彻底修复 `UIGraphicsImageRenderer` 生成的 `UIImage.cgImage` 为 `nil` 导致取色失败始终返回固定深灰蓝 fallback 颜色的底层 Bug；
+  - 重构为确定性 `CGBitmapContext` 硬件底层直接解包 24x24 像素阵列，结合高彩度加权算法提取真正鲜艳代表色，并提供适度生动度增益；
+  - 在 `GpdbImageView` 加载成功回调中无缝打通色彩登记与通知中心即时广播，实现海报解码完成即时激发背景颜色自适应平滑色彩流光变换；
+  - 全面覆盖：探索主页 (`HomeFeedView`)、影片档案页 (`MovieDetailView`)、演员档案页 (`PerformerDetailView`)、分集档案页 (`EpisodeDetailView`)、片商档案页 (`StudioDetailView`)、分类系列过滤页 (`FilteredMovieListView`) 以及流光分享卡片 (`ShareCardView`)。
   - 基于 CoreGraphics 极速微图像（16x16 矩阵）降采样算法与饱和度/亮度加权模型，毫秒级提取当前图片主色彩相与次级对比色；
   - 集成 NSCache 内存高速缓存与多级寻址（Kingfisher 内存缓存、ZIP 归档解压、本地挂载目录）；
   - 结合底层系统自适应背景色、超大高斯虚化海报环境漫反射层与动态取色多阶线性渐变过渡，打造原生沉浸式氛围背景；
@@ -19,6 +33,9 @@
   - 在所有影片/分集瀑布流界面（“影片”二级Tab、片商作品列表、演员出演作品、系列详情等）直接提供一键切列（1~4列）操作，所见即所得。
 
 ### Fixed
+- **主页顶部空白区域缩窄与内联导航对齐 (`HomeFeedView.swift`)**：
+  - 将主页导航标题切换为紧凑内联模式 (`inlineNavigationTitle`)，避免 Large Title 产生近 60pt 的无内容空白；
+  - 缩减 ScrollView 顶部间隙 (`padding(.top, 4)`)，使焦点轮播大图直接贴合顶部操作栏，视觉紧凑协调。
 - **影片档案页说明文字边距与排版优化 (`MovieDetailView.swift`)**：
   - 剧情简介说明文字采用独立圆角卡片背景包裹，将内衬边距拓宽至水平 16pt、垂直 14pt，并提升行间距为 `lineSpacing(6)`，彻底消除拥挤贴边感。
 - **影片档案页元数据徽章挤压溢出根除 (`MovieDetailView.swift`)**：

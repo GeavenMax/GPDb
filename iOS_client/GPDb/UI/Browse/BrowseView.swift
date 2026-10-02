@@ -154,9 +154,7 @@ public struct BrowseView: View {
                             )
                             .aspectRatio(0.68, contentMode: .fit)
 
-                            Text(movie.displayTitle)
-                                .font(.caption.bold())
-                                .lineLimit(1)
+                            MarqueeText(text: movie.displayTitle, font: .caption, weight: .bold, speed: 25)
 
                             HStack {
                                 if let y = movie.releaseYear {
@@ -208,10 +206,7 @@ public struct BrowseView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
 
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(ep.displayTitle)
-                                    .font(.subheadline.bold())
-                                    .lineLimit(2)
-                                    .foregroundStyle(.primary)
+                                MarqueeText(text: ep.displayTitle, font: .subheadline, weight: .bold, speed: 25)
 
                                 HStack {
                                     if let date = ep.releaseDate {
@@ -267,9 +262,7 @@ public struct BrowseView: View {
                                 .clipShape(Circle())
                                 .overlay(Circle().stroke(Color.secondary.opacity(0.2), lineWidth: 1))
 
-                            Text(performer.name)
-                                .font(.caption2.bold())
-                                .lineLimit(1)
+                            MarqueeText(text: performer.name, font: .caption2, weight: .bold, speed: 20)
                         }
                     }
                     .buttonStyle(.plain)
@@ -298,8 +291,7 @@ public struct BrowseView: View {
                             .frame(width: 50, height: 68)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(series.displayTitle)
-                                .font(.subheadline.bold())
+                            MarqueeText(text: series.displayTitle, font: .subheadline, weight: .bold, speed: 25)
                             if let span = series.yearSpan {
                                 Text(span)
                                     .font(.caption2)
@@ -325,8 +317,7 @@ public struct BrowseView: View {
                         Image(systemName: "building.2.crop.circle")
                             .font(.title3)
                             .foregroundStyle(.tint)
-                        Text(studio.name)
-                            .font(.body.bold())
+                        MarqueeText(text: studio.name, font: .body, weight: .bold, speed: 25)
                         Spacer()
                         Text("\(studio.count) 部作品")
                             .font(.caption)
@@ -347,8 +338,7 @@ public struct BrowseView: View {
                         Image(systemName: "person.crop.circle.badge.checkmark")
                             .font(.title3)
                             .foregroundStyle(.tint)
-                        Text(item.director.name)
-                            .font(.body.bold())
+                        MarqueeText(text: item.director.name, font: .body, weight: .bold, speed: 25)
                         Spacer()
                         Text("\(item.movieCount) 部作品")
                             .font(.caption)

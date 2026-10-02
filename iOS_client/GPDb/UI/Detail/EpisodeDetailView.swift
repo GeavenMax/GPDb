@@ -39,8 +39,7 @@ public struct EpisodeDetailView: View {
 
                     VStack(alignment: .leading, spacing: 12) {
                         // 2. 标题与日期
-                        Text(ep.displayTitle)
-                            .font(.title2.bold())
+                        MarqueeText(text: ep.displayTitle, font: .title2, weight: .bold)
 
                         if let date = ep.releaseDate {
                             Text("发行日期: \(date)")
@@ -59,9 +58,7 @@ public struct EpisodeDetailView: View {
                                         Text("收录于完整长片:")
                                             .font(.caption2)
                                             .foregroundStyle(.secondary)
-                                        Text(movie.displayTitle)
-                                            .font(.subheadline.bold())
-                                            .lineLimit(1)
+                                        MarqueeText(text: movie.displayTitle, font: .subheadline, weight: .bold, speed: 25)
                                     }
                                     Spacer()
                                     Image(systemName: "chevron.right")
@@ -102,9 +99,8 @@ public struct EpisodeDetailView: View {
                                                     .frame(width: 48, height: 48)
                                                     .clipShape(Circle())
 
-                                                Text(p.name)
-                                                    .font(.caption2.bold())
-                                                    .lineLimit(1)
+                                                MarqueeText(text: p.name, font: .caption2, weight: .bold, speed: 20)
+                                                    .frame(width: 56)
                                             }
                                         }
                                         .buttonStyle(.plain)

@@ -13,9 +13,9 @@ public struct DynamicAmbientBackground: View {
 
     public init(
         imagePath: String?,
-        gradientHeight: CGFloat = 460,
+        gradientHeight: CGFloat = 480,
         blurRadius: CGFloat = 65,
-        glowOpacity: Double = 0.38
+        glowOpacity: Double = 0.42
     ) {
         self.imagePath = imagePath
         self.gradientHeight = gradientHeight
@@ -40,10 +40,10 @@ public struct DynamicAmbientBackground: View {
                     rawPath: path,
                     contentMode: .fill,
                     cornerRadius: 0,
-                    targetSize: CGSize(width: 80, height: 80)
+                    targetSize: CGSize(width: 100, height: 140)
                 )
                 .frame(maxWidth: .infinity)
-                .frame(height: gradientHeight * 0.72)
+                .frame(height: gradientHeight * 0.75)
                 .blur(radius: blurRadius)
                 .opacity(glowOpacity)
                 .clipped()
@@ -51,7 +51,7 @@ public struct DynamicAmbientBackground: View {
                     LinearGradient(
                         stops: [
                             .init(color: .black.opacity(0.95), location: 0.0),
-                            .init(color: .black.opacity(0.35), location: 0.55),
+                            .init(color: .black.opacity(0.40), location: 0.50),
                             .init(color: .clear, location: 1.0)
                         ],
                         startPoint: .top,
@@ -61,13 +61,13 @@ public struct DynamicAmbientBackground: View {
                 .ignoresSafeArea(edges: .top)
             }
 
-            // 3. 动态图片提取色彩的渐变晕染层
+            // 3. 动态图片提取色彩的渐变晕染层 (真实取色高透亮渐变)
             if let pal = palette {
                 LinearGradient(
                     stops: [
-                        .init(color: pal.primary.opacity(0.38), location: 0.0),
-                        .init(color: pal.secondary.opacity(0.18), location: 0.42),
-                        .init(color: pal.secondary.opacity(0.05), location: 0.72),
+                        .init(color: pal.primary.opacity(0.55), location: 0.0),
+                        .init(color: pal.secondary.opacity(0.30), location: 0.38),
+                        .init(color: pal.secondary.opacity(0.10), location: 0.70),
                         .init(color: Color.clear, location: 1.0)
                     ],
                     startPoint: .top,
@@ -79,17 +79,32 @@ public struct DynamicAmbientBackground: View {
             }
         }
         .task(id: imagePath) {
+            #if canImport(UIKit)
+            if let path = imagePath, let cached = PaletteExtractor.shared.cachedPalette(for: path) {
+                self.palette = cached
+            }
             let extracted = await PaletteExtractor.shared.extract(for: imagePath, environment: environment)
             withAnimation(.easeInOut(duration: 0.35)) {
                 self.palette = extracted
             }
+            #endif
+        }
+        .onReceive(NotificationCenter.default.publisher(for: PaletteExtractor.didExtractPaletteNotification)) { notification in
+            #if canImport(UIKit)
+            if let path = notification.object as? String, path == imagePath,
+               let cached = PaletteExtractor.shared.cachedPalette(for: path) {
+                withAnimation(.easeInOut(duration: 0.35)) {
+                    self.palette = cached
+                }
+            }
+            #endif
         }
     }
 }
 
 public extension View {
     /// 赋予页面从目标图片动态取色的自适应氛围渐变背景
-    func dynamicAmbientBackground(imagePath: String?, gradientHeight: CGFloat = 460) -> some View {
+    func dynamicAmbientBackground(imagePath: String?, gradientHeight: CGFloat = 480) -> some View {
         self.background(
             DynamicAmbientBackground(imagePath: imagePath, gradientHeight: gradientHeight)
         )

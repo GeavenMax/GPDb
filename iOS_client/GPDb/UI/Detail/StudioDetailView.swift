@@ -51,6 +51,10 @@ public struct StudioDetailView: View {
         .navigationTitle(cleanTitle(studioName))
         .inlineNavigationTitle()
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                MarqueeText(text: cleanTitle(studioName), font: .headline, weight: .bold, speed: 25)
+                    .frame(maxWidth: 220)
+            }
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 12) {
                     if selectedTab == .movies {
@@ -107,9 +111,7 @@ public struct StudioDetailView: View {
                             )
                             .aspectRatio(0.68, contentMode: .fit)
 
-                            Text(movie.displayTitle)
-                                .font(.caption.bold())
-                                .lineLimit(1)
+                            MarqueeText(text: movie.displayTitle, font: .caption, weight: .bold, speed: 25)
 
                             HStack {
                                 if let y = movie.releaseYear {
@@ -150,10 +152,7 @@ public struct StudioDetailView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
 
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(ep.displayTitle)
-                                    .font(.subheadline.bold())
-                                    .lineLimit(2)
-                                    .foregroundStyle(.primary)
+                                MarqueeText(text: ep.displayTitle, font: .subheadline, weight: .bold, speed: 25)
 
                                 if let date = ep.releaseDate {
                                     Text("发行: \(date)")

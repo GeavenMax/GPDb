@@ -48,7 +48,8 @@ public struct HomeFeedView: View {
                         libraryOverviewStats
                     }
                 }
-                .padding(.vertical)
+                .padding(.top, 4)
+                .padding(.bottom, 24)
             }
             .dynamicAmbientBackground(
                 imagePath: feedData.spotlightMovies.indices.contains(spotlightIndex) ?
@@ -56,6 +57,7 @@ public struct HomeFeedView: View {
                 gradientHeight: 520
             )
             .navigationTitle("主页")
+            .inlineNavigationTitle()
             .toolbar {
                 ToolbarItem(placement: .navigation) {
                     Button {
@@ -84,123 +86,140 @@ public struct HomeFeedView: View {
     // MARK: - 子视图组件
 
     private var spotlightCarousel: some View {
-        TabView(selection: $spotlightIndex) {
-            ForEach(0..<feedData.spotlightMovies.count, id: \.self) { idx in
-                let movie = feedData.spotlightMovies[idx]
-                NavigationLink(destination: MovieDetailView(movieId: movie.id)) {
-                    ZStack {
-                        // 1. 动态氛围背景虚化 (Ambient Glow: 严格限制在容器边界内)
-                        GpdbImageView(rawPath: movie.coverFull ?? movie.coverIcon, contentMode: .fill, cornerRadius: 20)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .blur(radius: 35)
-                            .opacity(0.45)
-                            .clipped()
+        VStack(spacing: 8) {
+            TabView(selection: $spotlightIndex) {
+                ForEach(0..<feedData.spotlightMovies.count, id: \.self) { idx in
+                    let movie = feedData.spotlightMovies[idx]
+                    NavigationLink(destination: MovieDetailView(movieId: movie.id)) {
+                        ZStack {
+                            // 1. 动态氛围背景虚化 (Ambient Glow: 严格限制在容器边界内)
+                            GpdbImageView(rawPath: movie.coverFull ?? movie.coverIcon, contentMode: .fill, cornerRadius: 20)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .blur(radius: 35)
+                                .opacity(0.45)
+                                .clipped()
 
-                        // 渐变暗黑蒙层
-                        LinearGradient(
-                            colors: [Color.black.opacity(0.55), Color.black.opacity(0.88)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                            // 渐变暗黑蒙层
+                            LinearGradient(
+                                colors: [Color.black.opacity(0.55), Color.black.opacity(0.88)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
 
-                        // 2. 左右分栏核心内容：左侧完整海报，右侧排版信息
-                        HStack(alignment: .center, spacing: 14) {
-                            // 左侧：完整竖版海报，0.68 黄金比例，完全不被上下裁切
-                            GpdbImageView(rawPath: movie.coverFull ?? movie.coverIcon, contentMode: .fill, cornerRadius: 12)
-                                .frame(width: 115, height: 170)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .shadow(color: .black.opacity(0.5), radius: 8, x: 0, y: 4)
+                            // 2. 左右分栏核心内容：左侧完整海报，右侧排版信息
+                            HStack(alignment: .center, spacing: 14) {
+                                // 左侧：完整竖版海报，0.68 黄金比例，完全不被上下裁切
+                                GpdbImageView(rawPath: movie.coverFull ?? movie.coverIcon, contentMode: .fill, cornerRadius: 12)
+                                    .frame(width: 115, height: 170)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .shadow(color: .black.opacity(0.5), radius: 8, x: 0, y: 4)
 
-                            // 右侧：影片信息结构排布 (自适应填充剩余宽度)
-                            VStack(alignment: .leading, spacing: 6) {
-                                // 顶部徽章行
-                                HStack(spacing: 6) {
-                                    Text("焦点推荐")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(.black)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(Color.amber, in: Capsule())
+                                // 右侧：影片信息结构排布 (自适应填充剩余宽度)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    // 顶部徽章行
+                                    HStack(spacing: 6) {
+                                        Text("焦点推荐")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundStyle(.black)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.amber, in: Capsule())
 
-                                    if let year = movie.releaseYear {
-                                        Text("\(year)年")
-                                            .font(.caption.bold())
-                                            .foregroundStyle(.white.opacity(0.85))
-                                    }
+                                        if let year = movie.releaseYear {
+                                            Text("\(year)年")
+                                                .font(.caption.bold())
+                                                .foregroundStyle(.white.opacity(0.85))
+                                        }
 
-                                    if let rating = movie.rating, !rating.isEmpty {
-                                        HStack(spacing: 2) {
-                                            Image(systemName: "star.fill")
-                                                .font(.system(size: 9))
-                                                .foregroundStyle(Color.amber)
-                                            Text(rating)
-                                                .font(.caption2.bold())
-                                                .foregroundStyle(Color.amber)
+                                        if let rating = movie.rating, !rating.isEmpty {
+                                            HStack(spacing: 2) {
+                                                Image(systemName: "star.fill")
+                                                    .font(.system(size: 9))
+                                                    .foregroundStyle(Color.amber)
+                                                Text(rating)
+                                                    .font(.caption2.bold())
+                                                    .foregroundStyle(Color.amber)
+                                            }
                                         }
                                     }
-                                }
 
-                                // 标题 (中文优先)
-                                Text(movie.displayTitle)
-                                    .font(.headline.bold())
-                                    .foregroundStyle(.white)
-                                    .lineLimit(2)
-                                    .multilineTextAlignment(.leading)
+                                    // 标题 (超长平滑跑马灯支持)
+                                    MarqueeText(
+                                        text: movie.displayTitle,
+                                        font: .headline,
+                                        weight: .bold,
+                                        foregroundColor: .white,
+                                        speed: 28
+                                    )
 
-                                // 片商厂牌
-                                if let studio = movie.studioName, !studio.isEmpty {
-                                    Text(studio)
-                                        .font(.caption2)
-                                        .foregroundStyle(.white.opacity(0.7))
-                                        .lineLimit(1)
-                                }
-
-                                // 剧情简介 (中文优先)
-                                if let desc = movie.displayDescription, !desc.isEmpty {
-                                    Text(desc)
-                                        .font(.caption2)
-                                        .lineSpacing(2)
-                                        .foregroundStyle(.white.opacity(0.8))
-                                        .lineLimit(2)
-                                        .multilineTextAlignment(.leading)
-                                }
-
-                                Spacer(minLength: 4)
-
-                                // 底部立即探索按钮
-                                HStack {
-                                    HStack(spacing: 4) {
-                                        Text("立即探索")
-                                            .font(.caption.bold())
-                                        Image(systemName: "arrow.right.circle.fill")
-                                            .font(.caption)
+                                    // 片商厂牌
+                                    if let studio = movie.studioName, !studio.isEmpty {
+                                        Text(studio)
+                                            .font(.caption2)
+                                            .foregroundStyle(.white.opacity(0.7))
+                                            .lineLimit(1)
                                     }
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(Color.white.opacity(0.2), in: Capsule())
 
-                                    Spacer()
+                                    // 剧情简介 (中文优先)
+                                    if let desc = movie.displayDescription, !desc.isEmpty {
+                                        Text(desc)
+                                            .font(.caption2)
+                                            .lineSpacing(2)
+                                            .foregroundStyle(.white.opacity(0.8))
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.leading)
+                                    }
+
+                                    Spacer(minLength: 4)
+
+                                    // 底部立即探索按钮
+                                    HStack {
+                                        HStack(spacing: 4) {
+                                            Text("立即探索")
+                                                .font(.caption.bold())
+                                            Image(systemName: "arrow.right.circle.fill")
+                                                .font(.caption)
+                                        }
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(Color.white.opacity(0.2), in: Capsule())
+
+                                        Spacer()
+                                    }
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 12)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 14)
                         }
-                        .padding(.horizontal, 14)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 198)
+                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.12), lineWidth: 1))
                     }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 198)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.12), lineWidth: 1))
+                    .buttonStyle(.plain)
+                    .tag(idx)
+                    .padding(.horizontal)
                 }
-                .buttonStyle(.plain)
-                .tag(idx)
-                .padding(.horizontal)
+            }
+            .frame(height: 198)
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            // 外部独立指示器条，不遮挡卡片底部与立即探索按钮
+            if feedData.spotlightMovies.count > 1 {
+                HStack(spacing: 6) {
+                    ForEach(0..<feedData.spotlightMovies.count, id: \.self) { idx in
+                        Capsule()
+                            .fill(spotlightIndex == idx ? Color.amber : Color.secondary.opacity(0.3))
+                            .frame(width: spotlightIndex == idx ? 16 : 5, height: 5)
+                            .animation(.easeInOut(duration: 0.25), value: spotlightIndex)
+                    }
+                }
+                .padding(.top, 2)
             }
         }
-        .frame(height: 220)
-        .pagedTabViewStyle()
     }
 
     private var todayStarsSection: some View {
@@ -222,9 +241,7 @@ public struct HomeFeedView: View {
                                     .clipShape(Circle())
                                     .overlay(Circle().stroke(Color.tintColor.opacity(0.6), lineWidth: 2))
 
-                                Text(performer.name)
-                                    .font(.caption2.bold())
-                                    .lineLimit(1)
+                                MarqueeText(text: performer.name, font: .caption2, weight: .bold, speed: 20)
                                     .frame(width: 76)
                             }
                         }
@@ -256,9 +273,8 @@ public struct HomeFeedView: View {
                                 GpdbImageView(rawPath: series.coverUrl, contentMode: .fill, cornerRadius: 12, placeholderIcon: "film.stack")
                                     .frame(width: 140, height: 190)
 
-                                Text(series.displayTitle)
-                                    .font(.caption.bold())
-                                    .lineLimit(1)
+                                MarqueeText(text: series.displayTitle, font: .caption, weight: .bold, speed: 25)
+                                    .frame(width: 140)
 
                                 HStack {
                                     Text("\(series.movieCount) 部作品")
@@ -352,10 +368,7 @@ public struct HomeFeedView: View {
 
                             // 底部文字信息区
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(movie.displayTitle)
-                                    .font(.caption2.bold())
-                                    .lineLimit(1)
-                                    .foregroundStyle(.primary)
+                                MarqueeText(text: movie.displayTitle, font: .caption2, weight: .bold, speed: 22)
 
                                 if let studio = movie.studioName, !studio.isEmpty {
                                     Text(studio)

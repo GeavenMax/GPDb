@@ -41,9 +41,7 @@ public struct FilteredMovieListView: View {
                                 )
                                 .aspectRatio(0.68, contentMode: .fit)
 
-                                Text(movie.displayTitle)
-                                    .font(.caption.bold())
-                                    .lineLimit(1)
+                                MarqueeText(text: movie.displayTitle, font: .caption, weight: .bold, speed: 25)
 
                                 HStack {
                                     if let y = movie.releaseYear {

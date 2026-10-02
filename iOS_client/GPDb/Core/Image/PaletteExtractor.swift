@@ -20,9 +20,10 @@ public struct ImagePalette: Equatable, Sendable {
     }
 }
 
-/// 高性能图像色彩分析与主色调提取器 (采用极速降采样 + 饱和度/亮度加权算法)
+/// 高性能图像色彩分析与主色调提取器 (采用直接位图硬件采样 + 饱和度与明度双重加权)
 public final class PaletteExtractor: @unchecked Sendable {
     public static let shared = PaletteExtractor()
+    public static let didExtractPaletteNotification = Notification.Name("GPDbPaletteExtractorDidExtract")
 
     private let cache = NSCache<NSString, PaletteCacheEntry>()
 
@@ -31,6 +32,25 @@ public final class PaletteExtractor: @unchecked Sendable {
     }
 
     #if canImport(UIKit)
+    /// 注册并缓存已知图片的色彩，并广播通知
+    public func register(image: UIImage, for rawPath: String) {
+        let key = rawPath as NSString
+        let palette = processImage(image)
+        cache.setObject(PaletteCacheEntry(palette: palette), forKey: key)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: PaletteExtractor.didExtractPaletteNotification,
+                object: rawPath,
+                userInfo: ["palette": palette]
+            )
+        }
+    }
+
+    /// 获取内存中已提取的色彩 (如有)
+    public func cachedPalette(for rawPath: String) -> ImagePalette? {
+        return cache.object(forKey: rawPath as NSString)?.palette
+    }
+
     /// 针对已有的 UIImage 进行同步取色 (内置内存缓存)
     public func extract(from image: UIImage, cacheKey: String? = nil) -> ImagePalette {
         if let key = cacheKey, let cached = cache.object(forKey: key as NSString) {
@@ -101,40 +121,46 @@ public final class PaletteExtractor: @unchecked Sendable {
         return .fallback
     }
 
-    /// 核心色彩提取分析逻辑：降采样至 16x16，加权计算主色彩相与对比色
+    /// 核心色彩提取分析逻辑：通过确定性 CGBitmapContext 读取 24x24 采样像素，加权计算主导生动色相与对比色
     public func processImage(_ image: UIImage) -> ImagePalette {
-        let size = CGSize(width: 16, height: 16)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        let width = 24
+        let height = 24
+        var rawData = [UInt8](repeating: 0, count: width * height * 4)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
 
-        let smallImage = renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: size))
-        }
-
-        guard let cgImage = smallImage.cgImage,
-              let dataProvider = cgImage.dataProvider,
-              let pixelData = dataProvider.data,
-              let data = CFDataGetBytePtr(pixelData) else {
+        guard let context = CGContext(
+            data: &rawData,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo
+        ) else {
             return .fallback
         }
 
-        let width = cgImage.width
-        let height = cgImage.height
-        let bytesPerPixel = 4
-        let bytesPerRow = cgImage.bytesPerRow
+        context.interpolationQuality = .medium
+        if let cgImage = image.cgImage {
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        } else {
+            UIGraphicsPushContext(context)
+            image.draw(in: CGRect(x: 0, y: 0, width: width, height: height))
+            UIGraphicsPopContext()
+        }
 
-        var candidates: [(r: Double, g: Double, b: Double, sat: Double, lum: Double)] = []
+        var candidates: [(r: Double, g: Double, b: Double, sat: Double, lum: Double, score: Double)] = []
 
         for y in 0..<height {
             for x in 0..<width {
-                let offset = y * bytesPerRow + x * bytesPerPixel
-                let r = Double(data[offset]) / 255.0
-                let g = Double(data[offset + 1]) / 255.0
-                let b = Double(data[offset + 2]) / 255.0
-                let a = Double(data[offset + 3]) / 255.0
+                let offset = (y * width + x) * 4
+                let r = Double(rawData[offset]) / 255.0
+                let g = Double(rawData[offset + 1]) / 255.0
+                let b = Double(rawData[offset + 2]) / 255.0
+                let a = Double(rawData[offset + 3]) / 255.0
 
-                if a < 0.4 { continue }
+                if a < 0.35 { continue }
 
                 let maxVal = max(r, max(g, b))
                 let minVal = min(r, min(g, b))
@@ -142,9 +168,12 @@ public final class PaletteExtractor: @unchecked Sendable {
                 let delta = maxVal - minVal
                 let sat = (lum > 0 && lum < 1) ? delta / (1.0 - abs(2.0 * lum - 1.0)) : 0.0
 
-                // 过滤极端亮度（近纯黑与近纯白），提取有色彩倾向的像素
-                if lum >= 0.10 && lum <= 0.88 {
-                    candidates.append((r, g, b, sat, lum))
+                // 排除近黑 (lum < 0.08) 和 近白 (lum > 0.90) 以及纯无彩度灰色 (sat < 0.06)
+                if lum >= 0.08 && lum <= 0.90 && sat >= 0.06 {
+                    // 得分算法：饱和度与适度明度加权，优先提取鲜明有氛围感的色调
+                    let lumFactor = 1.0 - abs(lum - 0.52) * 1.6
+                    let score = sat * 2.2 + max(0, lumFactor)
+                    candidates.append((r, g, b, sat, lum, score))
                 }
             }
         }
@@ -153,20 +182,35 @@ public final class PaletteExtractor: @unchecked Sendable {
             return .fallback
         }
 
-        // 按饱和度降序，优先选取色彩饱满的代表色
-        let sorted = candidates.sorted { $0.sat > $1.sat }
-        let topPrimary = sorted.first!
+        // 按色彩得分排序，优先选取色彩饱满且明度舒适的代表色
+        let sorted = candidates.sorted { $0.score > $1.score }
+        let top = sorted.first!
 
-        // 次选色寻找与主色有一定色差或次高饱和度的色调
+        // 次选色寻找与主色有足够色差（不同色调或对比色）的候选项
         let secondary = sorted.dropFirst().first { c in
-            let dist = abs(c.r - topPrimary.r) + abs(c.g - topPrimary.g) + abs(c.b - topPrimary.b)
-            return dist >= 0.35
-        } ?? sorted.last ?? topPrimary
+            let dist = abs(c.r - top.r) + abs(c.g - top.g) + abs(c.b - top.b)
+            return dist >= 0.32 && c.sat >= 0.12
+        } ?? sorted.last ?? top
 
-        let primaryColor = Color(red: topPrimary.r, green: topPrimary.g, blue: topPrimary.b)
-        let secondaryColor = Color(red: secondary.r, green: secondary.g, blue: secondary.b)
+        // 适度增强色彩生动度 (vibrancy)，呈现更透亮、更具有氛围感的渐变
+        let primaryColor = boostVibrancy(r: top.r, g: top.g, b: top.b)
+        let secondaryColor = boostVibrancy(r: secondary.r, g: secondary.g, b: secondary.b)
 
         return ImagePalette(primary: primaryColor, secondary: secondaryColor)
+    }
+
+    private func boostVibrancy(r: Double, g: Double, b: Double) -> Color {
+        let maxVal = max(r, max(g, b))
+        let minVal = min(r, min(g, b))
+        let lum = (maxVal + minVal) / 2.0
+        if maxVal == minVal {
+            return Color(red: r, green: g, blue: b)
+        }
+        let factor = 1.22
+        let rBoost = min(1.0, max(0.0, lum + (r - lum) * factor))
+        let gBoost = min(1.0, max(0.0, lum + (g - lum) * factor))
+        let bBoost = min(1.0, max(0.0, lum + (b - lum) * factor))
+        return Color(red: rBoost, green: gBoost, blue: bBoost)
     }
     #endif
 }
