@@ -81,6 +81,14 @@ local.properties
 *.keystore
 *.jks
 
+# --- iOS build artifacts ---
+iOS_client/.build/
+iOS_client/.swiftpm/
+iOS_client/DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+
 # --- macOS / editors ---
 .DS_Store
 .vscode/
