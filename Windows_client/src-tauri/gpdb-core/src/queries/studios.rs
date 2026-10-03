@@ -33,6 +33,8 @@ pub fn get_studio_library(
     let page_size = page_size.unwrap_or(24).clamp(1, 100);
     let offset = (page - 1) * page_size;
 
+    let has_query = query.as_ref().map(|q| !q.trim().is_empty()).unwrap_or(false);
+
     let mut conditions = vec![
         "s.name IS NOT NULL".to_string(),
         "trim(s.name) != ''".to_string(),
@@ -62,19 +64,32 @@ pub fn get_studio_library(
     };
 
     let params_slice: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
-    let total: i64 = conn.query_row(
-        &format!(
+    let total: i64 = if !has_query {
+        // Fast path for browsing: counting the union needs no join with studios table
+        conn.query_row(
             "SELECT count(*) FROM ( \
                 SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
                 UNION \
                 SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
-            ) s \
-            LEFT JOIN studios st ON (trim(st.name) = trim(s.name) COLLATE NOCASE OR trim(st.name_zh) = trim(s.name)) {}",
-            where_clause
-        ),
-        &params_slice[..],
-        |r| r.get(0),
-    ).map_err(|e| e.to_string())?;
+            ) s",
+            [],
+            |r| r.get(0),
+        ).map_err(|e| e.to_string())?
+    } else {
+        conn.query_row(
+            &format!(
+                "SELECT count(*) FROM ( \
+                    SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+                    UNION \
+                    SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+                ) s \
+                LEFT JOIN studios st ON st.name = s.name COLLATE NOCASE {}",
+                where_clause
+            ),
+            &params_slice[..],
+            |r| r.get(0),
+        ).map_err(|e| e.to_string())?
+    };
 
     let select_query = format!(
         "SELECT s.name, st.name_zh, st.description_zh, st.logo_url, st.banner_url, COALESCE(m.cnt, 0) AS works_count, COALESCE(e.cnt, 0) AS episodes_count \
@@ -83,7 +98,7 @@ pub fn get_studio_library(
              UNION \
              SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
          ) s \
-         LEFT JOIN studios st ON (trim(st.name) = trim(s.name) COLLATE NOCASE OR trim(st.name_zh) = trim(s.name)) \
+         LEFT JOIN studios st ON st.name = s.name COLLATE NOCASE \
          LEFT JOIN ( \
              SELECT studio_name, count(*) AS cnt \
              FROM movies \
@@ -133,7 +148,7 @@ pub fn get_studio_works(conn: &Connection, studio_name: String) -> Result<Studio
         Option<String>,
     ) = conn
         .query_row(
-            "SELECT name_zh, description_zh, logo_url, banner_url FROM studios WHERE trim(name) = trim(?1) COLLATE NOCASE OR trim(name_zh) = trim(?1) LIMIT 1",
+            "SELECT name_zh, description_zh, logo_url, banner_url FROM studios WHERE name = ?1 COLLATE NOCASE OR name_zh = ?1 LIMIT 1",
             params![studio_name],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )

@@ -230,7 +230,8 @@ const selectedStudio = ref<{ name: string; name_zh?: string | null; description_
 const studioWorks = ref<StudioWorks | null>(null);
 const studioWorksLoading = ref(false);
 
-const studioLogoColorMap = shallowReactive<Record<string, SampledColorResult>>({});
+// Plain in-memory cache for studio logo sampled colors (non-reactive to avoid layout thrashing during scroll)
+const studioLogoColorMap = new Map<string, SampledColorResult>();
 const studioLogoErrorSet = shallowReactive(new Set<string>());
 
 function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
@@ -239,7 +240,13 @@ function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
   if (!img) return;
   const result = sampleImageEdgeColor(img);
   if (result.bgColor) {
-    studioLogoColorMap[logoUrl] = result;
+    studioLogoColorMap.set(logoUrl, result);
+    // Directly apply background and border styling to the shelf element without triggering Vue reactive re-renders
+    const shelf = img.parentElement as HTMLElement | null;
+    if (shelf) {
+      shelf.style.backgroundColor = result.bgColor;
+      shelf.style.borderColor = result.isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)';
+    }
   }
 }
 
@@ -251,7 +258,7 @@ function onStudioGridLogoError(logoUrl?: string | null) {
 
 function getStudioShelfStyle(logoUrl?: string | null): Record<string, string> {
   if (!logoUrl) return {};
-  const sampled = studioLogoColorMap[logoUrl];
+  const sampled = studioLogoColorMap.get(logoUrl);
   if (sampled?.bgColor) {
     return {
       backgroundColor: sampled.bgColor,
@@ -262,7 +269,7 @@ function getStudioShelfStyle(logoUrl?: string | null): Record<string, string> {
 }
 
 function getStudioShelfClass(logoUrl?: string | null): string {
-  if (logoUrl && studioLogoColorMap[logoUrl]?.bgColor) {
+  if (logoUrl && studioLogoColorMap.get(logoUrl)?.bgColor) {
     return '';
   }
   return 'bg-surface-2/60 group-hover:bg-surface-2/80';
@@ -2365,7 +2372,7 @@ onUnmounted(() => {
                   :src="getImageUrl(s.logo_url)"
                   :alt="s.name"
                   crossorigin="anonymous"
-                  class="max-w-[88%] max-h-full w-auto h-auto object-contain filter drop-shadow group-hover:scale-105 transition duration-300"
+                  class="max-w-[88%] max-h-full w-auto h-auto object-contain group-hover:scale-105 transition duration-300"
                   loading="lazy"
                   @load="onStudioGridLogoLoad($event, s.logo_url)"
                   @error="onStudioGridLogoError(s.logo_url)"

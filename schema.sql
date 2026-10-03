@@ -393,3 +393,4 @@ CREATE TABLE IF NOT EXISTS studios (
 );
 
 CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);
+CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);

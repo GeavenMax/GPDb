@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS studios (
     updated_at     TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);
+CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);
 ";
 
 const CORE_SCHEMA: &str = "
