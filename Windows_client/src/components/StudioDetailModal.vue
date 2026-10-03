@@ -88,7 +88,14 @@ const logoError = ref(false);
 
 const effectiveLogoUrl = computed(() => {
   if (logoError.value) return null;
-  return props.works?.logo_url || props.studio?.logo_url || fetchedLogoUrl.value || null;
+  return (
+    props.works?.logo_url ||
+    props.studio?.logo_url ||
+    fetchedLogoUrl.value ||
+    props.works?.banner_url ||
+    props.studio?.banner_url ||
+    null
+  );
 });
 
 function onLogoError() {
@@ -105,6 +112,8 @@ async function loadStudioArchive(name?: string | null) {
     }
     if (works?.logo_url && !props.works?.logo_url && !props.studio?.logo_url) {
       fetchedLogoUrl.value = works.logo_url;
+    } else if (works?.banner_url && !props.works?.banner_url && !props.studio?.banner_url) {
+      fetchedLogoUrl.value = works.banner_url;
     }
   } catch {
     // Ignore fetch error
@@ -171,10 +180,6 @@ const subTitle = computed(() => {
   return '';
 });
 
-const displayInitial = computed(() => {
-  const title = mainTitle.value || props.studio?.name || '';
-  return title.charAt(0).toUpperCase();
-});
 
 function isFav(type: FavoriteType, key: string | null | undefined): boolean {
   if (!key) return false;
@@ -246,68 +251,68 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       </button>
 
       <!-- Profile Header. Displays dual titles (Chinese main + light-gray English subtitle) when available. -->
-      <div class="p-6 md:p-8 bg-sunken border-b border-line flex items-center gap-6 shrink-0">
-        <!-- Studio Avatar / Official Logo -->
-        <div class="w-24 h-20 md:w-32 md:h-24 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-accent-fill/10 ring-1 ring-line-strong/60 bg-surface-2/80 flex items-center justify-center p-2 relative group">
-          <img
-            v-if="effectiveLogoUrl"
-            :src="getImageUrl(effectiveLogoUrl)"
-            :alt="mainTitle"
-            class="max-w-full max-h-full object-contain filter drop-shadow transition-transform duration-300 group-hover:scale-105"
-            @error="onLogoError"
-          />
-          <div
-            v-else
-            class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-3xl font-black text-on-fill rounded-xl"
-          >
-            {{ displayInitial }}
-          </div>
-        </div>
+      <div class="p-6 md:p-8 bg-sunken border-b border-line flex items-center justify-between gap-6 shrink-0">
         <div class="min-w-0 flex-1">
           <div class="text-xs font-semibold text-accent uppercase tracking-wider">{{ t('studio.profile') }}</div>
-          <h1 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-fg break-words line-clamp-2 leading-tight" :title="mainTitle">{{ mainTitle }}</h1>
+          <h1 class="text-2xl md:text-3xl lg:text-4xl font-black text-fg break-words line-clamp-2 leading-tight mt-1" :title="mainTitle">{{ mainTitle }}</h1>
           <div v-if="subTitle" class="text-xs md:text-sm font-medium text-fg-4 mt-1 break-words line-clamp-2 tracking-wide" :title="subTitle">
             {{ subTitle }}
           </div>
-          <div class="text-xs text-fg-3 mt-2 flex items-center gap-3 flex-wrap">
+          <div class="text-xs text-fg-3 mt-2.5 flex items-center gap-3 flex-wrap">
             <span class="text-accent/80 font-medium">{{ worksCount }} {{ t('common.works') }}</span>
             <span v-if="episodesCount">{{ episodesCount }} {{ t('common.episodes') }}</span>
           </div>
         </div>
 
-        <!-- Action buttons: Multi-column grid (BT Search, Google Search, Language Toggle, Favorite) -->
-        <div class="mr-10 shrink-0 self-center grid grid-cols-2 gap-2 w-auto min-w-[280px] max-w-[340px]">
-          <template v-if="pluginsConfig.resourceSearchEnabled">
-            <ResourceSearchWidget
-              type="studio"
-              :title="studio.name"
-              wrapper-class="contents"
-              button-class="w-full justify-center"
+        <!-- Right Side: Official Logo (Above buttons) + Action buttons -->
+        <div class="mr-10 shrink-0 flex flex-col gap-2.5 w-auto min-w-[280px] max-w-[340px]">
+          <!-- Studio Official Logo: Positioned above the action buttons with adaptive width -->
+          <div
+            v-if="effectiveLogoUrl"
+            class="w-full h-12 md:h-14 px-3 py-1.5 rounded-2xl bg-surface-2/80 border border-line-strong/60 flex items-center justify-center overflow-hidden shadow-sm group"
+          >
+            <img
+              :src="getImageUrl(effectiveLogoUrl)"
+              :alt="mainTitle"
+              class="w-auto h-full max-w-full max-h-full object-contain filter drop-shadow transition-transform duration-300 group-hover:scale-105"
+              @error="onLogoError"
             />
-          </template>
+          </div>
 
-          <button
-            v-if="hasTranslation"
-            @click="toggleLang"
-            :title="effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal')"
-            class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-fg flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full"
-          >
-            <Languages class="w-3.5 h-3.5 shrink-0" />
-            <span class="truncate">{{ effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal') }}</span>
-          </button>
+          <!-- Action buttons: Multi-column grid (BT Search, Google Search, Language Toggle, Favorite) -->
+          <div class="grid grid-cols-2 gap-2 w-full">
+            <template v-if="pluginsConfig.resourceSearchEnabled">
+              <ResourceSearchWidget
+                type="studio"
+                :title="studio.name"
+                wrapper-class="contents"
+                button-class="w-full justify-center"
+              />
+            </template>
 
-          <button
-            @click="emit('toggle-favorite', studio.name)"
-            :class="[
-              'py-1.5 px-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full',
-              isFavorite
-                ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
-                : 'bg-surface-2/60 hover:bg-surface-3 border-line text-fg-3 hover:text-danger'
-            ]"
-          >
-            <Heart class="w-3.5 h-3.5 shrink-0" :fill="isFavorite ? 'currentColor' : 'none'" />
-            <span class="truncate">{{ isFavorite ? t('studio.favorited') : t('studio.favorite') }}</span>
-          </button>
+            <button
+              v-if="hasTranslation"
+              @click="toggleLang"
+              :title="effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal')"
+              class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-fg flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full"
+            >
+              <Languages class="w-3.5 h-3.5 shrink-0" />
+              <span class="truncate">{{ effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal') }}</span>
+            </button>
+
+            <button
+              @click="emit('toggle-favorite', studio.name)"
+              :class="[
+                'py-1.5 px-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full',
+                isFavorite
+                  ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
+                  : 'bg-surface-2/60 hover:bg-surface-3 border-line text-fg-3 hover:text-danger'
+              ]"
+            >
+              <Heart class="w-3.5 h-3.5 shrink-0" :fill="isFavorite ? 'currentColor' : 'none'" />
+              <span class="truncate">{{ isFavorite ? t('studio.favorited') : t('studio.favorite') }}</span>
+            </button>
+          </div>
         </div>
       </div>
 

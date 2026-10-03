@@ -116,12 +116,6 @@ fun PerformerDetailScreen(
                 val currentLang = com.gpdb.android.util.LocalAppLanguage.current
                 val isChinese = currentLang == com.gpdb.android.util.AppLanguage.ZH_CN || currentLang == com.gpdb.android.util.AppLanguage.ZH_TW
 
-                val pbcTags = remember(pbc?.tags) {
-                    if (!pbc?.tags.isNullOrBlank()) {
-                        pbc.tags.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                    } else emptyList()
-                }
-
                 val externalLinks = remember(pbc?.socialLinks, pbc?.externalIds) {
                     val links = mutableListOf<Pair<String, String>>()
                     if (!pbc?.socialLinks.isNullOrBlank()) {
@@ -231,7 +225,6 @@ fun PerformerDetailScreen(
                                 pbc = pbc,
                                 imageData = imageData,
                                 advancedDetails = advancedDetails,
-                                pbcTags = pbcTags,
                                 externalLinks = externalLinks,
                                 allAliases = uiState.allAliases,
                                 sjUrl = uiState.sjUrl,
@@ -292,7 +285,6 @@ fun PerformerDetailScreen(
                                 pbc = pbc,
                                 imageData = imageData,
                                 advancedDetails = advancedDetails,
-                                pbcTags = pbcTags,
                                 externalLinks = externalLinks,
                                 allAliases = uiState.allAliases,
                                 sjUrl = uiState.sjUrl,
@@ -385,7 +377,6 @@ private fun PerformerProfileHeader(
     pbc: com.gpdb.android.data.db.entities.PerformerPbcProfile?,
     imageData: GpdbImageData,
     advancedDetails: List<Pair<String, String>>,
-    pbcTags: List<String>,
     externalLinks: List<Pair<String, String>>,
     allAliases: List<String>,
     sjUrl: String?,
@@ -522,37 +513,6 @@ private fun PerformerProfileHeader(
                             text = "$label: $value",
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        // 表演标签
-        if (pbcTags.isNotEmpty()) {
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "表演标签:",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
-                pbcTags.forEach { tag ->
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    ) {
-                        Text(
-                            text = tag,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }

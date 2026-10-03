@@ -112,4 +112,13 @@ export function initPrivacyListeners() {
   ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach((event) => {
     window.addEventListener(event, () => updateLastActiveTime(), { passive: true });
   });
+
+  // Tauri System Tray / Shortcut toggle privacy shield
+  if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen('toggle-privacy-mode', () => {
+        toggleScreenshotPrivacy();
+      });
+    }).catch(() => {});
+  }
 }

@@ -345,40 +345,20 @@ pub fn should_close_to_tray() -> bool {
 pub fn set_window_material(window: tauri::WebviewWindow, material: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        use tauri::utils::config::{WindowEffectsConfig, WindowEffect};
+        use tauri::window::{Effect, EffectsBuilder};
         let effects = match material.as_str() {
-            "mica" => Some(WindowEffectsConfig {
-                effects: vec![WindowEffect::Mica],
-                state: None,
-                radius: None,
-                color: None,
-            }),
-            "tabbed" => Some(WindowEffectsConfig {
-                effects: vec![WindowEffect::Tabbed],
-                state: None,
-                radius: None,
-                color: None,
-            }),
-            "acrylic" => Some(WindowEffectsConfig {
-                effects: vec![WindowEffect::Acrylic],
-                state: None,
-                radius: None,
-                color: None,
-            }),
+            "mica" => Some(EffectsBuilder::new().effect(Effect::Mica).build()),
+            "tabbed" => Some(EffectsBuilder::new().effect(Effect::Tabbed).build()),
+            "acrylic" => Some(EffectsBuilder::new().effect(Effect::Acrylic).build()),
             _ => None,
         };
         let _ = window.set_effects(effects);
     }
     #[cfg(target_os = "macos")]
     {
-        use tauri::utils::config::{WindowEffectsConfig, WindowEffect};
+        use tauri::window::{Effect, EffectsBuilder};
         let effects = match material.as_str() {
-            "acrylic" | "mica" | "tabbed" => Some(WindowEffectsConfig {
-                effects: vec![WindowEffect::WindowBackground],
-                state: None,
-                radius: None,
-                color: None,
-            }),
+            "acrylic" | "mica" | "tabbed" => Some(EffectsBuilder::new().effect(Effect::WindowBackground).build()),
             _ => None,
         };
         let _ = window.set_effects(effects);
@@ -388,23 +368,55 @@ pub fn set_window_material(window: tauri::WebviewWindow, material: String) -> Re
     Ok(())
 }
 
+#[tauri::command]
+pub fn set_taskbar_progress(
+    window: tauri::WebviewWindow,
+    progress: Option<u64>,
+    status: Option<String>,
+) -> Result<(), String> {
+    #[cfg(desktop)]
+    {
+        use tauri::window::{ProgressBarState, ProgressBarStatus};
+        let pb_status = match status.as_deref() {
+            Some("normal") => Some(ProgressBarStatus::Normal),
+            Some("indeterminate") => Some(ProgressBarStatus::Indeterminate),
+            Some("error") => Some(ProgressBarStatus::Error),
+            Some("none") | None => Some(ProgressBarStatus::None),
+            _ => Some(ProgressBarStatus::None),
+        };
+        let state = ProgressBarState {
+            status: pb_status,
+            progress,
+        };
+        let _ = window.set_progress_bar(state);
+    }
+    let _ = window;
+    let _ = progress;
+    let _ = status;
+    Ok(())
+}
+
 pub fn setup_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem};
     use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
     use tauri::Manager;
 
     let show = MenuItemBuilder::with_id("show", "显示主界面 (Show)").build(app)?;
-    let hide = MenuItemBuilder::with_id("hide", "最小化到托盘 (Hide)").build(app)?;
+    let home = MenuItemBuilder::with_id("nav_home", "今日探索 (Spotlight)").build(app)?;
+    let fav = MenuItemBuilder::with_id("nav_favorites", "我的收藏 (Favorites)").build(app)?;
     let privacy = MenuItemBuilder::with_id("privacy", "截屏防窥模式 (Privacy Shield)").build(app)?;
-    let sep = PredefinedMenuItem::separator(app)?;
+    let hide = MenuItemBuilder::with_id("hide", "最小化到托盘 (Hide)").build(app)?;
+    let sep1 = PredefinedMenuItem::separator(app)?;
+    let sep2 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItemBuilder::with_id("quit", "退出 GPDb (Quit)").build(app)?;
-    let menu = MenuBuilder::new(app).items(&[&show, &hide, &privacy, &sep, &quit]).build()?;
+    let menu = MenuBuilder::new(app).items(&[&show, &home, &fav, &sep1, &privacy, &hide, &sep2, &quit]).build()?;
 
     let mut builder = TrayIconBuilder::new()
         .menu(&menu)
         .show_menu_on_left_click(false)
         .tooltip("GPDb — 离线影视库")
         .on_menu_event(|app, event| {
+            use tauri::Emitter;
             match event.id.as_ref() {
                 "show" => {
                     if let Some(w) = app.get_webview_window("main") {
@@ -413,13 +425,28 @@ pub fn setup_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Erro
                         let _ = w.set_focus();
                     }
                 }
+                "nav_home" => {
+                    if let Some(w) = app.get_webview_window("main") {
+                        let _ = w.show();
+                        let _ = w.unminimize();
+                        let _ = w.set_focus();
+                        let _ = app.emit("navigate-tab", "home");
+                    }
+                }
+                "nav_favorites" => {
+                    if let Some(w) = app.get_webview_window("main") {
+                        let _ = w.show();
+                        let _ = w.unminimize();
+                        let _ = w.set_focus();
+                        let _ = app.emit("navigate-tab", "favorites");
+                    }
+                }
                 "hide" => {
                     if let Some(w) = app.get_webview_window("main") {
                         let _ = w.hide();
                     }
                 }
                 "privacy" => {
-                    use tauri::Emitter;
                     let _ = app.emit("toggle-privacy-mode", ());
                 }
                 "quit" => {

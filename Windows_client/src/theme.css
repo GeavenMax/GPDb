@@ -421,3 +421,36 @@
   --radius-2xl: var(--r-2xl);
   --radius-3xl: var(--r-3xl);
 }
+
+/* Windows 11 Fluent Mica & Acrylic window backdrop blending */
+html[data-window-material='mica'],
+html[data-window-material='tabbed'],
+html[data-window-material='acrylic'] {
+  background-color: transparent !important;
+}
+
+html[data-window-material='mica'] body,
+html[data-window-material='tabbed'] body,
+html[data-window-material='acrylic'] body {
+  background-color: transparent !important;
+}
+
+html[data-window-material='mica'] #app,
+html[data-window-material='tabbed'] #app,
+html[data-window-material='acrylic'] #app {
+  background-color: transparent !important;
+}
+
+html[data-window-material='mica'],
+html[data-window-material='tabbed'] {
+  --app: oklch(14.1% 0.005 285.823 / 0.78);
+  --sunken: oklch(14.1% 0.005 285.823 / 0.86);
+  --surface: oklch(18% 0.005 285.823 / 0.75);
+}
+
+html[data-window-material='acrylic'] {
+  --app: oklch(14.1% 0.005 285.823 / 0.70);
+  --sunken: oklch(14.1% 0.005 285.823 / 0.80);
+  --surface: oklch(18% 0.005 285.823 / 0.65);
+}
+

@@ -34,6 +34,10 @@ export const PREFS = {
   navOrder: 'gpdb_nav_order',
   /** Database content display mode: 'auto' | 'bilingual' | 'original'. */
   contentLangMode: 'gpdb_content_lang_mode',
+  /** Window backdrop effect: 'default' | 'mica' | 'tabbed' | 'acrylic'. */
+  windowMaterial: 'gpdb_window_material',
+  /** Minimize to tray when closing window: boolean string 'true' | 'false'. */
+  closeToTray: 'gpdb_close_to_tray',
 } as const;
 
 export type ContentLangMode = 'auto' | 'bilingual' | 'original';
@@ -52,6 +56,8 @@ const LEGACY: Record<PrefName, string> = {
   listMode: 'gpdb_list_mode',
   navOrder: 'gpdb_nav_order',
   contentLangMode: 'gpdb_content_lang_mode',
+  windowMaterial: 'gpdb_window_material',
+  closeToTray: 'gpdb_close_to_tray',
 };
 
 /**

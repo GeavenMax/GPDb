@@ -547,21 +547,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           {{ t('common.noData') }}
         </div>
 
-        <!-- Performance tags row -->
-        <div v-if="pbcPerformanceTags.length > 0" class="flex flex-wrap items-center gap-1.5 pt-1">
-          <span class="text-[11px] text-fg-4 shrink-0 flex items-center gap-1">
-            <Sparkles class="w-3 h-3 text-purple-400" />
-            <span>{{ t('performer.tags') }}:</span>
-          </span>
-          <span
-            v-for="tag in pbcPerformanceTags"
-            :key="tag"
-            class="px-2 py-0.5 rounded-md bg-surface/90 border border-line text-[10px] font-medium text-fg-3"
-          >
-            {{ trPerfTag(tag) }}
-          </span>
-        </div>
-
         <!-- Wikipedia Biography Card -->
         <div v-if="pbcProfile?.bio" class="mt-2 p-3.5 rounded-2xl bg-surface/60 border border-line/70 text-xs text-fg-3 leading-relaxed">
           <div class="flex items-center justify-between gap-2 mb-1.5">

@@ -3,6 +3,30 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.17.0] - 2026-10-03
+
+### Added
+- **Windows 11 原生 Mica / Acrylic 材质融合与 Fluent Design 现代感增强 (`commands/system.rs`, `lib.rs`, `App.vue`, `theme.css`, `tauri.conf.json`, `prefs.ts`)**：
+  - **Windows 11 Mica / Mica Alt (Tabbed) / Acrylic 窗口效果原生驱动**：利用 Tauri v2 窗口材质特效引擎 (`EffectsBuilder` & `Effect::Mica` / `Effect::Tabbed` / `Effect::Acrylic`)，窗口透明度与桌面壁纸原生融合，带来 Windows 11 标志性 Fluent Design 半透明现代质感；
+  - **外观设置新增「窗口背景材质」自由切换**：设置中心提供 4 档材质方案（经典纯色 / Windows 11 Mica 云母 / Windows 11 Mica Alt 深邃 / Windows 10/11 Acrylic 亚克力），偏好实时持久化并即时响应切换；
+  - **Fluent Design 动态半透明层级适配**：CSS 主题层针对 Mica/Acrylic 动态注入自适应透明底色（`oklch(... / 0.75~0.78)`），浮动面板、侧边栏与主窗口自然透出桌面背景，视觉层次现代通透。
+- **系统托盘驻留 (System Tray) 与后台静默运行 (`commands/system.rs`, `lib.rs`, `App.vue`, `privacy.ts`, `tauri.conf.json`)**：
+  - **原生系统托盘图标与常驻菜单**：为 Windows 平台构建原生任务栏通知区域图标（GPDb 经典标志），右键提供「显示主界面」「最小化到托盘」「截屏防窥模式」「退出 GPDb」完备快捷菜单；
+  - **左键单击极速切换窗口**：单击托盘图标即可在隐藏后台与恢复唤醒主窗口（自动置顶并聚焦）之间无缝切换；
+  - **优雅后台挂起与「关闭窗口时最小化到系统托盘」支持**：设置面板新增「关闭窗口时最小化到系统托盘」独立开关，勾选后点击窗口右上角关闭按钮 (X) 不会强退程序，而是静默隐藏至系统托盘，随时秒开恢复；
+  - **托盘与应用防窥盾 (Privacy Shield) 原生联动**：右键菜单直达「截屏防窥模式」，一键模糊影片封面与剧情文字，防止录屏与他人窥探。
+- **WebView2 高刷新率 (120Hz/144Hz) 与 GPU 硬件渲染调优 (`src-tauri/src/lib.rs`)**：
+  - 启动阶段自动为 WebView2 运行时注入性能加速参数：`--enable-features=msWebView2EnableDraggableRegions`、`--disable-features=CalculateNativeWinOcclusion`、`--high-dpi-support=1`、`--enable-gpu-rasterization` 与 `--enable-zero-copy`，彻底消除多显示器环境下的掉帧卡顿，高刷屏瀑布流滚动极速流畅。
+
+### Fixed
+- **数据表结构与类型定义严格对齐 (`gpdb-core/src/migrate.rs`)**：
+  - 将 `studios` 表中的 `updated_at` 字段统一为 `TEXT DEFAULT CURRENT_TIMESTAMP`，杜绝跨平台 SQLite 驱动时间戳解析不兼容。
+- **离线演员数据库刮削脚本打包补齐 (`tauri.conf.json`)**：
+  - 在打包资源依赖中补齐 `../../scrape_pbc_actors.py` 与 `../../scrape_smutjunkies_actors.py`，确保演员百科本地同步与深度整合正常工作。
+- **7 国语言国际化字典 100% 绝对镜像对齐 (`i18n/index.ts`, `test_parity.py`)**：
+  - 补齐日文、意大利文、西班牙文、德文缺失的 `plugins.setActiveOnSave` 键；
+  - 对称增补 7 大语种窗口材质与托盘交互键（共 930 个键），通过 `test_parity.py` 自动化 1:1 对齐校验。
+
 ## [v2.16.7] - 2026-10-03
 
 ### Fixed
@@ -32,6 +56,10 @@
   - 翻译完成实时触发 `@episode-translated` 事件，自动同步更新分集列表、影片内分集及全局翻译统计状态。
 
 ### Optimized
+- **片商档案页 Logo 重构：移至右侧操作按钮上方并自适应大画幅呈现 (`StudioDetailModal.vue`)**：
+  - **彻底解决细长 Logo 过小看不清痛点**：针对主流片商 Logo 普遍呈细长扁平比例（如 5:1 至 6:1 宽幅横标），原先置于左侧正方形头像框内被极度压缩至不足 20px 高度、文字模糊难辨的物理缺陷；
+  - **自适应右侧按钮上方大画幅**：将 Logo 移至右侧多列操作按钮（BT 搜索、Google 搜索、双语切换、收藏厂牌）的正上方，利用右侧约 300px~340px 完整宽度自适应呈现（`w-full h-12 md:h-14`，轻量容器配合 `object-contain` 与悬浮微动效），像素面积扩充逾 5 倍，片商官方标牌大字高清锐利呈现；
+  - **左侧排版极简化与全幅舒展**：左侧移除局促的方框头像，厂牌主标题与副标题自由伸展至大号字体（`text-2xl md:text-3xl lg:text-4xl font-black`），搭配作品/分集精致统计胶囊，视觉层次典雅高级。
 - **片商档案页头部按钮矩阵化多列重构与标题防遮挡 (`StudioDetailModal.vue`, `ResourceSearchWidget.vue`)**：
   - **彻底修复按钮挤压标题截断缺陷**：针对原 4 颗操作按钮（BT 磁力资源搜索扩展、Google 搜索、双语切换、收藏厂牌）单行横排横向挤占近 500px 宽度，导致左侧厂牌名称被严重挤压截断（如“狂烈...”与“Raging Stal...”）的问题，全面重构操作区为规整对称的 2 列网格矩阵（`grid grid-cols-2 gap-2`），横向宽度缩减近 40%；
   - **`ResourceSearchWidget` 灵动穿透适配**：为外挂资源组件引入 `wrapperClass` 与 `buttonClass`，在多列网格下利用 CSS `contents` 属性让各外链按钮直接作为独立网格单元居中对称排布，兼顾其它视图弹性排版，零代码冗余与零副作用；

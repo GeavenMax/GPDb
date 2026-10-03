@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 修复 `EpisodeEntity` 与 `episodes` 表索引一致性，补充 `idx_episodes_studio` 声明。
 
 ### Optimized
+- **演员档案页精简与视觉纯化：彻底移除「表演标签」板块 (`PerformerDetailScreen.kt`)**：
+  - 移除原人物档案板块中堆叠的「表演标签:」流式芯片组，消除杂乱演出标签对个人档案核心生理特征与百科人物生平小传的视觉干扰，整体排版更加精致干练。
 - **厂牌详情页专栏重构与「厂牌介绍」流式全文展示 (`StudioDetailScreen.kt`)**：
   - 将原「厂牌历史档案与风格深度解析专栏」精炼改名为「厂牌介绍」，移除冗余的「深度解析」标签；
   - 彻底解除宽度与折叠限制：废弃原外部固定容器与 3 行折叠限制，将「厂牌介绍」与作品分类 Tab 统一作为流式 Item 嵌入 `LazyVerticalGrid`（作品）与 `LazyColumn`（分集），整页单流滚动，自然舒展全文；

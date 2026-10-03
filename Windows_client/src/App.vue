@@ -64,7 +64,7 @@ import {
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
   Megaphone, FolderOpen, Search, Globe, Shield, EyeOff, Lock,
   Bookmark, ChevronDown, ChevronRight, ChevronsUpDown, Info,
-  SlidersHorizontal
+  SlidersHorizontal, Monitor
 } from '@lucide/vue';
 import HomeView from './views/HomeView.vue';
 import { t, currentLocale, setLocale, SUPPORTED_LANGUAGES, type SupportedLocale } from './i18n';
@@ -316,6 +316,22 @@ function onSelectLocale(locale: SupportedLocale) {
     descLang.value = resolveContentLang('auto', locale);
     localStorage.setItem(PREFS.descLang, descLang.value);
   }
+}
+
+const windowMaterial = ref<string>(localStorage.getItem(PREFS.windowMaterial) || 'mica');
+const closeToTray = ref<boolean>(localStorage.getItem(PREFS.closeToTray) === 'true');
+
+function setWindowMaterialChoice(material: string) {
+  windowMaterial.value = material;
+  localStorage.setItem(PREFS.windowMaterial, material);
+  document.documentElement.setAttribute('data-window-material', material);
+  api.setWindowMaterial(material);
+}
+
+function setCloseToTrayChoice(enabled: boolean) {
+  closeToTray.value = enabled;
+  localStorage.setItem(PREFS.closeToTray, enabled ? 'true' : 'false');
+  api.setCloseToTray(enabled);
 }
 
 const hasTranslationAvailable = computed(() => {
@@ -1679,6 +1695,11 @@ onMounted(async () => {
   initAppIcon();
   initPrivacyListeners();
   initTheme();
+
+  // 激活保存的 Windows 11 Mica / Acrylic 材质效果与系统托盘驻留偏好
+  document.documentElement.setAttribute('data-window-material', windowMaterial.value);
+  api.setWindowMaterial(windowMaterial.value);
+  api.setCloseToTray(closeToTray.value);
 
   // Hearts come from the database, not localStorage — so they survive a browser
   // change and travel with an export. Both loads are fire-and-forget: a failure
@@ -3252,7 +3273,67 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Section 0.5: Language & Localization -->
+          <!-- Section 0.2: 窗口背景材质 (Windows 11 Mica / Acrylic) -->
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'appearance'"
+            class="p-5 rounded-2xl bg-surface/60 border border-line space-y-3.5"
+          >
+            <div class="flex items-center gap-3">
+              <Layers class="w-5 h-5 text-accent" />
+              <div>
+                <div class="text-sm font-bold text-fg">{{ t('settings.windowMaterial') }}</div>
+                <div class="text-xs text-fg-3">{{ t('settings.windowMaterialDesc') }}</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                v-for="mat in [
+                  { id: 'default', label: t('settings.materialDefault') },
+                  { id: 'mica', label: t('settings.materialMica') },
+                  { id: 'tabbed', label: t('settings.materialTabbed') },
+                  { id: 'acrylic', label: t('settings.materialAcrylic') }
+                ]"
+                :key="mat.id"
+                @click="setWindowMaterialChoice(mat.id)"
+                class="p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer"
+                :class="windowMaterial === mat.id
+                  ? 'bg-accent-fill/15 border-accent-fill/50 text-accent font-bold shadow-sm'
+                  : 'bg-surface border-line hover:border-line-strong text-fg-3 hover:text-fg-2'"
+              >
+                <span class="truncate">{{ mat.label }}</span>
+                <Check v-if="windowMaterial === mat.id" class="w-3.5 h-3.5 text-accent shrink-0 ml-1" />
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 0.3: 系统托盘与后台驻留 (System Tray & Background) -->
+          <div
+            v-if="settingsSubTab === 'all' || settingsSubTab === 'appearance'"
+            class="p-5 rounded-2xl bg-surface/60 border border-line flex items-center justify-between gap-4"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <Monitor class="w-5 h-5 text-accent shrink-0" />
+              <div>
+                <div class="text-sm font-bold text-fg">{{ t('settings.closeToTray') }}</div>
+                <div class="text-xs text-fg-3">{{ t('settings.closeToTrayDesc') }}</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              @click="setCloseToTrayChoice(!closeToTray)"
+              class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+              :class="closeToTray ? 'bg-accent' : 'bg-surface-3'"
+              role="switch"
+              :aria-checked="closeToTray"
+            >
+              <span
+                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                :class="closeToTray ? 'translate-x-5' : 'translate-x-0'"
+              />
+            </button>
+          </div>
+
           <!-- Section 0.5: Language & Localization -->
           <div
             v-if="settingsSubTab === 'all' || settingsSubTab === 'localization'"

@@ -1313,6 +1313,43 @@ export const api = {
     return false;
   },
 
+  async setWindowMaterial(material: string): Promise<boolean> {
+    if (isTauri) {
+      try {
+        await tauriInvoke('set_window_material', { material });
+        return true;
+      } catch (e) {
+        console.warn('set_window_material failed', e);
+        return false;
+      }
+    }
+    return false;
+  },
+
+  async setCloseToTray(enabled: boolean): Promise<boolean> {
+    if (isTauri) {
+      try {
+        await tauriInvoke('set_close_to_tray', { enabled });
+        return true;
+      } catch (e) {
+        console.warn('set_close_to_tray failed', e);
+        return false;
+      }
+    }
+    return false;
+  },
+
+  async getCloseToTray(): Promise<boolean> {
+    if (isTauri) {
+      try {
+        return await tauriInvoke<boolean>('get_close_to_tray');
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  },
+
 
   async getHomeFeed(monthDay?: string): Promise<HomeFeedData> {
     if (isTauri) {
