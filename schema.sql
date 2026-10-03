@@ -387,6 +387,8 @@ CREATE TABLE IF NOT EXISTS studios (
     name           TEXT NOT NULL UNIQUE,
     name_zh        TEXT,
     description_zh TEXT,
+    logo_url       TEXT,
+    banner_url     TEXT,
     updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
