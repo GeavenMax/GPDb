@@ -46,6 +46,7 @@ const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'select-movie', movieId: number): void;
   (e: 'select-performer', performerId: number): void;
+  (e: 'select-studio', studioName: string): void;
   (e: 'filter-studio', studioName: string): void;
   (e: 'filter-director', directorName: string): void;
   (e: 'toggle-favorite', movie: Movie): void;
@@ -472,8 +473,9 @@ onUnmounted(() => {
               <div v-if="movie.studio_name" class="flex items-center gap-1.5">
                 <Building2 class="w-4 h-4 text-fg-3" />
                 <button
-                  @click="emit('filter-studio', movie.studio_name)"
-                  class="text-xs font-semibold text-accent hover:underline bg-surface-2/80 px-2.5 py-1 rounded-md border border-line-strong/60"
+                  @click="emit('select-studio', movie.studio_name)"
+                  :title="t('favorites.openStudioProfile', { name: movie.studio_name })"
+                  class="text-xs font-semibold text-accent hover:underline bg-surface-2/80 px-2.5 py-1 rounded-md border border-line-strong/60 cursor-pointer"
                 >
                   {{ movie.studio_name }}
                 </button>
