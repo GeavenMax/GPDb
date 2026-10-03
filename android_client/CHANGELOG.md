@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.16.7] - 2026-10-03
+
+### Added
+- **181 家核心厂牌历史档案专栏与风格深度解析 (`StudioDetailScreen.kt`, `StudioDetailViewModel.kt`)**：
+  - 在片商详情页新增大画幅「厂牌历史档案与风格深度解析专栏」Material 3 卡片，配备 `MenuBook` 典籍图标与 `AutoAwesome` 深度解析标签；
+  - 完整呈现 181 家核心厂牌创立年代、创始人背景、美学流派与文化演变深度历史档案；
+  - 支持正文 `SelectionContainer` 自由复制选择，超过 100 字符时智能折叠为 3 行并提供「展开全文阅读 / 收起专栏」按钮，兼顾阅读体验与作品列表的快速访问。
+- **全站片商中英双显与双向智能模糊检索 (`StudioListScreen.kt`, `StudioListViewModel.kt`, `BrowseRepository.kt`, `StudioDetailScreen.kt`)**：
+  - 中文模式下片商列表项与详情顶栏标准呈现「主标题中文、副标题浅灰英文原名」，兼顾本土化阅读亲和力与全球影视索引精准度；
+  - 列表搜索框全面增强中英文双向模糊检索，支持直接输入中文译名（如「猎鹰」）或英文原名（如「Falcon」）极速直达。
+- **Room 架构版本升级至 Schema v5 与物理表自愈加固 (`GpdbDatabase.kt`, `StudioEntity.kt`, `StudioDao.kt`)**：
+  - Room 升级至 Schema v5，新增 `StudioEntity` 实体与 `StudioDao` 数据访问层；
+  - 补全 `MIGRATION_4_5` 及全量历史版本至 5 的平滑迁移逻辑；
+  - `ensureSchemaCompatibility` 在 Room 挂载前使用原生 SQLite 无损补齐 `studios` 表结构（`name`, `name_zh`, `description_zh`, `logo_url`, `banner_url`）与 `idx_studios_name`、`idx_episodes_studio` 核心索引，杜绝因外部数据库缺失表导致挂载失败。
+
+### Optimized
+- **影片档案页布局重塑：剧情简介通栏展开与核心操作按钮矩阵化收拢 (`MovieDetailScreen.kt`)**：
+  - **剧情简介移至海报与操作组下方通栏展示**：`TranslationSection` 独占全宽，赋予长篇剧情梗概、双语对比与 AI 翻译操作极佳的阅读空间；
+  - **核心操作按钮矩阵化收拢 (Action Matrix Panel)**：将「BT 磁链」「BFTV 检索」「Google 检索」「分享卡片」「收藏电影」等 5 项核心按钮集中规整为操作芯片组（`SuggestionChip` 与 `FilterChip`），置于元数据标签正下方；
+  - **多图封面画廊自适应呈现**：自然画幅自适应画廊，支持正封面、封底写真及变体海报平滑水平翻页，配合底部半透明药丸指示器与轻触无级手势缩放灯箱 (`ZoomableImageDialog`)；
+  - **移除冗余评星打分**：精简页面垂直杂讯，与 macOS 桌面端标准体验完全对齐。
+- **应用图标方案精简至 Scheme A 与 Scheme D (`SettingsScreen.kt`)**：
+  - 精简设置页伪装图标方案，重点聚焦于「方案一：经典典藏蓝 (Scheme A · 默认)」与「方案二：黑曜石金 / 极简 (Scheme D)」，与桌面端多端一致。
+
 ## [2.15.0] - 2026-10-01
 
 ### Fixed
