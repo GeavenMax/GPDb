@@ -27,15 +27,21 @@ public extension String {
         let fullRange = NSRange(location: 0, length: nsString.length)
         if let match = Self.pathRegex?.firstMatch(in: trimmed, options: [], range: fullRange),
            match.numberOfRanges >= 3 {
-            let folder = nsString.substring(with: match.range(at: 1)).capitalized
+            var folder = nsString.substring(with: match.range(at: 1)).capitalized
+            if folder.lowercased() == "banners" {
+                folder = "Logos"
+            }
             let filename = nsString.substring(with: match.range(at: 2))
             return "image_cache/\(folder)/\(filename)"
         }
 
-        let prefixes = ["Covers/", "Episodes/", "Stars/", "icons/", "logo/"]
+        let prefixes = ["Covers/", "Episodes/", "Stars/", "icons/", "logo/", "logos/", "banners/"]
         for p in prefixes {
             if trimmed.lowercased().hasPrefix(p.lowercased()) {
-                let folder = p.replacingOccurrences(of: "/", with: "").capitalized
+                var folder = p.replacingOccurrences(of: "/", with: "").capitalized
+                if folder.lowercased() == "banners" {
+                    folder = "Logos"
+                }
                 let filename = String(trimmed.dropFirst(p.count))
                 return "image_cache/\(folder)/\(filename)"
             }

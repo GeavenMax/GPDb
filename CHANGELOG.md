@@ -17,7 +17,10 @@
   - 正文排版采用 `text-sm md:text-[15px] leading-relaxed text-justify select-text whitespace-pre-line`，完整呈现 181 家核心厂牌创立年代、创始人背景、美学流派与文化演变深度历史档案；
   - 规范并统一国际化专栏标题文案为「厂牌历史档案与风格深度解析专栏」。
 
-### Added
+- **片商官方 Logo 与横幅全自动采集流水线及全端档案页导入 (`scripts/scrape_studio_logos.py`, `studios`, `gpdb-core`, `StudioDetailModal.vue`, `StudioDetailScreen.kt`, `StudioDetailView.swift`)**：
+  - **GEVI 多维徽标采集与智能对齐引擎**：利用 GEVI 活跃演员主页厂牌外链徽章（`See this performer at:`）与核心片商 Company 页面顶栏 Banner 进行多重刮削，通过英文字符清洗与别名对齐字典（RFC、TI、AMH、GISP 等），成功抓取并回填 74 家核心厂牌 Logo 与 30 家厂牌官方 Banner；
+  - **100% 离线协议与资产本地化**：图片全部并发下载并存储于 `image_cache/Logos/`，Rust 内核 (`gpdb-core`)、Tauri 自定义协议、Android 缓存路由及 iOS Kingfisher 离线提供者均实现物理路径映射与 Zip 归档解压支持；
+  - **全端档案页高质感 Logo 呈现与双首字母渐变兜底**：桌面端 (macOS/Windows) 档案弹窗与片商库卡片、Android 顶部 AppBar、iOS 档案全息页顶部均优雅渲染官方 Logo，无 Logo 片商自动降级为双字母多维渐变方块，杜绝排版错位。
 - **分集档案页 (Episode) 全新上线「AI 翻译剧情」与双语对照切换 (`EpisodeDetailModal.vue`, `App.vue`, `api.ts`, `commands/translate.rs`)**：
   - 分集详情弹窗现已支持一键调用 AI 大模型翻译英文剧情并写入本地数据库 `episodes.description_zh`，同时提供中文译文与英文原文一键切换；
   - 翻译完成实时触发 `@episode-translated` 事件，自动同步更新分集列表、影片内分集及全局翻译统计状态。

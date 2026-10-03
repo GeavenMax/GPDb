@@ -5,6 +5,15 @@ public struct StudioItem: Identifiable {
     public var id: String { name }
     public let name: String
     public let count: Int
+    public let logoUrl: String?
+    public let bannerUrl: String?
+
+    public init(name: String, count: Int, logoUrl: String? = nil, bannerUrl: String? = nil) {
+        self.name = name
+        self.count = count
+        self.logoUrl = logoUrl
+        self.bannerUrl = bannerUrl
+    }
 }
 
 public struct DirectorItem: Identifiable {
@@ -175,7 +184,9 @@ public final class BrowseRepository {
                 GROUP BY eff_studio
             )
             SELECT s.name, 
-                   COALESCE(m.m_cnt, 0) + COALESCE(e.ep_cnt, 0) as total_count
+                   COALESCE(m.m_cnt, 0) + COALESCE(e.ep_cnt, 0) as total_count,
+                   st.logo_url,
+                   st.banner_url
             FROM (
                 SELECT studio_name as name FROM m_counts
                 UNION
@@ -183,14 +194,32 @@ public final class BrowseRepository {
             ) s
             LEFT JOIN m_counts m ON s.name = m.studio_name
             LEFT JOIN e_counts e ON s.name = e.eff_studio
+            LEFT JOIN studios st ON st.name = s.name
             ORDER BY total_count DESC, s.name ASC
             """
             let rows = try Row.fetchAll(db, sql: sql)
             return rows.compactMap { row in
                 guard let name = row["name"] as? String else { return nil }
                 let count = (row["total_count"] as? Int64).map(Int.init) ?? (row["total_count"] as? Int ?? 0)
-                return StudioItem(name: name, count: count)
+                let logoUrl = row["logo_url"] as? String
+                let bannerUrl = row["banner_url"] as? String
+                return StudioItem(name: name, count: count, logoUrl: logoUrl, bannerUrl: bannerUrl)
             }
+        }
+    }
+
+    /// 获取片商元数据信息 (Logo 与 Banner)
+    public func getStudioInfo(studio: String) async throws -> (logoUrl: String?, bannerUrl: String?) {
+        guard let db = holder.database else { return (nil, nil) }
+
+        return try await db.read { db in
+            let sql = "SELECT logo_url, banner_url FROM studios WHERE name = ? LIMIT 1"
+            if let row = try Row.fetchOne(db, sql: sql, arguments: [studio]) {
+                let logo: String? = row["logo_url"]
+                let banner: String? = row["banner_url"]
+                return (logo, banner)
+            }
+            return (nil, nil)
         }
     }
 

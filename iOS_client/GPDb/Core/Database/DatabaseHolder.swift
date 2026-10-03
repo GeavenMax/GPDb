@@ -89,7 +89,20 @@ public final class DatabaseHolder {
             sqlite3_finalize(colStmt)
         }
 
-        if userFavExists && hasPbcUrl && hasSjUrl {
+        var hasLogoUrl = false
+        var hasBannerUrl = false
+        if sqlite3_prepare_v2(db, "PRAGMA table_info(studios);", -1, &colStmt, nil) == SQLITE_OK {
+            while sqlite3_step(colStmt) == SQLITE_ROW {
+                if let namePtr = sqlite3_column_text(colStmt, 1) {
+                    let colName = String(cString: namePtr)
+                    if colName == "logo_url" { hasLogoUrl = true }
+                    if colName == "banner_url" { hasBannerUrl = true }
+                }
+            }
+            sqlite3_finalize(colStmt)
+        }
+
+        if userFavExists && hasPbcUrl && hasSjUrl && hasLogoUrl && hasBannerUrl {
             return
         }
 
@@ -98,6 +111,12 @@ public final class DatabaseHolder {
         }
         if !hasSjUrl {
             sqlite3_exec(db, "ALTER TABLE performers ADD COLUMN sj_url TEXT;", nil, nil, nil)
+        }
+        if !hasLogoUrl {
+            sqlite3_exec(db, "ALTER TABLE studios ADD COLUMN logo_url TEXT;", nil, nil, nil)
+        }
+        if !hasBannerUrl {
+            sqlite3_exec(db, "ALTER TABLE studios ADD COLUMN banner_url TEXT;", nil, nil, nil)
         }
 
         // 2. 检查并补全必需扩展表结构

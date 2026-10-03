@@ -314,10 +314,23 @@ public struct BrowseView: View {
         List {
             ForEach(studiosList) { studio in
                 NavigationLink(destination: StudioDetailView(studioName: studio.name)) {
-                    HStack {
-                        Image(systemName: "building.2.crop.circle")
-                            .font(.title3)
-                            .foregroundStyle(.tint)
+                    HStack(spacing: 12) {
+                        if let logo = studio.logoUrl, !logo.isEmpty {
+                            GpdbImageView(
+                                rawPath: logo,
+                                contentMode: .fit,
+                                cornerRadius: 6,
+                                placeholderIcon: "building.2.crop.circle"
+                            )
+                            .frame(width: 34, height: 34)
+                            .background(Color.secondary.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        } else {
+                            Image(systemName: "building.2.crop.circle")
+                                .font(.title3)
+                                .foregroundStyle(.tint)
+                                .frame(width: 34, height: 34)
+                        }
                         MarqueeText(text: studio.name, font: .body, weight: .bold, speed: 25)
                         Spacer()
                         Text("\(studio.count) 部作品")

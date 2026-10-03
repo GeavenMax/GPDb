@@ -409,6 +409,34 @@ abstract class GpdbDatabase : RoomDatabase() {
                     try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN banner_url TEXT;") } catch (_: Exception) {}
                 }
 
+                // 5. 补齐 episodes 历史可能缺失的列与索引
+                val epCols = mutableSetOf<String>()
+                rawDb.rawQuery("PRAGMA table_info(episodes);", null).use { cursor ->
+                    val nameIdx = cursor.getColumnIndex("name")
+                    while (cursor.moveToNext()) {
+                        if (nameIdx >= 0) epCols.add(cursor.getString(nameIdx))
+                    }
+                }
+                if (!epCols.contains("description_zh")) {
+                    try { rawDb.execSQL("ALTER TABLE episodes ADD COLUMN description_zh TEXT;") } catch (_: Exception) {}
+                }
+                if (!epCols.contains("action_notes")) {
+                    try { rawDb.execSQL("ALTER TABLE episodes ADD COLUMN action_notes TEXT;") } catch (_: Exception) {}
+                }
+                if (!epCols.contains("release_date")) {
+                    try { rawDb.execSQL("ALTER TABLE episodes ADD COLUMN release_date TEXT;") } catch (_: Exception) {}
+                }
+                if (!epCols.contains("studio_id")) {
+                    try { rawDb.execSQL("ALTER TABLE episodes ADD COLUMN studio_id INTEGER;") } catch (_: Exception) {}
+                }
+                if (!epCols.contains("studio_name")) {
+                    try { rawDb.execSQL("ALTER TABLE episodes ADD COLUMN studio_name TEXT;") } catch (_: Exception) {}
+                }
+                try {
+                    rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_movie_id ON episodes(movie_id);")
+                    rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+
                 Log.i(TAG, "前置架构自愈检查完成，数据库物理列已就绪")
             } catch (e: Exception) {
                 Log.w(TAG, "前置架构自愈检查告警 (不阻断正常挂载): ${e.message}", e)

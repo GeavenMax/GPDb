@@ -9,7 +9,8 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "episodes",
     indices = [
-        Index(name = "idx_episodes_movie_id", value = ["movie_id"])
+        Index(name = "idx_episodes_movie_id", value = ["movie_id"]),
+        Index(name = "idx_episodes_studio", value = ["studio_name"])
     ],
     foreignKeys = [
         ForeignKey(

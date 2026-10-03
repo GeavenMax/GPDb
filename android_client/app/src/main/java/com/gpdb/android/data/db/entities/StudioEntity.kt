@@ -11,7 +11,7 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "studios",
     indices = [
-        Index(name = "idx_studios_name", value = ["name"], unique = true)
+        Index(name = "idx_studios_name", value = ["name"])
     ]
 )
 data class StudioEntity(

@@ -23,6 +23,8 @@ public struct StudioDetailView: View {
     @State private var episodes: [EpisodeRecord] = []
     @State private var totalMoviesCount: Int = 0
     @State private var totalEpisodesCount: Int = 0
+    @State private var logoUrl: String? = nil
+    @State private var bannerUrl: String? = nil
     @State private var isFavorite: Bool = false
     @State private var isLoading: Bool = true
 
@@ -32,6 +34,12 @@ public struct StudioDetailView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            // 片商头部档案 (Logo 与统计摘要)
+            studioHeaderView
+                .padding(.horizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 6)
+
             // 分类标签栏
             Picker("分类", selection: $selectedTab) {
                 Text("发行作品 (\(max(totalMoviesCount, movies.count)))").tag(StudioTab.movies)
@@ -49,7 +57,7 @@ public struct StudioDetailView: View {
                 tabContent
             }
         }
-        .dynamicAmbientBackground(imagePath: movies.first?.coverFull ?? movies.first?.coverIcon ?? episodes.first?.thumbnailUrl)
+        .dynamicAmbientBackground(imagePath: logoUrl ?? movies.first?.coverFull ?? movies.first?.coverIcon ?? episodes.first?.thumbnailUrl)
         .navigationTitle(cleanTitle(studioName))
         .inlineNavigationTitle()
         .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
@@ -181,6 +189,68 @@ public struct StudioDetailView: View {
         }
     }
 
+    private var studioHeaderView: some View {
+        HStack(spacing: 16) {
+            // Logo 容器 (带微弱半透明底色与首字母降级兜底)
+            ZStack {
+                if let logo = logoUrl, !logo.isEmpty {
+                    GpdbImageView(
+                        rawPath: logo,
+                        contentMode: .fit,
+                        cornerRadius: 12,
+                        placeholderIcon: "building.2.crop.circle"
+                    )
+                    .padding(6)
+                } else {
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    Text(studioInitials)
+                        .font(.system(size: 24, weight: .black))
+                        .foregroundStyle(.white)
+                }
+            }
+            .frame(width: 68, height: 68)
+            .background(Color.secondary.opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(cleanTitle(studioName))
+                    .font(.title3.bold())
+                    .lineLimit(2)
+
+                HStack(spacing: 8) {
+                    Label("\(totalMoviesCount) 部长片", systemImage: "film")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text("·")
+                        .foregroundStyle(.secondary)
+
+                    Label("\(totalEpisodesCount) 个分集", systemImage: "play.rectangle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+        }
+    }
+
+    private var studioInitials: String {
+        let clean = cleanTitle(studioName)
+        let words = clean.split(separator: " ").filter { !$0.isEmpty }
+        if words.count >= 2 {
+            return "\(words[0].prefix(1))\(words[1].prefix(1))".uppercased()
+        }
+        return String(clean.prefix(2)).uppercased()
+    }
+
     private func cleanTitle(_ t: String) -> String {
         return t.replacingOccurrences(of: "|||", with: " ")
     }
@@ -189,14 +259,17 @@ public struct StudioDetailView: View {
         isLoading = true
         do {
             async let fetchCounts = repository.getStudioWorksCounts(studio: studioName)
+            async let fetchInfo = repository.getStudioInfo(studio: studioName)
             async let fetchMovies = repository.getMovies(studio: studioName, pageSize: 50000)
             async let fetchEpisodes = repository.getEpisodes(studio: studioName, pageSize: 50000)
             async let fetchFav = userRepo.isFavorite(entityType: "studio", entityKey: studioName)
 
-            let (counts, mList, epList, fav) = try await (fetchCounts, fetchMovies, fetchEpisodes, await fetchFav)
+            let (counts, info, mList, epList, fav) = try await (fetchCounts, fetchInfo, fetchMovies, fetchEpisodes, await fetchFav)
 
             self.totalMoviesCount = counts.moviesCount
             self.totalEpisodesCount = counts.episodesCount
+            self.logoUrl = info.logoUrl
+            self.bannerUrl = info.bannerUrl
             self.movies = mList
             self.episodes = epList
             self.isFavorite = fav
