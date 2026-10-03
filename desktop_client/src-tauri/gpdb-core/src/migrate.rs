@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS studios (
     description_zh TEXT,
     logo_url       TEXT,
     banner_url     TEXT,
-    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at     TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);
 ";

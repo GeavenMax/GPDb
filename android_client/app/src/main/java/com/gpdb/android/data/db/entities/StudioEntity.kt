@@ -35,6 +35,6 @@ data class StudioEntity(
     @ColumnInfo(name = "banner_url")
     val bannerUrl: String? = null,
 
-    @ColumnInfo(name = "updated_at")
+    @ColumnInfo(name = "updated_at", defaultValue = "CURRENT_TIMESTAMP")
     val updatedAt: String? = null
 )

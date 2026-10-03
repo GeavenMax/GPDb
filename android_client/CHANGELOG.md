@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 补全 `MIGRATION_4_5` 及全量历史版本至 5 的平滑迁移逻辑；
   - `ensureSchemaCompatibility` 在 Room 挂载前使用原生 SQLite 无损补齐 `studios` 表结构（`name`, `name_zh`, `description_zh`, `logo_url`, `banner_url`）与 `idx_studios_name`、`idx_episodes_studio` 核心索引，杜绝因外部数据库缺失表导致挂载失败。
 
+### Fixed
+- **Room 外部数据库挂载 Schema 校验兼容性修复 (`GpdbDatabase.kt`, `StudioEntity.kt`, `EpisodeEntity.kt`)**：
+  - 修复 `studios` 表 `updated_at` 字段在底层 SQLite 为 `TIMESTAMP` 时导致 Room 亲和性比较失败（NUMERIC vs TEXT）的校验异常；
+  - 为 `StudioEntity.updatedAt` 补充 `@ColumnInfo(defaultValue = "CURRENT_TIMESTAMP")` 注解，与底层 SQLite DDL 保持 100% 对齐；
+  - 加固 `ensureSchemaCompatibility`：自动探测外部 SQLite 历史 `studios.updated_at` 物理类型，若为 `TIMESTAMP` 则自动无损热升级为 `TEXT DEFAULT CURRENT_TIMESTAMP`，确保 0 数据丢失；
+  - 修复 `EpisodeEntity` 与 `episodes` 表索引一致性，补充 `idx_episodes_studio` 声明。
+
 ### Optimized
 - **影片档案页布局重塑：剧情简介通栏展开与核心操作按钮矩阵化收拢 (`MovieDetailScreen.kt`)**：
   - **剧情简介移至海报与操作组下方通栏展示**：`TranslationSection` 独占全宽，赋予长篇剧情梗概、双语对比与 AI 翻译操作极佳的阅读空间；

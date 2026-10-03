@@ -70,7 +70,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                             description_zh TEXT,
                             logo_url TEXT,
                             banner_url TEXT,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                         );
                     """.trimIndent())
                     database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
@@ -93,7 +93,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                             description_zh TEXT,
                             logo_url TEXT,
                             banner_url TEXT,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                         );
                     """.trimIndent())
                     database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
@@ -115,7 +115,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                             description_zh TEXT,
                             logo_url TEXT,
                             banner_url TEXT,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                         );
                     """.trimIndent())
                     database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
@@ -137,7 +137,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                             description_zh TEXT,
                             logo_url TEXT,
                             banner_url TEXT,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                         );
                     """.trimIndent())
                     database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
@@ -159,7 +159,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                             description_zh TEXT,
                             logo_url TEXT,
                             banner_url TEXT,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                         );
                     """.trimIndent())
                     database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
@@ -381,7 +381,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                         description_zh TEXT,
                         logo_url TEXT,
                         banner_url TEXT,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                     );
                 """.trimIndent())
                 rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
@@ -389,24 +389,61 @@ abstract class GpdbDatabase : RoomDatabase() {
                     rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
                 } catch (_: Exception) {}
 
-                val studioCols = mutableSetOf<String>()
+                val studioCols = mutableMapOf<String, String>()
                 rawDb.rawQuery("PRAGMA table_info(studios);", null).use { cursor ->
                     val nameIdx = cursor.getColumnIndex("name")
+                    val typeIdx = cursor.getColumnIndex("type")
                     while (cursor.moveToNext()) {
-                        if (nameIdx >= 0) studioCols.add(cursor.getString(nameIdx))
+                        if (nameIdx >= 0) {
+                            val colName = cursor.getString(nameIdx)
+                            val colType = if (typeIdx >= 0) cursor.getString(typeIdx) else ""
+                            studioCols[colName] = colType
+                        }
                     }
                 }
-                if (!studioCols.contains("name_zh")) {
+                if (!studioCols.containsKey("name_zh")) {
                     try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN name_zh TEXT;") } catch (_: Exception) {}
                 }
-                if (!studioCols.contains("description_zh")) {
+                if (!studioCols.containsKey("description_zh")) {
                     try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN description_zh TEXT;") } catch (_: Exception) {}
                 }
-                if (!studioCols.contains("logo_url")) {
+                if (!studioCols.containsKey("logo_url")) {
                     try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN logo_url TEXT;") } catch (_: Exception) {}
                 }
-                if (!studioCols.contains("banner_url")) {
+                if (!studioCols.containsKey("banner_url")) {
                     try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN banner_url TEXT;") } catch (_: Exception) {}
+                }
+
+                // 核心关键修复：检查 updated_at 的类型亲和性。
+                // 若为 TIMESTAMP (如旧版本 DDL 或外部工具创建)，SQLite 亲和性为 NUMERIC(1)，
+                // 而 Room Entity 映射 String 期望 TEXT(2)，会导致 Pre-packaged database has an invalid schema 校验崩溃。
+                // 此处执行无损热迁移：将 studios 重建为 TEXT DEFAULT CURRENT_TIMESTAMP 并完整保留全部厂牌数据。
+                val updatedAtType = studioCols["updated_at"]
+                if (updatedAtType != null && updatedAtType.uppercase().contains("TIMESTAMP")) {
+                    Log.i(TAG, "检测到 studios.updated_at 字段类型为 $updatedAtType，正在无损升级为 TEXT 以满足 Room 架构校验...")
+                    try {
+                        rawDb.execSQL("""
+                            CREATE TABLE IF NOT EXISTS studios_schema_fix (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                name TEXT NOT NULL UNIQUE,
+                                name_zh TEXT,
+                                description_zh TEXT,
+                                logo_url TEXT,
+                                banner_url TEXT,
+                                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                            );
+                        """.trimIndent())
+                        rawDb.execSQL("""
+                            INSERT OR IGNORE INTO studios_schema_fix (id, name, name_zh, description_zh, logo_url, banner_url, updated_at)
+                            SELECT id, name, name_zh, description_zh, logo_url, banner_url, updated_at FROM studios;
+                        """.trimIndent())
+                        rawDb.execSQL("DROP TABLE studios;")
+                        rawDb.execSQL("ALTER TABLE studios_schema_fix RENAME TO studios;")
+                        rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                        Log.i(TAG, "studios 表无损重建升级为 TEXT 完成")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "studios 表无损重建失败: ${e.message}", e)
+                    }
                 }
 
                 // 5. 补齐 episodes 历史可能缺失的列与索引
@@ -533,7 +570,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                                     description_zh TEXT,
                                     logo_url TEXT,
                                     banner_url TEXT,
-                                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                                 );
                             """.trimIndent())
                             db.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")

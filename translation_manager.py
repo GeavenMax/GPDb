@@ -238,7 +238,7 @@ def sync_to_main_db(main_db_path: Path, trans_db_path: Path, target_lang: str = 
                 name           TEXT NOT NULL UNIQUE,
                 name_zh        TEXT,
                 description_zh TEXT,
-                updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                updated_at     TEXT DEFAULT CURRENT_TIMESTAMP
             );
         """)
         main_cur.execute("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
