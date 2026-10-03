@@ -3,6 +3,48 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.16.7] - 2026-10-03
+
+### Fixed
+- **“厂牌历史档案与风格深度解析专栏”正文展示与版面舒展修复 (`StudioDetailModal.vue`, `i18n/index.ts`)**：
+  - 彻底修复此前片商档案详情弹窗中因高度受限导致的厂牌历史专栏被压缩成紧凑胶囊药丸、正文无法正常显示的视觉缺陷；
+  - 专栏卡片升级为大画幅舒展架构（`w-auto mx-6 md:mx-8 p-6 md:p-8 rounded-3xl`），搭配左侧专属主色边线（`border-l-2 border-accent/50`）、典籍徽标（`BookOpen`）与深度解析标签（`Sparkles`）；
+  - 正文排版采用 `text-sm md:text-[15px] leading-relaxed text-justify select-text whitespace-pre-line`，完整呈现 181 家核心厂牌创立年代、创始人背景、美学流派与文化演变深度历史档案；
+  - 规范并统一国际化专栏标题文案为「厂牌历史档案与风格深度解析专栏」。
+
+### Optimized
+- **影片档案页布局重构：剧情简介板块移至海报下方通栏展示，操作按钮组矩阵化收拢 (`MovieDetailModal.vue`)**：
+  - **剧情简介板块位置重塑与通栏拓宽**：将原位于右侧狭窄元数据列的「剧情简介 (Synopsis)」板块挪至海报与元数据区下方，宽度横向延伸贯穿至右侧边缘（`w-full rounded-2xl p-4 md:p-5`），赋予长篇剧情梗概、双语切换（中文译文/英文原文）及 AI 翻译操作极佳的阅读空间；
+  - **核心操作按钮组矩阵化收拢**：将此前分散排布在顶栏及底部的「BT 磁力资源搜索扩展」「在BFTV搜索影片资料」「Google 搜索」「生成影视分享卡片」「收藏电影」等 5 项核心交互按钮，集中归拢并重塑为美观的操作按钮功能组，置于厂牌与导演标签下方；
+  - **顶栏元数据净化**：顶栏纯粹聚焦于上映日期/年份、片长及分类标签，消除视觉杂讯。
+
+## [v2.16.6] - 2026-10-03
+
+### Optimized
+- **“外观主题”设置项布局紧凑化与空白区域切除 (`theme.ts`, `App.vue`)**：
+  - 提取“跟随系统 (auto)”为全宽独立顶栏卡片，直观指示当前系统色彩与色相预览；
+  - 剩余 6 款具体主题（经典/流体玻璃/暖琥珀 × 深色/浅色）重构为工整对称的 3 列自适应网格（`grid-cols-2 sm:grid-cols-3 gap-2`），彻底消除了原 7 项布局在 2 列网格下第 4 行右侧的巨大空槽与卡片内部过宽空隙，视觉紧凑协调。
+- **“应用图标方案”精简至经典与极简 2 种方案 (`appIcon.ts`, `AppIcon.vue`, `commands/system.rs`, `App.vue`)**：
+  - 砍掉第 2 款（胶片霓虹 Scheme B）与第 3 款（质感复古 Scheme C）图标资产与分支代码；
+  - 仅保留 Scheme A（方案一：经典典藏蓝）与 Scheme D（方案四：黑曜石金）；
+  - 设置界面点选矩阵自适应缩减为双列精致卡片，系统托盘与 macOS 原生 Dock 同步仅保留此双色方案，异常缓存自动容灾回退至 Scheme A。
+- **多图海报自适应同时平铺呈现 (`MovieDetailModal.vue`)**：
+  - 重构影片档案页封面呈现：若影片拥有 2 张或以上封面图片（正封面、封底写真、多版本海报），自适应横向平铺同时展现（`flex-row flex-wrap gap-3`）；
+  - 各封面均配备独立 Front/Back 序号角标与悬浮放大按钮，点击均可直接调用高清 Lightbox 交互灯箱，满足一屏纵览全部封面。
+
+### Removed
+- **移除海报展示与翻转排版方案设置项 (`App.vue`, `privacy.ts`, `types.ts`, `MovieDetailModal.vue`, `i18n/index.ts`)**：
+  - 彻底移除设置中“海报展示与翻转排版方案”设置卡片（Section 0.2）及其关联的隐私配置与类型声明；
+  - 移除影片详情中的 3D 拟真翻转实体卡片与单图标签切换模式，简化交互路径。
+- **移除影片档案页“Rating/评星打分”功能及相关代码 (`MovieDetailModal.vue`, `i18n/index.ts`)**：
+  - 彻底移除影片档案页剧情简介下方的 5 星交互打分条及清除评分功能；
+  - 释放页面垂直留白，右侧影视磁链与搜索插件快捷入口平齐舒展排布。
+- **移除“AI 偏好画像”插件及全链路代码 (`PluginsView.vue`, `pluginManager.ts`, `api.ts`, `commands/translate.rs`, `lib.rs`, `i18n/index.ts`)**：
+  - 彻底删除 `aiAnalysis.ts` 与 `AiAnalysisModal.vue` 文件及前端组件调用；
+  - 下线插件管理中心中的 “AI 偏好画像” 专区与选项卡，插件总数收敛为 3 款（磁链搜索、数据刮削、大模型翻译引擎）；
+  - 移除后端 `run_ai_analysis` 与 `run_ai_analysis_blocking` 异步执行代码与 Tauri Command 绑定；
+  - 全量清理所有相关已废弃的 39 个 i18n 词条，确保 7 大语种保持 919 键绝对 100% 镜像对齐。
+
 ## [v2.16.5] - 2026-10-03
 
 ### Optimized

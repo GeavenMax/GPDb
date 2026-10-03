@@ -22,6 +22,8 @@ test_schema.db*
 translations.db
 translations.db-shm
 translations.db-wal
+database.db*
+scratch/
 pending_*.json
 sitemap_*.xml
 pbc_actors_*.json
