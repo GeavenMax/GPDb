@@ -1350,6 +1350,19 @@ export const api = {
     return false;
   },
 
+  async setTaskbarProgress(progress: number | null, status: 'normal' | 'indeterminate' | 'error' | 'none' = 'normal'): Promise<boolean> {
+    if (isTauri) {
+      try {
+        await tauriInvoke('set_taskbar_progress', { progress, status });
+        return true;
+      } catch (e) {
+        console.warn('set_taskbar_progress failed', e);
+        return false;
+      }
+    }
+    return false;
+  },
+
 
   async getHomeFeed(monthDay?: string): Promise<HomeFeedData> {
     if (isTauri) {
