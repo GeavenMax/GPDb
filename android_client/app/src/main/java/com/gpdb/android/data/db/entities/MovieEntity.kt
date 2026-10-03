@@ -91,11 +91,16 @@ data class MovieEntity(
 fun String?.toImageCachePath(): String? {
     if (this.isNullOrBlank()) return null
     val regex = Regex(
-        """images/(Covers|Episodes|Stars|icons|logo)/([^?#]+)""",
+        """images/(Covers|Episodes|Stars|icons|logo|logos|banners)/([^?#]+)""",
         RegexOption.IGNORE_CASE
     )
     val match = regex.find(this) ?: return null
-    val folder   = match.groupValues[1].replaceFirstChar { it.uppercase() }
+    var folder   = match.groupValues[1].replaceFirstChar { it.uppercase() }
+    if (folder.equals("logos", ignoreCase = true) || folder.equals("logo", ignoreCase = true)) {
+        folder = "Logos"
+    } else if (folder.equals("banners", ignoreCase = true) || folder.equals("banner", ignoreCase = true)) {
+        folder = "Banners"
+    }
     val filename = match.groupValues[2]
     return "image_cache/$folder/$filename"
 }

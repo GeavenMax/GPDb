@@ -6,11 +6,21 @@
 ## [v2.16.7] - 2026-10-03
 
 ### Fixed
+- **桌面端大模型剧情与分集 AI 翻译无响应与按钮不可用彻底修复 (`commands/translate.rs`, `src-tauri/src/lib.rs`, `src/api.ts`, `MovieDetailModal.vue`, `EpisodeDetailModal.vue`, `PluginsView.vue`)**：
+  - **纯 Rust 原生进程内翻译引擎**：彻底替换此前前端直连 `server.py` HTTP 接口的调用链，在桌面端内核中原生实现纯 Rust TLS 翻译引擎（支持 Google Gemini、OpenAI 兼容协议如 DeepSeek、Moonshot、智谱、通义千问、硅基流动、本地 Ollama 以及 Anthropic Claude 等全部模型）；
+  - **Google Gemini API Key 智能轮换与配额保护**：针对 Gemini Free Tier 每日 500 次配额限制 (`RESOURCE_EXHAUSTED` / `429`)，原生实现原子级 API Key 轮换池，单 Key 额度耗尽自动无缝切换备用 Key；全部 Key 耗尽时自动智能转交 DeepSeek 等备用服务商补救，避免任务中断；
+  - **影片档案页 AI 翻译全场景解除桌面端限制**：移除此前因缺少 HTTP 服务而设定的 `!IS_TAURI` 禁用条件与“未翻译”死文本，影片剧情与未翻译分集翻译按钮全量点亮并支持一键翻译联动；
+  - **插件设置页桌面端直接「试译」**：解除原“桌面版暂不支持在此试译”限制，用户填入 API Key 后可直接在设置界面实时连通大模型进行单句试译测试并查看延迟与质量反馈。
 - **“厂牌历史档案与风格深度解析专栏”正文展示与版面舒展修复 (`StudioDetailModal.vue`, `i18n/index.ts`)**：
   - 彻底修复此前片商档案详情弹窗中因高度受限导致的厂牌历史专栏被压缩成紧凑胶囊药丸、正文无法正常显示的视觉缺陷；
   - 专栏卡片升级为大画幅舒展架构（`w-auto mx-6 md:mx-8 p-6 md:p-8 rounded-3xl`），搭配左侧专属主色边线（`border-l-2 border-accent/50`）、典籍徽标（`BookOpen`）与深度解析标签（`Sparkles`）；
   - 正文排版采用 `text-sm md:text-[15px] leading-relaxed text-justify select-text whitespace-pre-line`，完整呈现 181 家核心厂牌创立年代、创始人背景、美学流派与文化演变深度历史档案；
   - 规范并统一国际化专栏标题文案为「厂牌历史档案与风格深度解析专栏」。
+
+### Added
+- **分集档案页 (Episode) 全新上线「AI 翻译剧情」与双语对照切换 (`EpisodeDetailModal.vue`, `App.vue`, `api.ts`, `commands/translate.rs`)**：
+  - 分集详情弹窗现已支持一键调用 AI 大模型翻译英文剧情并写入本地数据库 `episodes.description_zh`，同时提供中文译文与英文原文一键切换；
+  - 翻译完成实时触发 `@episode-translated` 事件，自动同步更新分集列表、影片内分集及全局翻译统计状态。
 
 ### Optimized
 - **影片档案页布局重构：剧情简介板块移至海报下方通栏展示，操作按钮组矩阵化收拢 (`MovieDetailModal.vue`)**：

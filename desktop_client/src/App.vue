@@ -2234,8 +2234,18 @@ onUnmounted(() => {
               @click="openStudioDetail(s)"
               class="p-4 rounded-2xl bg-surface/60 border border-line hover:border-accent-fill/40 hover:bg-surface transition-all cursor-pointer flex flex-col items-center text-center group"
             >
-              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-line-strong/60 group-hover:ring-accent-fill/50 transition">
-                <div class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-2xl font-black text-on-fill/70">
+              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-line-strong/60 group-hover:ring-accent-fill/50 transition bg-surface-2/80 flex items-center justify-center p-1.5 relative">
+                <img
+                  v-if="s.logo_url"
+                  :src="getImageUrl(s.logo_url)"
+                  :alt="s.name"
+                  class="max-w-full max-h-full object-contain filter drop-shadow group-hover:scale-105 transition"
+                  loading="lazy"
+                />
+                <div
+                  v-else
+                  class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-2xl font-black text-on-fill/70 rounded-xl"
+                >
                   {{ (studioPrimary(s, descLang) || s.name).charAt(0).toUpperCase() }}
                 </div>
               </div>

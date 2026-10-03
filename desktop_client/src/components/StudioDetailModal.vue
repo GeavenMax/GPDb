@@ -5,6 +5,7 @@ import type { Movie, StudioWorks, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
 import { claimEscape } from '../utils/escape';
+import { getImageUrl } from '../utils/image';
 import { pluginsConfig } from '../services/pluginManager';
 import { api } from '../api';
 import { t } from '../i18n';
@@ -22,6 +23,8 @@ interface StudioRef {
   name: string;
   name_zh?: string | null;
   description_zh?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
   works_count?: number;
   episodes_count?: number;
 }
@@ -79,16 +82,27 @@ const episodesCount = computed(() => props.works?.episodes_count ?? props.studio
 
 // Bilingual & In-depth brand profile metadata
 const fetchedDescriptionZh = ref<string | null>(null);
+const fetchedLogoUrl = ref<string | null>(null);
+const logoError = ref(false);
+
+const effectiveLogoUrl = computed(() => {
+  if (logoError.value) return null;
+  return props.works?.logo_url || props.studio?.logo_url || fetchedLogoUrl.value || null;
+});
+
+function onLogoError() {
+  logoError.value = true;
+}
 
 async function loadStudioArchive(name?: string | null) {
   if (!name) return;
-  if ((props.works?.description_zh || props.studio?.description_zh || '').trim()) {
-    return;
-  }
   try {
     const works = await api.getStudioWorks(name);
-    if (works?.description_zh) {
+    if (works?.description_zh && !props.works?.description_zh && !props.studio?.description_zh) {
       fetchedDescriptionZh.value = works.description_zh;
+    }
+    if (works?.logo_url && !props.works?.logo_url && !props.studio?.logo_url) {
+      fetchedLogoUrl.value = works.logo_url;
     }
   } catch {
     // Ignore fetch error
@@ -153,6 +167,8 @@ watch(() => props.studio?.name, (newName) => {
   displayedEpisodeCount.value = BATCH_SIZE;
   showOriginalOverride.value = null;
   fetchedDescriptionZh.value = null;
+  fetchedLogoUrl.value = null;
+  logoError.value = false;
   if (newName) loadStudioArchive(newName);
 }, { immediate: true });
 
@@ -209,8 +225,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
       <!-- Profile Header. Displays dual titles (Chinese main + light-gray English subtitle) when available. -->
       <div class="p-6 md:p-8 bg-sunken border-b border-line flex items-center gap-6">
-        <div class="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-accent-fill/10 ring-1 ring-line-strong/60">
-          <div class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-3xl font-black text-on-fill">
+        <!-- Studio Avatar / Official Logo -->
+        <div class="w-24 h-20 md:w-32 md:h-24 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-accent-fill/10 ring-1 ring-line-strong/60 bg-surface-2/80 flex items-center justify-center p-2 relative group">
+          <img
+            v-if="effectiveLogoUrl"
+            :src="getImageUrl(effectiveLogoUrl)"
+            :alt="mainTitle"
+            class="max-w-full max-h-full object-contain filter drop-shadow transition-transform duration-300 group-hover:scale-105"
+            @error="onLogoError"
+          />
+          <div
+            v-else
+            class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-3xl font-black text-on-fill rounded-xl"
+          >
             {{ displayInitial }}
           </div>
         </div>

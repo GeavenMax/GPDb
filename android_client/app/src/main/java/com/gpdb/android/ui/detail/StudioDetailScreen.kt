@@ -24,11 +24,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gpdb.android.ui.components.EpisodeListItem
+import com.gpdb.android.ui.components.GpdbAsyncImage
 import com.gpdb.android.ui.components.MovieGridItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,23 +57,43 @@ fun StudioDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        val mainTitle = uiState.nameZh?.takeIf { it.isNotBlank() } ?: studioName
-                        Text(
-                            text = mainTitle,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (!uiState.nameZh.isNullOrBlank() && uiState.nameZh != studioName) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (!uiState.logoUrl.isNullOrBlank()) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(width = 46.dp, height = 32.dp)
+                            ) {
+                                GpdbAsyncImage(
+                                    url = uiState.logoUrl,
+                                    physicalRootPath = physicalRootPath,
+                                    defaultFolder = "Logos",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.padding(2.dp).fillMaxSize()
+                                )
+                            }
+                        }
+                        Column {
+                            val mainTitle = uiState.nameZh?.takeIf { it.isNotBlank() } ?: studioName
                             Text(
-                                text = studioName,
+                                text = mainTitle,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            if (!uiState.nameZh.isNullOrBlank() && uiState.nameZh != studioName) {
+                                Text(
+                                    text = studioName,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                )
+                            }
                         }
                     }
                 },

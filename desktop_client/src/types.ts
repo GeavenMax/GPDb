@@ -161,6 +161,8 @@ export interface StudioSummary {
   name: string;
   name_zh?: string | null;
   description_zh?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
   works_count: number;
   episodes_count: number;
 }
@@ -175,6 +177,8 @@ export interface StudioWorks {
   studio_name: string;
   studio_name_zh?: string | null;
   description_zh?: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
   movies: Movie[];
   movies_count: number;
   episodes: Episode[];
