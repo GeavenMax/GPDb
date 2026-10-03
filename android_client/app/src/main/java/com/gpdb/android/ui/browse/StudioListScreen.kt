@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import com.gpdb.android.ui.components.SearchTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,7 +39,7 @@ fun StudioListScreen(
                 title = com.gpdb.android.util.I18n.string("nav.studios"),
                 searchQuery = uiState.searchQuery,
                 onSearchQueryChange = { viewModel.loadStudios(query = it) },
-                placeholder = "搜索片商...",
+                placeholder = "搜索片商 (支持中英文)...",
                 actions = {
                     IconButton(onClick = { showSortMenu = true }) {
                         Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "排序")
@@ -56,7 +57,7 @@ fun StudioListScreen(
                             trailingIcon = { if (uiState.sortBy == "works") Icon(Icons.Default.Check, null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("按拼音排序") },
+                            text = { Text("按拼音/字母排序") },
                             onClick = {
                                 showSortMenu = false
                                 viewModel.loadStudios(sortBy = "name")
@@ -82,11 +83,31 @@ fun StudioListScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(uiState.studios, key = { it }) { studio ->
+                    items(uiState.studios, key = { it.name }) { studio ->
                         ListItem(
-                            headlineContent = { Text(studio) },
-                            leadingContent = { Icon(Icons.Default.Business, contentDescription = null) },
-                            modifier = Modifier.clickable { onStudioClick(studio) }
+                            headlineContent = {
+                                Text(
+                                    text = studio.nameZh ?: studio.name,
+                                    fontWeight = if (studio.nameZh != null) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            },
+                            supportingContent = if (studio.nameZh != null && studio.nameZh != studio.name) {
+                                {
+                                    Text(
+                                        text = studio.name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            } else null,
+                            leadingContent = {
+                                Icon(
+                                    Icons.Default.Business,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            modifier = Modifier.clickable { onStudioClick(studio.name) }
                         )
                         HorizontalDivider()
                     }
