@@ -14,9 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Fluent Design 动态半透明层级适配**：CSS 主题层针对 Mica/Acrylic 动态注入自适应透明底色（`oklch(... / 0.75~0.78)`），浮动面板、侧边栏与主窗口自然透出桌面背景，视觉层次现代通透。
 - **系统托盘驻留 (System Tray) 与后台静默运行 (`commands/system.rs`, `lib.rs`, `App.vue`, `privacy.ts`, `tauri.conf.json`)**：
   - **原生系统托盘图标与常驻菜单**：为 Windows 平台构建原生任务栏通知区域图标（GPDb 经典标志），右键提供「显示主界面」「最小化到托盘」「截屏防窥模式」「退出 GPDb」完备快捷菜单；
+  - **托盘 Jump List 快捷导航直达**：托盘菜单内置「今日探索」「我的收藏」等常用板块快捷直达项，单击后自动唤醒窗口并平滑跳转至对应标签页；
   - **左键单击极速切换窗口**：单击托盘图标即可在隐藏后台与恢复唤醒主窗口（自动置顶并聚焦）之间无缝切换；
   - **优雅后台挂起与「关闭窗口时最小化到系统托盘」支持**：设置面板新增「关闭窗口时最小化到系统托盘」独立开关，勾选后点击窗口右上角关闭按钮 (X) 不会强退程序，而是静默隐藏至系统托盘，随时秒开恢复；
   - **托盘与应用防窥盾 (Privacy Shield) 原生联动**：右键菜单直达「截屏防窥模式」，一键模糊影片封面与剧情文字，防止录屏与他人窥探。
+- **Windows 任务栏实时进度指示 (Taskbar Progress Indicator) (`commands/system.rs`, `lib.rs`, `scraper.ts`)**：
+  - **Tauri 原生任务栏进度驱动**：联动数据库全量/增量刮削状态机，在执行网络刮削与元数据解析时，Windows 任务栏图标实时呈现原生绿色进度条及百分比，开始阶段展示不确定等待态，完成后自动复位，进度一目了然。
 - **WebView2 高刷新率 (120Hz/144Hz) 与 GPU 硬件渲染调优 (`src-tauri/src/lib.rs`)**：
   - 启动阶段自动为 WebView2 运行时注入性能加速参数：`--enable-features=msWebView2EnableDraggableRegions`、`--disable-features=CalculateNativeWinOcclusion`、`--high-dpi-support=1`、`--enable-gpu-rasterization` 与 `--enable-zero-copy`，彻底消除多显示器环境下的掉帧卡顿，高刷屏瀑布流滚动极速流畅。
 

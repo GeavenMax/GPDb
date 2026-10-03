@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
-import { X, Film, Layers, Heart, LayoutGrid, List, Sparkles, BookOpen, ExternalLink, Globe, Tag, ChevronDown, ChevronUp } from '@lucide/vue';
+import { X, Film, Layers, Heart, LayoutGrid, List, BookOpen, ExternalLink, Globe, Tag, ChevronDown, ChevronUp } from '@lucide/vue';
 import type { Performer, Movie, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
@@ -96,36 +96,6 @@ function trEthnicity(eth?: string | null): string {
   return ETHNICITY_MAP[eth] || eth;
 }
 
-const PERF_TAGS_MAP: Record<string, string> = {
-  Masturbation: '自慰',
-  'Close-Up': '特写',
-  Dildo: '假阳具/玩具',
-  Feet: '恋足',
-  Pissing: '圣水',
-  Watersports: '圣水',
-  'Ass fingering': '指交',
-  'Ass gaping': '扩肛',
-  Kissing: '接吻',
-  Blowjob: '口交',
-  'Deep throat': '深喉',
-  Rimming: '舔穴',
-  Facials: '颜射',
-  'Cum eating': '吞精',
-  Interracial: '跨种族',
-  Handjob: '手交',
-  'Double penetration': '双龙',
-  'Muscle fetish': '肌肉控',
-  Spanking: '打屁股',
-  Bondage: '束缚',
-  'Tickle torture': '挠痒',
-  Wrestling: '摔跤',
-  'Erotic massage': '诱惑按摩',
-};
-function trPerfTag(tag: string): string {
-  if (!currentLocale.value.startsWith('zh')) return tag;
-  return PERF_TAGS_MAP[tag] || tag;
-}
-
 const pbcProfile = computed(() => props.performer?.pbc_profile);
 
 const pbcCareerStatus = computed(() => {
@@ -136,16 +106,6 @@ const pbcCareerStatus = computed(() => {
     isActive: isAct,
     text: t(isAct ? 'performer.active' : 'performer.retired'),
   };
-});
-
-const pbcPerformanceTags = computed<string[]>(() => {
-  const prof = pbcProfile.value;
-  if (!prof) return [];
-  if (Array.isArray(prof.performance_tags)) return prof.performance_tags;
-  if (typeof prof.performance_tags === 'string') {
-    return prof.performance_tags.split(',').map(s => s.trim()).filter(Boolean);
-  }
-  return [];
 });
 
 const pbcSocialLinks = computed<Record<string, string>>(() => {

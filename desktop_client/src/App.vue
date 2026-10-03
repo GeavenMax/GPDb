@@ -1730,6 +1730,18 @@ onMounted(async () => {
   // Perform initial runtime environment health check
   checkInitialEnvironment();
 
+  // 监听系统托盘与任务栏快捷导航跳转事件
+  if (IS_TAURI) {
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen<string>('navigate-tab', (e) => {
+        const target = e.payload as any;
+        if (['home', 'movies', 'performers', 'studios', 'directors', 'episodes', 'favorites', 'settings'].includes(target)) {
+          currentTab.value = target;
+        }
+      });
+    }).catch(() => {});
+  }
+
   // Check for GitHub Release update after 3 seconds
   setTimeout(async () => {
     try {

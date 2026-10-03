@@ -65,6 +65,12 @@ export async function initScraperService() {
     await listen<ScraperStatus>('scraper-progress', (event) => {
       scraperState.value = event.payload;
 
+      // Update Windows / desktop taskbar progress indicator
+      if (event.payload.running) {
+        const pct = Math.round(event.payload.percent || 0);
+        api.setTaskbarProgress(pct, 'normal');
+      }
+
       // If new movies, performers or episodes were scraped, trigger UI refresh listeners
       if (
         event.payload.new_movies > lastMoviesCount ||
@@ -84,6 +90,7 @@ export async function initScraperService() {
 
     await listen<ScraperStatus>('scraper-finished', (event) => {
       scraperState.value = event.payload;
+      api.setTaskbarProgress(null, 'none');
       for (const cb of listeners) {
         try {
           cb();
@@ -93,6 +100,7 @@ export async function initScraperService() {
 
     await listen<ScraperStatus>('scraper-stopped', (event) => {
       scraperState.value = event.payload;
+      api.setTaskbarProgress(null, 'none');
     });
   } catch (e) {
     console.warn('[ScraperService] Tauri event listeners unavailable (browser mode):', e);
@@ -105,6 +113,7 @@ export async function startScraperTask(
   startId?: number,
   endId?: number
 ): Promise<ScraperStatus> {
+  api.setTaskbarProgress(0, 'indeterminate');
   const status = await api.startScraper(mode, limit, startId, endId);
   scraperState.value = status;
   lastMoviesCount = 0;
@@ -115,5 +124,6 @@ export async function startScraperTask(
 export async function stopScraperTask(): Promise<ScraperStatus> {
   const status = await api.stopScraper();
   scraperState.value = status;
+  api.setTaskbarProgress(null, 'none');
   return status;
 }
