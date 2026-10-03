@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
 import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
@@ -29,6 +30,7 @@ fun GpdbAsyncImage(
     defaultFolder: String = "Covers", // "Covers" | "Performers" | "Episodes"
     alignment: Alignment = Alignment.Center,
     contentScale: ContentScale = ContentScale.Crop,
+    onSuccess: ((AsyncImagePainter.State.Success) -> Unit)? = null,
     onError: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -53,6 +55,7 @@ fun GpdbAsyncImage(
         contentDescription = contentDescription,
         alignment = alignment,
         contentScale = contentScale,
+        onSuccess = onSuccess,
         modifier = modifier.privacyBlurImage()
     )
 }

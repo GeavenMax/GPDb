@@ -8,9 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.17.0] - 2026-10-03
 
 ### Changed
-- **影片档案海报展示优化 (`MovieDetailScreen.kt`)**：
-  - 优化多海报自适应平铺排版，在水平居中容器内采用流式横向排布，优化边缘圆角与阴影层级，全面对齐桌面端 `v2.17.0` 视觉规范；
+- **影片档案海报展示深度优化与视觉纯化 (`MovieDetailScreen.kt`, `GpdbAsyncImage.kt`)**：
+  - **物理画幅零黑边贴合自适应 (`AdaptivePosterCard`)**：彻底修复由于海报固定高度或尺寸未关联画幅比例导致海报被放在上下有空白的暗色框里的问题。新增 `AdaptivePosterCard` 组件，利用 Coil `onSuccess` 回调动态感知图片物理分辨率，通过 `aspectRatio(ratio, matchHeightConstraintsFirst = true)` 动态自适应贴合，使卡片圆角与微光边框紧紧包裹海报物理边缘，杜绝任何 letterboxing 上下/左右留白；
+  - **彻底移除角标与常驻放大镜**：移除海报左上角动态标记的「正封面」「封底」或「#N」徽章，以及右上角常驻缩放镜图标，还原最纯粹沉浸的海报艺术画幅展示；海报仍支持轻触直接唤起全屏手势无级缩放灯箱 (`ZoomableImageDialog`)；
+  - **单封面居中与多海报横向流式并列呈现**：单封面时以居中艺术卡片全幅呈现；多海报时在横向平滑滚动流中以等高自适应比例优雅平铺展示。
+- **操作与版本号对齐**：
   - 演员档案与厂牌档案操作按钮交互对齐，版本号统一升级至 `v2.17.0` (versionCode 317)。
+
+### Fixed
+- **修复影片仅一张海报时显示封底空白框架的错误与容错自愈 (`MovieDetailScreen.kt`)**：
+  - 针对历史数据库中部分记录 `cover_back` 为空白字符串或海报资源在离线 ZIP 包中缺失的场景，构建数据过滤与运行时 `effectiveCovers` / `onError` 动态自愈机制；
+  - 当封底或附加海报文件在本地包中缺失触发加载失败时，自动从展示列表中剔除，杜绝渲染出暗色空框；若仅剩主封面有效，界面自动平滑降级为单图居中呈现。
 
 ## [2.16.7] - 2026-10-03
 

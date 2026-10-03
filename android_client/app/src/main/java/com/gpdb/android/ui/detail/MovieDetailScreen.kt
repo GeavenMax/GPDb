@@ -28,11 +28,13 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.gpdb.android.data.db.entities.toImageCachePath
 import com.gpdb.android.image.GpdbImageData
@@ -131,17 +133,23 @@ fun MovieDetailScreen(
                     if (result.isEmpty()) listOf("image_cache/Covers/${movie.id}.jpg") else result.toList()
                 }
 
+                // 容错与空框消除：若封底或额外海报在资源包中缺失导致加载失败，自动剔除，绝不显示空白框架
+                val failedUrls = remember(validCovers) { mutableStateListOf<String>() }
+                val effectiveCovers = remember(validCovers, failedUrls.toList()) {
+                    validCovers.filterNot { it in failedUrls }
+                }
+
                 var showFullImageIndex by remember { mutableStateOf<Int?>(null) }
 
                 // 全屏手势缩放灯箱 (Lightbox)
-                if (showFullImageIndex != null) {
-                    val coverDataList = validCovers.map { url ->
+                if (showFullImageIndex != null && effectiveCovers.isNotEmpty()) {
+                    val coverDataList = effectiveCovers.map { url ->
                         val relPath = url.toImageCachePath() ?: "image_cache/Covers/${movie.id}.jpg"
                         GpdbImageData(relPath, physicalRootPath, url)
                     }
                     com.gpdb.android.ui.components.ZoomableImageDialog(
                         images = coverDataList,
-                        initialIndex = showFullImageIndex!!,
+                        initialIndex = showFullImageIndex!!.coerceIn(0, effectiveCovers.lastIndex),
                         onDismiss = { showFullImageIndex = null }
                     )
                 }
@@ -159,7 +167,7 @@ fun MovieDetailScreen(
                             .background(Color.Black)
                     ) {
                         // 动态底层氛围虚化 (matchParentSize 随前景真实高度自适应，不产生多余黑边)
-                        val primaryCover = validCovers.firstOrNull() ?: "image_cache/Covers/${movie.id}.jpg"
+                        val primaryCover = effectiveCovers.firstOrNull() ?: "image_cache/Covers/${movie.id}.jpg"
                         GpdbAsyncImage(
                             url = primaryCover,
                             physicalRootPath = physicalRootPath,
@@ -176,8 +184,8 @@ fun MovieDetailScreen(
                                 .background(Color.Black.copy(alpha = 0.5f))
                         )
 
-                        // 前景封面呈现：单图自适应居中，多图（正封面/封底/变体）平铺横向滑动同时展示
-                        if (validCovers.size == 1) {
+                        // 前景封面呈现：单图自适应居中，多图（正封面/封底/变体）平铺横向滑动同时展示；失效图自动剔除绝无空框
+                        if (effectiveCovers.size == 1) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -185,30 +193,21 @@ fun MovieDetailScreen(
                                     .padding(horizontal = 24.dp, vertical = 20.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Card(
+                                AdaptivePosterCard(
+                                    url = effectiveCovers[0],
+                                    physicalRootPath = physicalRootPath,
+                                    contentDescription = "${movie.title} - 海报",
+                                    fallbackEntityId = movie.id,
+                                    maxHeight = 340.dp,
+                                    maxWidth = 260.dp,
                                     shape = RoundedCornerShape(16.dp),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
-                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
-                                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                                    modifier = Modifier
-                                        .wrapContentSize()
-                                        .clickable { showFullImageIndex = 0 }
-                                ) {
-                                    GpdbAsyncImage(
-                                        url = validCovers[0],
-                                        physicalRootPath = physicalRootPath,
-                                        contentDescription = "${movie.title} - 海报",
-                                        fallbackEntityId = movie.id,
-                                        defaultFolder = "Covers",
-                                        contentScale = ContentScale.Fit,
-                                        modifier = Modifier
-                                            .heightIn(min = 160.dp, max = 380.dp)
-                                            .widthIn(max = 280.dp)
-                                            .clip(RoundedCornerShape(16.dp))
-                                    )
-                                }
+                                    elevation = 10.dp,
+                                    borderStroke = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                                    onError = { if (effectiveCovers[0] !in failedUrls) failedUrls.add(effectiveCovers[0]) },
+                                    onClick = { showFullImageIndex = 0 }
+                                )
                             }
-                        } else {
+                        } else if (effectiveCovers.size > 1) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -222,29 +221,58 @@ fun MovieDetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    validCovers.forEachIndexed { index, url ->
-                                        Card(
+                                    effectiveCovers.forEachIndexed { index, url ->
+                                        AdaptivePosterCard(
+                                            url = url,
+                                            physicalRootPath = physicalRootPath,
+                                            contentDescription = "${movie.title} - 封面 ${index + 1}",
+                                            fallbackEntityId = if (index == 0) movie.id else null,
+                                            maxHeight = 280.dp,
+                                            maxWidth = null,
                                             shape = RoundedCornerShape(14.dp),
-                                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
-                                            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                                            modifier = Modifier
-                                                .wrapContentSize()
-                                                .clickable { showFullImageIndex = index }
-                                        ) {
-                                            GpdbAsyncImage(
-                                                url = url,
-                                                physicalRootPath = physicalRootPath,
-                                                contentDescription = "${movie.title} - 封面 ${index + 1}",
-                                                fallbackEntityId = if (index == 0) movie.id else null,
-                                                defaultFolder = "Covers",
-                                                contentScale = ContentScale.Fit,
-                                                modifier = Modifier
-                                                    .heightIn(min = 140.dp, max = 320.dp)
-                                                    .widthIn(max = 200.dp)
-                                                    .clip(RoundedCornerShape(14.dp))
-                                            )
-                                        }
+                                            elevation = 8.dp,
+                                            borderStroke = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                                            onError = { if (url !in failedUrls) failedUrls.add(url) },
+                                            onClick = { showFullImageIndex = index }
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // 海报均失效或无海报时的优雅占位
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(280.dp)
+                                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Card(
+                                    shape = RoundedCornerShape(16.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
+                                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f)),
+                                    modifier = Modifier
+                                        .width(200.dp)
+                                        .height(280.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.fillMaxSize(),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.TravelExplore,
+                                            contentDescription = null,
+                                            tint = Color.White.copy(alpha = 0.5f),
+                                            modifier = Modifier.size(44.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        Text(
+                                            text = "暂无海报",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.7f)
+                                        )
                                     }
                                 }
                             }
@@ -566,6 +594,59 @@ fun MovieDetailScreen(
             cardData = cardData,
             physicalRootPath = physicalRootPath,
             onDismiss = { showShareCard = false }
+        )
+    }
+}
+
+/**
+ * 具有物理比例自适应贴合能力的封面海报卡片 (消除上下空白框架，自适应贴合边缘)
+ */
+@Composable
+private fun AdaptivePosterCard(
+    url: String,
+    physicalRootPath: String,
+    contentDescription: String,
+    fallbackEntityId: Long? = null,
+    maxHeight: Dp = 340.dp,
+    maxWidth: Dp? = null,
+    shape: Shape = RoundedCornerShape(16.dp),
+    elevation: Dp = 10.dp,
+    borderStroke: BorderStroke = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+    onError: (() -> Unit)? = null,
+    onClick: () -> Unit
+) {
+    var aspectRatio by remember(url) { mutableStateOf<Float?>(null) }
+
+    Card(
+        shape = shape,
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+        border = borderStroke,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        modifier = Modifier
+            .height(maxHeight)
+            .run {
+                if (maxWidth != null) widthIn(max = maxWidth) else this
+            }
+            .aspectRatio(aspectRatio ?: (2f / 3f), matchHeightConstraintsFirst = true)
+            .clip(shape)
+            .clickable(onClick = onClick)
+    ) {
+        GpdbAsyncImage(
+            url = url,
+            physicalRootPath = physicalRootPath,
+            contentDescription = contentDescription,
+            fallbackEntityId = fallbackEntityId,
+            defaultFolder = "Covers",
+            contentScale = ContentScale.Crop,
+            onSuccess = { state ->
+                val w = state.result.drawable.intrinsicWidth
+                val h = state.result.drawable.intrinsicHeight
+                if (w > 0 && h > 0) {
+                    aspectRatio = w.toFloat() / h.toFloat()
+                }
+            },
+            onError = onError,
+            modifier = Modifier.fillMaxSize()
         )
     }
 }
