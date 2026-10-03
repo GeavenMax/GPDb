@@ -1181,7 +1181,7 @@ export const api = {
       const res = await fetch(`/api/studios/${encodeURIComponent(studioName)}/works`);
       if (res.ok) return await res.json();
     } catch {}
-    return { studio_name: studioName, studio_name_zh: null, description_zh: null, movies: [], movies_count: 0, episodes: [], episodes_count: 0 };
+    return { studio_name: studioName, studio_name_zh: null, description_zh: null, logo_url: null, banner_url: null, website_url: null, movies: [], movies_count: 0, episodes: [], episodes_count: 0 };
   },
 
   /**

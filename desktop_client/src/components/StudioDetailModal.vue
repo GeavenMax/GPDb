@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent, nextTick } from 'vue';
-import { X, Film, Layers, Heart, Loader2, Languages } from '@lucide/vue';
+import { X, Film, Layers, Heart, Loader2, Languages, Globe } from '@lucide/vue';
 import type { Movie, StudioWorks, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
 import { claimEscape } from '../utils/escape';
 import { getImageUrl } from '../utils/image';
 import { sampleImageEdgeColor, type SampledColorResult } from '../utils/colorSampler';
-import { pluginsConfig } from '../services/pluginManager';
+import { pluginsConfig, openUrlExternal } from '../services/pluginManager';
 import { t } from '../i18n';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
@@ -25,6 +25,7 @@ interface StudioRef {
   description_zh?: string | null;
   logo_url?: string | null;
   banner_url?: string | null;
+  website_url?: string | null;
   works_count?: number;
   episodes_count?: number;
 }
@@ -132,6 +133,22 @@ function onLogoError() {
 
 function onBannerError() {
   bannerError.value = true;
+}
+
+const effectiveWebsiteUrl = computed(() => {
+  const url = props.works?.website_url || props.studio?.website_url || null;
+  if (!url) return null;
+  const trimmed = url.trim();
+  return trimmed.length > 0 ? trimmed : null;
+});
+
+function openWebsite() {
+  if (!effectiveWebsiteUrl.value) return;
+  let target = effectiveWebsiteUrl.value.trim();
+  if (!/^https?:\/\//i.test(target)) {
+    target = 'https://' + target;
+  }
+  openUrlExternal(target);
 }
 
 const logoSampledResult = ref<SampledColorResult | null>(null);
@@ -366,6 +383,16 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 button-class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-fg shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full"
               />
             </template>
+
+            <button
+              v-if="effectiveWebsiteUrl"
+              @click="openWebsite"
+              :title="effectiveWebsiteUrl"
+              class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-accent shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full"
+            >
+              <Globe class="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+              <span class="truncate">{{ t('studio.officialWebsite') }}</span>
+            </button>
 
             <button
               v-if="hasTranslation"

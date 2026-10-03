@@ -163,6 +163,7 @@ export interface StudioSummary {
   description_zh?: string | null;
   logo_url?: string | null;
   banner_url?: string | null;
+  website_url?: string | null;
   works_count: number;
   episodes_count: number;
 }
@@ -179,6 +180,7 @@ export interface StudioWorks {
   description_zh?: string | null;
   logo_url?: string | null;
   banner_url?: string | null;
+  website_url?: string | null;
   movies: Movie[];
   movies_count: number;
   episodes: Episode[];

@@ -384,13 +384,25 @@ CREATE TABLE IF NOT EXISTS category_glossary (
 -- 供客户端卡片及片商详情页展示主标题中文、副标题英文及历史百科专栏。
 CREATE TABLE IF NOT EXISTS studios (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    site_id        INTEGER,
     name           TEXT NOT NULL UNIQUE,
     name_zh        TEXT,
     description_zh TEXT,
     logo_url       TEXT,
     banner_url     TEXT,
+    website_url    TEXT,
     updated_at     TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);
 CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);
+
+-- 14. 片商官网链接归档表 (Studio Websites)
+CREATE TABLE IF NOT EXISTS studio_websites (
+    site_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    website_url TEXT,
+    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_studio_websites_name ON studio_websites(name);

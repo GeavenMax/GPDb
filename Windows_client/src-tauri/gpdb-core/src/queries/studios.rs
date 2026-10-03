@@ -92,7 +92,7 @@ pub fn get_studio_library(
     };
 
     let select_query = format!(
-        "SELECT s.name, st.name_zh, st.description_zh, st.logo_url, st.banner_url, COALESCE(m.cnt, 0) AS works_count, COALESCE(e.cnt, 0) AS episodes_count \
+        "SELECT s.name, st.name_zh, st.description_zh, st.logo_url, st.banner_url, st.website_url, COALESCE(m.cnt, 0) AS works_count, COALESCE(e.cnt, 0) AS episodes_count \
          FROM ( \
              SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
              UNION \
@@ -128,8 +128,9 @@ pub fn get_studio_library(
             description_zh: r.get(2)?,
             logo_url: r.get(3)?,
             banner_url: r.get(4)?,
-            works_count: r.get(5)?,
-            episodes_count: r.get(6)?,
+            website_url: r.get(5)?,
+            works_count: r.get(6)?,
+            episodes_count: r.get(7)?,
         })
     }).map_err(|e| e.to_string())?;
 
@@ -141,18 +142,19 @@ pub fn get_studio_library(
 
 /// One studio's complete works, matching `/api/studios/<name>/works`.
 pub fn get_studio_works(conn: &Connection, studio_name: String) -> Result<StudioWorks> {
-    let (studio_name_zh, description_zh, logo_url, banner_url): (
+    let (studio_name_zh, description_zh, logo_url, banner_url, website_url): (
+        Option<String>,
         Option<String>,
         Option<String>,
         Option<String>,
         Option<String>,
     ) = conn
         .query_row(
-            "SELECT name_zh, description_zh, logo_url, banner_url FROM studios WHERE name = ?1 COLLATE NOCASE OR name_zh = ?1 LIMIT 1",
+            "SELECT name_zh, description_zh, logo_url, banner_url, website_url FROM studios WHERE name = ?1 COLLATE NOCASE OR name_zh = ?1 LIMIT 1",
             params![studio_name],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
         )
-        .unwrap_or((None, None, None, None));
+        .unwrap_or((None, None, None, None, None));
 
     let mut m_stmt = conn.prepare(&format!(
         "SELECT {} FROM movies m \
@@ -180,6 +182,7 @@ pub fn get_studio_works(conn: &Connection, studio_name: String) -> Result<Studio
         description_zh,
         logo_url,
         banner_url,
+        website_url,
         movies_count: movies.len() as i64,
         movies,
         episodes_count: episodes.len() as i64,
@@ -223,6 +226,7 @@ mod tests {
         assert_eq!(lib.items[0].description_zh.as_deref(), Some("1971年创立于旧金山"));
         assert_eq!(lib.items[0].logo_url.as_deref(), Some("images/logos/FalconVideo.png"));
         assert_eq!(lib.items[0].banner_url.as_deref(), Some("images/FalconBanner4.jpg"));
+        assert_eq!(lib.items[0].website_url, None);
         assert_eq!(lib.items[0].works_count, 2);
         assert_eq!(lib.items[0].episodes_count, 1);
 
@@ -238,6 +242,7 @@ mod tests {
         assert_eq!(works.description_zh.as_deref(), Some("1971年创立于旧金山"));
         assert_eq!(works.logo_url.as_deref(), Some("images/logos/FalconVideo.png"));
         assert_eq!(works.banner_url.as_deref(), Some("images/FalconBanner4.jpg"));
+        assert_eq!(works.website_url, None);
         assert_eq!(works.movies_count, 2);
         assert_eq!(works.episodes_count, 1);
     }

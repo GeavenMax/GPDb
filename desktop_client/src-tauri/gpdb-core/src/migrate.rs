@@ -48,6 +48,8 @@ const PERFORMER_COLUMNS: &[(&str, &str)] = &[
 const STUDIO_COLUMNS: &[(&str, &str)] = &[
     ("logo_url", "TEXT"),
     ("banner_url", "TEXT"),
+    ("website_url", "TEXT"),
+    ("site_id", "INTEGER"),
 ];
 
 /// Tables this crate reads. Verbatim from `schema.sql` §11 and §12.
@@ -74,15 +76,25 @@ CREATE INDEX IF NOT EXISTS idx_movie_directors_director ON movie_directors(direc
 CREATE INDEX IF NOT EXISTS idx_directors_name ON directors(name);
 CREATE TABLE IF NOT EXISTS studios (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    site_id        INTEGER,
     name           TEXT NOT NULL UNIQUE,
     name_zh        TEXT,
     description_zh TEXT,
     logo_url       TEXT,
     banner_url     TEXT,
+    website_url    TEXT,
     updated_at     TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);
 CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);
+CREATE TABLE IF NOT EXISTS studio_websites (
+    site_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    website_url TEXT,
+    scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_studio_websites_name ON studio_websites(name);
 ";
 
 const CORE_SCHEMA: &str = "

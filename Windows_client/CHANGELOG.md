@@ -3,6 +3,26 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.18.0] - 2026-10-04
+
+### Added
+- **GEVI 全量片商官方网站刮削与持久化入库 (`scrape_studio_websites.py`, `GPDb.db`, `schema.sql`)**：
+  - **多线程高并发抓取管道**：开发专用的轻量级标准库爬虫脚本（10 workers，稳定 10.7 req/s），针对 GEVI 全库 2,470 个片商 ID 进行全量扫描与高效抓取；
+  - **智能正则排重与精准提取**：严格界定 `<!-- name -->` 区块，自动过滤下属厂牌内部关联（`company/<id>`），精准提取片商官方站点直链（如 `company/7418` 对应 `http://all-americanheroes.net`）；
+  - **数据库结构扩展与全量同步**：在 `studios` 表中新增 `website_url TEXT` 与 `site_id INTEGER` 字段，并在全库中成功关联入库 237 个片商的官方网址；同步新建 `studio_websites` 完整归档表与索引，确保元数据源头可追溯；同步更新根目录 `schema.sql`。
+- **片商档案详情弹窗新增官方网站直跳支持 (`StudioDetailModal.vue`, `types.ts`, `api.ts`)**：
+  - **官网操作按钮**：在片商档案页头部右侧操作按钮区（双列紧凑布局）中新增“官方网站”直达按钮，带有精致的地球图标 (`Globe`)，悬停显示目标网址，单击直接调用系统默认外部浏览器打开；
+  - **智能协议自适应补齐**：自动检测协议前缀，针对未显式包含协议的链接智能补齐 `https://`，防止唤起异常。
+- **全球 7 种语言完整国际化覆盖 (`i18n/index.ts`)**：
+  - 在国际化字典中为所有支持语言添加 `'studio.officialWebsite'` 词条：中文简体（官方网站）、中文繁体（官方網站）、英语（Official Website）、日语（公式サイト）、意大利语（Sito ufficiale）、西班牙语（Sitio oficial）、德语（Offizielle Website）。
+
+### Changed
+- **内核查询与数据契约全面打通 (`gpdb-core/src/models.rs`, `queries/studios.rs`, `migrate.rs`)**：
+  - **数据模型增强**：`StudioSummary` 与 `StudioWorks` 均新增 `website_url: Option<String>` 字段；
+  - **查询管道与连表映射**：`get_studio_library` 与 `get_studio_works` 均读取并映射 `st.website_url`，保证列表与详情两端数据一致；
+  - **零配置平滑迁移**：在 `migrate.rs` 的 `STUDIO_COLUMNS` 中加入 `website_url` 与 `site_id`，保证旧版本数据库升级时自动补充列定义与结构，零损耗迁移；
+  - 后端核心库 60 个单元测试与回归测试全数通过。
+
 ## [v2.17.0] - 2026-10-03
 
 ### Changed
@@ -26,7 +46,7 @@
 
 ### Fixed
 - **彻底解决片商库加载卡顿与滑动浏览追加卡片卡顿掉帧问题 (`queries/studios.rs`, `migrate.rs`, `schema.sql`, `App.vue`)**：
-  - **SQLite 查询性能 10倍级飞跃**：为 `studios(name COLLATE NOCASE)` 引入专属不区分大小写索引，重构 `get_studio_library` 连表条件为索引友好的 `st.name = s.name COLLATE NOCASE`，彻底消除由于 `OR / trim` 导致 SQLite 对 2,424 个片商反复全表扫描高达 72 万次的性能黑洞；针对常规翻页浏览拆分出极速 `COUNT(*)` 快路径，单次分页查询耗时由 2.53 秒降至 0.22 秒；
+  - **SQLite 查询性能 10 倍级飞跃**：为 `studios(name COLLATE NOCASE)` 引入专属不区分大小写索引，重构 `get_studio_library` 连表条件为索引友好的 `st.name = s.name COLLATE NOCASE`，彻底消除由于 `OR / trim` 导致 SQLite 对 2,424 个片商反复全表扫描高达 72 万次的性能黑洞；针对常规翻页浏览拆分出极速 `COUNT(*)` 快路径，单次分页查询耗时由 2.53 秒降至 0.22 秒；
   - **前端 Logo 取色与响应式去抖**：将 `studioLogoColorMap` 解耦为非响应式静态缓存，Logo 取色后直接对当前 DOM 展台容器应用渐变底色，彻底杜绝图片加载时反复触发表格全部卡片重新渲染与布局抖动；
   - **消除图片滚动重绘开销**：移除片商卡片 Logo 图片上的 `filter drop-shadow` 动态透明通道投影滤镜，改用外层容器硬件加速阴影，大幅释放 WebKit/Blink 滚动帧率，使片商库滑动与无限加载全程丝滑流畅。
 - **浅色主题背景与文字对比度与可读性修复 (`theme.css`, `App.vue`)**：
