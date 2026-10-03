@@ -383,8 +383,18 @@ const gridCols = ref<number>(Number(localStorage.getItem(PREFS.gridCols)) || 5);
 // List view uses its own column count: the cards are horizontal and much wider,
 // so the useful range is 2-4 rather than 2-8.
 const listCols = ref<number>(Number(localStorage.getItem(PREFS.listCols)) || 3);
+// Studio library uses its own column count (defaults to 4 per user preference)
+const studioCols = ref<number>(Number(localStorage.getItem(PREFS.studioCols)) || 4);
 
 function decreaseCols() {
+  if (currentTab.value === 'studios') {
+    if (studioCols.value > 2) {
+      studioCols.value--;
+      localStorage.setItem(PREFS.studioCols, String(studioCols.value));
+      recordGridAdjust();
+    }
+    return;
+  }
   if (viewMode.value === 'list') {
     if (listCols.value > 2) {
       listCols.value--;
@@ -401,6 +411,14 @@ function decreaseCols() {
 }
 
 function increaseCols() {
+  if (currentTab.value === 'studios') {
+    if (studioCols.value < 8) {
+      studioCols.value++;
+      localStorage.setItem(PREFS.studioCols, String(studioCols.value));
+      recordGridAdjust();
+    }
+    return;
+  }
   if (viewMode.value === 'list') {
     if (listCols.value < 4) {
       listCols.value++;
@@ -417,8 +435,14 @@ function increaseCols() {
 }
 
 /** Column count driving whichever view is active. */
-const activeCols = computed(() => (viewMode.value === 'list' ? listCols.value : gridCols.value));
-const activeColsMax = computed(() => (viewMode.value === 'list' ? 4 : 8));
+const activeCols = computed(() => {
+  if (currentTab.value === 'studios') return studioCols.value;
+  return viewMode.value === 'list' ? listCols.value : gridCols.value;
+});
+const activeColsMax = computed(() => {
+  if (currentTab.value === 'studios') return 8;
+  return viewMode.value === 'list' ? 4 : 8;
+});
 
 // Performer filtering (issue #7)
 const performerFilters = reactive<PerformerFilterState>(createPerformerFilters());
@@ -795,6 +819,7 @@ async function handleExportUserData() {
         pageSize: pageSize.value,
         gridCols: gridCols.value,
         listCols: listCols.value,
+        studioCols: studioCols.value,
         listMode: listMode.value,
         translateMode: translateMode.value
       }
@@ -2162,19 +2187,27 @@ onUnmounted(() => {
               class="p-4 rounded-2xl bg-surface/60 border border-line hover:border-accent-fill/40 hover:bg-surface transition-all cursor-pointer flex flex-col items-center text-center group"
             >
               <!-- Portrait when scraped, letter avatar otherwise (issue #6) -->
-              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-line-strong/60 group-hover:ring-accent-fill/50 transition">
-                <img
-                  v-if="p.image_url"
-                  :src="getImageUrl(p.image_url)"
-                  :alt="p.name"
-                  loading="lazy"
-                  referrerpolicy="no-referrer"
-                  class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                  @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
-                />
+              <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-line-strong/60 group-hover:ring-accent-fill/50 transition bg-surface-2 flex items-center justify-center">
+                <template v-if="p.image_url">
+                  <!-- Blurred color-fill backdrop to fill blank areas seamlessly -->
+                  <div
+                    class="absolute inset-0 bg-cover bg-center blur-md opacity-70 scale-125 pointer-events-none transform-gpu"
+                    :style="{ backgroundImage: `url(${getImageUrl(p.image_url)})` }"
+                  ></div>
+                  <div class="absolute inset-0 bg-black/15 pointer-events-none"></div>
+                  <!-- Foreground sharp uncropped portrait -->
+                  <img
+                    :src="getImageUrl(p.image_url)"
+                    :alt="p.name"
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                    class="relative z-10 w-full h-full object-contain filter drop-shadow group-hover:scale-105 transition-transform duration-300"
+                    @error="p.image_url = null"
+                  />
+                </template>
                 <div
                   v-else
-                  class="w-full h-full bg-gradient-to-tr from-surface-2 to-surface-3 group-hover:from-accent-fill group-hover:to-accent-2 flex items-center justify-center font-bold text-lg text-fg-3 group-hover:text-on-fill transition"
+                  class="w-full h-full bg-gradient-to-tr from-surface-2 to-surface-3 group-hover:from-accent-fill group-hover:to-accent-2 flex items-center justify-center font-bold text-2xl text-fg-3 group-hover:text-on-fill transition"
                 >
                   {{ p.name.charAt(0).toUpperCase() }}
                 </div>

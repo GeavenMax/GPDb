@@ -4,7 +4,6 @@ import { Film, Clock, Heart, Star, Clapperboard, Languages, Sparkles } from '@lu
 import type { Movie } from '../types';
 import { getImageUrl } from '../utils/image';
 import { pickZh, titlePrimary, titleSecondary } from '../utils/bilingual';
-import { trCategory } from '../utils/glossary';
 import { t, currentLocale } from '../i18n';
 
 const props = withDefaults(defineProps<{
@@ -64,9 +63,6 @@ const hasTranslation = computed(
  */
 const titleMain = computed(() => titlePrimary(props.movie, props.lang));
 const titleAlt = computed(() => titleSecondary(props.movie, props.lang));
-
-/** Category, term by term — the column holds "Wrestling<br />J/O" as one value. */
-const categoryLabel = computed(() => trCategory(props.movie.category));
 
 /**
  * One line naming the film's director(s), for the card.
@@ -330,53 +326,33 @@ const directorTitle = computed(() => {
         </h3>
         <p v-if="titleAlt" class="text-[10px] text-fg-4 line-clamp-1 leading-snug">{{ titleAlt }}</p>
 
-        <!-- Row 3: Category or Director -->
-        <div class="flex items-center gap-2 text-[11px] text-fg-3 mt-1">
-          <span v-if="movie.category" class="truncate">{{ categoryLabel }}</span>
-          <span v-if="directorLine" class="flex items-center gap-1 text-fg-4 text-[10px] truncate" :title="directorTitle">
-            <Clapperboard class="w-2.5 h-2.5 text-fg-3" />
-            {{ directorLine }}
-          </span>
+        <!-- Row 3: Director (if present) -->
+        <div v-if="directorLine" class="flex items-center gap-1 text-fg-4 text-[10px] truncate mt-1" :title="directorTitle">
+          <Clapperboard class="w-2.5 h-2.5 text-fg-3" />
+          <span>{{ directorLine }}</span>
         </div>
       </div>
 
-      <!-- Bottom Metadata: Cast preview + User Private Star Rating & Tags -->
-      <div class="space-y-1.5 pt-1 border-t border-line/40">
-        <!-- Cast preview chips -->
-        <div v-if="movie.performers && movie.performers.length > 0" class="flex flex-wrap gap-1">
-          <span
-            v-for="p in movie.performers.slice(0, 2)"
-            :key="p.id"
-            class="text-[10px] px-1.5 py-0.5 rounded bg-surface-2/60 text-fg-3 border border-line-strong/30 truncate max-w-[90px]"
-          >
-            {{ p.name }}
-          </span>
-          <span
-            v-if="movie.performers.length > 2"
-            class="text-[10px] px-1 py-0.5 rounded bg-surface-2/30 text-fg-4"
-          >
-            +{{ movie.performers.length - 2 }}
-          </span>
-        </div>
-
-        <!-- User Private Rating & Custom Tags (If Annotated) -->
-        <div v-if="movie.userData && (movie.userData.rating || (movie.userData.tags && movie.userData.tags.length > 0))" class="flex items-center gap-1.5 pt-0.5 flex-wrap">
-          <span
-            v-if="movie.userData.rating"
-            class="flex items-center gap-0.5 text-[10px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20"
-          >
-            <Star class="w-2.5 h-2.5 fill-current" />
-            {{ movie.userData.rating.toFixed(1) }}
-          </span>
-          <span
-            v-for="t in (movie.userData.tags || []).slice(0, 2)"
-            :key="t.id"
-            class="text-[9px] px-1.5 py-0.5 rounded font-medium border"
-            :style="{ color: t.color, borderColor: `${t.color}40`, backgroundColor: `${t.color}15` }"
-          >
-            {{ t.name }}
-          </span>
-        </div>
+      <!-- Bottom Metadata: User Private Star Rating & Tags (If Annotated) -->
+      <div
+        v-if="movie.userData && (movie.userData.rating || (movie.userData.tags && movie.userData.tags.length > 0))"
+        class="pt-1.5 border-t border-line/40 flex items-center gap-1.5 flex-wrap"
+      >
+        <span
+          v-if="movie.userData.rating"
+          class="flex items-center gap-0.5 text-[10px] font-bold text-accent bg-accent/10 px-1.5 py-0.5 rounded border border-accent/20"
+        >
+          <Star class="w-2.5 h-2.5 fill-current" />
+          {{ movie.userData.rating.toFixed(1) }}
+        </span>
+        <span
+          v-for="t in (movie.userData.tags || []).slice(0, 2)"
+          :key="t.id"
+          class="text-[9px] px-1.5 py-0.5 rounded font-medium border"
+          :style="{ color: t.color, borderColor: `${t.color}40`, backgroundColor: `${t.color}15` }"
+        >
+          {{ t.name }}
+        </span>
       </div>
     </div>
   </div>

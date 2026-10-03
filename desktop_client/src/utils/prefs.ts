@@ -25,6 +25,7 @@ export const PREFS = {
   descLang: 'gpdb_desc_lang',
   gridCols: 'gpdb_grid_cols',
   listCols: 'gpdb_list_cols',
+  studioCols: 'gpdb_studio_cols',
   /** Translation batching: 'single' or 'batch'. */
   translateMode: 'gpdb_translate_mode',
   pageSize: 'gpdb_page_size',
@@ -51,6 +52,7 @@ const LEGACY: Record<PrefName, string> = {
   descLang: 'gpdb_desc_lang',
   gridCols: 'gpdb_grid_cols',
   listCols: 'gpdb_list_cols',
+  studioCols: 'gpdb_studio_cols',
   translateMode: 'gpdb_translate_mode',
   pageSize: 'gpdb_page_size',
   listMode: 'gpdb_list_mode',
