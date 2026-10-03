@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent, nextTick } from 'vue';
-import { X, Film, Layers, Heart, Loader2, Languages, Globe } from '@lucide/vue';
-import type { Movie, StudioWorks, FavoriteType } from '../types';
+import { ref, shallowReactive, computed, watch, onMounted, onUnmounted, defineAsyncComponent, nextTick } from 'vue';
+import { X, Film, Layers, Heart, Loader2, Languages, Globe, LayoutGrid, List, Clapperboard } from '@lucide/vue';
+import type { Movie, Episode, StudioWorks, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
 import { claimEscape } from '../utils/escape';
 import { getImageUrl } from '../utils/image';
 import { sampleImageEdgeColor, type SampledColorResult } from '../utils/colorSampler';
 import { pluginsConfig, openUrlExternal } from '../services/pluginManager';
-import { t } from '../i18n';
+import { t, currentLocale } from '../i18n';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -51,12 +51,22 @@ const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'select-movie', movie: Movie): void;
   (e: 'select-movie-id', movieId: number): void;
+  (e: 'select-episode-id', episodeId: number): void;
   (e: 'toggle-favorite', studioName: string): void;
   /** Movie / episode hearts; the studio itself has its own event above. */
   (e: 'toggle-entity-favorite', type: FavoriteType, key: string): void;
 }>();
 
 const activeTab = ref<'movies' | 'episodes'>('movies');
+const episodeLayout = ref<'grid' | 'list'>('grid');
+const thumbnailErrorSet = shallowReactive(new Set<number>());
+
+function effectiveMovieTitle(ep: Episode): string {
+  if (effectiveLang.value === 'zh' && ep.movie_title_zh) {
+    return ep.movie_title_zh;
+  }
+  return ep.movie_title || '';
+}
 
 const movies = computed(() => props.works?.movies || []);
 const episodes = computed(() => props.works?.episodes || []);
@@ -249,6 +259,8 @@ watch(() => props.studio?.name, () => {
   logoError.value = false;
   bannerError.value = false;
   logoSampledResult.value = null;
+  thumbnailErrorSet.clear();
+  episodeLayout.value = 'grid';
   nextTick(() => {
     if (modalContainerRef.value) {
       modalContainerRef.value.scrollTop = 0;
@@ -490,19 +502,121 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
 
         <!-- 2. Episodes & Scenes Tab -->
-        <div v-else-if="activeTab === 'episodes'">
+        <div v-else-if="activeTab === 'episodes'" class="space-y-4">
+          <!-- Top Bar: Episode Count & View Mode Switcher (Grid vs List) -->
+          <div class="flex items-center justify-between pb-1 flex-wrap gap-2">
+            <span class="text-xs text-fg-4">{{ episodes.length }} {{ t('common.episodes') }}</span>
+            <!-- Layout Switcher: Grid vs List -->
+            <div class="flex items-center bg-surface-2/80 rounded-xl p-0.5 border border-line text-xs font-semibold">
+              <button
+                type="button"
+                @click="episodeLayout = 'grid'"
+                :class="[
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer',
+                  episodeLayout === 'grid'
+                    ? 'bg-accent-fill text-on-fill shadow-xs'
+                    : 'text-fg-4 hover:text-fg hover:bg-surface-3/50'
+                ]"
+                :title="t('view.grid')"
+              >
+                <LayoutGrid class="w-3.5 h-3.5" />
+                <span>{{ t('view.grid') }}</span>
+              </button>
+              <button
+                type="button"
+                @click="episodeLayout = 'list'"
+                :class="[
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer',
+                  episodeLayout === 'list'
+                    ? 'bg-accent-fill text-on-fill shadow-xs'
+                    : 'text-fg-4 hover:text-fg hover:bg-surface-3/50'
+                ]"
+                :title="t('view.list')"
+              >
+                <List class="w-3.5 h-3.5" />
+                <span>{{ t('view.list') }}</span>
+              </button>
+            </div>
+          </div>
+
           <div v-if="episodes.length > 0" class="space-y-4">
-            <div class="grid grid-cols-1 gap-3">
-              <!-- One row per scene, in the shared reading layout — see EpisodeRow.
-                   The whole row opens the film, so the 出处 label is not a link here. -->
+            <!-- 2.1 Grid Layout (网格海报模式，针对横向剧照优化画幅比例) -->
+            <div v-if="episodeLayout === 'grid'" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div
+                v-for="ep in displayedEpisodes"
+                :key="ep.id"
+                @click="emit('select-episode-id', ep.id)"
+                class="group relative flex flex-col rounded-2xl bg-surface/60 border border-line/80 hover:border-accent-fill/50 hover:shadow-xl hover:shadow-accent-fill/10 transition-all duration-300 overflow-hidden cursor-pointer select-none"
+              >
+                <!-- Still Thumbnail (16:9 宽屏剧照画幅，自适应裁剪与留白优化) -->
+                <div class="relative w-full aspect-video bg-sunken overflow-hidden">
+                  <img
+                    v-if="ep.thumbnail_url && !thumbnailErrorSet.has(ep.id)"
+                    :src="getImageUrl(ep.thumbnail_url)"
+                    :alt="ep.title"
+                    loading="lazy"
+                    referrerpolicy="no-referrer"
+                    @error="thumbnailErrorSet.add(ep.id)"
+                    class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
+                  />
+                  <div v-else class="w-full h-full flex flex-col items-center justify-center gap-1.5 bg-gradient-to-b from-surface to-sunken text-fg-5">
+                    <Clapperboard class="w-7 h-7 stroke-1 text-fg-5" />
+                    <span class="text-[10px] font-medium">{{ t('episode.noThumbnail') }}</span>
+                  </div>
+
+                  <!-- Favorite Heart Badge -->
+                  <button
+                    @click.stop="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+                    class="absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md bg-black/40 hover:bg-black/70 text-fg transition cursor-pointer z-10"
+                    :title="isFav('episode', String(ep.id)) ? t('episode.unfavorite') : t('episode.favorite')"
+                  >
+                    <Heart
+                      class="w-3.5 h-3.5 transition"
+                      :class="isFav('episode', String(ep.id)) ? 'text-danger fill-danger' : 'text-white/80'"
+                    />
+                  </button>
+                </div>
+
+                <!-- Card Content -->
+                <div class="p-3 flex-1 flex flex-col justify-between gap-1.5">
+                  <div>
+                    <div class="flex items-start justify-between gap-1">
+                      <h4 class="text-xs font-bold text-fg group-hover:text-accent transition line-clamp-1" :title="ep.title">
+                        {{ ep.title }}
+                      </h4>
+                      <span v-if="ep.description_zh?.trim()" class="text-[9px] font-bold text-success flex items-center shrink-0" :title="t('filter.hasZhSynopsis')">
+                        {{ currentLocale.startsWith('zh') ? '中' : 'ZH' }}
+                      </span>
+                    </div>
+                    <div
+                      v-if="ep.movie_title || ep.movie_title_zh"
+                      @click.stop="ep.movie_id && emit('select-movie-id', ep.movie_id)"
+                      class="text-[11px] text-fg-4 mt-0.5 truncate hover:text-accent hover:underline cursor-pointer"
+                      :title="effectiveMovieTitle(ep)"
+                    >
+                      {{ t('common.source') }}: {{ effectiveMovieTitle(ep) }}
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between text-[10px] text-fg-4 pt-1.5 border-t border-line/40">
+                    <span class="truncate max-w-[140px] font-medium text-fg-3">{{ studio.name }}</span>
+                    <span v-if="ep.release_date || ep.release_year">{{ ep.release_date || ep.release_year }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2.2 List Layout (密集列表模式) -->
+            <div v-else class="grid grid-cols-1 gap-3">
               <EpisodeRow
                 v-for="ep in displayedEpisodes"
                 :key="ep.id"
                 :episode="ep"
                 :lang="effectiveLang"
                 clickable
+                zoom-on-click
                 :is-favorite="isFav('episode', String(ep.id))"
                 @select-movie-id="emit('select-movie-id', $event)"
+                @select-episode-id="emit('select-episode-id', $event)"
                 @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
               />
             </div>

@@ -4283,6 +4283,7 @@ onUnmounted(() => {
       @close="closeStudioDetail"
       @select-movie="openMovieDetail"
       @select-movie-id="openMovieDetailById"
+      @select-episode-id="openEpisodeDetailById"
       @toggle-favorite="toggleStudioFavorite"
       @toggle-entity-favorite="toggleFavoriteEntity"
     />

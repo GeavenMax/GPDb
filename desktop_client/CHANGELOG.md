@@ -17,6 +17,11 @@
   - 在国际化字典中为所有支持语言添加 `'studio.officialWebsite'` 词条：中文简体（官方网站）、中文繁体（官方網站）、英语（Official Website）、日语（公式サイト）、意大利语（Sito ufficiale）、西班牙语（Sitio oficial）、德语（Offizielle Website）。
 
 ### Changed
+- **片商档案详情分集片段页支持网格海报模式与密集列表模式双模切换 (`StudioDetailModal.vue`, `App.vue`)**：
+  - **默认网格海报模式**：全面对齐演员档案页的设计语言，默认以美观直观的 4 列网格海报卡片展示分集片段；
+  - **横向剧照画幅深度适配**：分集封面采用 `aspect-video` (16:9) 宽屏比例容器与 `object-cover` 居中填充，针对横向剧照/场景截图进行比例优化，彻底消除竖版海报容器对横屏视频截图造成的过度拉伸或上下黑边裁切，并支持缩放平滑过渡；
+  - **手动布局自由切换**：头部集成专属视图切换器（网格海报模式 / 密集列表模式），保留完整的密集列表视图供深度阅读剧本大纲；
+  - **交互体验完善**：网格卡片点击直接唤起独立分集详情 (`openEpisodeDetailById`)，卡片内出处影片链接支持独立快捷点击跳转主影片 (`openMovieDetailById`)，并内置中文剧情指示标与收藏红心交互。
 - **内核查询与数据契约全面打通 (`gpdb-core/src/models.rs`, `queries/studios.rs`, `migrate.rs`)**：
   - **数据模型增强**：`StudioSummary` 与 `StudioWorks` 均新增 `website_url: Option<String>` 字段；
   - **查询管道与连表映射**：`get_studio_library` 与 `get_studio_works` 均读取并映射 `st.website_url`，保证列表与详情两端数据一致；
