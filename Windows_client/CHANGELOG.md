@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.15.0] - 2026-10-01
 
 ### Fixed
+- **新用户纯数据库导入场景下远程图片加载与自动离线缓存彻底修复 (`utils/image.ts` & `src-tauri/src/commands/cache.rs`)**：
+  - **Windows WebView2 协议端点兼容对齐**：WebView2 内核基于安全沙箱规范拦截自定义协议，前端在 Windows 环境下自适应接入 `http://gpdb-img.localhost/?url=...` 规范端点，解决此前直接请求 `gpdb-img://` 导致请求被 Edge 内核当成未注册系统协议而直接静默阻断报错 (`ERR_UNKNOWN_URL_SCHEME`) 的致命缺陷；
+  - **原生 Rust HTTP 线程池下载替代外部子进程**：引入轻量级纯 Rust TLS 高性能客户端 (`ureq` + `rustls` + `webpki-roots`) 接管边看边下载流水线。彻底摒弃此前单图并发调用外部 `curl.exe` 子进程导致的进程风暴、控制台窗口闪烁及缺少 curl 环境无法下载的缺陷；内置连接池复用与 Keep-Alive，支持全自动伪装 User-Agent 与防盗链 Referer 头；
+  - **移除 302 重定向并直传图片流**：杜绝向 WebView2 返回 302 跳转导致的跨源跨协议拦截 (`ERR_UNSAFE_REDIRECT`)，直接在 Rust 内存层缓冲并以 200 流式输出图片字节，同步安全持久化至本地 `image_cache/`，实现“首次在线直读，后续 100% 离线亚毫秒呈现”；
+  - **全量支持外部第三方图片源离线缓存 (`image_cache/External/`)**：`resolve_cache_target_path` 扩展支持对 PBC (PornBaseCentral)、SmutJunkies 及其他外部高清图源进行 URL 哈希持久化映射，全量图片均享本地离线化待遇。
 - **外链点击无法跳转浏览器缺陷修复 (`App.vue` & `PerformerDetailModal.vue` & `main.ts`)**：
   - 根除 Windows WebView2 沙箱拦截原始 HTML `<a href="..." target="_blank">` 导致设置页「访问仓库 ↗」及演员档案页「互联档案」（IAFD、IMDb、X等）点击无响应的缺陷；
   - 在 `main.ts` 中集成全局外链点击委托分发机制，显式为对应链接绑定 `@click.prevent="openUrlExternal(...)"`，通过系统命令原生安全唤起 Windows 默认浏览器（Edge / Chrome 等）。

@@ -53,6 +53,21 @@ const activeTab = ref<'movies' | 'episodes'>('movies');
 const movies = computed(() => props.works?.movies || []);
 const episodes = computed(() => props.works?.episodes || []);
 
+const BATCH_SIZE = 60;
+const displayedEpisodeCount = ref(BATCH_SIZE);
+
+const displayedEpisodes = computed(() => {
+  return episodes.value.slice(0, displayedEpisodeCount.value);
+});
+
+const hasMoreEpisodes = computed(() => {
+  return displayedEpisodeCount.value < episodes.value.length;
+});
+
+function loadMoreEpisodes() {
+  displayedEpisodeCount.value = Math.min(displayedEpisodeCount.value + BATCH_SIZE, episodes.value.length);
+}
+
 // Counts come from the loaded works, falling back to whatever the caller knew
 // before the fetch landed so the header is populated from the first frame.
 const worksCount = computed(() => props.works?.movies_count ?? props.studio?.works_count ?? 0);
@@ -67,7 +82,21 @@ function isFav(type: FavoriteType, key: string | null | undefined): boolean {
 // is not carried over — as in PerformerDetailModal.
 watch(() => props.studio?.name, () => {
   activeTab.value = 'movies';
+  displayedEpisodeCount.value = BATCH_SIZE;
 });
+
+watch(activeTab, () => {
+  displayedEpisodeCount.value = BATCH_SIZE;
+});
+
+function handleScroll(e: Event) {
+  if (activeTab.value !== 'episodes' || !hasMoreEpisodes.value) return;
+  const target = e.target as HTMLElement;
+  if (!target) return;
+  if (target.scrollTop + target.clientHeight >= target.scrollHeight - 400) {
+    loadMoreEpisodes();
+  }
+}
 
 function onKeydown(e: KeyboardEvent) {
   if (e.key !== 'Escape' || props.isTop === false) return;
@@ -88,6 +117,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
   >
     <div
       class="relative w-full max-w-4xl max-h-[90vh] chrome-panel border border-line-strong/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col text-fg"
+      @scroll="handleScroll"
     >
       <!-- Close Button -->
       <button
@@ -188,19 +218,34 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- 2. Episodes & Scenes Tab -->
         <div v-else-if="activeTab === 'episodes'">
-          <div v-if="episodes.length > 0" class="grid grid-cols-1 gap-3">
-            <!-- One row per scene, in the shared reading layout — see EpisodeRow.
-                 The whole row opens the film, so the 出处 label is not a link here. -->
-            <EpisodeRow
-              v-for="ep in episodes"
-              :key="ep.id"
-              :episode="ep"
-              :lang="lang"
-              clickable
-              :is-favorite="isFav('episode', String(ep.id))"
-              @select-movie-id="emit('select-movie-id', $event)"
-              @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
-            />
+          <div v-if="episodes.length > 0" class="space-y-4">
+            <div class="grid grid-cols-1 gap-3">
+              <!-- One row per scene, in the shared reading layout — see EpisodeRow.
+                   The whole row opens the film, so the 出处 label is not a link here. -->
+              <EpisodeRow
+                v-for="ep in displayedEpisodes"
+                :key="ep.id"
+                :episode="ep"
+                :lang="lang"
+                clickable
+                :is-favorite="isFav('episode', String(ep.id))"
+                @select-movie-id="emit('select-movie-id', $event)"
+                @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
+              />
+            </div>
+
+            <!-- Progressive Loading Indicator & Button -->
+            <div v-if="hasMoreEpisodes" class="flex flex-col items-center justify-center py-4 gap-2 border-t border-line/60">
+              <div class="text-xs text-fg-3">
+                已显示 {{ displayedEpisodes.length }} / 共 {{ episodes.length }} 个片段
+              </div>
+              <button
+                @click="loadMoreEpisodes"
+                class="px-5 py-2 text-xs font-medium rounded-xl bg-surface-2 hover:bg-surface-3 border border-line-strong text-fg-2 hover:text-fg transition shadow-sm cursor-pointer"
+              >
+                加载更多片段 (+{{ Math.min(BATCH_SIZE, episodes.length - displayedEpisodes.length) }})
+              </button>
+            </div>
           </div>
           <div v-else-if="loading" class="text-center py-12 text-fg-4 text-xs">正在读取片段清单…</div>
           <div v-else class="text-center py-12 text-fg-4 text-xs">该片商暂未收录独立分集片段</div>

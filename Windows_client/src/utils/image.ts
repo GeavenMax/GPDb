@@ -18,14 +18,24 @@ export function getImageUrl(rawUrl: string | null | undefined): string {
     rawUrl.startsWith('data:') ||
     rawUrl.startsWith('blob:') ||
     rawUrl.startsWith('gpdb-img:') ||
+    rawUrl.startsWith('http://gpdb-img.localhost') ||
+    rawUrl.startsWith('https://gpdb-img.localhost') ||
     rawUrl.startsWith(LOCAL_API_BASE)
   ) {
     return rawUrl;
   }
 
-  // In Tauri desktop client: read directly from local disk image_cache via gpdb-img protocol
+  // In Tauri desktop client: read directly from local disk image_cache via custom protocol
   if (isTauriEnv) {
-    return `gpdb-img://localhost/?url=${encodeURIComponent(rawUrl)}`;
+    const isMac =
+      typeof navigator !== 'undefined' &&
+      navigator.userAgent.includes('Macintosh');
+
+    if (isMac) {
+      return `gpdb-img://localhost/?url=${encodeURIComponent(rawUrl)}`;
+    }
+    // Windows WebView2 and Android intercept http://<scheme>.localhost:
+    return `http://gpdb-img.localhost/?url=${encodeURIComponent(rawUrl)}`;
   }
 
   // If running in browser dev connecting to local python API server:

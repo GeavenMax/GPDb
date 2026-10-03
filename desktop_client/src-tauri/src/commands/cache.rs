@@ -2,7 +2,7 @@ use crate::db;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::RwLock;
+use std::sync::{OnceLock, RwLock};
 use std::time::{Duration, Instant};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -14,6 +14,18 @@ pub struct CacheStats {
 
 static CACHED_STATS: RwLock<Option<(Instant, CacheStats)>> = RwLock::new(None);
 const STATS_TTL: Duration = Duration::from_secs(300); // 5 minutes
+
+static HTTP_CLIENT: OnceLock<ureq::Agent> = OnceLock::new();
+
+fn get_http_client() -> &'static ureq::Agent {
+    HTTP_CLIENT.get_or_init(|| {
+        ureq::AgentBuilder::new()
+            .timeout_connect(Duration::from_secs(6))
+            .timeout_read(Duration::from_secs(15))
+            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+            .build()
+    })
+}
 
 pub fn find_cache_dir() -> PathBuf {
     // 1. If GPDb.db is found, image_cache is right next to it
@@ -156,7 +168,7 @@ pub async fn clear_cache() -> Result<usize, String> {
 }
 
 /// Resolves a requested image URL to a local cached file on disk.
-/// Matches folders: Covers, Episodes, Stars, Icons, Logo.
+/// Matches folders: Covers, Episodes, Stars, Icons, Logo, and External.
 /// Resolves what the destination path in local image_cache should be.
 pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
     let cache_dir = find_cache_dir();
@@ -196,7 +208,8 @@ pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
             .unwrap_or(rel_path)
             .split('#')
             .next()
-            .unwrap_or(rel_path);
+            .unwrap_or(rel_path)
+            .trim_start_matches(|c| c == '/' || c == '\\');
 
         let path = cache_dir.join(folder).join(clean_rel);
         let mime = if clean_rel.to_ascii_lowercase().ends_with(".png") {
@@ -209,11 +222,36 @@ pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
         return Some((path, mime));
     }
 
+    // External remote images (e.g. PBC, SmutJunkies, BoyfriendTV, etc.)
+    if lower.starts_with("http://") || lower.starts_with("https://") {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        url.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        let ext = if lower.contains(".png") {
+            "png"
+        } else if lower.contains(".webp") {
+            "webp"
+        } else {
+            "jpg"
+        };
+        let mime = match ext {
+            "png" => "image/png",
+            "webp" => "image/webp",
+            _ => "image/jpeg",
+        };
+
+        let path = cache_dir.join("External").join(format!("{:016x}.{}", hash, ext));
+        return Some((path, mime));
+    }
+
     None
 }
 
 /// Resolves a requested image URL to an existing local cached file on disk.
-/// Matches folders: Covers, Episodes, Stars, Icons, Logo.
+/// Matches folders: Covers, Episodes, Stars, Icons, Logo, External.
 pub fn resolve_cache_file(url: &str) -> Option<(PathBuf, &'static str)> {
     let (path, mime) = resolve_cache_target_path(url)?;
     if path.is_file() {
@@ -223,10 +261,21 @@ pub fn resolve_cache_file(url: &str) -> Option<(PathBuf, &'static str)> {
     }
 }
 
-/// Custom URI scheme protocol handler for `gpdb-img://`.
+/// Custom URI scheme protocol handler for `gpdb-img://` and `http://gpdb-img.localhost/`.
 /// Enables ultra-fast local disk image loading directly from `image_cache/`
 /// with automatic on-demand download & caching for un-cached images.
 pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http::Response<Vec<u8>> {
+    // Handle CORS preflight
+    if req.method() == "OPTIONS" {
+        return tauri::http::Response::builder()
+            .status(200)
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+            .header("Access-Control-Allow-Headers", "*")
+            .body(Vec::new())
+            .unwrap();
+    }
+
     let uri_str = req.uri().to_string();
     let parsed_url = url::Url::parse(&uri_str).ok();
 
@@ -236,6 +285,15 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
     }).unwrap_or_else(|| {
         req.uri().path().trim_start_matches('/').to_string()
     });
+
+    if target.is_empty() {
+        return tauri::http::Response::builder()
+            .status(404)
+            .header("Content-Type", "text/plain")
+            .header("Access-Control-Allow-Origin", "*")
+            .body(b"Missing target".to_vec())
+            .unwrap();
+    }
 
     // 1. If already cached on local disk, serve immediately
     if let Some((local_path, mime)) = resolve_cache_file(&target) {
@@ -265,70 +323,109 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
         None
     };
 
-    if let (Some(url), Some((dest_path, mime))) = (remote_url.as_ref(), resolve_cache_target_path(&target)) {
+    if let (Some(url), Some((dest_path, expected_mime))) = (remote_url.as_ref(), resolve_cache_target_path(&target)) {
         if let Some(parent) = dest_path.parent() {
             let _ = fs::create_dir_all(parent);
         }
 
-        // Fetch via curl and persist to disk safely with atomic temp file
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-        let temp_path = dest_path.with_extension(format!("tmp.{}", nanos));
+        let referer = if url.contains("gayeroticvideoindex.com") {
+            "https://gayeroticvideoindex.com/"
+        } else if url.contains("smutjunkies.com") {
+            "https://www.smutjunkies.com/"
+        } else if url.contains("pbc.xxx") {
+            "https://pbc.xxx/"
+        } else {
+            ""
+        };
 
-        let status = std::process::Command::new("curl")
-            .arg("-s")
-            .arg("-L")
-            .arg("-f")
-            .arg("--connect-timeout")
-            .arg("4")
-            .arg("--max-time")
-            .arg("12")
-            .arg("-A")
-            .arg("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
-            .arg("-e")
-            .arg("https://gayeroticvideoindex.com/")
-            .arg("-o")
-            .arg(&temp_path)
-            .arg(url)
-            .status();
+        let mut downloaded_bytes = None;
+        let mut final_mime = expected_mime.to_string();
 
-        if status.is_ok_and(|s| s.success()) && temp_path.is_file() {
-            if let Ok(meta) = fs::metadata(&temp_path) {
-                if meta.len() > 0 {
-                    let _ = fs::rename(&temp_path, &dest_path);
-                    if let Ok(bytes) = fs::read(&dest_path) {
-                        if let Ok(mut g) = CACHED_STATS.write() {
-                            *g = None;
-                        }
-                        return tauri::http::Response::builder()
-                            .status(200)
-                            .header("Content-Type", mime)
-                            .header("Cache-Control", "public, max-age=31536000, immutable")
-                            .header("Access-Control-Allow-Origin", "*")
-                            .body(bytes)
-                            .unwrap();
+        // Primary: Native Rust ureq HTTP client (high performance, connection pooled, pure Rust TLS)
+        let mut req_builder = get_http_client().get(url);
+        if !referer.is_empty() {
+            req_builder = req_builder.set("Referer", referer);
+        }
+
+        match req_builder.call() {
+            Ok(resp) => {
+                if let Some(ct) = resp.header("Content-Type") {
+                    let ct_clean = ct.split(';').next().unwrap_or(ct).trim().to_string();
+                    if ct_clean.starts_with("image/") {
+                        final_mime = ct_clean;
                     }
-                } else {
-                    let _ = fs::remove_file(&temp_path);
+                }
+                let mut reader = resp.into_reader();
+                let mut buf = Vec::new();
+                if std::io::copy(&mut reader, &mut buf).is_ok() && !buf.is_empty() {
+                    downloaded_bytes = Some(buf);
                 }
             }
-        } else {
-            let _ = fs::remove_file(&temp_path);
+            Err(e) => {
+                log::debug!("ureq image download error for {}: {}", url, e);
+            }
+        }
+
+        // Secondary fallback to curl if ureq fails (e.g. system proxy requirements)
+        if downloaded_bytes.is_none() {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos();
+            let temp_path = dest_path.with_extension(format!("tmp.{}", nanos));
+
+            let mut cmd = std::process::Command::new("curl");
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
+            cmd.arg("-s")
+                .arg("-L")
+                .arg("-f")
+                .arg("-k")
+                .arg("--connect-timeout")
+                .arg("5")
+                .arg("--max-time")
+                .arg("15")
+                .arg("-A")
+                .arg("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36");
+            if !referer.is_empty() {
+                cmd.arg("-e").arg(referer);
+            }
+            cmd.arg("-o").arg(&temp_path).arg(url);
+
+            if let Ok(status) = cmd.status() {
+                if status.success() && temp_path.is_file() {
+                    if let Ok(bytes) = fs::read(&temp_path) {
+                        if !bytes.is_empty() {
+                            downloaded_bytes = Some(bytes);
+                        }
+                    }
+                    let _ = fs::remove_file(&temp_path);
+                }
+            } else {
+                let _ = fs::remove_file(&temp_path);
+            }
+        }
+
+        if let Some(bytes) = downloaded_bytes {
+            // Write to local cache on disk
+            let _ = fs::write(&dest_path, &bytes);
+            if let Ok(mut g) = CACHED_STATS.write() {
+                *g = None;
+            }
+            return tauri::http::Response::builder()
+                .status(200)
+                .header("Content-Type", final_mime)
+                .header("Cache-Control", "public, max-age=31536000, immutable")
+                .header("Access-Control-Allow-Origin", "*")
+                .body(bytes)
+                .unwrap();
         }
     }
 
-    // 3. Fallback: If download failed or timed out, 302 redirect so WebKit can still try loading
-    if let Some(url) = remote_url {
-        return tauri::http::Response::builder()
-            .status(302)
-            .header("Location", &url)
-            .header("Access-Control-Allow-Origin", "*")
-            .body(Vec::new())
-            .unwrap();
-    }
-
+    // 3. Fallback: 404 (do NOT 302 redirect, which breaks WebView2 on Windows)
     tauri::http::Response::builder()
         .status(404)
         .header("Content-Type", "text/plain")
@@ -375,6 +472,11 @@ mod tests {
         let sample3 = "covers/2/video2.jpg";
         let (path3, _) = resolve_cache_target_path(sample3).expect("Failed to resolve sample3");
         assert!(path3.to_string_lossy().ends_with("Covers/2/video2.jpg"));
+
+        let sample_external = "https://pbc.xxx/wiki/Special:FilePath/Austin_Wilde.jpg";
+        let (path_ext, mime_ext) = resolve_cache_target_path(sample_external).expect("Failed to resolve external");
+        assert_eq!(mime_ext, "image/jpeg");
+        assert!(path_ext.to_string_lossy().contains("External"));
     }
 
     #[test]
@@ -384,11 +486,19 @@ mod tests {
             .body(Vec::new())
             .unwrap();
         let resp = handle_image_protocol(&req);
-        assert!(resp.status() == 200 || resp.status() == 302, "Unexpected status: {}", resp.status());
+        assert!(resp.status() == 200 || resp.status() == 404, "Unexpected status: {}", resp.status());
         if resp.status() == 200 {
             assert_eq!(resp.headers().get("Content-Type").unwrap(), "image/jpeg");
         }
     }
+
+    #[test]
+    fn test_handle_image_protocol_windows_workaround_uri() {
+        let req = tauri::http::Request::builder()
+            .uri("http://gpdb-img.localhost/?url=https%3A%2F%2Fgayeroticvideoindex.com%2Fimages%2FCovers%2F1%2Fvideo1.jpg")
+            .body(Vec::new())
+            .unwrap();
+        let resp = handle_image_protocol(&req);
+        assert!(resp.status() == 200 || resp.status() == 404, "Unexpected status: {}", resp.status());
+    }
 }
-
-

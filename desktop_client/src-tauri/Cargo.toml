@@ -5,7 +5,7 @@ members = ["gpdb-core"]
 
 [package]
 name = "gpdb"
-version = "2.15.0"
+version = "2.16.5"
 description = "GPDb — 离线影视库桌面端"
 authors = ["you"]
 license = ""
@@ -37,3 +37,4 @@ url = "2"
 dirs = "5.0"
 walkdir = "2.5"
 base64 = "0.22"
+ureq = "2.10"
