@@ -8,6 +8,7 @@ import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
 import { pluginsConfig, openPbcPerformer, openUrlExternal } from '../services/pluginManager';
+import { currentLocale, t, type SupportedLocale } from '../i18n';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -54,15 +55,27 @@ function attrValues(key: string, fallback: string | null | undefined): string[] 
 }
 
 // ── PBC 维基档案字典与转换器 ──────────────────────────────────────────────────
-const ASTRO_SIGNS: Record<string, string> = {
-  Aries: '白羊座 ♈', Taurus: '金牛座 ♉', Gemini: '双子座 ♊',
-  Cancer: '巨蟹座 ♋', Leo: '狮子座 ♌', Virgo: '处女座 ♍',
-  Libra: '天秤座 ♎', Scorpio: '天蝎座 ♏', Sagittarius: '射手座 ♐',
-  Capricorn: '摩羯座 ♑', Aquarius: '水瓶座 ♒', Pisces: '双鱼座 ♓',
+const ASTRO_NAMES: Record<SupportedLocale, Record<string, string>> = {
+  'zh-CN': { Aries: '白羊座', Taurus: '金牛座', Gemini: '双子座', Cancer: '巨蟹座', Leo: '狮子座', Virgo: '处女座', Libra: '天秤座', Scorpio: '天蝎座', Sagittarius: '射手座', Capricorn: '摩羯座', Aquarius: '水瓶座', Pisces: '双鱼座' },
+  'zh-TW': { Aries: '牡羊座', Taurus: '金牛座', Gemini: '雙子座', Cancer: '巨蟹座', Leo: '獅子座', Virgo: '處女座', Libra: '天秤座', Scorpio: '天蠍座', Sagittarius: '射手座', Capricorn: '摩羯座', Aquarius: '水瓶座', Pisces: '雙魚座' },
+  'ja': { Aries: '牡羊座', Taurus: '牡牛座', Gemini: '双子座', Cancer: '蟹座', Leo: '獅子座', Virgo: '乙女座', Libra: '天秤座', Scorpio: '蠍座', Sagittarius: '射手座', Capricorn: '山羊座', Aquarius: '水瓶座', Pisces: '魚座' },
+  'it': { Aries: 'Ariete', Taurus: 'Toro', Gemini: 'Gemelli', Cancer: 'Cancro', Leo: 'Leone', Virgo: 'Vergine', Libra: 'Bilancia', Scorpio: 'Scorpione', Sagittarius: 'Sagittario', Capricorn: 'Capricorno', Aquarius: 'Acquario', Pisces: 'Pesci' },
+  'es': { Aries: 'Aries', Taurus: 'Tauro', Gemini: 'Géminis', Cancer: 'Cáncer', Leo: 'Leo', Virgo: 'Virgo', Libra: 'Libra', Scorpio: 'Escorpio', Sagittarius: 'Sagitario', Capricorn: 'Capricornio', Aquarius: 'Acuario', Pisces: 'Piscis' },
+  'de': { Aries: 'Widder', Taurus: 'Stier', Gemini: 'Zwillinge', Cancer: 'Krebs', Leo: 'Löwe', Virgo: 'Jungfrau', Libra: 'Waage', Scorpio: 'Skorpion', Sagittarius: 'Schütze', Capricorn: 'Steinbock', Aquarius: 'Wassermann', Pisces: 'Fische' },
+  'en': { Aries: 'Aries', Taurus: 'Taurus', Gemini: 'Gemini', Cancer: 'Cancer', Leo: 'Leo', Virgo: 'Virgo', Libra: 'Libra', Scorpio: 'Scorpio', Sagittarius: 'Sagittarius', Capricorn: 'Capricorn', Aquarius: 'Aquarius', Pisces: 'Pisces' },
+};
+const ASTRO_SYMBOLS: Record<string, string> = {
+  Aries: '♈', Taurus: '♉', Gemini: '♊',
+  Cancer: '♋', Leo: '♌', Virgo: '♍',
+  Libra: '♎', Scorpio: '♏', Sagittarius: '♐',
+  Capricorn: '♑', Aquarius: '♒', Pisces: '♓',
 };
 function trAstrology(sign?: string | null): string {
   if (!sign) return '';
-  return ASTRO_SIGNS[sign] || sign;
+  const loc = currentLocale.value;
+  const sym = ASTRO_SYMBOLS[sign] || '';
+  const localizedName = ASTRO_NAMES[loc]?.[sign] || sign;
+  return `${localizedName} ${sym}`.trim();
 }
 
 
@@ -79,6 +92,7 @@ const ETHNICITY_MAP: Record<string, string> = {
 };
 function trEthnicity(eth?: string | null): string {
   if (!eth) return '';
+  if (!currentLocale.value.startsWith('zh')) return eth;
   return ETHNICITY_MAP[eth] || eth;
 }
 
@@ -108,6 +122,7 @@ const PERF_TAGS_MAP: Record<string, string> = {
   'Erotic massage': '诱惑按摩',
 };
 function trPerfTag(tag: string): string {
+  if (!currentLocale.value.startsWith('zh')) return tag;
   return PERF_TAGS_MAP[tag] || tag;
 }
 
@@ -119,7 +134,7 @@ const pbcCareerStatus = computed(() => {
   const isAct = status.toLowerCase().includes('active');
   return {
     isActive: isAct,
-    text: isAct ? '活跃中 Active' : '已退役 Retired',
+    text: t(isAct ? 'performer.active' : 'performer.retired'),
   };
 });
 
@@ -180,20 +195,20 @@ const SPECS = computed<Spec[]>(() => {
   const originStr = originParts.length > 0 ? originParts.join(' · ') : null;
 
   return [
-    { key: 'birthDate', label: '出生', accent: false, values: prof?.birth_date ? [prof.age ? `${prof.birth_date} (${prof.age}岁)` : prof.birth_date] : [] },
-    { key: 'astrology', label: '星座', accent: false, values: prof?.astrology ? [trAstrology(prof.astrology)] : [] },
-    { key: 'origin', label: '国籍/原籍', accent: false, values: originStr ? [originStr] : [] },
-    { key: 'ethnicity', label: '族裔', accent: false, values: prof?.ethnicity ? [trEthnicity(prof.ethnicity)] : [] },
-    { key: 'height', label: '身高', accent: false, measure: true, values: attrValues('height', p.height || prof?.height) },
-    { key: 'weight', label: '体重', accent: false, measure: true, values: attrValues('weight', p.weight || prof?.weight) },
-    { key: 'bodyType', label: '体型', accent: false, values: attrValues('bodyType', p.build || prof?.build) },
-    { key: 'dickSize', label: '尺寸规格', accent: true, measure: true, values: attrValues('dickSize', p.dick_size || prof?.penis_size) },
-    { key: 'skin', label: '肤色', accent: false, values: attrValues('skin', p.skin || prof?.skin) },
-    { key: 'hair', label: '发色', accent: false, values: attrValues('hair', p.hair || prof?.hair) },
-    { key: 'eyes', label: '瞳色', accent: false, values: attrValues('eyes', p.eyes || prof?.eyes) },
-    { key: 'bodyHair', label: '体毛', accent: false, values: attrValues('bodyHair', p.body_hair || prof?.body_hair) },
-    { key: 'facialHair', label: '胡须', accent: false, values: attrValues('facialHair', p.facial_hair || prof?.facial_hair) },
-    { key: 'foreskin', label: '包皮', accent: false, values: attrValues('foreskin', p.foreskin || prof?.foreskin) },
+    { key: 'birthDate', label: t('performer.birthDate'), accent: false, values: prof?.birth_date ? [prof.age ? `${prof.birth_date} (${t('performer.ageYears', { age: prof.age })})` : prof.birth_date] : [] },
+    { key: 'astrology', label: t('performer.astrology'), accent: false, values: prof?.astrology ? [trAstrology(prof.astrology)] : [] },
+    { key: 'origin', label: t('performer.origin'), accent: false, values: originStr ? [originStr] : [] },
+    { key: 'ethnicity', label: t('performer.ethnicity'), accent: false, values: prof?.ethnicity ? [trEthnicity(prof.ethnicity)] : [] },
+    { key: 'height', label: t('performer.height'), accent: false, measure: true, values: attrValues('height', p.height || prof?.height) },
+    { key: 'weight', label: t('performer.weight'), accent: false, measure: true, values: attrValues('weight', p.weight || prof?.weight) },
+    { key: 'bodyType', label: t('performer.bodyType'), accent: false, values: attrValues('bodyType', p.build || prof?.build) },
+    { key: 'dickSize', label: t('performer.dickSize'), accent: true, measure: true, values: attrValues('dickSize', p.dick_size || prof?.penis_size) },
+    { key: 'skin', label: t('performer.skin'), accent: false, values: attrValues('skin', p.skin || prof?.skin) },
+    { key: 'hair', label: t('performer.hair'), accent: false, values: attrValues('hair', p.hair || prof?.hair) },
+    { key: 'eyes', label: t('performer.eyes'), accent: false, values: attrValues('eyes', p.eyes || prof?.eyes) },
+    { key: 'bodyHair', label: t('performer.bodyHair'), accent: false, values: attrValues('bodyHair', p.body_hair || prof?.body_hair) },
+    { key: 'facialHair', label: t('performer.facialHair'), accent: false, values: attrValues('facialHair', p.facial_hair || prof?.facial_hair) },
+    { key: 'foreskin', label: t('performer.foreskin'), accent: false, values: attrValues('foreskin', p.foreskin || prof?.foreskin) },
   ].filter(s => s.values.length > 0);
 });
 
@@ -378,7 +393,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-accent uppercase tracking-wider">演员档案</span>
+                <span class="text-xs font-semibold text-accent uppercase tracking-wider">{{ t('performer.profile') }}</span>
                 <span
                   v-if="pbcCareerStatus"
                   :class="[
@@ -400,14 +415,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 <span
                   v-if="performer.works_count ?? performer.movies_count"
                   class="text-accent/80 font-medium"
-                >{{ performer.works_count ?? performer.movies_count }} 部作品</span>
+                >{{ performer.works_count ?? performer.movies_count }} {{ t('common.works') }}</span>
                 <span v-if="pbcProfile?.birth_name && pbcProfile.birth_name !== performer.name" class="text-fg-4">
-                  本名: {{ pbcProfile.birth_name }}
+                  {{ t('performer.birthName') }} {{ pbcProfile.birth_name }}
                 </span>
                 <span v-if="pbcProfile?.career_start" class="text-fg-4">
-                  出道: {{ pbcProfile.career_start }}年
+                  {{ t('performer.careerStart', { year: pbcProfile.career_start }) }}
                 </span>
-                <span v-if="!performer.image_url && !pbcProfile?.image_url" class="text-fg-5">暂无照片</span>
+                <span v-if="!performer.image_url && !pbcProfile?.image_url" class="text-fg-5">{{ t('performer.noPhoto') }}</span>
               </div>
             </div>
           </div>
@@ -434,7 +449,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               ]"
             >
               <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-              <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+              <span>{{ isFavorite ? t('movie.favorited') : t('movie.favorite') }}</span>
             </button>
           </div>
         </div>
@@ -447,9 +462,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <div class="flex items-center justify-between gap-2 flex-wrap">
             <div class="flex items-center gap-2">
               <Tag class="w-3.5 h-3.5 text-accent/80" />
-              <span class="text-xs font-semibold text-fg-3">曾用艺名 / 别名 (AKA)</span>
+              <span class="text-xs font-semibold text-fg-3">{{ t('performer.aliases') }}</span>
               <span class="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-surface-2 text-fg-4 border border-line">
-                共 {{ allAliases.length }} 个
+                {{ t('series.worksTotal', { count: allAliases.length }) }}
               </span>
             </div>
 
@@ -459,7 +474,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               @click="isAliasesExpanded = !isAliasesExpanded"
               class="inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:text-accent-hover transition cursor-pointer select-none"
             >
-              <span>{{ isAliasesExpanded ? '收起部分别名' : `展开全部 (${allAliases.length} 个)` }}</span>
+              <span>{{ isAliasesExpanded ? t('performer.collapseAliases') : t('performer.expandAliases', { count: allAliases.length }) }}</span>
               <component :is="isAliasesExpanded ? ChevronUp : ChevronDown" class="w-3 h-3" />
             </button>
           </div>
@@ -469,7 +484,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               v-for="alias in visibleAliases"
               :key="alias"
               class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-surface-2/80 hover:bg-surface-3 text-fg-2 border border-line-strong/60 transition select-text"
-              :title="`别名: ${alias}`"
+              :title="`${t('performer.aliases')}: ${alias}`"
             >
               {{ alias }}
             </span>
@@ -478,7 +493,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               @click="isAliasesExpanded = true"
               class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent/25 transition cursor-pointer"
             >
-              +{{ allAliases.length - ALIASES_COLLAPSE_THRESHOLD }} 更多...
+              +{{ allAliases.length - ALIASES_COLLAPSE_THRESHOLD }} {{ t('common.loadMore') }}
             </button>
           </div>
         </div>
@@ -488,7 +503,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           v-if="performer.notes"
           class="w-full text-xs text-fg-3/90 bg-surface/40 border border-line/60 rounded-xl px-3.5 py-2 leading-relaxed italic"
         >
-          <span class="text-fg-4 not-italic font-medium mr-1.5">备注说明:</span>
+          <span class="text-fg-4 not-italic font-medium mr-1.5">{{ t('performer.notes') }}</span>
           {{ performer.notes }}
         </div>
 
@@ -496,7 +511,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div
           v-if="SPECS.length > 0"
           class="flex flex-wrap content-start gap-1.5 pt-1"
-          aria-label="身体属性与档案"
+          :aria-label="t('performer.attributes')"
         >
           <span
             v-for="spec in SPECS"
@@ -520,9 +535,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <span
             v-if="tattoos.length > 0"
             class="inline-flex items-baseline gap-1.5 basis-full px-2 py-0.5 rounded-lg bg-surface/80 border border-line"
-            title="纹身标识：部位译中文，描述保留原文"
           >
-            <span class="text-[11px] text-fg-4 shrink-0">纹身</span>
+            <span class="text-[11px] text-fg-4 shrink-0">{{ t('performer.tattoos') }}</span>
             <span class="text-[11px] font-semibold text-fg-2 break-words">
               {{ tattoos.map(trTattoo).join('、') }}
             </span>
@@ -530,14 +544,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
 
         <div v-else class="text-xs text-fg-4 italic pt-1">
-          该演员的详情页尚未抓取，暂无声色属性档案。
+          {{ t('common.noData') }}
         </div>
 
         <!-- Performance tags row -->
         <div v-if="pbcPerformanceTags.length > 0" class="flex flex-wrap items-center gap-1.5 pt-1">
           <span class="text-[11px] text-fg-4 shrink-0 flex items-center gap-1">
             <Sparkles class="w-3 h-3 text-purple-400" />
-            <span>表演标签:</span>
+            <span>{{ t('performer.tags') }}:</span>
           </span>
           <span
             v-for="tag in pbcPerformanceTags"
@@ -553,15 +567,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <div class="flex items-center gap-1.5 text-xs font-semibold text-purple-400">
               <BookOpen class="w-3.5 h-3.5" />
-              <span>PBC 维基人物小传</span>
+              <span>{{ t('performer.pbcBio') }}</span>
             </div>
             <button
               v-if="performer.pbc_url || pbcProfile.pbc_url"
               @click="openPbcPerformer(performer.pbc_url || pbcProfile.pbc_url)"
               class="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 transition cursor-pointer"
-              title="在浏览器中查看完整维基词条"
+              :title="t('performer.viewWiki')"
             >
-              <span>完整词条</span>
+              <span>{{ t('performer.fullArticle') }}</span>
               <ExternalLink class="w-2.5 h-2.5" />
             </button>
           </div>
@@ -572,7 +586,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div v-if="Object.keys(pbcSocialLinks).length > 0 || Object.keys(pbcExternalIds).length > 0" class="flex flex-wrap items-center gap-2 pt-1">
           <span class="text-[11px] text-fg-4 shrink-0 flex items-center gap-1">
             <Globe class="w-3 h-3 text-fg-4" />
-            <span>互联档案:</span>
+            <span>{{ t('performer.externalLinks') }}</span>
           </span>
           <a
             v-for="(url, platform) in pbcSocialLinks"
@@ -593,7 +607,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             target="_blank"
             rel="noreferrer"
             class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition cursor-pointer"
-            title="在 IAFD (Internet Adult Film Database) 查看档案"
+            :title="t('performer.viewIafd')"
           >
             <ExternalLink class="w-2.5 h-2.5 opacity-60" />
             <span>IAFD</span>
@@ -605,7 +619,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             target="_blank"
             rel="noreferrer"
             class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/80 hover:bg-surface-2 border border-line text-[10px] font-medium text-fg-3 hover:text-accent transition cursor-pointer"
-            title="在 IMDb 查看档案"
+            :title="t('performer.viewImdb')"
           >
             <ExternalLink class="w-2.5 h-2.5 opacity-60" />
             <span>IMDb</span>
@@ -628,7 +642,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               ]"
             >
               <Film class="w-3.5 h-3.5" />
-              <span>完整电影 ({{ performer.movies ? performer.movies.length : 0 }})</span>
+              <span>{{ t('studio.movies') }} ({{ performer.movies ? performer.movies.length : 0 }})</span>
             </button>
 
             <button
@@ -641,7 +655,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               ]"
             >
               <Layers class="w-3.5 h-3.5" />
-              <span>片段 / 分集 ({{ performer.episodes ? performer.episodes.length : (performer.episodes_count || 0) }})</span>
+              <span>{{ t('studio.episodes') }} ({{ performer.episodes ? performer.episodes.length : (performer.episodes_count || 0) }})</span>
             </button>
           </div>
         </div>
@@ -653,14 +667,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         -->
         <div v-if="studioOptions.length > 1" class="space-y-1.5">
           <div class="flex items-center justify-between gap-2">
-            <span class="text-[11px] font-semibold text-fg-4 uppercase tracking-wider">片商</span>
+            <span class="text-[11px] font-semibold text-fg-4 uppercase tracking-wider">{{ t('common.studio') }}</span>
             <button
               v-if="collapsedStudioCount > 0 || studiosExpanded"
               type="button"
               @click="studiosExpanded = !studiosExpanded"
               class="text-[11px] font-medium text-fg-4 hover:text-accent-soft transition shrink-0 cursor-pointer"
             >
-              {{ studiosExpanded ? '折叠仅显示首行' : `+${studioOptions.length - STUDIO_CHIP_LIMIT} 展开全部` }}
+              {{ studiosExpanded ? t('common.collapse') : `+${studioOptions.length - STUDIO_CHIP_LIMIT} ${t('common.expandAll')}` }}
             </button>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
@@ -695,14 +709,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             />
           </div>
           <div v-else class="text-center py-12 text-fg-4 text-xs">
-            {{ studioFilter ? `该演员没有 ${studioFilter} 的长片电影` : '暂无收录该演员的长片电影' }}
+            {{ studioFilter ? `${t('common.noData')}` : t('studio.noMovies') }}
           </div>
         </div>
 
         <!-- 2. Episodes & Scenes Tab -->
         <div v-else-if="activeTab === 'episodes'" class="space-y-3">
           <div class="flex items-center justify-between pb-1 flex-wrap gap-2">
-            <span class="text-xs text-fg-4">共收录 {{ visibleEpisodes.length }} 个相关片段</span>
+            <span class="text-xs text-fg-4">{{ visibleEpisodes.length }} {{ t('common.episodes') }}</span>
             <!-- Layout Switcher: Grid vs List -->
             <div class="flex items-center bg-surface-2/80 rounded-xl p-0.5 border border-line text-xs font-semibold">
               <button
@@ -714,10 +728,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     ? 'bg-accent-fill text-on-fill shadow-xs'
                     : 'text-fg-4 hover:text-fg hover:bg-surface-3/50'
                 ]"
-                title="网格视图（展示更多条目）"
+                :title="t('view.grid')"
               >
                 <LayoutGrid class="w-3.5 h-3.5" />
-                <span>网格</span>
+                <span>{{ t('view.grid') }}</span>
               </button>
               <button
                 type="button"
@@ -728,10 +742,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                     ? 'bg-accent-fill text-on-fill shadow-xs'
                     : 'text-fg-4 hover:text-fg hover:bg-surface-3/50'
                 ]"
-                title="列表视图（含详细剧情）"
+                :title="t('view.list')"
               >
                 <List class="w-3.5 h-3.5" />
-                <span>列表</span>
+                <span>{{ t('view.list') }}</span>
               </button>
             </div>
           </div>
@@ -762,7 +776,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                   <button
                     @click.stop="emit('toggle-entity-favorite', 'episode', String(ep.id))"
                     class="absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md bg-black/40 hover:bg-black/70 text-fg transition cursor-pointer"
-                    :title="isFav('episode', String(ep.id)) ? '取消收藏' : '收藏片段'"
+                    :title="isFav('episode', String(ep.id)) ? t('episode.unfavorite') : t('episode.favorite')"
                   >
                     <Heart
                       class="w-3.5 h-3.5 transition"
@@ -778,7 +792,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                         {{ ep.title }}
                       </h4>
                       <span v-if="ep.description_zh?.trim()" class="text-[9px] font-bold text-success flex items-center shrink-0">
-                        中
+                        {{ currentLocale.startsWith('zh') ? '中' : 'ZH' }}
                       </span>
                     </div>
                     <div
@@ -787,11 +801,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                       class="text-[11px] text-fg-4 mt-0.5 truncate hover:text-accent hover:underline cursor-pointer"
                       :title="ep.movie_title"
                     >
-                      出处: {{ ep.movie_title }}
+                      {{ t('common.source') }}: {{ ep.movie_title }}
                     </div>
                   </div>
                   <div class="flex items-center justify-between text-[10px] text-fg-4 pt-1.5 border-t border-line/40">
-                    <span class="truncate max-w-[120px] font-medium">{{ ep.studio_name || '未知片商' }}</span>
+                    <span class="truncate max-w-[120px] font-medium">{{ ep.studio_name || t('common.studio') }}</span>
                     <span v-if="ep.release_year">{{ ep.release_year }}</span>
                   </div>
                 </div>
@@ -809,13 +823,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 show-studio
                 :is-favorite="isFav('episode', String(ep.id))"
                 @select-movie-id="emit('select-movie-id', $event)"
+                @select-episode-id="emit('select-episode-id', $event)"
                 @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
                 @filter-studio="emit('filter-studio', $event)"
               />
             </div>
           </div>
           <div v-else class="text-center py-12 text-fg-4 text-xs">
-            {{ studioFilter ? `该演员没有 ${studioFilter} 的分集片段` : '暂无收录该演员的独立分集片段' }}
+            {{ studioFilter ? `${t('common.noData')}` : t('studio.noEpisodes') }}
           </div>
         </div>
       </div>

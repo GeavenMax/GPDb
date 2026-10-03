@@ -1,5 +1,5 @@
-//! Studios exist only as a column on movies — no table, no artwork — so every
-//! studio query is a grouping pass over `movies`.
+//! Studios exist across movies and episodes.
+//! Every studio query aggregates over `movies` and `episodes`.
 
 use rusqlite::{params, Connection};
 
@@ -20,22 +20,22 @@ pub fn get_studios(conn: &Connection) -> Result<Vec<String>> {
 
 /// Studio library: every studio with its film and episode counts, paged.
 ///
-/// Kept in step with db_manager.list_studios, which serves the same page over HTTP.
-/// Studios exist only as a column on `movies` — no table, no artwork — so both
-/// counts come out of one grouping pass; the LEFT JOIN is what keeps a studio whose
-/// films have no episodes in the list, with 0.
-pub fn get_studio_library(conn: &Connection,
+/// Studios can appear on `movies` and/or `episodes` (including standalone episodes).
+/// Both counts come out of an aggregation over movies and episodes with effective studio resolution.
+pub fn get_studio_library(
+    conn: &Connection,
     query: Option<String>,
     sort_by: Option<String>,
     page: Option<i64>,
-    page_size: Option<i64>,) -> Result<StudioLibrary> {
+    page_size: Option<i64>,
+) -> Result<StudioLibrary> {
     let page = page.unwrap_or(1).max(1);
     let page_size = page_size.unwrap_or(24).clamp(1, 100);
     let offset = (page - 1) * page_size;
 
     let mut conditions = vec![
-        "m.studio_name IS NOT NULL".to_string(),
-        "trim(m.studio_name) != ''".to_string(),
+        "s.name IS NOT NULL".to_string(),
+        "trim(s.name) != ''".to_string(),
     ];
     let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
 
@@ -43,32 +43,60 @@ pub fn get_studio_library(conn: &Connection,
         let q = q.trim().to_string();
         if !q.is_empty() {
             // ESCAPE so a literal % or _ typed into the search box stays literal.
-            conditions.push("m.studio_name LIKE ? ESCAPE '\\'".to_string());
+            // Match against both original English name and translated Chinese name.
+            conditions.push("(s.name LIKE ? ESCAPE '\\' OR st.name_zh LIKE ? ESCAPE '\\')".to_string());
             let escaped = q.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
-            params_vec.push(Box::new(format!("%{}%", escaped)));
+            let param = format!("%{}%", escaped);
+            params_vec.push(Box::new(param.clone()));
+            params_vec.push(Box::new(param));
         }
     }
     let where_clause = format!("WHERE {}", conditions.join(" AND "));
 
     let sort_clause = match sort_by.as_deref() {
-        Some("name_asc") => "m.studio_name COLLATE NOCASE ASC",
+        Some("name_asc") => "s.name COLLATE NOCASE ASC",
         Some("episodes_desc") => {
-            "episodes_count DESC, works_count DESC, m.studio_name COLLATE NOCASE ASC"
+            "episodes_count DESC, works_count DESC, s.name COLLATE NOCASE ASC"
         }
-        _ => "works_count DESC, m.studio_name COLLATE NOCASE ASC",
+        _ => "works_count DESC, episodes_count DESC, s.name COLLATE NOCASE ASC",
     };
 
     let params_slice: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|p| p.as_ref()).collect();
     let total: i64 = conn.query_row(
-        &format!("SELECT count(DISTINCT m.studio_name) FROM movies m {}", where_clause),
+        &format!(
+            "SELECT count(*) FROM ( \
+                SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+                UNION \
+                SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+            ) s \
+            LEFT JOIN studios st ON (trim(st.name) = trim(s.name) COLLATE NOCASE OR trim(st.name_zh) = trim(s.name)) {}",
+            where_clause
+        ),
         &params_slice[..],
         |r| r.get(0),
     ).map_err(|e| e.to_string())?;
 
     let select_query = format!(
-        "SELECT m.studio_name, count(DISTINCT m.id) AS works_count, count(e.id) AS episodes_count \
-         FROM movies m LEFT JOIN episodes e ON e.movie_id = m.id \
-         {} GROUP BY m.studio_name ORDER BY {} LIMIT ? OFFSET ?",
+        "SELECT s.name, st.name_zh, st.description_zh, COALESCE(m.cnt, 0) AS works_count, COALESCE(e.cnt, 0) AS episodes_count \
+         FROM ( \
+             SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+             UNION \
+             SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+         ) s \
+         LEFT JOIN studios st ON (trim(st.name) = trim(s.name) COLLATE NOCASE OR trim(st.name_zh) = trim(s.name)) \
+         LEFT JOIN ( \
+             SELECT studio_name, count(*) AS cnt \
+             FROM movies \
+             WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+             GROUP BY studio_name \
+         ) m ON m.studio_name = s.name \
+         LEFT JOIN ( \
+             SELECT COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) AS eff_studio, count(*) AS cnt \
+             FROM episodes e \
+             LEFT JOIN movies m ON e.movie_id = m.id \
+             GROUP BY eff_studio \
+         ) e ON e.eff_studio = s.name \
+         {} ORDER BY {} LIMIT ? OFFSET ?",
         where_clause, sort_clause
     );
 
@@ -81,8 +109,10 @@ pub fn get_studio_library(conn: &Connection,
     let rows = stmt.query_map(&full_slice[..], |r| {
         Ok(StudioSummary {
             name: r.get(0)?,
-            works_count: r.get(1)?,
-            episodes_count: r.get(2)?,
+            name_zh: r.get(1)?,
+            description_zh: r.get(2)?,
+            works_count: r.get(3)?,
+            episodes_count: r.get(4)?,
         })
     }).map_err(|e| e.to_string())?;
 
@@ -91,9 +121,16 @@ pub fn get_studio_library(conn: &Connection,
         total,
     })
 }
+
 /// One studio's complete works, matching `/api/studios/<name>/works`.
-pub fn get_studio_works(conn: &Connection,
-    studio_name: String,) -> Result<StudioWorks> {
+pub fn get_studio_works(conn: &Connection, studio_name: String) -> Result<StudioWorks> {
+    let (studio_name_zh, description_zh): (Option<String>, Option<String>) = conn
+        .query_row(
+            "SELECT name_zh, description_zh FROM studios WHERE trim(name) = trim(?1) COLLATE NOCASE OR trim(name_zh) = trim(?1) LIMIT 1",
+            params![studio_name],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap_or((None, None));
 
     let mut m_stmt = conn.prepare(&format!(
         "SELECT {} FROM movies m \
@@ -107,7 +144,8 @@ pub fn get_studio_works(conn: &Connection,
     let movies: Vec<Movie> = m_iter.filter_map(|r| r.ok()).collect();
 
     let mut e_stmt = conn.prepare(&format!(
-        "{} WHERE m.studio_name = ?1 ORDER BY m.release_year DESC, e.id DESC",
+        "{} WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1 \
+         ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC, e.id DESC",
         EPISODE_SQL
     )).map_err(|e| e.to_string())?;
     let e_iter = e_stmt.query_map(params![studio_name], map_episode_row)
@@ -116,9 +154,63 @@ pub fn get_studio_works(conn: &Connection,
 
     Ok(StudioWorks {
         studio_name,
+        studio_name_zh,
+        description_zh,
         movies_count: movies.len() as i64,
         movies,
         episodes_count: episodes.len() as i64,
         episodes,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::migrate::create_empty_database_schema;
+
+    #[test]
+    fn test_studio_library_and_works_with_chinese_translations() {
+        let conn = Connection::open_in_memory().unwrap();
+        create_empty_database_schema(&conn).unwrap();
+
+        conn.execute(
+            "INSERT INTO movies (id, title, studio_name, release_year) VALUES (1, 'Falcon Film 1', 'Falcon Studios', 2020)",
+            [],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO movies (id, title, studio_name, release_year) VALUES (2, 'Falcon Film 2', 'Falcon Studios', 2021)",
+            [],
+        ).unwrap();
+        conn.execute(
+            "INSERT INTO episodes (id, movie_id, title, studio_name) VALUES (1, 1, 'Scene 1', 'Falcon Studios')",
+            [],
+        ).unwrap();
+
+        conn.execute(
+            "INSERT INTO studios (name, name_zh, description_zh) VALUES ('Falcon Studios', '猎鹰影视', '1971年创立于旧金山')",
+            [],
+        ).unwrap();
+
+        // 1. Library fetch
+        let lib = get_studio_library(&conn, None, None, Some(1), Some(10)).unwrap();
+        assert_eq!(lib.total, 1);
+        assert_eq!(lib.items[0].name, "Falcon Studios");
+        assert_eq!(lib.items[0].name_zh.as_deref(), Some("猎鹰影视"));
+        assert_eq!(lib.items[0].description_zh.as_deref(), Some("1971年创立于旧金山"));
+        assert_eq!(lib.items[0].works_count, 2);
+        assert_eq!(lib.items[0].episodes_count, 1);
+
+        // 2. Search by Chinese name
+        let lib_zh_search = get_studio_library(&conn, Some("猎鹰".to_string()), None, Some(1), Some(10)).unwrap();
+        assert_eq!(lib_zh_search.total, 1);
+        assert_eq!(lib_zh_search.items[0].name, "Falcon Studios");
+
+        // 3. Studio works
+        let works = get_studio_works(&conn, "Falcon Studios".to_string()).unwrap();
+        assert_eq!(works.studio_name, "Falcon Studios");
+        assert_eq!(works.studio_name_zh.as_deref(), Some("猎鹰影视"));
+        assert_eq!(works.description_zh.as_deref(), Some("1971年创立于旧金山"));
+        assert_eq!(works.movies_count, 2);
+        assert_eq!(works.episodes_count, 1);
+    }
 }

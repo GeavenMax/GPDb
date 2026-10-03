@@ -32,7 +32,11 @@ export const PREFS = {
   listMode: 'gpdb_list_mode',
   /** Sidebar order, a JSON array of nav ids — see components/Sidebar.vue. */
   navOrder: 'gpdb_nav_order',
+  /** Database content display mode: 'auto' | 'bilingual' | 'original'. */
+  contentLangMode: 'gpdb_content_lang_mode',
 } as const;
+
+export type ContentLangMode = 'auto' | 'bilingual' | 'original';
 
 export type PrefName = keyof typeof PREFS;
 
@@ -47,6 +51,7 @@ const LEGACY: Record<PrefName, string> = {
   pageSize: 'gpdb_page_size',
   listMode: 'gpdb_list_mode',
   navOrder: 'gpdb_nav_order',
+  contentLangMode: 'gpdb_content_lang_mode',
 };
 
 /**

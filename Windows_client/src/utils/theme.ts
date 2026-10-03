@@ -21,6 +21,7 @@
 import { computed, ref } from 'vue';
 
 import { PREFS } from './prefs';
+import { t } from '../i18n';
 
 export type ThemeStyle = 'classic' | 'glass' | 'my';
 export type ThemeId =
@@ -35,17 +36,9 @@ export type ThemeChoice = 'auto' | ThemeId;
 const CHOICE_KEY = PREFS.theme;
 const STYLE_KEY = PREFS.themeStyle;
 
-const STYLES: Record<ThemeStyle, string> = {
-  classic: '经典',
-  glass: '流体玻璃',
-  my: 'Material You',
-};
-
 export interface ThemeOption {
   id: ThemeChoice;
   label: string;
-  /** One line under the label: what the family does, or what 跟随系统 resolved to. */
-  hint: string;
   /** Page, panel and accent, for the swatch strip. The values theme.css ships;
    *  duplicated here because a preview has to draw colours it is not yet wearing. */
   swatch: [string, string, string];
@@ -58,15 +51,6 @@ const SWATCH: Record<ThemeId, [string, string, string]> = {
   'glass-light': ['oklch(96.5% 0.008 250)', 'oklch(100% 0 0 / 0.62)', 'oklch(47.3% 0.137 46.201)'],
   'my-dark': ['oklch(15.5% 0.012 70)', 'oklch(21% 0.014 70)', 'oklch(88% 0.1 88)'],
   'my-light': ['oklch(97.5% 0.014 80)', 'oklch(99% 0.006 80)', 'oklch(45% 0.13 55)'],
-};
-
-const HINTS: Record<ThemeId, string> = {
-  'classic-dark': '应用原本的配色，不透明浮层。',
-  'classic-light': '浅色底 + 白色卡片，浮层不透明。',
-  'glass-dark': '半透明浮层与背景模糊，深色壁纸。',
-  'glass-light': '半透明浮层与背景模糊，浅色壁纸。',
-  'my-dark': '由品牌琥珀金推导的暖色调，靠色调分层。',
-  'my-light': '暖白底 + 深琥珀主色，靠色调分层。',
 };
 
 function isThemeId(v: string | null): v is ThemeId {
@@ -131,29 +115,34 @@ export function setTheme(choice: ThemeChoice) {
   apply();
 }
 
-/** The theme behind 跟随系统, in words: "经典 · 浅". */
-export const autoLabel = computed(
-  () => `${STYLES[rememberedStyle.value]} · ${prefersDark.value ? '暗' : '浅'}`
-);
+function getStyleName(style: ThemeStyle): string {
+  if (style === 'classic') return t('theme.classic');
+  if (style === 'glass') return t('theme.glass');
+  return t('theme.my');
+}
 
-export const themeOptions = computed<ThemeOption[]>(() => [
-  {
-    id: 'auto',
-    label: '跟随系统',
-    hint: `跟随 macOS 的浅色/深色设置，当前：${autoLabel.value}。`,
-    swatch: SWATCH[resolvedTheme.value],
-  },
-  ...(['classic', 'glass', 'my'] as ThemeStyle[]).flatMap(style =>
+export const autoThemeOption = computed<ThemeOption>(() => ({
+  id: 'auto',
+  label: t('theme.auto'),
+  swatch: SWATCH[resolvedTheme.value],
+}));
+
+export const concreteThemeOptions = computed<ThemeOption[]>(() =>
+  (['classic', 'glass', 'my'] as ThemeStyle[]).flatMap(style =>
     (['dark', 'light'] as const).map(scheme => {
       const id = `${style}-${scheme}` as ThemeId;
       return {
         id,
-        label: `${STYLES[style]} · ${scheme === 'dark' ? '暗' : '浅'}`,
-        hint: HINTS[id],
+        label: `${getStyleName(style)} · ${scheme === 'dark' ? t('theme.dark') : t('theme.light')}`,
         swatch: SWATCH[id],
       };
     })
-  ),
+  )
+);
+
+export const themeOptions = computed<ThemeOption[]>(() => [
+  autoThemeOption.value,
+  ...concreteThemeOptions.value,
 ]);
 
 /**

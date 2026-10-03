@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick, defineAsyncComponent } from 'vue';
-import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Star, Bookmark, CheckCircle2, Plus, Sparkles, Languages, Loader2, ChevronDown, RotateCcw, Disc3, ZoomIn, Share2 } from '@lucide/vue';
-import type { Movie, UserTag, FavoriteType, MovieSeriesResponse } from '../types';
+import { X, Film, Clock, Heart, Building2, Tag, Layers, Clapperboard, Languages, Loader2, ChevronDown, ChevronUp, ZoomIn, Share2 } from '@lucide/vue';
+import type { Movie, FavoriteType, MovieSeriesResponse } from '../types';
 import EpisodeRow from './EpisodeRow.vue';
 import SeriesModal from './SeriesModal.vue';
 import ShareCardModal, { type ShareCardData } from './ShareCardModal.vue';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { openLightbox } from '../utils/lightbox';
-import { privacySettings } from '../services/privacy';
 import { titlePrimary, titleSecondary } from '../utils/bilingual';
 import { trCategory } from '../utils/glossary';
 import { api, IS_TAURI } from '../api';
-import { pluginsConfig } from '../services/pluginManager';
+import { t } from '../i18n';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -54,6 +53,7 @@ const emit = defineEmits<{
   (e: 'toggle-entity-favorite', type: FavoriteType, key: string): void;
   (e: 'user-data-changed', movieId: number): void;
   (e: 'translated', movieId: number, descriptionZh: string): void;
+  (e: 'select-episode-id', episodeId: number): void;
 }>();
 
 /** Whether a studio/director/episode is favorited. Names are the key for studio and director. */
@@ -72,28 +72,24 @@ function isFav(type: FavoriteType, key: string | null | undefined): boolean {
  */
 const autoAttempted = new Set<number>();
 
-const activeCoverIndex = ref(0);
-const isFlipped = ref(false);
-const posterDisplayMode = computed(() => privacySettings.value.posterDisplayMode || 'adaptive_pager');
-
-const frontCoverUrl = computed(() => {
+/**
+ * All covers for the movie, mapped to full cached URLs.
+ * If covers array exists and has entries, use them; otherwise fallback to cover_full.
+ */
+const allCovers = computed<string[]>(() => {
   if (props.movie?.covers && props.movie.covers.length > 0) {
-    return getImageUrl(props.movie.covers[0]);
+    return props.movie.covers.map(c => getImageUrl(c)).filter(Boolean);
   }
-  return props.movie?.cover_full ? getImageUrl(props.movie.cover_full) : '';
+  if (props.movie?.cover_full) {
+    const u = getImageUrl(props.movie.cover_full);
+    return u ? [u] : [];
+  }
+  return [];
 });
 
-const backCoverUrl = computed(() => {
-  const covers = props.movie?.covers;
-  if (covers && covers.length > 1) {
-    const backIdx = activeCoverIndex.value > 0 ? activeCoverIndex.value : 1;
-    return getImageUrl(covers[backIdx]);
-  }
-  if ((props.movie as any)?.cover_back) {
-    return getImageUrl((props.movie as any).cover_back);
-  }
-  return '';
-});
+const currentCover = computed(() => allCovers.value[0] || '');
+const frontCoverUrl = computed(() => allCovers.value[0] || '');
+const backCoverUrl = computed(() => allCovers.value[1] || null);
 
 const showShareModal = ref(false);
 
@@ -103,8 +99,8 @@ const shareCardData = computed<ShareCardData | null>(() => {
     type: 'movie',
     title: titleMain.value,
     titleAlt: titleAlt.value,
-    posterUrl: frontCoverUrl.value || currentCover.value || '',
-    coverBackUrl: backCoverUrl.value || null,
+    posterUrl: frontCoverUrl.value,
+    coverBackUrl: backCoverUrl.value,
     category: categoryLabel.value,
     releaseDate: displayReleaseDate.value || (props.movie.release_year ? String(props.movie.release_year) : ''),
     durationMins: props.movie.duration_mins,
@@ -116,13 +112,6 @@ const shareCardData = computed<ShareCardData | null>(() => {
     id: props.movie.id,
   };
 });
-
-function toggleFlip() {
-  isFlipped.value = !isFlipped.value;
-}
-
-const showRatingCard = ref(false);
-const showPrivateNotes = ref(false);
 
 const seriesData = ref<MovieSeriesResponse | null>(null);
 const showSeriesModal = ref(false);
@@ -155,6 +144,7 @@ const zhDescription = ref<string | null>(null);
 const showOriginalOverride = ref<boolean | null>(null);
 const isTranslating = ref(false);
 const translateError = ref('');
+const allScenesExpanded = ref(false);
 
 /** Whether the original synopsis is on screen right now — global switch, unless overridden. */
 const showOriginal = computed(() => showOriginalOverride.value ?? props.lang === 'en');
@@ -164,13 +154,10 @@ function toggleOriginal() {
 }
 
 watch(() => props.movie, (m) => {
-  isFlipped.value = false;
-  activeCoverIndex.value = 0;
   zhDescription.value = m?.description_zh || null;
   showOriginalOverride.value = null;
   translateError.value = '';
-  showRatingCard.value = false;
-  showPrivateNotes.value = false;
+  allScenesExpanded.value = false;
 
   if (m?.id) {
     loadSeries(m.id);
@@ -292,7 +279,7 @@ function onDescriptionScroll() {
 
 // Re-measure when the text or its language changes, and when the window resizes
 // (the modal reflows, so a synopsis can start or stop overflowing).
-watch([displayedDescription, showPrivateNotes], async () => {
+watch(displayedDescription, async () => {
   await nextTick();
   measureDescription();
 });
@@ -339,139 +326,14 @@ async function translateNow() {
     applyEpisodeTranslations(result.episodes);
     emit('user-data-changed', id);
   } else {
-    translateError.value = '翻译失败。请到「设置 → 翻译服务来源」确认 API Key 可用（可点「测试」验证）。';
+    translateError.value = t('plugins.failed');
   }
   isTranslating.value = false;
 }
-const userRating = ref<number | null>(null);
-const userStatus = ref<string | null>(null);
-const userNotes = ref('');
-const selectedTagIds = ref<number[]>([]);
-const availableTags = ref<UserTag[]>([]);
-const isCreatingTag = ref(false);
-const newTagName = ref('');
-const newTagColor = ref('#f59e0b');
-const saveSuccess = ref(false);
-
-/** Drives the badge on the toggle: the button should show at a glance
- *  whether this film already carries private annotations. */
-const hasPrivateData = computed(() =>
-  userRating.value != null ||
-  Boolean(userStatus.value) ||
-  Boolean(userNotes.value.trim()) ||
-  selectedTagIds.value.length > 0
-);
-
-async function loadUserData() {
-  if (!props.movie) return;
-  // Available tags
-  availableTags.value = await api.getUserTags();
-
-  // Movie user data
-  const data = await api.getMovieUserData(props.movie.id);
-  if (data) {
-    userRating.value = data.rating ?? null;
-    userStatus.value = data.status ?? null;
-    userNotes.value = data.notes ?? '';
-    selectedTagIds.value = (data.tags || []).map((t: UserTag) => t.id);
-  } else {
-    userRating.value = null;
-    userStatus.value = null;
-    userNotes.value = '';
-    selectedTagIds.value = [];
-  }
-}
-
-watch(() => props.movie, () => {
-  activeCoverIndex.value = 0;
-  loadUserData();
-}, { immediate: true });
-
-async function persistUserData() {
-  if (!props.movie) return;
-  await api.saveMovieUserData(props.movie.id, {
-    rating: userRating.value,
-    status: userStatus.value,
-    notes: userNotes.value,
-    tag_ids: selectedTagIds.value,
-  });
-  saveSuccess.value = true;
-  setTimeout(() => { saveSuccess.value = false; }, 2000);
-  emit('user-data-changed', props.movie.id);
-}
-
-function setRating(val: number) {
-  userRating.value = userRating.value === val ? null : val;
-  persistUserData();
-}
-
-function setStatus(st: string) {
-  userStatus.value = userStatus.value === st ? null : st;
-  persistUserData();
-}
-
-function handleStatusClick(stId: string) {
-  if (stId === 'watched') {
-    if (userStatus.value === 'watched') {
-      userStatus.value = null;
-    } else {
-      userStatus.value = 'watched';
-    }
-    persistUserData();
-  } else {
-    setStatus(stId);
-    if (showRatingCard.value && userStatus.value !== 'watched') {
-      showRatingCard.value = false;
-    }
-  }
-}
-
-function toggleTag(tagId: number) {
-  if (selectedTagIds.value.includes(tagId)) {
-    selectedTagIds.value = selectedTagIds.value.filter(id => id !== tagId);
-  } else {
-    selectedTagIds.value.push(tagId);
-  }
-  persistUserData();
-}
-
-async function handleCreateTag() {
-  if (!newTagName.value.trim()) return;
-  const created = await api.createUserTag(newTagName.value.trim(), newTagColor.value);
-  if (created) {
-    availableTags.value.push(created);
-    selectedTagIds.value.push(created.id);
-    newTagName.value = '';
-    isCreatingTag.value = false;
-    persistUserData();
-  }
-}
-
-/**
- * The poster to show, already routed through the local image cache.
- *
- * Both the poster and the blurred backdrop read this, so the caching (and the
- * quality upgrade it performs) is applied in one place rather than at each use.
- */
-const currentCover = computed(() => {
-  const covers = props.movie?.covers;
-  const raw = covers && covers.length > 0
-    ? covers[activeCoverIndex.value] || props.movie?.cover_full
-    : props.movie?.cover_full;
-  return raw ? getImageUrl(raw) : '';
-});
 
 function onKeydown(e: KeyboardEvent) {
   if (e.key !== 'Escape' || props.isTop === false) return;
   if (!claimEscape(e)) return;
-  if (showRatingCard.value) {
-    showRatingCard.value = false;
-    return;
-  }
-  if (showPrivateNotes.value) {
-    showPrivateNotes.value = false;
-    return;
-  }
   emit('close');
 }
 
@@ -523,176 +385,51 @@ onUnmounted(() => {
 
         <!-- Foreground Content -->
         <div class="relative z-10 flex flex-col md:flex-row gap-6 items-start">
-          <!-- Poster Container with Multi-Cover Switching & 3D Flip Support -->
-          <div class="flex flex-col items-center gap-2 shrink-0">
-            <!-- Mode 1: 3D Flip Card -->
+          <!-- Poster Container: Adaptive Simultaneous Multi-Cover Display -->
+          <div class="flex flex-col gap-2 shrink-0">
             <div
-              v-if="posterDisplayMode === 'flip_3d'"
-              class="flex flex-col items-center gap-3 select-none"
+              v-if="allCovers.length > 0"
+              class="flex flex-row flex-wrap gap-3 items-start justify-center md:justify-start"
             >
               <div
-                class="relative w-48 md:w-60 aspect-[3/4.2] group cursor-pointer"
-                style="perspective: 1200px; -webkit-perspective: 1200px;"
-                @click="toggleFlip"
-                @dblclick="openLightbox(isFlipped && backCoverUrl ? backCoverUrl : (frontCoverUrl || currentCover), movie.title)"
+                v-for="(coverUrl, idx) in allCovers"
+                :key="idx"
+                class="relative rounded-2xl overflow-hidden shadow-2xl border border-line-strong/60 bg-sunken group cursor-pointer flex items-center justify-center transition-all duration-300 hover:shadow-accent/20"
+                :class="allCovers.length === 1
+                  ? 'w-48 md:w-60 min-h-[260px] max-h-[380px]'
+                  : 'w-36 sm:w-44 md:w-48 min-h-[200px] max-h-[320px]'"
+                @click="openLightbox(coverUrl, `${movie.title} (${idx === 0 ? t('movie.frontCover') : idx === 1 ? t('movie.backCover') : '#' + (idx + 1)})`)"
               >
-                <!-- Ambient Glow Background -->
+                <img
+                  :src="coverUrl"
+                  :alt="`${movie.title} - ${idx + 1}`"
+                  referrerpolicy="no-referrer"
+                  :class="allCovers.length === 1 ? 'max-h-[380px]' : 'max-h-[320px]'"
+                  class="max-w-full w-auto h-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                />
+
+                <!-- Cover badge (Front / Back / #N) when 2+ covers -->
                 <div
-                  v-if="currentCover"
-                  class="absolute -inset-3 bg-cover bg-center rounded-3xl blur-2xl opacity-60 transition-opacity duration-500 pointer-events-none scale-105"
-                  :style="{ backgroundImage: `url(${currentCover})` }"
-                ></div>
-
-                <!-- 3D Card Inner (Flipper) -->
-                <div
-                  class="w-full h-full relative"
-                  style="transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); transform-style: preserve-3d; -webkit-transform-style: preserve-3d;"
-                  :style="{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }"
+                  v-if="allCovers.length > 1"
+                  class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-bold text-white/90 border border-white/10 shadow pointer-events-none"
                 >
-                  <!-- Front Face -->
-                  <div
-                    class="absolute inset-0 w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-line-strong/70 bg-sunken flex items-center justify-center"
-                    style="backface-visibility: hidden; -webkit-backface-visibility: hidden; transform: rotateY(0deg); -webkit-transform: rotateY(0deg);"
-                  >
-                    <img
-                      v-if="frontCoverUrl || currentCover"
-                      :src="frontCoverUrl || currentCover"
-                      :alt="movie.title"
-                      class="w-full h-full object-cover"
-                      referrerpolicy="no-referrer"
-                    />
-                    <div v-else class="text-center p-4 text-fg-5">
-                      <Film class="w-12 h-12 mb-2 mx-auto stroke-1" />
-                      <span class="text-xs">无封面</span>
-                    </div>
-
-                    <!-- Front Badge Tag -->
-                    <div class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-bold text-white/90 border border-white/10 shadow">
-                      正面 FRONT
-                    </div>
-
-                    <!-- Zoom Icon -->
-                    <button
-                      type="button"
-                      @click.stop="openLightbox(frontCoverUrl || currentCover, movie.title)"
-                      class="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white/90 transition shadow cursor-pointer"
-                      title="放大查看高清大图"
-                    >
-                      <ZoomIn class="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <!-- Back Face -->
-                  <div
-                    class="absolute inset-0 w-full h-full rounded-2xl overflow-hidden shadow-2xl border border-line-strong/70 bg-surface-2 flex items-center justify-center"
-                    style="backface-visibility: hidden; -webkit-backface-visibility: hidden; transform: rotateY(180deg); -webkit-transform: rotateY(180deg);"
-                  >
-                    <img
-                      v-if="backCoverUrl"
-                      :src="backCoverUrl"
-                      :alt="`${movie.title} (封底)`"
-                      class="w-full h-full object-cover"
-                      referrerpolicy="no-referrer"
-                    />
-                    <!-- Aesthetic Collectible Card Back if no image -->
-                    <div v-else class="w-full h-full p-5 flex flex-col justify-between items-center text-center bg-gradient-to-br from-surface-3 via-surface-2 to-surface-1 relative overflow-hidden select-none">
-                      <div class="w-20 h-20 rounded-full border-4 border-accent/40 flex items-center justify-center bg-accent-fill/10 shadow-inner mt-4">
-                        <Disc3 class="w-10 h-10 text-accent animate-spin-slow" />
-                      </div>
-                      <div class="space-y-1.5 z-10 px-2">
-                        <div class="text-xs font-bold text-fg line-clamp-2">{{ movie.title }}</div>
-                        <div v-if="movie.studio_name" class="text-[11px] text-accent font-semibold">{{ movie.studio_name }}</div>
-                        <div class="text-[10px] text-fg-4">{{ movie.release_year }} · {{ movie.duration_mins ? movie.duration_mins + '分钟' : '典藏精装' }}</div>
-                      </div>
-                      <div class="text-[10px] font-mono text-fg-5 tracking-wider">★ GPDb COLLECTIBLE PHYSICAL ★</div>
-                    </div>
-
-                    <!-- Back Badge Tag -->
-                    <div class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-accent-fill text-on-fill text-[10px] font-bold shadow">
-                      封底 BACK
-                    </div>
-
-                    <!-- Zoom Icon for Back -->
-                    <button
-                      v-if="backCoverUrl"
-                      type="button"
-                      @click.stop="openLightbox(backCoverUrl, `${movie.title} (封底)`)"
-                      class="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md text-white/90 transition shadow cursor-pointer"
-                      title="放大查看封底大图"
-                    >
-                      <ZoomIn class="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  {{ idx === 0 ? t('movie.frontCover') : idx === 1 ? t('movie.backCover') : `#${idx + 1}` }}
                 </div>
-              </div>
 
-              <!-- Interactive Controls Under Card -->
-              <div class="flex items-center gap-2">
-                <button
-                  type="button"
-                  @click.stop="toggleFlip"
-                  class="px-3.5 py-1.5 rounded-full bg-accent-fill hover:bg-accent text-on-fill text-xs font-bold flex items-center gap-1.5 shadow-md transition cursor-pointer"
-                >
-                  <RotateCcw class="w-3.5 h-3.5" />
-                  <span>{{ isFlipped ? '翻看正面' : '3D翻转封底' }}</span>
-                </button>
-
-                <!-- Multi-back switcher if movie has 3+ covers -->
-                <div v-if="movie.covers && movie.covers.length > 2" class="flex gap-1 p-0.5 bg-surface border border-line rounded-lg">
-                  <button
-                    v-for="(_, idx) in movie.covers"
-                    :key="idx"
-                    @click.stop="activeCoverIndex = idx; if (!isFlipped && idx > 0) isFlipped = true; else if (isFlipped && idx === 0) isFlipped = false;"
-                    class="px-2 py-0.5 rounded text-[10px] font-semibold transition"
-                    :class="activeCoverIndex === idx ? 'bg-accent-fill text-on-fill' : 'text-fg-4 hover:text-fg'"
-                  >
-                    #{{ idx + 1 }}
-                  </button>
+                <!-- Zoom hover badge -->
+                <div class="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 backdrop-blur-md text-white/90 transition shadow pointer-events-none">
+                  <ZoomIn class="w-3.5 h-3.5" />
                 </div>
-              </div>
-              <div class="text-[10px] text-fg-4">
-                💡 轻击卡片翻转 · 双击放大查看
               </div>
             </div>
 
-            <!-- Mode 2: Adaptive Gallery Pager (Default) -->
+            <!-- Empty placeholder if no covers -->
             <div
               v-else
-              class="flex flex-col items-center gap-2"
+              class="w-48 md:w-60 h-72 rounded-2xl overflow-hidden shadow-2xl border border-line-strong/60 bg-sunken flex flex-col items-center justify-center text-fg-5 p-4 text-center"
             >
-              <div
-                class="w-44 md:w-56 min-h-[260px] max-h-[380px] rounded-2xl overflow-hidden shadow-2xl border border-line-strong/60 bg-sunken relative group cursor-pointer flex items-center justify-center"
-                @click="openLightbox(currentCover, movie.title)"
-              >
-                <img
-                  v-if="currentCover"
-                  :src="currentCover"
-                  :alt="movie.title"
-                  referrerpolicy="no-referrer"
-                  class="max-w-full max-h-[380px] w-auto h-auto object-contain transition-all duration-300 group-hover:scale-105"
-                />
-                <div v-else class="w-full h-full flex flex-col items-center justify-center text-fg-5 p-4 text-center">
-                  <Film class="w-12 h-12 mb-2 stroke-1" />
-                  <span class="text-xs">无封面</span>
-                </div>
-              </div>
-
-              <!-- Front / Back Cover Switcher Pills -->
-              <div v-if="movie.covers && movie.covers.length > 1" class="flex gap-1.5 p-1 bg-surface/90 border border-line rounded-xl shadow">
-                <button
-                  v-for="(_, idx) in movie.covers"
-                  :key="idx"
-                  @click="activeCoverIndex = idx"
-                  :class="[
-                    'px-3 py-1 rounded-lg text-xs font-semibold transition',
-                    activeCoverIndex === idx
-                      ? 'bg-accent-fill text-on-fill shadow'
-                      : 'text-fg-3 hover:text-fg-2 hover:bg-surface-2'
-                  ]"
-                >
-                  {{ idx === 0 ? '正面' : idx === 1 ? '封底' : `版本 ${idx + 1}` }}
-                </button>
-              </div>
+              <Film class="w-12 h-12 mb-2 stroke-1" />
+              <span class="text-xs">{{ t('movie.noPoster') }}</span>
             </div>
           </div>
 
@@ -704,7 +441,7 @@ onUnmounted(() => {
               </span>
               <span v-if="movie.duration_mins" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong flex items-center gap-1.5">
                 <Clock class="w-3.5 h-3.5" />
-                {{ movie.duration_mins }} 分钟
+                {{ movie.duration_mins }} {{ t('movie.minutes') }}
               </span>
               <span v-if="movie.category" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong">
                 {{ categoryLabel }}
@@ -713,10 +450,10 @@ onUnmounted(() => {
                 type="button"
                 @click="showShareModal = true"
                 class="ml-auto px-3 py-1 rounded-lg text-xs font-medium border border-line-strong bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
-                title="生成精美分享卡片 (支持背景渐变自适应与隐私防窥)"
+                :title="t('movie.shareCardTooltip')"
               >
                 <Share2 class="w-3.5 h-3.5" />
-                <span>分享卡片</span>
+                <span>{{ t('movie.shareCard') }}</span>
               </button>
               <button
                 @click="emit('toggle-favorite', movie)"
@@ -728,7 +465,7 @@ onUnmounted(() => {
                 ]"
               >
                 <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-                <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+                <span>{{ isFavorite ? t('movie.favorited') : t('movie.favorite') }}</span>
               </button>
             </div>
 
@@ -742,10 +479,10 @@ onUnmounted(() => {
               <button
                 @click="showSeriesModal = true"
                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-accent-fill/15 border border-accent-fill/30 text-accent hover:bg-accent-fill/25 transition text-xs font-semibold shadow-sm group cursor-pointer"
-                :title="`查看「${seriesData.root_title}」全系列共 ${seriesData.items.length} 部作品`"
+                :title="t('series.allWorks', { title: seriesData.root_title })"
               >
                 <Film class="w-3.5 h-3.5 text-accent" />
-                <span>查看全系列作品 ({{ seriesData.items.length }}部)</span>
+                <span>{{ t('movie.allSeries') }} ({{ seriesData.items.length }})</span>
                 <span class="text-[10px] text-fg-4 font-normal">· {{ seriesData.root_title }}</span>
                 <span class="text-accent group-hover:translate-x-0.5 transition-transform">→</span>
               </button>
@@ -763,7 +500,7 @@ onUnmounted(() => {
                 </button>
                 <button
                   @click="emit('toggle-entity-favorite', 'studio', movie.studio_name)"
-                  :title="isFav('studio', movie.studio_name) ? '取消收藏该片商' : '收藏该片商'"
+                  :title="isFav('studio', movie.studio_name) ? t('studio.unfavorite') : t('studio.favorite')"
                   class="transition"
                   :class="isFav('studio', movie.studio_name) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
                 >
@@ -780,19 +517,19 @@ onUnmounted(() => {
                    wrote it. -->
               <div v-if="directorNames.length > 0" class="flex items-center gap-1.5 bg-surface border border-line px-2.5 py-1 rounded-md text-xs text-fg-2 flex-wrap">
                 <Clapperboard class="w-3.5 h-3.5 text-accent" />
-                <span class="text-fg-4">导演:</span>
+                <span class="text-fg-4">{{ t('filter.director') }}:</span>
                 <template v-for="(name, i) in directorNames" :key="name">
                   <span v-if="i > 0" class="text-fg-5">·</span>
                   <button
                     @click="emit('filter-director', name)"
                     class="font-medium text-fg-2 hover:text-accent-soft hover:underline transition"
-                    :title="`查看 ${name} 的全部影片`"
+                    :title="t('director.viewAllMovies', { name })"
                   >
                     {{ name }}
                   </button>
                   <button
                     @click="emit('toggle-entity-favorite', 'director', name)"
-                    :title="isFav('director', name) ? '取消收藏该导演' : '收藏该导演'"
+                    :title="isFav('director', name) ? t('director.unfavorite') : t('director.favorite')"
                     class="transition"
                     :class="isFav('director', name) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
                   >
@@ -810,9 +547,9 @@ onUnmounted(() => {
               <div class="flex items-center justify-between gap-2 mb-1.5">
                 <div class="text-[11px] font-semibold text-fg-4 uppercase tracking-wider flex items-center gap-1.5">
                   <Languages class="w-3 h-3" />
-                  剧情简介
-                  <span v-if="hasZh && !showOriginal" class="text-success-fill/80 normal-case">中文</span>
-                  <span v-else-if="hasZh" class="text-fg-5 normal-case">原文</span>
+                  {{ t('movie.synopsis') }}
+                  <span v-if="hasZh && !showOriginal" class="text-success-fill/80 normal-case">{{ t('episode.showTranslation') }}</span>
+                  <span v-else-if="hasZh" class="text-fg-5 normal-case">{{ t('episode.showOriginal') }}</span>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -822,36 +559,36 @@ onUnmounted(() => {
                     @click="translateNow"
                     :disabled="isTranslating"
                     class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50"
-                    title="该影片的片段简介尚未翻译，会与简介一起送翻译"
+                    :title="t('movie.clipsUntranslatedHint')"
                   >
                     <Loader2 v-if="isTranslating" class="w-3 h-3 animate-spin" />
                     <Languages v-else class="w-3 h-3" />
-                    {{ isTranslating ? '翻译中...' : `翻译片段 (${pendingEpisodeCount})` }}
+                    {{ isTranslating ? t('movie.translating') : `${t('movie.translateEpisodes')} (${pendingEpisodeCount})` }}
                   </button>
                   <button
                     v-if="hasZh"
                     @click="toggleOriginal"
-                    class="text-[10px] px-2 py-0.5 rounded-md bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg-2 border border-line-strong transition"
+                    class="text-[10px] px-2 py-0.5 rounded-md bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg-2 border border-line-strong transition cursor-pointer"
                   >
-                    {{ showOriginal ? '显示中文' : '显示原文' }}
+                    {{ showOriginal ? t('movie.showTranslation') : t('movie.showOriginal') }}
                   </button>
                   <button
                     v-else-if="movie.description && !IS_TAURI"
                     @click="translateNow"
                     :disabled="isTranslating"
-                    class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50"
+                    class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                   >
                     <Loader2 v-if="isTranslating" class="w-3 h-3 animate-spin" />
                     <Languages v-else class="w-3 h-3" />
-                    {{ isTranslating ? '翻译中...' : '翻译成中文' }}
+                    {{ isTranslating ? t('movie.translating') : t('movie.translateToZh') }}
                   </button>
                   <!-- Desktop build has no server process to relay the request -->
                   <span
                     v-else-if="movie.description"
                     class="text-[10px] text-fg-5"
-                    title="桌面版请在项目目录运行 python3 translate.py 批量翻译"
+                    :title="t('movie.batchTranslateHint')"
                   >
-                    未翻译
+                    {{ t('movie.untranslated') }}
                   </span>
                 </div>
               </div>
@@ -875,7 +612,7 @@ onUnmounted(() => {
                 class="mt-1 text-[10px] text-fg-4 flex items-center gap-1"
               >
                 <ChevronDown class="w-3 h-3" />
-                简介较长，可在框内滚动查看
+                {{ t('movie.scrollNotice') }}
               </div>
 
               <div v-if="translateError" class="text-[11px] text-danger mt-2">
@@ -883,177 +620,13 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Watchlist Status & Rating Row (directly below synopsis) -->
-            <div class="pt-1 flex flex-col gap-2.5">
-              <div class="flex items-center gap-2 flex-wrap">
-                <!-- Status Pills -->
-                <button
-                  v-for="st in [
-                    { id: 'wishlist', label: '想看', icon: Bookmark },
-                    { id: 'watched', label: '已看', icon: CheckCircle2 },
-                    { id: 'favorite', label: '喜爱', icon: Heart }
-                  ]"
-                  :key="st.id"
-                  @click="handleStatusClick(st.id)"
-                  :class="[
-                    'py-1.5 px-3 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition',
-                    userStatus === st.id
-                      ? 'bg-accent-fill text-on-fill border-accent font-bold shadow-md shadow-accent-fill/20'
-                      : 'bg-surface-2/80 text-fg-3 border-line-strong/60 hover:text-fg-2 hover:bg-surface-2'
-                  ]"
-                >
-                  <component :is="st.icon" class="w-3.5 h-3.5" :fill="userStatus === st.id ? 'currentColor' : 'none'" />
-                  <span>{{ st.label }}</span>
-                </button>
-
-
-                <!-- Resource Search Plugin Button Group (Lazy Loaded) -->
-                <div class="flex items-center gap-1.5 flex-wrap ml-auto">
-                  <ResourceSearchWidget type="movie" :title="movie.title" />
-                </div>
-
-                <!-- Subordinate feature: Tags & Notes toggle button -->
-                <button
-                  @click="showPrivateNotes = !showPrivateNotes"
-                  :class="[
-                    pluginsConfig.resourceSearchEnabled ? '' : 'ml-auto',
-                    'py-1.5 px-2.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition',
-                    showPrivateNotes
-                      ? 'bg-accent-fill/20 text-accent-soft border-accent-fill/40'
-                      : 'bg-surface-2/60 hover:bg-surface-3 border-line text-fg-4 hover:text-fg-2'
-                  ]"
-                  title="展开自定义标签与私密便签"
-                >
-                  <Sparkles class="w-3.5 h-3.5" />
-                  <span>便签与标签</span>
-                  <span
-                    v-if="hasPrivateData"
-                    class="w-1.5 h-1.5 rounded-full bg-accent"
-                    title="已有私密记录"
-                  ></span>
-                </button>
-              </div>
-
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <!-- Rating inline -->
-                <div v-if="userStatus === 'watched' || userRating" class="flex items-center gap-1 ml-2 border-l border-line pl-3">
-                  <button
-                    v-for="star in 5"
-                    :key="star"
-                    @click="setRating(star)"
-                    class="p-0.5 hover:scale-125 transition-transform"
-                    :title="`评分 ${star} 星`"
-                  >
-                    <Star
-                      class="w-4 h-4 transition-colors"
-                      :class="userRating && userRating >= star ? 'text-accent fill-accent' : 'text-fg-5 hover:text-accent-soft'"
-                    />
-                  </button>
-                  <button
-                    v-if="userRating"
-                    @click="setRating(userRating)"
-                    class="text-[10px] text-fg-5 hover:text-danger ml-1 transition"
-                  >
-                    清除
-                  </button>
-                </div>
+            <!-- Search Row (directly below synopsis) -->
+            <div class="pt-1 flex items-center justify-end gap-3 flex-wrap">
+              <!-- Resource Search Plugin Button Group (Lazy Loaded) -->
+              <div class="flex items-center gap-1.5 flex-wrap ml-auto">
+                <ResourceSearchWidget type="movie" :title="movie.title" />
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Private Tags & Notes Drawer/Card (Subordinate feature) -->
-      <div v-if="showPrivateNotes" class="p-6 md:p-8 border-b border-line bg-sunken/40 space-y-4 animate-fade-in">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2 text-sm font-bold text-fg-2">
-            <Sparkles class="w-4 h-4 text-accent" />
-            <span>私密便签与标签 (仅本地可见)</span>
-          </div>
-          <div class="flex items-center gap-3">
-            <span v-if="saveSuccess" class="text-xs text-success font-medium animate-fade-in flex items-center gap-1">
-              <CheckCircle2 class="w-3.5 h-3.5" /> 已自动保存
-            </span>
-            <button
-              @click="showPrivateNotes = false"
-              class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line-strong flex items-center justify-center text-fg-3 hover:text-fg transition"
-              title="收起"
-            >
-              <X class="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <!-- Custom Tags -->
-          <div class="p-4 rounded-2xl bg-surface/80 border border-line space-y-3">
-            <div class="text-[11px] text-fg-3 font-medium flex items-center justify-between">
-              <span>自定义分类标签</span>
-              <button
-                @click="isCreatingTag = !isCreatingTag"
-                class="text-[10px] text-accent hover:text-accent-soft flex items-center gap-0.5"
-              >
-                <Plus class="w-3 h-3" /> 新建标签
-              </button>
-            </div>
-
-            <!-- Create new tag inline form -->
-            <div v-if="isCreatingTag" class="flex items-center gap-2 mb-2 p-2 rounded-lg bg-sunken border border-line">
-              <input
-                v-model="newTagName"
-                type="text"
-                placeholder="标签名称"
-                @keyup.enter="handleCreateTag"
-                class="flex-1 bg-transparent text-xs text-fg-2 outline-none placeholder-fg-5"
-              />
-              <input
-                v-model="newTagColor"
-                type="color"
-                class="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
-              />
-              <button
-                @click="handleCreateTag"
-                class="px-2 py-0.5 rounded bg-accent-fill text-on-fill text-[11px] font-bold"
-              >
-                添加
-              </button>
-            </div>
-
-            <!-- Tag pills list -->
-            <div class="flex flex-wrap gap-1.5 min-h-[28px]">
-              <button
-                v-for="t in availableTags"
-                :key="t.id"
-                @click="toggleTag(t.id)"
-                :class="[
-                  'px-2 py-0.5 rounded-lg text-xs font-medium border transition flex items-center gap-1',
-                  selectedTagIds.includes(t.id) ? 'shadow' : 'opacity-50 hover:opacity-100'
-                ]"
-                :style="{
-                  color: t.color,
-                  borderColor: `${t.color}60`,
-                  backgroundColor: selectedTagIds.includes(t.id) ? `${t.color}25` : 'transparent'
-                }"
-              >
-                <span>{{ t.name }}</span>
-                <span v-if="selectedTagIds.includes(t.id)">✓</span>
-              </button>
-              <div v-if="availableTags.length === 0 && !isCreatingTag" class="text-xs text-fg-5 italic">
-                点击右上角「新建标签」添加个人分类
-              </div>
-            </div>
-          </div>
-
-          <!-- Notes textarea -->
-          <div class="p-4 rounded-2xl bg-surface/80 border border-line space-y-2">
-            <div class="text-[11px] text-fg-3 font-medium">私密备忘 / 观后感</div>
-            <textarea
-              v-model="userNotes"
-              @blur="persistUserData"
-              rows="3"
-              placeholder="记录观后感、精彩场景节点或备忘..."
-              class="w-full bg-sunken/80 border border-line-strong/80 rounded-xl p-2.5 text-xs text-fg-2 placeholder-fg-5 outline-none focus:border-accent-fill transition resize-none"
-            ></textarea>
           </div>
         </div>
       </div>
@@ -1062,7 +635,7 @@ onUnmounted(() => {
       <div v-if="movie.performers && movie.performers.length > 0" class="p-6 md:p-8 border-b border-line space-y-3">
         <div class="flex items-center gap-2 text-sm font-bold text-fg-2">
           <Tag class="w-4 h-4 text-accent" />
-          <span>演职人员 ({{ movie.performers.length }})</span>
+          <span>{{ t('movie.cast') }} ({{ movie.performers.length }})</span>
         </div>
         <div class="flex flex-wrap gap-2">
           <button
@@ -1090,9 +663,20 @@ onUnmounted(() => {
 
       <!-- Chapters / Scenes Section -->
       <div v-if="movie.episodes && movie.episodes.length > 0" class="p-6 md:p-8 space-y-4">
-        <div class="flex items-center gap-2 text-sm font-bold text-fg-2">
-          <Layers class="w-4 h-4 text-accent" />
-          <span>收录章节 / 场景片段 ({{ movie.episodes.length }})</span>
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 text-sm font-bold text-fg-2">
+            <Layers class="w-4 h-4 text-accent" />
+            <span>{{ t('movie.scenes') }} ({{ movie.episodes.length }})</span>
+          </div>
+          <button
+            type="button"
+            @click="allScenesExpanded = !allScenesExpanded"
+            class="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 text-accent hover:text-accent-soft border border-line-strong transition cursor-pointer"
+            :title="allScenesExpanded ? t('common.collapseAll') : t('common.expandAll')"
+          >
+            <span>{{ allScenesExpanded ? t('common.collapseAll') : t('common.expandAll') }}</span>
+            <component :is="allScenesExpanded ? ChevronUp : ChevronDown" class="w-3.5 h-3.5" />
+          </button>
         </div>
 
         <div class="grid grid-cols-1 gap-3">
@@ -1108,9 +692,11 @@ onUnmounted(() => {
             :ordinal-count="movie.episodes.length"
             :show-source="false"
             :show-year="false"
-            :lang="lang"
+            :lang="showOriginal ? 'en' : lang"
+            :expanded="allScenesExpanded"
             zoom-on-click
             :is-favorite="isFav('episode', String(ep.id))"
+            @select-episode-id="emit('select-episode-id', $event)"
             @toggle-favorite="emit('toggle-entity-favorite', 'episode', String(ep.id))"
           />
         </div>

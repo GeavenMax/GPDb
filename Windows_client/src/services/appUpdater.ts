@@ -1,4 +1,5 @@
 import { api, IS_TAURI } from '../api';
+import { t } from '../i18n';
 
 export interface AppReleaseInfo {
   tagName: string;
@@ -11,7 +12,7 @@ export interface AppReleaseInfo {
 }
 
 const GITHUB_REPO = 'GeavenMax/GPDb';
-export const CURRENT_VERSION = '2.15.0';
+export const CURRENT_VERSION = '2.16.6';
 
 /**
  * 对比远程语义化版本号与当前客户端版本号
@@ -54,7 +55,7 @@ export async function checkAppUpdateDetailed(): Promise<CheckUpdateDetailedResul
       }
     });
     if (!res.ok) {
-      return { hasUpdate: false, release: null, currentVersion: CURRENT_VERSION, error: `GitHub API 请求失败: HTTP ${res.status}` };
+      return { hasUpdate: false, release: null, currentVersion: CURRENT_VERSION, error: t('update.apiFailed', { status: res.status }) };
     }
     const json = await res.json();
     const tagName = json.tag_name || '';
@@ -65,11 +66,15 @@ export async function checkAppUpdateDetailed(): Promise<CheckUpdateDetailedResul
     }
 
     const assets = json.assets || [];
+    const isWindows = navigator.userAgent.includes('Windows') || navigator.platform.includes('Win');
 
-    // 优先匹配针对 Windows 的 EXE / NSIS 安装程序
     let targetAsset = assets.find((a: any) => {
       const name = (a.name || '').toLowerCase();
-      return name.endsWith('.exe') || name.includes('windows') || name.includes('win');
+      if (isWindows) {
+        return name.endsWith('.exe') || name.includes('windows') || name.includes('win');
+      } else {
+        return name.endsWith('.dmg') || name.includes('macos') || name.includes('mac');
+      }
     });
 
     if (!targetAsset && assets.length > 0) {
@@ -77,14 +82,14 @@ export async function checkAppUpdateDetailed(): Promise<CheckUpdateDetailedResul
     }
 
     if (!targetAsset) {
-      return { hasUpdate: false, release: null, remoteVersion, currentVersion: CURRENT_VERSION, error: '新版本暂未上传对应的 Windows 安装包' };
+      return { hasUpdate: false, release: null, remoteVersion, currentVersion: CURRENT_VERSION, error: t('update.noPackage') };
     }
 
     const release: AppReleaseInfo = {
       tagName,
       versionName: remoteVersion,
       title: json.name || tagName,
-      notes: json.body || '暂无更新说明',
+      notes: json.body || t('update.noNotes'),
       assetUrl: targetAsset.browser_download_url,
       assetName: targetAsset.name,
       assetSize: targetAsset.size || 0
@@ -92,12 +97,12 @@ export async function checkAppUpdateDetailed(): Promise<CheckUpdateDetailedResul
 
     return { hasUpdate: true, release, remoteVersion, currentVersion: CURRENT_VERSION };
   } catch (e: any) {
-    return { hasUpdate: false, release: null, currentVersion: CURRENT_VERSION, error: e?.message || '网络连接超时或异常' };
+    return { hasUpdate: false, release: null, currentVersion: CURRENT_VERSION, error: e?.message || t('update.networkTimeout') };
   }
 }
 
 /**
- * 异步巡检 GitHub Releases 最新版本信息 (针对 Windows 环境优化资产匹配)
+ * 异步巡检 GitHub Releases 最新版本信息
  */
 export async function checkForAppUpdate(): Promise<AppReleaseInfo | null> {
   const res = await checkAppUpdateDetailed();
@@ -105,15 +110,15 @@ export async function checkForAppUpdate(): Promise<AppReleaseInfo | null> {
 }
 
 /**
- * 下载安装包并实时回调进度，随后触发原生安装并安全退出当前进程
+ * 下载安装包并实时回调进度，随后触发原生安装
  */
 export async function downloadAndInstallUpdate(
   release: AppReleaseInfo,
   onProgress: (percent: number) => void
 ): Promise<void> {
   const response = await fetch(release.assetUrl);
-  if (!response.ok) throw new Error(`下载更新包失败: HTTP ${response.status}`);
-  if (!response.body) throw new Error('响应流为空');
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.body) throw new Error(t('update.emptyStream'));
 
   const contentLength = Number(response.headers.get('Content-Length')) || release.assetSize || 0;
   const reader = response.body.getReader();

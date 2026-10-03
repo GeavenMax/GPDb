@@ -132,6 +132,8 @@ pub struct SeriesCollectionsResponse {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StudioSummary {
     pub name: String,
+    pub name_zh: Option<String>,
+    pub description_zh: Option<String>,
     pub works_count: i64,
     pub episodes_count: i64,
 }
@@ -207,6 +209,8 @@ pub struct EpisodeLibrary {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StudioWorks {
     pub studio_name: String,
+    pub studio_name_zh: Option<String>,
+    pub description_zh: Option<String>,
     pub movies: Vec<Movie>,
     pub movies_count: i64,
     pub episodes: Vec<Episode>,

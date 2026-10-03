@@ -15,18 +15,20 @@ export interface EpisodeNaming {
   episode_count?: number | null;
 }
 
+import { t, currentLocale } from '../i18n';
+
 /** "第 3 集 / 共 5 集", "第 3 集", or null when the payload carries no ordinal. */
 export function episodeOrdinalLabel(ep: EpisodeNaming): string | null {
   if (!ep.episode_ordinal) return null;
   if (ep.episode_count && ep.episode_count > 1) {
-    return `第 ${ep.episode_ordinal} 集 / 共 ${ep.episode_count} 集`;
+    return t('episode.ordinalWithCount', { ordinal: ep.episode_ordinal, count: ep.episode_count });
   }
-  return `第 ${ep.episode_ordinal} 集`;
+  return t('episode.ordinal', { ordinal: ep.episode_ordinal });
 }
 
 /** The short label for a card badge or a list row. */
 export function episodeLabel(ep: EpisodeNaming): string {
-  return episodeOrdinalLabel(ep) || ep.title || '未命名分集';
+  return episodeOrdinalLabel(ep) || ep.title || t('episode.unnamed');
 }
 
 /**
@@ -35,7 +37,12 @@ export function episodeLabel(ep: EpisodeNaming): string {
  */
 export function episodeHeading(ep: EpisodeNaming, movieTitle?: string | null): string {
   const position = episodeOrdinalLabel(ep);
-  if (movieTitle && position) return `《${movieTitle}》· ${position}`;
-  if (movieTitle) return `《${movieTitle}》`;
+  const isZh = currentLocale.value.startsWith('zh');
+  if (movieTitle && position) {
+    return isZh ? `《${movieTitle}》· ${position}` : `"${movieTitle}" · ${position}`;
+  }
+  if (movieTitle) {
+    return isZh ? `《${movieTitle}》` : `"${movieTitle}"`;
+  }
   return episodeLabel(ep);
 }

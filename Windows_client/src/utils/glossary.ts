@@ -15,6 +15,7 @@
 
 import { ref } from 'vue';
 import { api } from '../api';
+import { currentLocale } from '../i18n';
 
 /**
  * The `<br />` spellings the site uses as a multi-value separator, enumerated in every
@@ -65,6 +66,7 @@ export function loadGlossary(force = false): Promise<void> {
 /** Chinese for one attribute value, falling back to the original English. */
 export function tr(value: string | null | undefined): string {
   if (!value) return '';
+  if (currentLocale.value === 'en') return value;
   return terms.value[value] || value;
 }
 
@@ -94,6 +96,13 @@ export function categoryCount(): number {
  */
 export function trCategory(raw: string | null | undefined): string {
   if (!raw) return '';
+  if (currentLocale.value === 'en') {
+    return raw
+      .split(BR_RE)
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .join(', ');
+  }
   return raw
     .split(BR_RE)
     .map((t) => t.trim())
@@ -124,6 +133,7 @@ const MEASURE_RE = /(\d[\d.\-]*)\s*(ft|in|lbs|kg|cm)(?![A-Za-z])/gi;
  */
 export function trMeasure(value: string | null | undefined): string {
   if (!value) return '';
+  if (currentLocale.value === 'en') return value;
   return value.replace(MEASURE_RE, (_match, digits: string, unit: string) => digits + tr(unit.toLowerCase()));
 }
 
@@ -138,6 +148,13 @@ export function trMeasure(value: string | null | undefined): string {
  */
 export function trTattoo(raw: string | null | undefined): string {
   if (!raw) return '';
+  if (currentLocale.value === 'en') {
+    return raw
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .join(', ');
+  }
   return raw
     .split(',')
     .map((entry) => {

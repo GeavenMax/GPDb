@@ -5,6 +5,7 @@ import type { Movie } from '../types';
 import { getImageUrl } from '../utils/image';
 import { pickZh, titlePrimary, titleSecondary } from '../utils/bilingual';
 import { trCategory } from '../utils/glossary';
+import { t, currentLocale } from '../i18n';
 
 const props = withDefaults(defineProps<{
   movie: Movie;
@@ -79,12 +80,12 @@ const directorLine = computed(() => {
   if (roster && roster.length > 0) {
     const first = roster[0].name.trim();
     if (!first) return '';
-    return roster.length > 1 ? `${first} 等${roster.length}人` : first;
+    return roster.length > 1 ? t('movie.andOthers', { first, count: roster.length }) : first;
   }
   const raw = props.movie.director_name?.trim();
   if (!raw) return '';
   const parts = raw.split(' / ').map(s => s.trim()).filter(Boolean);
-  if (parts.length > 1) return `${parts[0]} 等${parts.length}人`;
+  if (parts.length > 1) return t('movie.andOthers', { first: parts[0], count: parts.length });
   return raw;
 });
 
@@ -92,9 +93,9 @@ const directorLine = computed(() => {
 const directorTitle = computed(() => {
   const roster = props.movie.directors;
   if (roster && roster.length > 0) {
-    return `导演: ${roster.map(d => d.name).join(' / ')}`;
+    return `${t('movie.director')}: ${roster.map(d => d.name).join(' / ')}`;
   }
-  return `导演: ${props.movie.director_name || ''}`;
+  return `${t('movie.director')}: ${props.movie.director_name || ''}`;
 });
 </script>
 
@@ -149,10 +150,10 @@ const directorTitle = computed(() => {
           <span
             v-if="hasTranslation"
             class="px-1.5 py-0.5 rounded text-success bg-success-fill/10 border border-success-fill/20 flex items-center gap-1"
-            title="已有中文简介"
+            :title="t('filter.hasZhSynopsis')"
           >
             <Languages class="w-2.5 h-2.5" />
-            中
+            {{ currentLocale.startsWith('zh') ? '中' : 'ZH' }}
           </span>
         </div>
 
@@ -169,7 +170,7 @@ const directorTitle = computed(() => {
         >
           {{ shownDescription }}
         </p>
-        <div v-else class="text-[11px] text-fg-5 italic mt-1">暂无简介</div>
+        <div v-else class="text-[11px] text-fg-5 italic mt-1">{{ t('movie.noSynopsis') }}</div>
       </div>
 
       <!-- Footer row: cast + personal annotations -->
@@ -219,7 +220,7 @@ const directorTitle = computed(() => {
                 ? 'bg-danger-fill text-on-danger shadow shadow-danger-fill/40'
                 : 'bg-surface-2/80 text-fg-4 hover:text-danger hover:bg-surface-2'
             ]"
-            title="收藏"
+            :title="isFavorite ? t('movie.favorited') : t('movie.favorite')"
           >
             <Heart class="w-3 h-3" :fill="isFavorite ? 'currentColor' : 'none'" />
           </button>
@@ -259,7 +260,7 @@ const directorTitle = computed(() => {
       <span
         v-if="isNew"
         class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md shadow-rose-500/30 backdrop-blur-md z-10 flex items-center gap-0.5 tracking-wider uppercase"
-        title="最新入库/新近发行"
+        :title="t('movie.newlyAdded')"
       >
         <Sparkles class="w-2.5 h-2.5 fill-current" />
         NEW
@@ -272,10 +273,10 @@ const directorTitle = computed(() => {
           'absolute top-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-success-fill/90 text-on-fill backdrop-blur-md z-10 flex items-center gap-0.5',
           isNew ? 'left-14' : 'left-2.5'
         ]"
-        title="已有中文简介"
+        :title="t('filter.hasZhSynopsis')"
       >
         <Languages class="w-2.5 h-2.5" />
-        中
+        {{ currentLocale.startsWith('zh') ? '中' : 'ZH' }}
       </span>
 
       <!-- Clean Favorite Heart Button (Top Right, Subtle on hover or active) -->
@@ -287,7 +288,7 @@ const directorTitle = computed(() => {
             ? 'bg-danger-fill text-on-danger shadow-lg shadow-danger-fill/40 opacity-100'
             : 'bg-scrim/40 text-fg-3 hover:text-danger hover:bg-scrim/80 opacity-0 group-hover:opacity-100'
         ]"
-        title="收藏"
+        :title="isFavorite ? t('movie.favorited') : t('movie.favorite')"
       >
         <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
       </button>

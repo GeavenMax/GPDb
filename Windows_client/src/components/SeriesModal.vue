@@ -4,6 +4,7 @@ import { X, Film, ArrowRight, Building2, CheckCircle2, Heart } from '@lucide/vue
 import type { MovieSeriesResponse } from '../types';
 import { getImageUrl } from '../utils/image';
 import { titlePrimary, titleSecondary } from '../utils/bilingual';
+import { t } from '../i18n';
 
 const props = defineProps<{
   series: MovieSeriesResponse;
@@ -56,10 +57,10 @@ onUnmounted(() => {
             <div class="min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <h2 class="text-base sm:text-lg font-bold text-fg tracking-tight truncate">
-                  「{{ series.root_title }}」全系列作品
+                  {{ t('series.allWorks', { title: series.root_title }) }}
                 </h2>
                 <span class="text-xs px-2.5 py-0.5 rounded-full bg-accent-fill/15 text-accent font-semibold border border-accent-fill/30">
-                  共 {{ series.items.length }} 部
+                  {{ t('series.countTotal', { count: series.items.length }) }}
                 </span>
                 <!-- Favorite Toggle Button -->
                 <button
@@ -68,15 +69,15 @@ onUnmounted(() => {
                   :class="isFavorite
                     ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 hover:bg-rose-500/25'
                     : 'bg-surface-2 text-fg-3 border-line hover:text-fg hover:border-line-strong'"
-                  :title="isFavorite ? '已收藏此系列，点击取消' : '收藏此系列'"
+                  :title="isFavorite ? t('series.unfavoriteTooltip') : t('series.favoriteTooltip')"
                 >
                   <Heart class="w-3.5 h-3.5" :class="isFavorite ? 'fill-rose-400 text-rose-400' : 'text-fg-4'" />
-                  <span>{{ isFavorite ? '已收藏系列' : '收藏系列' }}</span>
+                  <span>{{ isFavorite ? t('series.favorited') : t('series.favorite') }}</span>
                 </button>
               </div>
               <div v-if="series.studio_name" class="flex items-center gap-1.5 text-xs text-fg-3 mt-0.5">
                 <Building2 class="w-3.5 h-3.5 text-fg-4" />
-                <span>出品片商：{{ series.studio_name }}</span>
+                <span>{{ t('series.studioLabel') }}：{{ series.studio_name }}</span>
               </div>
             </div>
           </div>
@@ -84,7 +85,7 @@ onUnmounted(() => {
           <button
             @click="emit('close')"
             class="p-2 rounded-xl text-fg-3 hover:text-fg hover:bg-surface-2 border border-transparent hover:border-line transition shrink-0"
-            title="关闭 (Esc)"
+            :title="t('common.close') + ' (Esc)'"
           >
             <X class="w-5 h-5" />
           </button>
@@ -123,16 +124,16 @@ onUnmounted(() => {
                   class="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-accent text-on-fill text-[10px] font-bold shadow-md flex items-center gap-1"
                 >
                   <CheckCircle2 class="w-3 h-3 stroke-[3]" />
-                  <span>当前浏览</span>
+                  <span>{{ t('series.currentlyBrowsing') }}</span>
                 </div>
 
                 <!-- Year & Runtime Floating Badges -->
                 <div class="absolute bottom-2 inset-x-2 flex items-center justify-between text-[10px] text-white font-medium drop-shadow-md">
                   <span v-if="movie.release_year" class="px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm">
-                    {{ movie.release_year }} 年
+                    {{ movie.release_year }}
                   </span>
                   <span v-if="movie.duration_mins" class="px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm ml-auto">
-                    {{ movie.duration_mins }} 分钟
+                    {{ movie.duration_mins }} {{ t('common.minutes') }}
                   </span>
                 </div>
               </div>
@@ -149,9 +150,9 @@ onUnmounted(() => {
                 </div>
 
                 <div class="flex items-center justify-between text-[11px] text-fg-3 pt-1 border-t border-line/40">
-                  <span class="truncate text-fg-4 text-[10px]">{{ movie.studio_name || '独立发行' }}</span>
+                  <span class="truncate text-fg-4 text-[10px]">{{ movie.studio_name || t('movie.indieStudio') }}</span>
                   <span class="text-accent group-hover:translate-x-0.5 transition-transform flex items-center text-[10px] font-medium">
-                    详情 <ArrowRight class="w-3 h-3 ml-0.5" />
+                    {{ t('series.details') }} <ArrowRight class="w-3 h-3 ml-0.5" />
                   </span>
                 </div>
               </div>
@@ -161,12 +162,12 @@ onUnmounted(() => {
 
         <!-- Modal Footer -->
         <div class="px-6 py-3 border-t border-line bg-surface-2/30 flex items-center justify-between text-xs text-fg-4">
-          <span>基于同片商主标题规范化抽取算法智能索引</span>
+          <span>{{ t('series.algorithmNotice') }}</span>
           <button
             @click="emit('close')"
             class="px-4 py-1.5 rounded-xl border border-line bg-surface hover:bg-surface-2 text-fg-2 transition"
           >
-            关闭
+            {{ t('common.close') }}
           </button>
         </div>
       </div>

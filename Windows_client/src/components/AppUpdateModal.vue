@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { ArrowDownCircle, Sparkles, X, AlertCircle } from 'lucide-vue-next';
 import { type AppReleaseInfo, CURRENT_VERSION, downloadAndInstallUpdate } from '../services/appUpdater';
+import { t } from '../i18n';
 
 const props = defineProps<{
   release: AppReleaseInfo;
@@ -19,7 +20,7 @@ const formattedSize = computed(() => {
   if (props.release.assetSize > 0) {
     return `${(props.release.assetSize / (1024 * 1024)).toFixed(1)} MB`;
   }
-  return '未知大小';
+  return t('update.unknownSize');
 });
 
 async function startUpdate() {
@@ -32,7 +33,7 @@ async function startUpdate() {
       downloadProgress.value = percent;
     });
   } catch (err: any) {
-    errorMessage.value = err?.message || '下载或启动安装向导失败，请重试';
+    errorMessage.value = err?.message || t('update.failed');
     isDownloading.value = false;
   }
 }
@@ -50,7 +51,7 @@ async function startUpdate() {
         v-if="!isDownloading"
         @click="emit('close')"
         class="absolute top-4 right-4 p-2 rounded-xl text-fg-3 hover:text-fg hover:bg-white/10 transition cursor-pointer"
-        title="稍后再说"
+        :title="t('update.later')"
       >
         <X class="w-4 h-4" />
       </button>
@@ -62,15 +63,15 @@ async function startUpdate() {
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-base font-bold text-fg">发现新版本</h3>
+            <h3 class="text-base font-bold text-fg">{{ t('update.newVersionFound') }}</h3>
             <span class="px-2 py-0.5 text-[11px] font-black tracking-wide rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
               {{ release.tagName }}
             </span>
           </div>
           <div class="flex items-center gap-2 text-xs text-fg-3 mt-0.5">
-            <span>当前: v{{ CURRENT_VERSION }}</span>
+            <span>{{ t('update.current', { version: CURRENT_VERSION }) }}</span>
             <span>·</span>
-            <span>安装包: {{ formattedSize }}</span>
+            <span>{{ t('update.packageSize', { size: formattedSize }) }}</span>
           </div>
         </div>
       </div>
@@ -78,10 +79,10 @@ async function startUpdate() {
       <!-- Release Notes Box -->
       <div class="my-4 p-3.5 rounded-2xl bg-surface-2/70 border border-white/5 max-h-48 overflow-y-auto space-y-1.5 custom-scrollbar text-left text-xs leading-relaxed text-fg-2">
         <div class="font-semibold text-fg text-[11px] uppercase tracking-wider text-fg-3 mb-1">
-          更新说明
+          {{ t('update.releaseNotes') }}
         </div>
         <div class="whitespace-pre-line text-[11px] text-fg-2 select-text">
-          {{ release.notes || '暂无详细更新日志。' }}
+          {{ release.notes || t('update.noNotes') }}
         </div>
       </div>
 
@@ -95,7 +96,7 @@ async function startUpdate() {
       <div v-if="isDownloading" class="mt-5 space-y-2">
         <div class="flex justify-between items-center text-xs">
           <span class="text-fg-2 font-medium">
-            {{ downloadProgress < 100 ? '正在下载更新安装包...' : '下载完成，正在启动安装向导...' }}
+            {{ downloadProgress < 100 ? t('update.downloading') : t('update.mounting') }}
           </span>
           <span class="text-amber-400 font-bold font-mono">{{ downloadProgress }}%</span>
         </div>
@@ -112,14 +113,14 @@ async function startUpdate() {
           @click="emit('close')"
           class="px-4 py-2 rounded-xl text-xs font-semibold text-fg-3 hover:text-fg hover:bg-white/5 transition cursor-pointer"
         >
-          稍后再说
+          {{ t('update.later') }}
         </button>
         <button
           @click="startUpdate"
           class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-orange-500/25 text-xs font-bold flex items-center gap-2 transition cursor-pointer active:scale-98"
         >
           <ArrowDownCircle class="w-4 h-4" />
-          <span>立即更新</span>
+          <span>{{ t('update.downloadAndInstall') }}</span>
         </button>
       </div>
     </div>

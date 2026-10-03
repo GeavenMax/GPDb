@@ -96,7 +96,7 @@ onUnmounted(() => {
         <div class="font-bold text-fg text-base tracking-wide">
           GPDb
         </div>
-        <div class="text-[11px] text-fg-3">已收录 {{ movieCount.toLocaleString() }} 部影片</div>
+        <div class="text-[11px] text-fg-3">{{ t('navbar.indexedMovies', { count: movieCount.toLocaleString() }) }}</div>
       </div>
     </div>
 
@@ -109,7 +109,7 @@ onUnmounted(() => {
         @input="onInput"
         @focus="onFocus"
         @keydown="handleKeyDown"
-        :placeholder="t('common.search', '搜索电影、演员、片商、导演 (输入即搜)...')"
+        :placeholder="t('common.search')"
         class="w-full bg-surface/90 border border-line-strong/60 hover:border-line-strong focus:border-accent-fill/70 rounded-xl pl-10 pr-20 py-2 text-sm text-fg placeholder-fg-4 focus:outline-none focus:ring-2 focus:ring-accent-fill/20 transition-all shadow-inner"
       />
       <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -131,14 +131,14 @@ onUnmounted(() => {
         <div class="flex items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold text-fg-4 border-b border-line/60">
           <span class="flex items-center gap-1.5">
             <Clock class="w-3.5 h-3.5 text-accent" />
-            最近搜索历史
+            {{ t('common.recentSearches') }}
           </span>
           <button
             @click="clearSearchHistory"
             class="text-fg-4 hover:text-danger text-[10px] flex items-center gap-1 hover:underline transition"
           >
             <Trash2 class="w-3 h-3" />
-            全部清空
+            {{ t('common.clearAll') }}
           </button>
         </div>
 
@@ -152,8 +152,8 @@ onUnmounted(() => {
             <span class="truncate flex-1">{{ item }}</span>
             <button
               @click.stop="removeSearchHistoryItem(item)"
-              class="opacity-0 group-hover:opacity-100 text-fg-4 hover:text-danger p-0.5 rounded transition"
-              title="删除此条记录"
+              class="opacity-0 group-hover:opacity-100 text-fg-4 hover:text-danger p-0.5 rounded transition cursor-pointer"
+              :title="t('navbar.deleteHistoryItem')"
             >
               <X class="w-3 h-3" />
             </button>
@@ -169,20 +169,20 @@ onUnmounted(() => {
         <button
           @click="emit('change-view', 'grid')"
           :class="[
-            'p-1.5 rounded-md transition',
+            'p-1.5 rounded-md transition cursor-pointer',
             viewMode === 'grid' ? 'bg-surface-2 text-accent shadow' : 'text-fg-3 hover:text-fg-2'
           ]"
-          title="海报网格视图"
+          :title="t('navbar.viewGrid')"
         >
           <LayoutGrid class="w-4 h-4" />
         </button>
         <button
           @click="emit('change-view', 'list')"
           :class="[
-            'p-1.5 rounded-md transition',
+            'p-1.5 rounded-md transition cursor-pointer',
             viewMode === 'list' ? 'bg-surface-2 text-accent shadow' : 'text-fg-3 hover:text-fg-2'
           ]"
-          title="列表视图"
+          :title="t('navbar.viewList')"
         >
           <List class="w-4 h-4" />
         </button>
@@ -197,25 +197,25 @@ onUnmounted(() => {
             ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-sm'
             : 'bg-surface hover:bg-surface-2 border-line text-fg-3 hover:text-fg'
         ]"
-        :title="privacySettings.screenshotPrivacyEnabled ? '截屏防窥模式已开启（高斯模糊图片/文字），点击恢复' : '点击开启截屏防窥模式（用于安全截屏分享）'"
+        :title="privacySettings.screenshotPrivacyEnabled ? t('navbar.privacyDisableTip') : t('navbar.privacyEnableTip')"
       >
         <EyeOff v-if="privacySettings.screenshotPrivacyEnabled" class="w-3.5 h-3.5 text-amber-400" />
         <Eye v-else class="w-3.5 h-3.5 text-fg-4" />
-        <span class="hidden md:inline">{{ privacySettings.screenshotPrivacyEnabled ? '防窥中' : '防窥' }}</span>
+        <span class="hidden md:inline">{{ privacySettings.screenshotPrivacyEnabled ? t('navbar.privacyActive') : t('navbar.privacyInactive') }}</span>
       </button>
 
       <!-- Filter Drawer Button -->
       <button
         @click="emit('toggle-filter')"
         :class="[
-          'flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border transition',
+          'flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border transition cursor-pointer',
           filterActive
             ? 'bg-accent-fill/10 border-accent-fill/40 text-accent'
             : 'bg-surface hover:bg-surface-2 border-line text-fg-2'
         ]"
       >
         <SlidersHorizontal class="w-3.5 h-3.5" />
-        <span>{{ t('common.filter', '筛选') }}</span>
+        <span>{{ t('common.filter') }}</span>
         <span v-if="filterActive" class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
       </button>
 
@@ -224,10 +224,10 @@ onUnmounted(() => {
         v-if="isScrapingRunning"
         @click="emit('toggle-sync')"
         class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border border-amber-500/40 text-amber-300 shadow-lg shadow-orange-500/10 hover:border-amber-400 transition cursor-pointer active:scale-98 animate-pulse"
-        title="正在后台抓取中，点击查看进度控制面板"
+        :title="t('navbar.syncingTip')"
       >
         <RefreshCw class="w-3.5 h-3.5 animate-spin text-amber-300" />
-        <span>同步中 +{{ newlyScrapedCount }}</span>
+        <span>{{ t('navbar.syncingCount', { count: newlyScrapedCount }) }}</span>
       </button>
 
       <!-- Sync Button (Idle) -->
@@ -235,10 +235,10 @@ onUnmounted(() => {
         v-else
         @click="emit('toggle-sync')"
         class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-surface hover:bg-surface-2 border border-line text-fg-2 hover:text-fg transition cursor-pointer"
-        title="打开自动化数据同步与搜刮中心"
+        :title="t('navbar.syncTip')"
       >
         <RefreshCw class="w-3.5 h-3.5 text-fg-3" />
-        <span>{{ t('common.sync', '同步') }}</span>
+        <span>{{ t('common.sync') }}</span>
       </button>
     </div>
   </header>

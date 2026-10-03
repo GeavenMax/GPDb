@@ -13,6 +13,7 @@ import type {
 import { DATE_FILTER_OPTIONS, EPISODE_DATE_FILTER_OPTIONS } from '../types';
 import { FACET_KEYS, FACET_LABELS, EPISODE_SORTS } from '../api';
 import { tr, trCategory } from '../utils/glossary';
+import { t } from '../i18n';
 
 const props = defineProps<{
   open: boolean;
@@ -59,13 +60,58 @@ function patchEpisodeFilters(patch: Partial<EpisodeFilterState>) {
 
 const MIN_MOVIE_OPTIONS = [1, 5, 10, 25, 50];
 
-const PERFORMER_SORTS: Array<{ id: PerformerSortBy; label: string }> = [
-  { id: 'movies_desc', label: '作品最多' },
-  { id: 'movies_asc', label: '作品最少' },
-  { id: 'name_asc', label: '姓名 A-Z' },
-  { id: 'id_desc', label: '最新入库' },
-  { id: 'id_asc', label: '最早收录' },
-];
+const performerSorts = computed<Array<{ id: PerformerSortBy; label: string }>>(() => [
+  { id: 'movies_desc', label: t('sort.moviesDesc') },
+  { id: 'movies_asc', label: t('sort.moviesAsc') },
+  { id: 'name_asc', label: t('sort.nameAsc') },
+  { id: 'id_desc', label: t('sort.idDesc') },
+  { id: 'id_asc', label: t('sort.idAsc') },
+]);
+
+const movieSorts = computed<Array<{ id: FilterState['sortBy']; label: string }>>(() => [
+  { id: 'year_desc', label: t('sort.yearDesc') },
+  { id: 'year_asc', label: t('sort.yearAsc') },
+  { id: 'title_asc', label: t('sort.titleAsc') },
+  { id: 'id_desc', label: t('sort.idDesc') },
+]);
+
+function getEpisodeSortLabel(id: string): string {
+  if (id === 'id_desc') return t('sort.idDesc');
+  if (id === 'date_desc') return t('sort.yearDesc');
+  if (id === 'title_asc') return t('sort.titleAsc');
+  return id;
+}
+
+function getDateLabel(id: string, isEpisode: boolean = false): string {
+  if (id === 'all') return t('common.all');
+  if (id === 'last_scraped') return t('filter.lastScraped');
+  if (isEpisode) {
+    if (id === 'recent_7') return t('filter.epRecent7');
+    if (id === 'recent_30') return t('filter.epRecent30');
+    if (id === 'recent_90') return t('filter.epRecent90');
+    if (id === 'recent_year') return t('filter.epRecentYear');
+  } else {
+    if (id === 'recent_7') return t('filter.recent7');
+    if (id === 'recent_30') return t('filter.recent30');
+    if (id === 'recent_90') return t('filter.recent90');
+    if (id === 'recent_year') return t('filter.recentYear');
+  }
+  return id;
+}
+
+function facetLabel(key: string): string {
+  const map: Record<string, string> = {
+    bodyType: 'performer.bodyType',
+    hair: 'performer.hair',
+    eyes: 'performer.eyes',
+    skin: 'performer.skin',
+    bodyHair: 'performer.bodyHair',
+    facialHair: 'performer.facialHair',
+    dickSize: 'performer.dickSize',
+    foreskin: 'performer.foreskin',
+  };
+  return map[key] ? t(map[key]) : (FACET_LABELS[key] || key);
+}
 
 /** Facets the server actually has values for — an all-empty facet is not offered. */
 const availableFacets = computed(() =>
@@ -162,7 +208,7 @@ function resetAll() {
         <!-- Top bar -->
         <div class="flex items-center justify-between pb-4 border-b border-line">
           <div class="font-bold text-fg text-base">
-            {{ isPerformerTab ? '演员属性筛选' : isEpisodeTab ? '分集筛选' : '高级筛选' }}
+            {{ isPerformerTab ? t('filter.performerTitle') : isEpisodeTab ? t('filter.episodeTitle') : t('filter.advancedTitle') }}
           </div>
           <button @click="emit('close')" class="p-1 rounded-lg text-fg-3 hover:text-fg hover:bg-surface transition">
             <X class="w-5 h-5" />
@@ -176,19 +222,15 @@ function resetAll() {
             v-if="performerFacets && performerFacets.enriched < performerFacets.total"
             class="p-3 rounded-xl bg-surface border border-line text-[11px] text-fg-3 leading-relaxed"
           >
-            已抓取身体属性档案的演员：
-            <span class="font-bold text-accent">{{ performerFacets.enriched.toLocaleString() }}</span>
-            /
-            {{ performerFacets.total.toLocaleString() }} 位。
-            其余演员尚未抓取详情页，筛选结果只覆盖已建档的部分。
+            {{ t('filter.performerFacetsCoverage', { enriched: performerFacets.enriched.toLocaleString(), total: performerFacets.total.toLocaleString() }) }}
           </div>
 
           <!-- Sort By -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">排序方式</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.sortBy') }}</label>
             <div class="grid grid-cols-2 gap-1.5">
               <button
-                v-for="s in PERFORMER_SORTS"
+                v-for="s in performerSorts"
                 :key="s.id"
                 @click="patchPerformerFilters({ sortBy: s.id })"
                 :class="[
@@ -205,7 +247,7 @@ function resetAll() {
 
           <!-- Quick toggles -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">快速筛选</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.quickFilter') }}</label>
             <div class="flex flex-wrap gap-1.5">
               <button
                 @click="patchPerformerFilters({ hasImage: !performerFilters?.hasImage })"
@@ -217,14 +259,14 @@ function resetAll() {
                 ]"
               >
                 <Camera class="w-3 h-3" />
-                仅有照片 ({{ performerFacets?.withImage || 0 }})
+                {{ t('filter.onlyWithPhoto') }} ({{ performerFacets?.withImage || 0 }})
               </button>
             </div>
           </div>
 
           <!-- Minimum works -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">作品数量下限</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.minWorks') }}</label>
             <div class="flex flex-wrap gap-1.5">
               <button
                 @click="patchPerformerFilters({ minMovies: null })"
@@ -235,7 +277,7 @@ function resetAll() {
                     : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
-                不限
+                {{ t('filter.unlimited') }}
               </button>
               <button
                 v-for="n in MIN_MOVIE_OPTIONS"
@@ -257,7 +299,7 @@ function resetAll() {
           <!-- Attribute facets -->
           <div v-for="key in availableFacets" :key="key" class="space-y-2">
             <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">
-              {{ FACET_LABELS[key] || key }}
+              {{ facetLabel(key) }}
             </label>
             <div class="flex flex-wrap gap-1.5">
               <button
@@ -288,7 +330,7 @@ function resetAll() {
           </div>
 
           <div v-if="availableFacets.length === 0" class="text-xs text-fg-5 italic">
-            暂无已建档的属性数据
+            {{ t('filter.noFacetData') }}
           </div>
         </template>
 
@@ -297,7 +339,7 @@ function resetAll() {
           <!-- Sort By. Also offered on the tab's toolbar, which is the faster path;
                this copy is here because every section of the drawer starts with it. -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">排序方式</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.sortBy') }}</label>
             <div class="grid grid-cols-2 gap-1.5">
               <button
                 v-for="s in EPISODE_SORTS"
@@ -310,14 +352,14 @@ function resetAll() {
                     : 'bg-surface/60 border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
-                {{ s.label }}
+                {{ getEpisodeSortLabel(s.id) }}
               </button>
             </div>
           </div>
 
           <!-- Quick toggles -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">快速筛选</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.quickFilter') }}</label>
             <div class="flex flex-wrap gap-1.5">
               <button
                 @click="patchEpisodeFilters({ hasZh: !episodeFilters?.hasZh })"
@@ -327,10 +369,10 @@ function resetAll() {
                     ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
                     : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
-                title="只显示已有中文简介的片段"
+                :title="t('filter.hasZhSynopsis')"
               >
                 <Languages class="w-3 h-3" />
-                有中文简介
+                {{ t('filter.hasZhSynopsis') }}
               </button>
               <button
                 @click="patchEpisodeFilters({ hasPerformers: !episodeFilters?.hasPerformers })"
@@ -340,10 +382,10 @@ function resetAll() {
                     ? 'bg-accent-fill text-on-fill font-bold border-accent-fill'
                     : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
-                title="只显示已关联演员的片段"
+                :title="t('filter.hasPerformers')"
               >
                 <Users class="w-3 h-3" />
-                有演员
+                {{ t('filter.hasPerformers') }}
               </button>
             </div>
           </div>
@@ -351,7 +393,7 @@ function resetAll() {
           <!-- Studio. Same list as the film section: scenes carry no studio of their
                own, so this filters on the studio of the film they came from. -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">来源片商 (Studio)</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.sourceStudio') }}</label>
             <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
               <button
                 v-for="st in studios"
@@ -371,7 +413,7 @@ function resetAll() {
 
           <!-- Episode Date Filter -->
           <div class="space-y-2">
-            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">时间范围 / 批次</label>
+            <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.timeRange') }}</label>
             <div class="grid grid-cols-3 gap-1.5">
               <button
                 v-for="d in EPISODE_DATE_FILTER_OPTIONS"
@@ -384,7 +426,7 @@ function resetAll() {
                     : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
               >
-                {{ d.label }}
+                {{ getDateLabel(d.id, true) }}
               </button>
             </div>
           </div>
@@ -394,15 +436,10 @@ function resetAll() {
         <template v-else>
         <!-- Sort By -->
         <div class="space-y-2">
-          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">排序方式</label>
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.sortBy') }}</label>
           <div class="grid grid-cols-2 gap-1.5">
             <button
-              v-for="s in [
-                { id: 'year_desc', label: '最新上映' },
-                { id: 'year_asc', label: '最早年代' },
-                { id: 'title_asc', label: '片名 A-Z' },
-                { id: 'id_desc', label: '最新入库' },
-              ]"
+              v-for="s in movieSorts"
               :key="s.id"
               @click="selectSort(s.id as any)"
               :class="[
@@ -419,7 +456,7 @@ function resetAll() {
 
         <!-- Movie Date Filter -->
         <div class="space-y-2">
-          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">时间范围 / 批次</label>
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.timeRange') }}</label>
           <div class="grid grid-cols-3 gap-1.5">
             <button
               v-for="d in DATE_FILTER_OPTIONS"
@@ -432,14 +469,14 @@ function resetAll() {
                   : 'bg-surface border-line text-fg-3 hover:text-fg-2'
               ]"
             >
-              {{ d.label }}
+              {{ getDateLabel(d.id, false) }}
             </button>
           </div>
         </div>
 
         <!-- Studio Filter -->
         <div class="space-y-2">
-          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">制片厂牌 (Studio)</label>
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.studioLabel') }}</label>
           <div class="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
             <button
               v-for="st in studios"
@@ -459,13 +496,13 @@ function resetAll() {
 
         <!-- Active Director Filter — set from a film's page or the favorites page -->
         <div v-if="local.director" class="space-y-2">
-          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">导演 (Director)</label>
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.directorLabel') }}</label>
           <div class="flex items-center gap-2">
             <span class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-accent-fill text-on-fill border border-accent-fill">
-              <Clapperboard class="w-3 h-3" />
+              <Clapperboard class="w-3.5 h-3.5" />
               {{ local.director }}
-              <button @click="clearDirector" class="hover:opacity-70 transition" title="清除导演筛选">
-                <X class="w-3 h-3" />
+              <button @click="clearDirector" class="hover:opacity-70 transition" :title="t('common.clear')">
+                <X class="w-3.5 h-3.5" />
               </button>
             </span>
           </div>
@@ -473,7 +510,7 @@ function resetAll() {
 
         <!-- Category Filter -->
         <div class="space-y-2">
-          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">影片分类 (Category)</label>
+          <label class="text-xs font-semibold text-fg-3 uppercase tracking-wider">{{ t('filter.categoryLabel') }}</label>
           <div class="flex flex-wrap gap-1.5">
             <button
               v-for="cat in categories"
@@ -502,13 +539,13 @@ function resetAll() {
           class="flex-1 py-2.5 rounded-xl bg-surface hover:bg-surface-2 border border-line text-xs font-semibold text-fg-3 hover:text-fg flex items-center justify-center gap-1.5 transition"
         >
           <RotateCcw class="w-3.5 h-3.5" />
-          重置
+          {{ t('common.reset') }}
         </button>
         <button
           @click="emit('close')"
           class="flex-1 py-2.5 rounded-xl bg-accent-fill hover:bg-accent text-on-fill text-xs font-bold transition shadow-lg shadow-accent-fill/20"
         >
-          完成
+          {{ t('common.done') }}
         </button>
       </div>
     </aside>

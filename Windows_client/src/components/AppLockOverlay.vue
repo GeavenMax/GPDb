@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { Lock, Delete } from '@lucide/vue';
 import { unlockApp, privacySettings } from '../services/privacy';
+import { t } from '../i18n';
 
 const enteredPin = ref('');
 const isError = ref(false);
@@ -48,8 +49,8 @@ function verify() {
       </div>
 
       <div class="text-center space-y-1">
-        <h2 class="text-xl font-bold tracking-tight text-fg">影库已安全锁定</h2>
-        <p class="text-xs text-fg-4">请输入专属 PIN 码解锁以继续浏览</p>
+        <h2 class="text-xl font-bold tracking-tight text-fg">{{ t('lock.title') }}</h2>
+        <p class="text-xs text-fg-4">{{ t('lock.subtitle') }}</p>
       </div>
 
       <!-- PIN Dots Indicator -->
@@ -83,7 +84,7 @@ function verify() {
         </button>
 
         <button @click="handleClear" class="key-btn text-xs font-medium text-fg-4">
-          清空
+          {{ t('common.clear') }}
         </button>
         <button @click="handleNumber(0)" class="key-btn">
           0
@@ -94,7 +95,7 @@ function verify() {
       </div>
 
       <div v-if="isError" class="text-xs text-danger font-medium animate-fade-in">
-        密码错误，请重新输入
+        {{ t('lock.error') }}
       </div>
     </div>
   </div>

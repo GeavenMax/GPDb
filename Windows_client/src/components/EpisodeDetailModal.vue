@@ -8,6 +8,7 @@ import { episodeHeading, episodeLabel } from '../utils/episode';
 import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
 import { pluginsConfig } from '../services/pluginManager';
 import { defineAsyncComponent } from 'vue';
+import { t, currentLocale } from '../i18n';
 import ShareCardModal, { type ShareCardData } from './ShareCardModal.vue';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
@@ -92,13 +93,13 @@ const shareCardData = computed<ShareCardData | null>(() => {
     title: heading.value,
     titleAlt: filmAlt.value,
     posterUrl: rawPoster ? getImageUrl(rawPoster) : '',
-    category: '分集剧照档案',
+    category: t('share.badgeEpisode'),
     releaseDate: props.episode.release_date || (props.episode.release_year ? String(props.episode.release_year) : ''),
     studioName: props.episode.studio_name,
     performers: props.episode.performers?.map(p => p.name) || [],
     description: props.episode.description,
     descriptionZh: props.episode.description_zh,
-    episodeHeading: `第 ${props.episode.episode_ordinal} 集 / 共 ${props.episode.episode_count} 集`,
+    episodeHeading: episodeLabel(props.episode),
     id: props.episode.id,
   };
 });
@@ -152,7 +153,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           />
           <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2 text-fg-5">
             <Clapperboard class="w-10 h-10 stroke-1" />
-            <span class="text-xs font-medium text-fg-5">暂无剧照</span>
+            <span class="text-xs font-medium text-fg-5">{{ t('episode.noThumbnail') }}</span>
           </div>
         </div>
       </div>
@@ -162,14 +163,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
            longer a full-width band for it to sit on. -->
       <div class="px-6 md:px-8 pt-5 shrink-0">
         <div class="text-xs font-semibold text-accent uppercase tracking-wider flex items-center gap-2">
-          <span>分集档案</span>
+          <span>{{ t('episode.profile') }}</span>
           <span
             v-if="episode.description_zh?.trim()"
             class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-success-fill/90 text-on-fill flex items-center gap-0.5"
-            title="已有中文简介"
+            :title="t('filter.hasZhSynopsis')"
           >
             <Languages class="w-2.5 h-2.5" />
-            中
+            {{ currentLocale.startsWith('zh') ? '中' : 'ZH' }}
           </span>
         </div>
         <h1 class="text-xl md:text-2xl font-extrabold text-fg mt-1 break-words">{{ heading }}</h1>
@@ -180,7 +181,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </span>
           <span v-if="episode.studio_name">{{ episode.studio_name }}</span>
           <span v-if="episode.episode_count > 1" class="text-fg-3">
-            该影片共 {{ episode.episode_count }} 个片段
+            {{ t('episode.totalClips', { count: episode.episode_count }) }}
           </span>
         </div>
       </div>
@@ -194,7 +195,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               type="button"
               :disabled="!episode.movie_id"
               @click="episode.movie_id && emit('select-movie-id', episode.movie_id)"
-              :title="episode.movie_id ? `跳转到《${filmPrimary}》` : '该片段没有关联影片'"
+              :title="episode.movie_id ? `${t('episode.jumpToMovie')}: ${filmPrimary}` : t('episode.noMovie')"
               :class="[
                 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition max-w-full',
                 episode.movie_id
@@ -203,14 +204,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               ]"
             >
               <Film class="w-3.5 h-3.5 shrink-0 text-fg-4" />
-              <span class="truncate">出处: {{ filmPrimary }}</span>
+              <span class="truncate">{{ t('episode.source') }}: {{ filmPrimary }}</span>
             </button>
             <button
               v-if="episode.studio_name"
               type="button"
               @click="emit('filter-studio', episode.studio_name)"
               class="px-2.5 py-1.5 rounded-lg text-xs bg-surface-2/60 border border-line-strong/50 text-fg-3 hover:text-accent hover:border-accent-fill/40 transition truncate max-w-[180px]"
-              :title="`按片商 ${episode.studio_name} 筛选影片`"
+              :title="t('episode.filterByStudio', { studio: episode.studio_name })"
             >
               {{ episode.studio_name }}
             </button>
@@ -225,10 +226,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               type="button"
               @click="showShareModal = true"
               class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line-strong bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
-              title="生成精美分集分享卡片 (支持背景取色与隐私脱敏)"
+              :title="t('movie.shareCardTooltip')"
             >
               <Share2 class="w-3.5 h-3.5" />
-              <span>分享卡片</span>
+              <span>{{ t('movie.shareCard') }}</span>
             </button>
 
             <button
@@ -241,27 +242,27 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               ]"
             >
               <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-              <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+              <span>{{ isFavorite ? t('movie.favorited') : t('movie.favorite') }}</span>
             </button>
           </div>
         </div>
 
         <!-- Synopsis -->
         <div>
-          <div class="text-xs font-bold text-fg-2 mb-2">片段简介</div>
+          <div class="text-xs font-bold text-fg-2 mb-2">{{ t('episode.synopsis') }}</div>
           <div
             v-if="shownDescription"
             class="text-sm text-fg-2 leading-relaxed max-h-[40vh] overflow-y-auto whitespace-pre-line pr-2"
           >
             {{ shownDescription }}
           </div>
-          <div v-else class="text-xs text-fg-4 italic">该片段暂无简介</div>
+          <div v-else class="text-xs text-fg-4 italic">{{ t('episode.noSynopsis') }}</div>
         </div>
 
         <!-- Cast: a scene usually has one or two, so no folding needed. -->
         <div v-if="episode.performers.length > 0">
           <div class="text-xs font-bold text-fg-2 mb-2">
-            参演演员 <span class="text-fg-4 font-normal">({{ episode.performers.length }})</span>
+            {{ t('movie.cast') }} <span class="text-fg-4 font-normal">({{ episode.performers.length }})</span>
           </div>
           <div class="flex flex-wrap gap-1.5">
             <button
@@ -278,7 +279,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- Action tags. Empty across the library today, but the column is there. -->
         <div v-if="episode.action_notes">
-          <div class="text-xs font-bold text-fg-2 mb-2">动作标注</div>
+          <div class="text-xs font-bold text-fg-2 mb-2">{{ t('episode.actionNotes') }}</div>
           <div class="text-xs text-fg-3 bg-sunken px-3 py-2 rounded-lg font-mono">
             {{ episode.action_notes }}
           </div>
@@ -291,11 +292,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           type="button"
           :disabled="!prevEpisode"
           @click="emit('navigate', -1)"
-          :title="prevEpisode ? episodeLabel(prevEpisode) : '已经是当前列表的第一条'"
+          :title="prevEpisode ? episodeLabel(prevEpisode) : t('episode.firstInList')"
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-2 disabled:opacity-30 disabled:pointer-events-none max-w-[40%]"
         >
           <ChevronLeft class="w-3.5 h-3.5 shrink-0" />
-          <span class="truncate">{{ prevEpisode ? episodeLabel(prevEpisode) : '上一集' }}</span>
+          <span class="truncate">{{ prevEpisode ? episodeLabel(prevEpisode) : t('pagination.prev') }}</span>
         </button>
 
         <span v-if="positionLabel" class="text-[11px] text-fg-4 font-mono shrink-0">{{ positionLabel }}</span>
@@ -304,10 +305,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           type="button"
           :disabled="!nextEpisode"
           @click="emit('navigate', 1)"
-          :title="nextEpisode ? episodeLabel(nextEpisode) : '已经是当前列表的最后一条'"
+          :title="nextEpisode ? episodeLabel(nextEpisode) : t('episode.lastInList')"
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-2 disabled:opacity-30 disabled:pointer-events-none max-w-[40%]"
         >
-          <span class="truncate">{{ nextEpisode ? episodeLabel(nextEpisode) : '下一集' }}</span>
+          <span class="truncate">{{ nextEpisode ? episodeLabel(nextEpisode) : t('pagination.next') }}</span>
           <ChevronRight class="w-3.5 h-3.5 shrink-0" />
         </button>
       </div>

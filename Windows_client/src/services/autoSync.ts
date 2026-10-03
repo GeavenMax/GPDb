@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import { pluginsConfig, savePluginsConfig } from './pluginManager';
 import { isScrapingRunning, startScraperTask } from './scraper';
 import type { AutoSyncScheduleConfig } from '../types';
+import { t } from '../i18n';
 
 let tickerTimer: ReturnType<typeof setInterval> | null = null;
 const isAutoSyncTriggering = ref(false);
@@ -155,22 +156,22 @@ export function stopAutoSyncSchedule() {
  */
 export const nextRunDescription = computed(() => {
   const cfg = pluginsConfig.value.autoSyncConfig;
-  if (!cfg?.enabled) return '未启用定时同步';
-  if (!cfg.nextRunTime) return '计算中...';
+  if (!cfg?.enabled) return t('sync.disabled');
+  if (!cfg.nextRunTime) return t('sync.calculating');
 
   const target = new Date(cfg.nextRunTime);
   const diffMs = target.getTime() - Date.now();
 
-  if (diffMs <= 0) return '即将执行...';
+  if (diffMs <= 0) return t('sync.soon');
 
   const diffHours = Math.floor(diffMs / (3600 * 1000));
   const diffMinutes = Math.floor((diffMs % (3600 * 1000)) / (60 * 1000));
 
   let relative = '';
   if (diffHours > 0) {
-    relative = `约 ${diffHours} 小时 ${diffMinutes} 分钟后`;
+    relative = t('sync.inHoursMins', { h: diffHours, m: diffMinutes });
   } else {
-    relative = `约 ${diffMinutes} 分钟后`;
+    relative = t('sync.inMins', { m: diffMinutes });
   }
 
   const timeStr = target.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -180,7 +181,7 @@ export const nextRunDescription = computed(() => {
 
 export const lastRunDescription = computed(() => {
   const cfg = pluginsConfig.value.autoSyncConfig;
-  if (!cfg?.lastRunTime) return '尚未执行过';
+  if (!cfg?.lastRunTime) return t('sync.never');
   const d = new Date(cfg.lastRunTime);
   return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 });

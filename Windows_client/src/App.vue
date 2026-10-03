@@ -28,10 +28,10 @@ import {
 } from './api';
 import { getImageUrl } from './utils/image';
 import { openLightbox, viewableImageFrom, zoomsOnClick, lightboxImage } from './utils/lightbox';
-import { initTheme, setTheme, themeChoice, themeOptions } from './utils/theme';
+import { initTheme, setTheme, themeChoice, autoThemeOption, concreteThemeOptions } from './utils/theme';
 import AppIcon from './components/AppIcon.vue';
 import { ICON_SCHEMES, currentIconScheme, setIconScheme, initAppIcon } from './utils/appIcon';
-import { PREFS } from './utils/prefs';
+import { PREFS, type ContentLangMode } from './utils/prefs';
 import type {
   Movie,
   MovieSeriesResponse,
@@ -58,16 +58,16 @@ import type {
 } from './types';
 import { FAVORITE_TYPES } from './types';
 import { loadGlossary, glossaryCount, trMeasure } from './utils/glossary';
-import { titlePrimary, titleSecondary, sceneFilm } from './utils/bilingual';
+import { titlePrimary, titleSecondary, sceneFilm, resolveContentLang, studioPrimary, studioSecondary } from './utils/bilingual';
 import {
   Film, Heart, HardDrive, Download, Upload, Trash2, Image as ImageIcon, RefreshCw, Loader2,
   Languages, User as UserIcon, Sparkles, Clapperboard, Building2, Layers, Palette, Check,
-  Megaphone, FolderOpen, Search, Globe, Shield, Eye, EyeOff, Lock,
-  Bookmark, CheckCircle2, ChevronDown, ChevronRight, ChevronsUpDown, Star, Info,
+  Megaphone, FolderOpen, Search, Globe, Shield, EyeOff, Lock,
+  Bookmark, ChevronDown, ChevronRight, ChevronsUpDown, Info,
   SlidersHorizontal
 } from '@lucide/vue';
 import HomeView from './views/HomeView.vue';
-import { t, currentLocale, setLocale, SUPPORTED_LANGUAGES } from './i18n';
+import { t, currentLocale, setLocale, SUPPORTED_LANGUAGES, type SupportedLocale } from './i18n';
 import AnalyticsView from './views/AnalyticsView.vue';
 import PluginsView from './views/PluginsView.vue';
 import { pluginsConfig, openUrlExternal } from './services/pluginManager';
@@ -77,6 +77,16 @@ import {
 } from './services/privacy';
 import { DATE_FILTER_OPTIONS } from './types';
 import type { DateFilter } from './types';
+
+function getDateFilterLabel(id: string): string {
+  if (id === 'all') return t('common.all');
+  if (id === 'last_scraped') return t('filter.lastScraped');
+  if (id === 'recent_7') return t('filter.recent7');
+  if (id === 'recent_30') return t('filter.recent30');
+  if (id === 'recent_90') return t('filter.recent90');
+  if (id === 'recent_year') return t('filter.recentYear');
+  return id;
+}
 import {
   analytics, importAnalyticsData,
   startFocusTracker, recordMovieView, recordPerformerView,
@@ -103,39 +113,34 @@ async function handleManualCheckUpdate() {
     const res = await checkAppUpdateDetailed();
     if (res.hasUpdate && res.release) {
       appReleaseInfo.value = res.release;
-      manualUpdateCheckMsg.value = { text: `发现新版本 v${res.release.versionName}！请在弹出的更新窗口中确认安装。`, isError: false };
+      manualUpdateCheckMsg.value = { text: t('update.newVersionMsg', { version: res.release.versionName }), isError: false };
     } else if (res.error) {
-      manualUpdateCheckMsg.value = { text: `检查更新失败: ${res.error}`, isError: true };
+      manualUpdateCheckMsg.value = { text: t('update.checkFailed', { error: res.error }), isError: true };
     } else {
-      manualUpdateCheckMsg.value = { text: `当前已是最新版本 (v${res.currentVersion})，无需更新。`, isError: false };
+      manualUpdateCheckMsg.value = { text: t('update.alreadyLatest', { version: res.currentVersion }), isError: false };
     }
   } catch (e: any) {
-    manualUpdateCheckMsg.value = { text: `检查更新异常: ${e?.message || '网络连接超时'}`, isError: true };
+    manualUpdateCheckMsg.value = { text: t('update.checkException', { error: e?.message || 'Network Timeout' }), isError: true };
   } finally {
     isCheckingUpdate.value = false;
   }
 }
 
 const pinEditInput = ref(privacySettings.value.pinCode || '');
-const disguiseTitleInput = ref(privacySettings.value.disguiseAppName || 'GPDb');
 
 function handleUpdatePin() {
   savePrivacySettings({ pinCode: pinEditInput.value.trim() });
 }
 
-function handleUpdateDisguiseTitle() {
-  savePrivacySettings({ disguiseAppName: disguiseTitleInput.value.trim() || 'GPDb' });
-}
-
 /** Labels for the five favorites sections and the type pickers. */
-const FAVORITE_LABELS: Record<FavoriteType, string> = {
-  movie: '影片',
-  performer: '演员',
-  studio: '片商',
-  director: '导演',
-  episode: '片段',
-  series: '系列专题',
-};
+const FAVORITE_LABELS = computed<Record<FavoriteType, string>>(() => ({
+  movie: t('common.movie'),
+  performer: t('common.performer'),
+  studio: t('common.studio'),
+  director: t('common.director'),
+  episode: t('common.episode'),
+  series: t('common.series'),
+}));
 
 // State
 const currentTab = ref<AppTab>('home');
@@ -157,11 +162,11 @@ const studioQuery = ref('');
 const studioSortBy = ref<StudioSortBy>('works_desc');
 
 /** Orderings offered on the studio tab. Studios have no facets to filter by. */
-const STUDIO_SORTS = [
-  { id: 'works_desc', label: '按作品数' },
-  { id: 'episodes_desc', label: '按片段数' },
-  { id: 'name_asc', label: '按名称' },
-] as const;
+const STUDIO_SORTS = computed<{ id: StudioSortBy; label: string }[]>(() => [
+  { id: 'works_desc', label: t('sort.byWorks') },
+  { id: 'episodes_desc', label: t('sort.byEpisodes') },
+  { id: 'name_asc', label: t('sort.byName') },
+]);
 
 /**
  * The director library. Rows carry a real id, unlike studios, but the grid is keyed
@@ -174,10 +179,10 @@ const directorQuery = ref('');
 const directorSortBy = ref<DirectorSortBy>('works_desc');
 
 /** Orderings offered on the director tab. Two is enough: count, or name. */
-const DIRECTOR_SORTS = [
-  { id: 'works_desc', label: '按作品数' },
-  { id: 'name_asc', label: '按名称' },
-] as const;
+const DIRECTOR_SORTS = computed<{ id: DirectorSortBy; label: string }[]>(() => [
+  { id: 'works_desc', label: t('sort.byWorks') },
+  { id: 'name_asc', label: t('sort.byName') },
+]);
 
 /**
  * The episode library. Its rows come from the whole `episodes` table rather than
@@ -220,7 +225,7 @@ const selectedMovie = ref<Movie | null>(null);
 const selectedPerformer = ref<Performer | null>(null);
 
 /** The studio being viewed, and its works. Fetched here so the modal stays presentational. */
-const selectedStudio = ref<{ name: string; works_count?: number; episodes_count?: number } | null>(null);
+const selectedStudio = ref<{ name: string; name_zh?: string | null; description_zh?: string | null; works_count?: number; episodes_count?: number } | null>(null);
 const studioWorks = ref<StudioWorks | null>(null);
 const studioWorksLoading = ref(false);
 
@@ -278,15 +283,39 @@ function setEpisodeDateFilter(df: DateFilter) {
   fetchEpisodes(true, 1);
 }
 
-// Synopsis language preference (issue #4). Falls back to English per-movie
-// whenever a Chinese translation has not been generated yet.
+const contentLangMode = ref<ContentLangMode>(
+  (localStorage.getItem(PREFS.contentLangMode) as ContentLangMode) || 'auto'
+);
+
+// Synopsis & database content language preference.
+// In 'auto' mode, automatically syncs with currentLocale; otherwise respects user manual override.
 const descLang = ref<'zh' | 'en'>(
-  (localStorage.getItem(PREFS.descLang) as 'zh' | 'en') || 'zh'
+  contentLangMode.value === 'auto'
+    ? resolveContentLang('auto', currentLocale.value)
+    : ((localStorage.getItem(PREFS.descLang) as 'zh' | 'en') || 'zh')
 );
 
 function setDescLang(lang: 'zh' | 'en') {
   descLang.value = lang;
   localStorage.setItem(PREFS.descLang, lang);
+  // Explicitly choosing Chinese or Original in quick toggle sets concrete mode
+  contentLangMode.value = lang === 'zh' ? 'bilingual' : 'original';
+  localStorage.setItem(PREFS.contentLangMode, contentLangMode.value);
+}
+
+function setContentLangMode(mode: ContentLangMode) {
+  contentLangMode.value = mode;
+  localStorage.setItem(PREFS.contentLangMode, mode);
+  descLang.value = resolveContentLang(mode, currentLocale.value);
+  localStorage.setItem(PREFS.descLang, descLang.value);
+}
+
+function onSelectLocale(locale: SupportedLocale) {
+  setLocale(locale);
+  if (contentLangMode.value === 'auto') {
+    descLang.value = resolveContentLang('auto', locale);
+    localStorage.setItem(PREFS.descLang, descLang.value);
+  }
 }
 
 const hasTranslationAvailable = computed(() => {
@@ -491,7 +520,7 @@ async function applyCustomDbPath(targetPath?: string) {
     customDbInput.value = updated.custom_path || '';
     if (updated.candidates) dbCandidates.value = updated.candidates;
     loadError.value = '';
-    dbMessage.value = { ok: true, text: `已成功连接数据库：${updated.path || '默认路径'}` };
+    dbMessage.value = { ok: true, text: t('settings.dbConnectedSuccess', { path: updated.path || 'default' }) };
     showPermissionModal.value = false;
     await loadStats();
     await reloadCurrentTab();
@@ -529,7 +558,7 @@ async function handleCreateNewDatabase() {
     if (updated.candidates) dbCandidates.value = updated.candidates;
     loadError.value = '';
     showPermissionModal.value = false;
-    dbMessage.value = { ok: true, text: `全新影库已初始化创建：${updated.path || '默认位置'}` };
+    dbMessage.value = { ok: true, text: t('settings.dbCreatedSuccess', { path: updated.path || 'default' }) };
     await loadStats();
     await reloadCurrentTab();
     // Prompt scraping by opening sync modal automatically
@@ -548,9 +577,9 @@ async function handleScanDatabases() {
     const cands = await api.scanDatabases();
     dbCandidates.value = cands;
     if (cands.length === 0) {
-      dbMessage.value = { ok: false, text: '未能自动检测到 GPDb.db，请手动浏览选择或输入路径。' };
+      dbMessage.value = { ok: false, text: t('settings.dbAutoDetectNone') };
     } else {
-      dbMessage.value = { ok: true, text: `扫描完成，发现 ${cands.length} 个候选数据库。` };
+      dbMessage.value = { ok: true, text: t('settings.dbScanFinished', { count: cands.length }) };
       if (!dbInfo.value?.exists && cands[0]) {
         await applyCustomDbPath(cands[0]);
         showPermissionModal.value = false;
@@ -572,7 +601,7 @@ async function handleSmartAutoRescue() {
       await applyCustomDbPath(cands[0]);
     } else {
       currentTab.value = 'settings';
-      dbMessage.value = { ok: false, text: '未能在常规目录检测到数据库，请通过「浏览…」手动选择。' };
+      dbMessage.value = { ok: false, text: t('settings.dbNoAutoCandidate') };
     }
   } catch (e: any) {
     reportLoadError(e);
@@ -611,15 +640,15 @@ async function handleRunGlossary(dryRun: boolean) {
   const res = await api.runGlossaryTranslation(dryRun);
   if (res.success) {
     if (dryRun) {
-      glossaryMsg.value = `待翻译术语 ${res.pending} 条（试跑，未写入）`;
+      glossaryMsg.value = t('glossary.dryRunMsg', { count: res.pending });
     } else {
-      glossaryMsg.value = `术语表已更新：本次新增 ${res.translated} 条，累计 ${res.total} 条` +
-        (res.failed ? `，失败 ${res.failed} 条` : '');
+      glossaryMsg.value = t('glossary.updatedMsg', { added: res.translated, total: res.total }) +
+        (res.failed ? t('glossary.failedCount', { count: res.failed }) : '');
       // Refresh the local lookup table so the new labels appear without a reload.
       await loadGlossary(true);
     }
   } else {
-    glossaryError.value = res.error || '术语表翻译失败';
+    glossaryError.value = res.error || t('glossary.translateFailed');
   }
   glossaryBusy.value = false;
 }
@@ -675,19 +704,19 @@ async function loadCacheStats() {
 }
 
 async function handleClearCache() {
-  if (!confirm('确定清空本地所有缓存的封面和分集图片吗？')) return;
+  if (!confirm(t('settings.clearCacheConfirm'))) return;
   isCacheLoading.value = true;
   await api.clearCache();
   await loadCacheStats();
   isCacheLoading.value = false;
-  cacheStatusMsg.value = '图片缓存已清空';
+  cacheStatusMsg.value = t('settings.cacheCleared');
   setTimeout(() => { cacheStatusMsg.value = ''; }, 3000);
 }
 
 async function handleBatchDownloadCache() {
   isCacheLoading.value = true;
   const res = await api.downloadAllCache();
-  cacheStatusMsg.value = res.message || '全量后台下载已启动，请稍候...';
+  cacheStatusMsg.value = res.message || t('settings.cacheDownloadStarted');
   isCacheLoading.value = false;
   setTimeout(loadCacheStats, 4000);
 }
@@ -730,10 +759,10 @@ async function handleExportUserData() {
     URL.revokeObjectURL(url);
 
     const favCount = (universalBackup.favorites || []).length;
-    importStatusMsg.value = `用户配置与数据备份成功导出 (已打包 ${favCount} 条收藏、全量统计时长与浏览数据)！`;
+    importStatusMsg.value = t('settings.userJsonExportSuccess', { favCount });
     setTimeout(() => { importStatusMsg.value = ''; }, 6000);
   } catch (err: any) {
-    alert('导出用户配置备份失败：' + (err?.message || err));
+    alert(t('settings.userJsonExportFailed', { error: err?.message || err }));
   }
 }
 
@@ -743,17 +772,17 @@ const isDbExporting = ref(false);
 async function handleExportDatabase() {
   if (isDbExporting.value) return;
   isDbExporting.value = true;
-  dbBackupStatusMsg.value = '正在安全打包并导出数据库文件...';
+  dbBackupStatusMsg.value = t('settings.dbExportPackaging');
   try {
     const dest = await api.exportDatabaseFile();
     if (dest) {
-      dbBackupStatusMsg.value = `数据库完整备份成功导出至：${dest}`;
+      dbBackupStatusMsg.value = t('settings.dbExportSuccess', { dest });
       setTimeout(() => { dbBackupStatusMsg.value = ''; }, 6000);
     } else {
       dbBackupStatusMsg.value = '';
     }
   } catch (err: any) {
-    dbBackupStatusMsg.value = `导出数据库失败: ${err?.message || err}`;
+    dbBackupStatusMsg.value = t('settings.dbExportFailed', { error: err?.message || err });
   } finally {
     isDbExporting.value = false;
   }
@@ -763,24 +792,17 @@ async function handleImportDatabase() {
   try {
     const picked = await api.pickDatabaseFile();
     if (picked) {
-      if (confirm(`确认切换至所选数据库文件？\n${picked}\n\n切换后应用将重新加载数据库内容。`)) {
+      if (confirm(t('settings.dbSwitchConfirm', { path: picked }))) {
         await api.setCustomDatabasePath(picked);
         await loadDatabaseInfo();
         await loadStats();
         await fetchMovies();
-        alert('数据库已成功切换并载入！');
+        alert(t('settings.dbSwitchSuccess'));
       }
     }
   } catch (err: any) {
-    alert('导入并切换数据库失败: ' + (err?.message || err));
+    alert(t('settings.dbSwitchFailed', { error: err?.message || err }));
   }
-}
-
-function downloadIconFile(schemeId: string, format: 'svg' | 'png' = 'png') {
-  const link = document.createElement('a');
-  link.href = `/src/assets/icons/${schemeId}.${format}`;
-  link.download = `gpdb-icon-${schemeId}.${format}`;
-  link.click();
 }
 
 function triggerImportFileInput() {
@@ -809,8 +831,7 @@ async function handleImportFile(e: Event) {
       const tagCount = res?.tags_imported ?? 0;
       const movieCount = res?.movies_updated ?? 0;
 
-      importStatusMsg.value =
-        `跨端配置导入成功：恢复了 ${favCount} 条“我的收藏”、${tagCount} 个自定义标签、${movieCount} 部影片笔记与打分，以及全量统计时长！`;
+      importStatusMsg.value = t('settings.userJsonImportSuccess', { favCount, tagCount, movieCount });
       setTimeout(() => { importStatusMsg.value = ''; }, 6000);
 
       // 4. Reload local keys and views
@@ -819,7 +840,7 @@ async function handleImportFile(e: Event) {
       fetchMovies();
       loadStats();
     } catch (err: any) {
-      alert('导入失败，请检查备份 JSON 格式是否正确: ' + (err?.message || err));
+      alert(t('settings.userJsonImportFailed', { error: err?.message || err }));
     }
   };
   reader.readAsText(file);
@@ -1266,8 +1287,6 @@ const favEpisodes = computed(() => favoriteItems.value?.episode || []);
 const favStudios = computed(() => favoriteItems.value?.studio || []);
 const favDirectors = computed(() => favoriteItems.value?.director || []);
 const favSeries = computed(() => favoriteItems.value?.series || []);
-const favWishlist = computed(() => favoriteItems.value?.wishlist || []);
-const favWatched = computed(() => favoriteItems.value?.watched || []);
 
 /** Series Modal popup state for opening series from cards and favorites */
 const seriesModalData = ref<MovieSeriesResponse | null>(null);
@@ -1285,14 +1304,10 @@ async function openSeriesModalByRoot(rootTitle: string, studioName?: string | nu
 const favoriteTotal = computed(() => {
   const counts = favoriteItems.value?.counts;
   if (!counts) return 0;
-  return (
-    FAVORITE_TYPES.reduce((sum, t) => sum + (counts[t] || 0), 0) +
-    (counts.wishlist || 0) +
-    (counts.watched || 0)
-  );
+  return FAVORITE_TYPES.reduce((sum, t) => sum + (counts[t] || 0), 0);
 });
 
-type FavoriteSubTab = 'all' | 'wishlist' | 'watched' | 'series' | 'movie' | 'performer' | 'studio' | 'director' | 'episode';
+type FavoriteSubTab = 'all' | 'series' | 'movie' | 'performer' | 'studio' | 'director' | 'episode';
 const favSubTab = ref<FavoriteSubTab>('all');
 
 const FAV_COLLAPSED_KEY = 'gpdb_fav_collapsed_sections';
@@ -1324,8 +1339,6 @@ function toggleFavSection(sectionKey: string) {
 
 const allSectionsCollapsed = computed(() => {
   const activeSectionKeys = [
-    ...(favWishlist.value.length ? ['wishlist'] : []),
-    ...(favWatched.value.length ? ['watched'] : []),
     ...(favSeries.value.length ? ['series'] : []),
     ...(favMovies.value.length ? ['movie'] : []),
     ...(favPerformers.value.length ? ['performer'] : []),
@@ -1339,7 +1352,7 @@ const allSectionsCollapsed = computed(() => {
 
 function toggleCollapseAllFavs() {
   const target = !allSectionsCollapsed.value;
-  const activeSectionKeys = ['wishlist', 'watched', 'series', 'movie', 'performer', 'episode', 'studio', 'director'];
+  const activeSectionKeys = ['series', 'movie', 'performer', 'episode', 'studio', 'director'];
   for (const k of activeSectionKeys) {
     favCollapsed[k] = target;
   }
@@ -1496,7 +1509,7 @@ async function openPerformerDetail(id: number) {
  * page just the name), so the films and episodes are fetched here rather than being
  * handed in the way they are for a movie or a performer.
  */
-async function openStudioDetail(studio: { name: string; works_count?: number; episodes_count?: number }) {
+async function openStudioDetail(studio: { name: string; name_zh?: string | null; description_zh?: string | null; works_count?: number; episodes_count?: number }) {
   pushModal('studio');
   recordStudioView(studio.name);
   selectedStudio.value = studio;
@@ -1505,7 +1518,15 @@ async function openStudioDetail(studio: { name: string; works_count?: number; ep
   try {
     const works = await api.getStudioWorks(studio.name);
     // A slower fetch for studio A must not land on top of studio B's page.
-    if (selectedStudio.value?.name === studio.name) studioWorks.value = works;
+    if (selectedStudio.value?.name === studio.name) {
+      studioWorks.value = works;
+      if (works.studio_name_zh && !selectedStudio.value.name_zh) {
+        selectedStudio.value.name_zh = works.studio_name_zh;
+      }
+      if (works.description_zh && !selectedStudio.value.description_zh) {
+        selectedStudio.value.description_zh = works.description_zh;
+      }
+    }
   } finally {
     studioWorksLoading.value = false;
   }
@@ -1741,14 +1762,14 @@ onUnmounted(() => {
           class="px-3 py-1.5 rounded-lg bg-accent-fill text-on-fill font-bold text-xs hover:bg-accent transition flex items-center gap-1.5 disabled:opacity-50"
         >
           <Search class="w-3.5 h-3.5" />
-          <span>{{ dbScanning ? '智能识别中…' : '智能识别数据库' }}</span>
+          <span>{{ dbScanning ? t('settings.identifying') : t('settings.identifyDb') }}</span>
         </button>
         <button
           @click="showPermissionModal = true"
           class="px-3 py-1.5 rounded-lg bg-surface border border-line-strong hover:bg-surface-2 text-fg-2 text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
         >
           <Shield class="w-3.5 h-3.5 text-indigo-400" />
-          <span>权限与存储说明</span>
+          <span>{{ t('settings.storageTitle') }}</span>
         </button>
         <button
           @click="handlePickDbFile"
@@ -1756,13 +1777,13 @@ onUnmounted(() => {
           class="px-3 py-1.5 rounded-lg bg-surface border border-line-strong hover:bg-surface-2 text-fg-2 text-xs font-medium transition flex items-center gap-1.5"
         >
           <FolderOpen class="w-3.5 h-3.5" />
-          <span>浏览选择文件</span>
+          <span>{{ t('settings.browseSelectFile') }}</span>
         </button>
         <button
           @click="currentTab = 'settings'"
           class="px-3 py-1.5 rounded-lg bg-surface border border-line-strong hover:bg-surface-2 text-fg-2 text-xs font-medium transition"
         >
-          前往设置
+          {{ t('settings.goToSettings') }}
         </button>
       </div>
     </div>
@@ -1795,7 +1816,7 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'movies'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-fg tracking-tight">探索全量影片</h1>
+              <h1 class="text-xl font-bold text-fg tracking-tight">{{ t('library.exploreMovies') }}</h1>
               <span class="text-xs text-fg-4 font-mono">({{ movies.length }} / {{ totalMovies.toLocaleString() }})</span>
             </div>
 
@@ -1807,14 +1828,14 @@ onUnmounted(() => {
               >
                 <Languages class="w-3 h-3 text-fg-4 ml-1.5" />
                 <button
-                  v-for="l in [{ id: 'zh', label: '中文' }, { id: 'en', label: '原文' }]"
+                  v-for="l in [{ id: 'zh', label: t('library.langZh') }, { id: 'en', label: t('library.langEn') }]"
                   :key="l.id"
                   @click="setDescLang(l.id as 'zh' | 'en')"
                   :class="[
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer',
                     descLang === l.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
-                  :title="l.id === 'zh' ? '优先显示中文简介（未翻译的影片自动回落原文）' : '始终显示英文原文'"
+                  :title="l.id === 'zh' ? t('library.langZhTooltip') : t('library.langEnTooltip')"
                 >
                   {{ l.label }}
                 </button>
@@ -1822,7 +1843,7 @@ onUnmounted(() => {
                 <!-- Info icon with tooltip -->
                 <div
                   class="flex items-center pr-1.5 text-fg-5 hover:text-accent cursor-help transition"
-                  title="此处的语言切换仅针对影片简介与分集信息的译文，界面菜单语言请在设置中更改"
+                  :title="t('library.synopsisLangNotice')"
                 >
                   <Info class="w-3.5 h-3.5" />
                 </div>
@@ -1832,8 +1853,8 @@ onUnmounted(() => {
               <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="m in [
-                    { id: 'scroll', label: '滑动加载' },
-                    { id: 'paged', label: '翻页' }
+                    { id: 'scroll', label: t('common.scrollLoad') },
+                    { id: 'paged', label: t('common.pagination') }
                   ]"
                   :key="m.id"
                   @click="setListMode(m.id as 'scroll' | 'paged')"
@@ -1841,7 +1862,7 @@ onUnmounted(() => {
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
                     listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
-                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                  :title="m.id === 'scroll' ? t('common.scrollLoadTooltip') : t('common.paginationTooltip')"
                 >
                   {{ m.label }}
                 </button>
@@ -1849,12 +1870,12 @@ onUnmounted(() => {
 
               <!-- Grid / list columns adjuster (both modes) -->
               <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
-                <span class="text-fg-4 text-[11px]">每行</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.perRow') }}</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="减少每行列数"
+                  :title="t('common.decreaseColumns')"
                 >
                   &lt;
                 </button>
@@ -1863,11 +1884,11 @@ onUnmounted(() => {
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="增加每行列数"
+                  :title="t('common.increaseColumns')"
                 >
                   &gt;
                 </button>
-                <span class="text-fg-4 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.columns') }}</span>
               </div>
             </div>
           </div>
@@ -1876,7 +1897,7 @@ onUnmounted(() => {
           <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar flex-wrap">
             <span class="text-xs text-fg-4 font-medium shrink-0 flex items-center gap-1.5 mr-1">
               <Clock class="w-3.5 h-3.5 text-accent" />
-              <span>时间筛选:</span>
+              <span>{{ t('filter.timeFilter') }}:</span>
             </span>
             <button
               v-for="df in DATE_FILTER_OPTIONS"
@@ -1889,7 +1910,7 @@ onUnmounted(() => {
                   : 'bg-surface/80 hover:bg-surface border-line text-fg-3 hover:text-fg'
               ]"
             >
-              {{ df.label }}
+              {{ getDateFilterLabel(df.id) }}
             </button>
           </div>
 
@@ -1925,11 +1946,11 @@ onUnmounted(() => {
           <div v-if="listMode === 'scroll' && movies.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
             <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
               <Loader2 class="w-4 h-4 animate-spin" />
-              <span>滑动加载更多作品中...</span>
+              <span>{{ t('library.loadingMoreMovies') }}</span>
             </div>
             <div v-else-if="movies.length >= totalMovies && totalMovies > 0" class="flex items-center gap-2 text-fg-4 text-xs">
               <span class="w-12 h-px bg-surface-2"></span>
-              <span>已加载全部 {{ totalMovies.toLocaleString() }} 部作品</span>
+              <span>{{ t('library.loadedAllMovies', { count: totalMovies.toLocaleString() }) }}</span>
               <span class="w-12 h-px bg-surface-2"></span>
             </div>
           </div>
@@ -1949,8 +1970,8 @@ onUnmounted(() => {
           <!-- Empty State -->
           <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
             <Film class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-fg-3">未找到符合条件的影片</div>
-            <div class="text-xs text-fg-5">尝试更换搜索关键词或重置筛选条件</div>
+            <div class="text-sm font-semibold text-fg-3">{{ t('filter.noMatchingMovies') }}</div>
+            <div class="text-xs text-fg-5">{{ t('filter.tryDifferentKeywords') }}</div>
           </div>
         </div>
 
@@ -1958,8 +1979,8 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'performers'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-fg tracking-tight">演员档案库</h1>
-              <span class="text-xs text-fg-4 font-mono">({{ performers.length }} / {{ totalPerformers.toLocaleString() }} 位)</span>
+              <h1 class="text-xl font-bold text-fg tracking-tight">{{ t('library.performersArchive') }}</h1>
+              <span class="text-xs text-fg-4 font-mono">{{ t('library.performersCount', { current: performers.length, total: totalPerformers.toLocaleString() }) }}</span>
             </div>
 
             <div class="flex items-center gap-3">
@@ -1972,10 +1993,10 @@ onUnmounted(() => {
                     ? 'bg-accent-fill/10 border-accent-fill/40 text-accent'
                     : 'bg-surface border-line text-fg-3 hover:text-fg-2'
                 ]"
-                title="筛选演员属性"
+                :title="t('filter.attributeFilter')"
               >
                 <Sparkles class="w-3.5 h-3.5" />
-                <span>属性筛选</span>
+                <span>{{ t('filter.attributeFilter') }}</span>
                 <span
                   v-if="activePerformerFilterCount > 0"
                   class="px-1.5 rounded-full bg-accent-fill text-on-fill text-[10px] font-bold"
@@ -1988,8 +2009,8 @@ onUnmounted(() => {
               <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="m in [
-                    { id: 'scroll', label: '滑动加载' },
-                    { id: 'paged', label: '翻页' }
+                    { id: 'scroll', label: t('common.scrollLoad') },
+                    { id: 'paged', label: t('common.pagination') }
                   ]"
                   :key="m.id"
                   @click="setListMode(m.id as 'scroll' | 'paged')"
@@ -1997,7 +2018,7 @@ onUnmounted(() => {
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
                     listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
-                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                  :title="m.id === 'scroll' ? t('common.scrollLoadTooltip') : t('common.paginationTooltip')"
                 >
                   {{ m.label }}
                 </button>
@@ -2005,12 +2026,12 @@ onUnmounted(() => {
 
               <!-- Grid columns adjuster -->
               <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
-                <span class="text-fg-4 text-[11px]">每行</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.perRow') }}</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="减少每行列数"
+                  :title="t('common.decreaseColumns')"
                 >
                   &lt;
                 </button>
@@ -2019,11 +2040,11 @@ onUnmounted(() => {
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="增加每行列数"
+                  :title="t('common.increaseColumns')"
                 >
                   &gt;
                 </button>
-                <span class="text-fg-4 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.columns') }}</span>
               </div>
             </div>
           </div>
@@ -2073,7 +2094,7 @@ onUnmounted(() => {
                 {{ p.build || trMeasure(p.height) }}
               </div>
               <div v-if="p.works_count ?? p.movies_count" class="text-[10px] text-fg-5 mt-0.5">
-                {{ p.works_count ?? p.movies_count }} 部作品
+                {{ p.works_count ?? p.movies_count }} {{ t('common.works') }}
               </div>
             </div>
           </div>
@@ -2081,9 +2102,9 @@ onUnmounted(() => {
           <!-- Empty state -->
           <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
             <UserIcon class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-fg-3">没有符合条件的演员</div>
+            <div class="text-sm font-semibold text-fg-3">{{ t('filter.noMatchingPerformers') }}</div>
             <div class="text-xs text-fg-5">
-              当前仅有 {{ performerFacets.enriched }} 位演员抓取过身体属性档案，可放宽筛选条件或先补全演员数据
+              {{ t('library.performerFacetsEnriched', { count: performerFacets.enriched }) }}
             </div>
           </div>
 
@@ -2091,11 +2112,11 @@ onUnmounted(() => {
           <div v-if="listMode === 'scroll' && performers.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
             <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
               <Loader2 class="w-4 h-4 animate-spin" />
-              <span>滑动加载更多演员中...</span>
+              <span>{{ t('library.loadingMorePerformers') }}</span>
             </div>
             <div v-else-if="performers.length >= totalPerformers && totalPerformers > 0" class="flex items-center gap-2 text-fg-4 text-xs">
               <span class="w-12 h-px bg-surface-2"></span>
-              <span>已加载全部 {{ totalPerformers.toLocaleString() }} 位演员</span>
+              <span>{{ t('library.loadedAllPerformers', { count: totalPerformers.toLocaleString() }) }}</span>
               <span class="w-12 h-px bg-surface-2"></span>
             </div>
           </div>
@@ -2117,8 +2138,8 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'studios'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-fg tracking-tight">片商库</h1>
-              <span class="text-xs text-fg-4 font-mono">({{ studioRows.length }} / {{ totalStudioRows.toLocaleString() }} 家)</span>
+              <h1 class="text-xl font-bold text-fg tracking-tight">{{ t('library.studiosLibrary') }}</h1>
+              <span class="text-xs text-fg-4 font-mono">{{ t('library.studiosCount', { current: studioRows.length, total: totalStudioRows.toLocaleString() }) }}</span>
             </div>
 
             <div class="flex items-center gap-3">
@@ -2141,8 +2162,8 @@ onUnmounted(() => {
               <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="m in [
-                    { id: 'scroll', label: '滑动加载' },
-                    { id: 'paged', label: '翻页' }
+                    { id: 'scroll', label: t('common.scrollLoad') },
+                    { id: 'paged', label: t('common.pagination') }
                   ]"
                   :key="m.id"
                   @click="setListMode(m.id as 'scroll' | 'paged')"
@@ -2150,7 +2171,7 @@ onUnmounted(() => {
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
                     listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
-                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                  :title="m.id === 'scroll' ? t('common.scrollLoadTooltip') : t('common.paginationTooltip')"
                 >
                   {{ m.label }}
                 </button>
@@ -2158,12 +2179,12 @@ onUnmounted(() => {
 
               <!-- Grid columns adjuster -->
               <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
-                <span class="text-fg-4 text-[11px]">每行</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.perRow') }}</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="减少每行列数"
+                  :title="t('common.decreaseColumns')"
                 >
                   &lt;
                 </button>
@@ -2172,11 +2193,11 @@ onUnmounted(() => {
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="增加每行列数"
+                  :title="t('common.increaseColumns')"
                 >
                   &gt;
                 </button>
-                <span class="text-fg-4 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.columns') }}</span>
               </div>
             </div>
           </div>
@@ -2203,15 +2224,18 @@ onUnmounted(() => {
             >
               <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-line-strong/60 group-hover:ring-accent-fill/50 transition">
                 <div class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-2xl font-black text-on-fill/70">
-                  {{ s.name.charAt(0).toUpperCase() }}
+                  {{ (studioPrimary(s, descLang) || s.name).charAt(0).toUpperCase() }}
                 </div>
               </div>
-              <h3 class="text-xs font-semibold text-fg-2 mt-3 group-hover:text-accent transition truncate w-full">
-                {{ s.name }}
+              <h3 class="text-xs font-semibold text-fg-2 mt-3 group-hover:text-accent transition truncate w-full" :title="studioPrimary(s, descLang)">
+                {{ studioPrimary(s, descLang) }}
               </h3>
-              <div class="text-[10px] text-fg-4 mt-1">{{ s.works_count }} 部作品</div>
+              <div v-if="studioSecondary(s, descLang)" class="text-[10px] text-fg-4/80 truncate w-full -mt-0.5" :title="studioSecondary(s, descLang)">
+                {{ studioSecondary(s, descLang) }}
+              </div>
+              <div class="text-[10px] text-fg-4 mt-1.5">{{ s.works_count }} {{ t('common.works') }}</div>
               <div v-if="s.episodes_count" class="text-[10px] text-fg-5 mt-0.5">
-                {{ s.episodes_count }} 个片段
+                {{ s.episodes_count }} {{ t('common.episodes') }}
               </div>
             </div>
           </div>
@@ -2219,19 +2243,19 @@ onUnmounted(() => {
           <!-- Empty state -->
           <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
             <Building2 class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-fg-3">没有符合条件的片商</div>
-            <div class="text-xs text-fg-5">试试更换关键词，或清空搜索框</div>
+            <div class="text-sm font-semibold text-fg-3">{{ t('filter.noMatchingStudios') }}</div>
+            <div class="text-xs text-fg-5">{{ t('filter.tryDifferentKeywordsOrClear') }}</div>
           </div>
 
           <!-- Infinite-scroll footer: the list grows as the container bottom nears -->
           <div v-if="listMode === 'scroll' && studioRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
             <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
               <Loader2 class="w-4 h-4 animate-spin" />
-              <span>滑动加载更多片商中...</span>
+              <span>{{ t('library.loadingMoreStudios') }}</span>
             </div>
             <div v-else-if="studioRows.length >= totalStudioRows && totalStudioRows > 0" class="flex items-center gap-2 text-fg-4 text-xs">
               <span class="w-12 h-px bg-surface-2"></span>
-              <span>已加载全部 {{ totalStudioRows.toLocaleString() }} 家片商</span>
+              <span>{{ t('library.loadedAllStudios', { count: totalStudioRows.toLocaleString() }) }}</span>
               <span class="w-12 h-px bg-surface-2"></span>
             </div>
           </div>
@@ -2253,8 +2277,8 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'directors'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-fg tracking-tight">导演库</h1>
-              <span class="text-xs text-fg-4 font-mono">({{ directorRows.length }} / {{ totalDirectorRows.toLocaleString() }} 位)</span>
+              <h1 class="text-xl font-bold text-fg tracking-tight">{{ t('library.directorsLibrary') }}</h1>
+              <span class="text-xs text-fg-4 font-mono">{{ t('library.directorsCount', { current: directorRows.length, total: totalDirectorRows.toLocaleString() }) }}</span>
             </div>
 
             <div class="flex items-center gap-3">
@@ -2276,8 +2300,8 @@ onUnmounted(() => {
               <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="m in [
-                    { id: 'scroll', label: '滑动加载' },
-                    { id: 'paged', label: '翻页' }
+                    { id: 'scroll', label: t('common.scrollLoad') },
+                    { id: 'paged', label: t('common.pagination') }
                   ]"
                   :key="m.id"
                   @click="setListMode(m.id as 'scroll' | 'paged')"
@@ -2285,7 +2309,7 @@ onUnmounted(() => {
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
                     listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
-                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                  :title="m.id === 'scroll' ? t('common.scrollLoadTooltip') : t('common.paginationTooltip')"
                 >
                   {{ m.label }}
                 </button>
@@ -2293,12 +2317,12 @@ onUnmounted(() => {
 
               <!-- Grid columns adjuster -->
               <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
-                <span class="text-fg-4 text-[11px]">每行</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.perRow') }}</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="减少每行列数"
+                  :title="t('common.decreaseColumns')"
                 >
                   &lt;
                 </button>
@@ -2307,11 +2331,11 @@ onUnmounted(() => {
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="增加每行列数"
+                  :title="t('common.increaseColumns')"
                 >
                   &gt;
                 </button>
-                <span class="text-fg-4 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.columns') }}</span>
               </div>
             </div>
           </div>
@@ -2344,9 +2368,9 @@ onUnmounted(() => {
               <h3 class="text-xs font-semibold text-fg-2 mt-3 group-hover:text-accent transition truncate w-full">
                 {{ d.name }}
               </h3>
-              <div class="text-[10px] text-fg-4 mt-1">{{ d.works_count }} 部作品</div>
+              <div class="text-[10px] text-fg-4 mt-1">{{ d.works_count }} {{ t('common.works') }}</div>
               <div v-if="d.studios_count" class="text-[10px] text-fg-5 mt-0.5">
-                {{ d.studios_count }} 家片商
+                {{ t('library.directorStudiosCount', { count: d.studios_count }) }}
               </div>
             </div>
           </div>
@@ -2354,19 +2378,19 @@ onUnmounted(() => {
           <!-- Empty state -->
           <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
             <Megaphone class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-fg-3">没有符合条件的导演</div>
-            <div class="text-xs text-fg-5">试试更换关键词，或清空搜索框</div>
+            <div class="text-sm font-semibold text-fg-3">{{ t('filter.noMatchingDirectors') }}</div>
+            <div class="text-xs text-fg-5">{{ t('filter.tryDifferentKeywordsOrClear') }}</div>
           </div>
 
           <!-- Infinite-scroll footer -->
           <div v-if="listMode === 'scroll' && directorRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
             <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
               <Loader2 class="w-4 h-4 animate-spin" />
-              <span>滑动加载更多导演中...</span>
+              <span>{{ t('library.loadingMoreDirectors') }}</span>
             </div>
             <div v-else-if="directorRows.length >= totalDirectorRows && totalDirectorRows > 0" class="flex items-center gap-2 text-fg-4 text-xs">
               <span class="w-12 h-px bg-surface-2"></span>
-              <span>已加载全部 {{ totalDirectorRows.toLocaleString() }} 位导演</span>
+              <span>{{ t('library.loadedAllDirectors', { count: totalDirectorRows.toLocaleString() }) }}</span>
               <span class="w-12 h-px bg-surface-2"></span>
             </div>
           </div>
@@ -2387,8 +2411,8 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'episodes'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-fg tracking-tight">分集库</h1>
-              <span class="text-xs text-fg-4 font-mono">({{ episodeRows.length }} / {{ totalEpisodeRows.toLocaleString() }} 个片段)</span>
+              <h1 class="text-xl font-bold text-fg tracking-tight">{{ t('library.episodesLibrary') }}</h1>
+              <span class="text-xs text-fg-4 font-mono">{{ t('library.episodesCount', { current: episodeRows.length, total: totalEpisodeRows.toLocaleString() }) }}</span>
             </div>
 
             <div class="flex items-center gap-3">
@@ -2411,8 +2435,8 @@ onUnmounted(() => {
               <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
                   v-for="m in [
-                    { id: 'scroll', label: '滑动加载' },
-                    { id: 'paged', label: '翻页' }
+                    { id: 'scroll', label: t('common.scrollLoad') },
+                    { id: 'paged', label: t('common.pagination') }
                   ]"
                   :key="m.id"
                   @click="setListMode(m.id as 'scroll' | 'paged')"
@@ -2420,7 +2444,7 @@ onUnmounted(() => {
                     'px-2 py-1 rounded-lg text-[11px] font-medium transition',
                     listMode === m.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
                   ]"
-                  :title="m.id === 'scroll' ? '滚动到底部自动加载下一页' : '显示翻页按钮，可自定义每页条目数'"
+                  :title="m.id === 'scroll' ? t('common.scrollLoadTooltip') : t('common.paginationTooltip')"
                 >
                   {{ m.label }}
                 </button>
@@ -2428,12 +2452,12 @@ onUnmounted(() => {
 
               <!-- Grid columns adjuster -->
               <div class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs">
-                <span class="text-fg-4 text-[11px]">每行</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.perRow') }}</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="减少每行列数"
+                  :title="t('common.decreaseColumns')"
                 >
                   &lt;
                 </button>
@@ -2442,11 +2466,11 @@ onUnmounted(() => {
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="增加每行列数"
+                  :title="t('common.increaseColumns')"
                 >
                   &gt;
                 </button>
-                <span class="text-fg-4 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.columns') }}</span>
               </div>
             </div>
           </div>
@@ -2455,7 +2479,7 @@ onUnmounted(() => {
           <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar flex-wrap">
             <span class="text-xs text-fg-4 font-medium shrink-0 flex items-center gap-1.5 mr-1">
               <Clock class="w-3.5 h-3.5 text-accent" />
-              <span>时间筛选:</span>
+              <span>{{ t('filter.timeFilter') }}:</span>
             </span>
             <button
               v-for="df in DATE_FILTER_OPTIONS"
@@ -2468,7 +2492,7 @@ onUnmounted(() => {
                   : 'bg-surface/80 hover:bg-surface border-line text-fg-3 hover:text-fg'
               ]"
             >
-              {{ df.label }}
+              {{ getDateFilterLabel(df.id) }}
             </button>
           </div>
 
@@ -2502,15 +2526,14 @@ onUnmounted(() => {
           <!-- Empty state -->
           <div v-else-if="!isLoading" class="text-center py-24 space-y-3">
             <Clapperboard class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-fg-3">没有符合条件的片段</div>
+            <div class="text-sm font-semibold text-fg-3">{{ t('filter.noMatchingEpisodes') }}</div>
             <div v-if="activeEpisodeFilterCount > 0 || episodeQuery" class="text-xs text-fg-5">
-              试试更换关键词，或在筛选面板里重置条件
+              {{ t('filter.tryDifferentKeywordsOrReset') }}
             </div>
             <!-- The episodes table starts empty until the dedicated scrape runs: the
                  film scrape only records the scenes it happens to walk past. -->
             <div v-else class="text-xs text-fg-5 max-w-md mx-auto leading-relaxed">
-              分集库目前为空。影片刮削只记录顺带遇到的分集，完整的分集清单需要用
-              <span class="font-mono text-fg-4">--mode episodes</span> 单独刮削一轮。
+              {{ t('library.episodesEmptyNotice') }}
             </div>
           </div>
 
@@ -2518,11 +2541,11 @@ onUnmounted(() => {
           <div v-if="listMode === 'scroll' && episodeRows.length > 0" class="py-8 flex flex-col items-center justify-center gap-2 text-xs text-fg-4">
             <div v-if="isLoadingMore" class="flex items-center gap-2 text-accent font-medium">
               <Loader2 class="w-4 h-4 animate-spin" />
-              <span>滑动加载更多片段中...</span>
+              <span>{{ t('library.loadingMoreEpisodes') }}</span>
             </div>
             <div v-else-if="episodeRows.length >= totalEpisodeRows && totalEpisodeRows > 0" class="flex items-center gap-2 text-fg-4 text-xs">
               <span class="w-12 h-px bg-surface-2"></span>
-              <span>已加载全部 {{ totalEpisodeRows.toLocaleString() }} 个片段</span>
+              <span>{{ t('library.loadedAllEpisodes', { count: totalEpisodeRows.toLocaleString() }) }}</span>
               <span class="w-12 h-px bg-surface-2"></span>
             </div>
           </div>
@@ -2544,8 +2567,8 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'favorites'" class="space-y-6">
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2">
-              <h1 class="text-xl font-bold text-fg tracking-tight">我的收藏与片单</h1>
-              <span class="text-xs text-fg-4 font-mono">({{ favoriteTotal }} 项)</span>
+              <h1 class="text-xl font-bold text-fg tracking-tight">{{ t('nav.favorites') }}</h1>
+              <span class="text-xs text-fg-4 font-mono">{{ t('common.countItems', { count: favoriteTotal }) }}</span>
             </div>
 
             <div class="flex items-center gap-2.5">
@@ -2554,23 +2577,23 @@ onUnmounted(() => {
                 v-if="favSubTab === 'all' && favoriteTotal > 0"
                 @click="toggleCollapseAllFavs"
                 class="px-2.5 py-1 rounded-xl bg-surface border border-line hover:border-line-strong text-fg-3 hover:text-fg text-xs font-medium flex items-center gap-1.5 transition cursor-pointer"
-                :title="allSectionsCollapsed ? '展开全部板块' : '折叠全部板块'"
+                :title="allSectionsCollapsed ? t('favorites.expandAll') : t('favorites.collapseAll')"
               >
                 <ChevronsUpDown class="w-3.5 h-3.5 text-accent" />
-                <span>{{ allSectionsCollapsed ? '全部展开' : '全部折叠' }}</span>
+                <span>{{ allSectionsCollapsed ? t('favorites.expandAllBtn') : t('favorites.collapseAllBtn') }}</span>
               </button>
 
               <!-- Grid columns adjuster -->
               <div
-                v-if="favMovies.length > 0 || favWishlist.length > 0 || favWatched.length > 0 || favEpisodes.length > 0"
+                v-if="favMovies.length > 0 || favEpisodes.length > 0"
                 class="flex items-center gap-1.5 bg-surface border border-line rounded-xl px-2.5 py-1 text-xs"
               >
-                <span class="text-fg-4 text-[11px]">每行</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.perRow') }}</span>
                 <button
                   @click="decreaseCols"
                   :disabled="activeCols <= 2"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="减少每行列数"
+                  :title="t('common.decreaseColumns')"
                 >
                   &lt;
                 </button>
@@ -2579,11 +2602,11 @@ onUnmounted(() => {
                   @click="increaseCols"
                   :disabled="activeCols >= activeColsMax"
                   class="w-6 h-6 rounded-lg bg-surface-2 hover:bg-surface-3 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 hover:text-fg transition font-mono font-bold"
-                  title="增加每行列数"
+                  :title="t('common.increaseColumns')"
                 >
                   &gt;
                 </button>
-                <span class="text-fg-4 text-[11px]">列</span>
+                <span class="text-fg-4 text-[11px]">{{ t('common.columns') }}</span>
               </div>
             </div>
           </div>
@@ -2592,15 +2615,13 @@ onUnmounted(() => {
           <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
             <button
               v-for="sub in [
-                { id: 'all', label: '全部总览', count: favoriteTotal },
-                { id: 'wishlist', label: '想看', count: favWishlist.length },
-                { id: 'watched', label: '已看', count: favWatched.length },
-                { id: 'series', label: '系列专题', count: favSeries.length },
-                { id: 'movie', label: '喜爱影片', count: favMovies.length },
-                { id: 'performer', label: '演员', count: favPerformers.length },
-                { id: 'studio', label: '片商', count: favStudios.length },
-                { id: 'director', label: '导演', count: favDirectors.length },
-                { id: 'episode', label: '分集', count: favEpisodes.length },
+                { id: 'all', label: t('favorites.allOverview'), count: favoriteTotal },
+                { id: 'series', label: t('favorites.seriesCollection'), count: favSeries.length },
+                { id: 'movie', label: t('favorites.favMovies'), count: favMovies.length },
+                { id: 'performer', label: t('common.performer'), count: favPerformers.length },
+                { id: 'studio', label: t('common.studio'), count: favStudios.length },
+                { id: 'director', label: t('common.director'), count: favDirectors.length },
+                { id: 'episode', label: t('common.episode'), count: favEpisodes.length },
               ]"
               :key="sub.id"
               @click="favSubTab = sub.id as any"
@@ -2625,107 +2646,6 @@ onUnmounted(() => {
 
           <!-- Favorites Body -->
           <template v-else-if="favoriteTotal > 0">
-            <!-- 1. Wishlist Section (想看) -->
-            <section
-              v-if="(favSubTab === 'all' || favSubTab === 'wishlist') && favWishlist.length > 0"
-              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
-            >
-              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
-                <button
-                  @click="toggleFavSection('wishlist')"
-                  class="flex items-center gap-2 text-left group cursor-pointer"
-                >
-                  <component
-                    :is="favCollapsed.wishlist ? ChevronRight : ChevronDown"
-                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
-                  />
-                  <Bookmark class="w-4 h-4 text-amber-500" />
-                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">想看片单</h2>
-                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favWishlist.length }}</span>
-                </button>
-                <button
-                  v-if="favSubTab === 'all'"
-                  @click="favSubTab = 'wishlist'"
-                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
-                >
-                  <span>仅看此类</span>
-                  <span>→</span>
-                </button>
-              </div>
-              <div
-                v-show="!favCollapsed.wishlist || favSubTab === 'wishlist'"
-                class="grid transition-all duration-200 pt-1"
-                :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
-                :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
-              >
-                <MovieCard
-                  v-for="f in favWishlist"
-                  :key="`wishlist-${f.key}`"
-                  :movie="asMovie(f)"
-                  :translated="Boolean(f.has_zh)"
-                  :is-favorite="favorites.movie.has(f.key)"
-                  :view="viewMode"
-                  :lang="descLang"
-                  @select="openMovieDetail(asMovie(f))"
-                  @toggle-favorite="toggleFavoriteEntity('movie', f.key)"
-                />
-              </div>
-            </section>
-
-            <!-- 2. Watched Section (已看) -->
-            <section
-              v-if="(favSubTab === 'all' || favSubTab === 'watched') && favWatched.length > 0"
-              class="space-y-3 bg-surface/40 p-4 rounded-2xl border border-line/80"
-            >
-              <div class="flex items-center justify-between pb-2 border-b border-line select-none">
-                <button
-                  @click="toggleFavSection('watched')"
-                  class="flex items-center gap-2 text-left group cursor-pointer"
-                >
-                  <component
-                    :is="favCollapsed.watched ? ChevronRight : ChevronDown"
-                    class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
-                  />
-                  <CheckCircle2 class="w-4 h-4 text-emerald-500" />
-                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">已看记录</h2>
-                  <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favWatched.length }}</span>
-                </button>
-                <button
-                  v-if="favSubTab === 'all'"
-                  @click="favSubTab = 'watched'"
-                  class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
-                >
-                  <span>仅看此类</span>
-                  <span>→</span>
-                </button>
-              </div>
-              <div
-                v-show="!favCollapsed.watched || favSubTab === 'watched'"
-                class="grid transition-all duration-200 pt-1"
-                :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
-                :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
-              >
-                <div v-for="f in favWatched" :key="`watched-${f.key}`" class="relative group">
-                  <MovieCard
-                    :movie="asMovie(f)"
-                    :translated="Boolean(f.has_zh)"
-                    :is-favorite="favorites.movie.has(f.key)"
-                    :view="viewMode"
-                    :lang="descLang"
-                    @select="openMovieDetail(asMovie(f))"
-                    @toggle-favorite="toggleFavoriteEntity('movie', f.key)"
-                  />
-                  <!-- Rating badge overlay if rated -->
-                  <div
-                    v-if="f.rating != null && f.rating > 0"
-                    class="on-scrim absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-lg bg-scrim/85 backdrop-blur-md border border-amber-500/40 text-[11px] text-amber-400 font-bold flex items-center gap-1 pointer-events-none shadow-md z-10"
-                  >
-                    <Star class="w-3 h-3 fill-amber-400 text-amber-400" />
-                    <span>{{ f.rating }} 星</span>
-                  </div>
-                </div>
-              </div>
-            </section>
 
             <!-- 2.5 Series Section (系列专题) -->
             <section
@@ -2742,7 +2662,7 @@ onUnmounted(() => {
                     class="w-4 h-4 text-fg-4 group-hover:text-accent transition"
                   />
                   <Layers class="w-4 h-4 text-accent" />
-                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">系列专题集</h2>
+                  <h2 class="text-sm font-bold text-fg group-hover:text-accent transition">{{ t('favorites.seriesCollection') }}</h2>
                   <span class="text-xs text-fg-4 font-mono px-2 py-0.5 rounded-full bg-surface-2 font-bold">{{ favSeries.length }}</span>
                 </button>
                 <button
@@ -2750,7 +2670,7 @@ onUnmounted(() => {
                   @click="favSubTab = 'series'"
                   class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
                 >
-                  <span>仅看此类</span>
+                  <span>{{ t('favorites.onlyThisType') }}</span>
                   <span>→</span>
                 </button>
               </div>
@@ -2778,14 +2698,14 @@ onUnmounted(() => {
                     <button
                       @click.stop="toggleFavoriteEntity('series', s.key)"
                       class="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-rose-400 backdrop-blur-sm border border-white/10 transition z-10"
-                      title="取消收藏系列"
+                      :title="t('favorites.unfavoriteSeries')"
                     >
                       <Heart class="w-3.5 h-3.5 fill-rose-400 text-rose-400" />
                     </button>
 
                     <!-- Series count badge -->
                     <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg bg-black/75 backdrop-blur-md text-[10px] font-bold text-accent border border-accent/30 font-mono">
-                      {{ s.works_count ? `${s.works_count} 部全集` : '系列作品' }}
+                      {{ s.works_count ? t('favorites.seriesCompleteCount', { count: s.works_count }) : t('favorites.seriesWorks') }}
                     </div>
                   </div>
 
@@ -2824,7 +2744,7 @@ onUnmounted(() => {
                   @click="favSubTab = 'movie'"
                   class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
                 >
-                  <span>仅看此类</span>
+                  <span>{{ t('favorites.onlyThisType') }}</span>
                   <span>→</span>
                 </button>
               </div>
@@ -2871,7 +2791,7 @@ onUnmounted(() => {
                   @click="favSubTab = 'performer'"
                   class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
                 >
-                  <span>仅看此类</span>
+                  <span>{{ t('favorites.onlyThisType') }}</span>
                   <span>→</span>
                 </button>
               </div>
@@ -2901,7 +2821,7 @@ onUnmounted(() => {
                     <button
                       @click.stop="toggleFavoriteEntity('performer', f.key)"
                       class="on-scrim absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-scrim/50 hover:bg-scrim/80 backdrop-blur-md flex items-center justify-center text-danger transition"
-                      title="取消收藏该演员"
+                      :title="t('favorites.unfavoritePerformer')"
                     >
                       <Heart class="w-3 h-3" fill="currentColor" />
                     </button>
@@ -2935,12 +2855,12 @@ onUnmounted(() => {
                 <div class="flex items-center gap-2.5">
                   <!-- Grid Size Selector (美化：调整分集网格尺寸) -->
                   <div class="flex items-center bg-surface-2/80 rounded-xl p-0.5 border border-line text-xs font-semibold">
-                    <span class="text-[10px] text-fg-4 px-2 select-none">尺寸:</span>
+                    <span class="text-[10px] text-fg-4 px-2 select-none">{{ t('favorites.size') }}</span>
                     <button
                       v-for="opt in [
-                        { cols: 1, label: '大' },
-                        { cols: 2, label: '中' },
-                        { cols: 3, label: '小' },
+                        { cols: 1, label: t('favorites.sizeLarge') },
+                        { cols: 2, label: t('favorites.sizeMedium') },
+                        { cols: 3, label: t('favorites.sizeSmall') },
                       ]"
                       :key="opt.cols"
                       @click="setFavEpisodeCols(opt.cols)"
@@ -2950,7 +2870,7 @@ onUnmounted(() => {
                           ? 'bg-accent-fill text-on-fill shadow-xs'
                           : 'text-fg-4 hover:text-fg hover:bg-surface-3/50'
                       ]"
-                      :title="`切换为每行 ${opt.cols} 列网格`"
+                      :title="t('favorites.switchGridColumns', { cols: opt.cols })"
                     >
                       {{ opt.label }}
                     </button>
@@ -2961,7 +2881,7 @@ onUnmounted(() => {
                     @click="favSubTab = 'episode'"
                     class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
                   >
-                    <span>仅看此类</span>
+                    <span>{{ t('favorites.onlyThisType') }}</span>
                     <span>→</span>
                   </button>
                 </div>
@@ -3010,12 +2930,12 @@ onUnmounted(() => {
                           :class="favEpisodeCols === 1 ? 'text-sm' : 'text-xs'"
                           :title="f.title || ''"
                         >
-                          {{ f.title || '独立分集 #' + f.key }}
+                          {{ f.title || t('favorites.standaloneEpisodeTitle', { key: f.key }) }}
                         </span>
                         <button
                           @click.stop="toggleFavoriteEntity('episode', f.key)"
                           class="shrink-0 text-danger transition hover:scale-110 p-0.5"
-                          title="取消收藏该片段"
+                          :title="t('favorites.unfavoriteEpisode')"
                         >
                           <Heart class="w-4 h-4" fill="currentColor" />
                         </button>
@@ -3027,17 +2947,17 @@ onUnmounted(() => {
                           :title="favFilmFull(f)"
                           @click.stop="f.movie_id && openMovieDetailById(f.movie_id)"
                         >
-                          出处: {{ favFilmTitle(f) }}
+                          {{ t('favorites.fromFilm', { title: favFilmTitle(f) }) }}
                         </span>
                       </div>
                       <div v-else class="text-[10px] text-fg-5 mt-1 flex items-center gap-1 italic">
-                        <span>独立收录分集</span>
+                        <span>{{ t('favorites.standaloneEpisode') }}</span>
                       </div>
                     </div>
                     <div class="flex items-center gap-2 text-[11px] text-fg-4">
                       <span v-if="f.studio_name" class="truncate max-w-[150px] font-medium" :title="f.studio_name">{{ f.studio_name }}</span>
                       <span v-if="f.has_zh" class="text-success flex items-center gap-0.5 shrink-0 text-[10px] font-bold">
-                        <Languages class="w-3 h-3" />中
+                        <Languages class="w-3 h-3" />{{ currentLocale.startsWith('zh') ? '中' : 'ZH' }}
                       </span>
                     </div>
                   </div>
@@ -3068,7 +2988,7 @@ onUnmounted(() => {
                   @click="favSubTab = 'studio'"
                   class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
                 >
-                  <span>仅看此类</span>
+                  <span>{{ t('favorites.onlyThisType') }}</span>
                   <span>→</span>
                 </button>
               </div>
@@ -3084,7 +3004,7 @@ onUnmounted(() => {
                   <button
                     @click="openStudioDetail({ name: f.key, works_count: f.works_count ?? undefined })"
                     class="text-xs font-medium text-fg-2 hover:text-accent-soft transition cursor-pointer"
-                    :title="`打开 ${f.key} 的片商档案`"
+                    :title="t('favorites.openStudioProfile', { name: f.key })"
                   >
                     {{ f.key }}
                   </button>
@@ -3092,7 +3012,7 @@ onUnmounted(() => {
                   <button
                     @click.stop="toggleFavoriteEntity('studio', f.key)"
                     class="text-danger hover:text-danger-soft transition cursor-pointer"
-                    title="取消收藏该片商"
+                    :title="t('favorites.unfavoriteStudio')"
                   >
                     <Heart class="w-3 h-3" fill="currentColor" />
                   </button>
@@ -3123,7 +3043,7 @@ onUnmounted(() => {
                   @click="favSubTab = 'director'"
                   class="text-[11px] text-fg-4 hover:text-accent transition flex items-center gap-1 cursor-pointer"
                 >
-                  <span>仅看此类</span>
+                  <span>{{ t('favorites.onlyThisType') }}</span>
                   <span>→</span>
                 </button>
               </div>
@@ -3139,7 +3059,7 @@ onUnmounted(() => {
                   <button
                     @click="openDirectorDetail({ name: f.key })"
                     class="text-xs font-medium text-fg-2 hover:text-accent-soft transition cursor-pointer"
-                    :title="`打开 ${f.key} 的导演档案`"
+                    :title="t('favorites.openDirectorProfile', { name: f.key })"
                   >
                     {{ f.key }}
                   </button>
@@ -3147,7 +3067,7 @@ onUnmounted(() => {
                   <button
                     @click.stop="toggleFavoriteEntity('director', f.key)"
                     class="text-danger hover:text-danger-soft transition cursor-pointer"
-                    title="取消收藏该导演"
+                    :title="t('favorites.unfavoriteDirector')"
                   >
                     <Heart class="w-3 h-3" fill="currentColor" />
                   </button>
@@ -3158,8 +3078,8 @@ onUnmounted(() => {
 
           <div v-else class="text-center py-24 space-y-3">
             <Heart class="w-12 h-12 text-fg-5 mx-auto stroke-1" />
-            <div class="text-sm font-semibold text-fg-3">暂无收藏与标记条目</div>
-            <div class="text-xs text-fg-5">想看、已看、喜爱影片、演员、片商、导演和分集片段都会汇集在此，点击心形或详情页标记即可加入</div>
+            <div class="text-sm font-semibold text-fg-3">{{ t('common.noData') }}</div>
+            <div class="text-xs text-fg-5">{{ t('favorites.emptyNotice') }}</div>
           </div>
         </div>
 
@@ -3167,8 +3087,8 @@ onUnmounted(() => {
         <div v-else-if="currentTab === 'settings'" class="max-w-3xl space-y-6">
           <div class="flex items-center justify-between border-b border-line pb-4 flex-wrap gap-4">
             <div>
-              <h1 class="text-xl md:text-2xl font-bold text-fg tracking-tight">存储、缓存与系统设置</h1>
-              <p class="text-xs text-fg-4 mt-1">管理外观主题、图标方案、界面语言、本地数据库与隐私配置</p>
+              <h1 class="text-xl md:text-2xl font-bold text-fg tracking-tight">{{ t('settings.headerTitle') }}</h1>
+              <p class="text-xs text-fg-4 mt-1">{{ t('settings.headerDesc') }}</p>
             </div>
           </div>
 
@@ -3176,12 +3096,12 @@ onUnmounted(() => {
           <div class="flex items-center gap-2 flex-wrap">
             <button
               v-for="st in [
-                { id: 'all', labelKey: 'settings.all', label: '全部设置', icon: SlidersHorizontal },
-                { id: 'appearance', labelKey: 'settings.appearance', label: '外观与图标', icon: Palette },
-                { id: 'localization', labelKey: 'settings.localization', label: '语言与本地化', icon: Globe },
-                { id: 'data', labelKey: 'settings.data', label: '数据与存储', icon: HardDrive },
-                { id: 'privacy', labelKey: 'settings.privacy', label: '隐私与安全', icon: Shield },
-                { id: 'about', labelKey: 'settings.about', label: '关于与更新', icon: Info },
+                { id: 'all', labelKey: 'settings.all', icon: SlidersHorizontal },
+                { id: 'appearance', labelKey: 'settings.appearance', icon: Palette },
+                { id: 'localization', labelKey: 'settings.localization', icon: Globe },
+                { id: 'data', labelKey: 'settings.data', icon: HardDrive },
+                { id: 'privacy', labelKey: 'settings.privacy', icon: Shield },
+                { id: 'about', labelKey: 'settings.about', icon: Info },
               ]"
               :key="st.id"
               @click="settingsSubTab = (st.id as SettingsSubTab)"
@@ -3193,49 +3113,72 @@ onUnmounted(() => {
               ]"
             >
               <component :is="st.icon" class="w-3.5 h-3.5" />
-              <span>{{ t(st.labelKey, st.label) }}</span>
+              <span>{{ t(st.labelKey) }}</span>
             </button>
           </div>
 
-          <!-- Section 0: 外观. Three styles × dark/light, flat, plus 跟随系统. -->
+          <!-- Section 0: 外观. Compact layout: 跟随系统 banner + 6 themes in 3-col grid -->
           <div
             v-if="settingsSubTab === 'all' || settingsSubTab === 'appearance'"
-            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4"
+            class="p-5 rounded-2xl bg-surface/60 border border-line space-y-3.5"
           >
             <div class="flex items-center gap-3">
               <Palette class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-fg">外观主题</div>
-                <div class="text-xs text-fg-3">默认跟随系统；三套风格各自有深色与浅色两版</div>
+                <div class="text-sm font-bold text-fg">{{ t('settings.themeTitle') }}</div>
+                <div class="text-xs text-fg-3">{{ t('settings.themeDesc') }}</div>
               </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+
+            <!-- Follow System Standalone Button -->
+            <button
+              @click="setTheme('auto')"
+              class="w-full text-left p-2.5 px-3 rounded-xl border transition flex items-center justify-between gap-3 cursor-pointer"
+              :class="themeChoice === 'auto'
+                ? 'bg-accent-fill/10 border-accent-fill/40'
+                : 'bg-surface border-line-strong hover:border-line-strong'"
+            >
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span
+                  class="shrink-0 w-7 h-7 rounded-lg border border-line-strong/60 overflow-hidden flex flex-col"
+                  :style="{ backgroundColor: autoThemeOption.swatch[0] }"
+                  aria-hidden="true"
+                >
+                  <span class="flex-1" :style="{ backgroundColor: autoThemeOption.swatch[1] }"></span>
+                  <span class="h-1.5" :style="{ backgroundColor: autoThemeOption.swatch[2] }"></span>
+                </span>
+                <span class="text-xs font-bold" :class="themeChoice === 'auto' ? 'text-accent-soft' : 'text-fg-2'">
+                  {{ autoThemeOption.label }}
+                </span>
+              </div>
+              <Check v-if="themeChoice === 'auto'" class="w-4 h-4 text-accent shrink-0" />
+            </button>
+
+            <!-- 6 Concrete Themes: Balanced 3-column grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <button
-                v-for="opt in themeOptions"
+                v-for="opt in concreteThemeOptions"
                 :key="opt.id"
                 @click="setTheme(opt.id)"
-                class="text-left p-3 rounded-xl border transition flex items-start gap-3"
+                class="text-left p-2.5 rounded-xl border transition flex items-center gap-2.5 cursor-pointer"
                 :class="themeChoice === opt.id
                   ? 'bg-accent-fill/10 border-accent-fill/40'
                   : 'bg-surface border-line-strong hover:border-line-strong'"
               >
                 <span
-                  class="shrink-0 w-9 h-9 rounded-lg border border-line-strong/60 overflow-hidden flex flex-col"
+                  class="shrink-0 w-7 h-7 rounded-lg border border-line-strong/60 overflow-hidden flex flex-col"
                   :style="{ backgroundColor: opt.swatch[0] }"
                   aria-hidden="true"
                 >
                   <span class="flex-1" :style="{ backgroundColor: opt.swatch[1] }"></span>
-                  <span class="h-2.5" :style="{ backgroundColor: opt.swatch[2] }"></span>
+                  <span class="h-1.5" :style="{ backgroundColor: opt.swatch[2] }"></span>
                 </span>
-                <span class="min-w-0">
-                  <span class="flex items-center gap-2">
-                    <span
-                      class="text-xs font-bold"
-                      :class="themeChoice === opt.id ? 'text-accent-soft' : 'text-fg-2'"
-                    >{{ opt.label }}</span>
-                    <Check v-if="themeChoice === opt.id" class="w-3 h-3 text-accent" />
-                  </span>
-                  <span class="block text-[11px] text-fg-4 mt-1 leading-relaxed">{{ opt.hint }}</span>
+                <span class="min-w-0 flex-1 flex items-center justify-between gap-1">
+                  <span
+                    class="text-xs font-medium truncate"
+                    :class="themeChoice === opt.id ? 'text-accent-soft font-bold' : 'text-fg-2'"
+                  >{{ opt.label }}</span>
+                  <Check v-if="themeChoice === opt.id" class="w-3.5 h-3.5 text-accent shrink-0" />
                 </span>
               </button>
             </div>
@@ -3244,196 +3187,44 @@ onUnmounted(() => {
           <!-- Section 0.1: App Icon & Branding -->
           <div
             v-if="settingsSubTab === 'all' || settingsSubTab === 'appearance'"
-            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4"
-          >
-            <div class="flex items-center justify-between gap-3 flex-wrap">
-              <div class="flex items-center gap-3">
-                <Sparkles class="w-5 h-5 text-accent" />
-                <div>
-                  <div class="text-sm font-bold text-fg">应用图标方案 (App Icon)</div>
-                  <div class="text-xs text-fg-3">支持一键切换应用图标与实时预览（默认方案 A）</div>
-                </div>
-              </div>
-              <span class="text-xs px-2.5 py-1 rounded-full bg-accent-fill/15 text-accent font-semibold border border-accent-fill/30">
-                当前生效: {{ ICON_SCHEMES.find(s => s.id === currentIconScheme)?.name.split(' ')[0] }}
-              </span>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              <div
-                v-for="scheme in ICON_SCHEMES"
-                :key="scheme.id"
-                @click="setIconScheme(scheme.id)"
-                class="relative p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3"
-                :class="currentIconScheme === scheme.id
-                  ? 'bg-accent-fill/10 border-accent shadow-md shadow-accent-fill/10 ring-1 ring-accent/30'
-                  : 'bg-surface border-line hover:border-line-strong hover:bg-surface-2/40'"
-              >
-                <!-- Card Header with Icon Preview -->
-                <div class="flex items-start gap-4">
-                  <div class="shrink-0 relative group">
-                    <AppIcon
-                      :scheme="scheme.id"
-                      :size="64"
-                      class="rounded-2xl shadow-lg border border-line/40 group-hover:scale-105 transition-transform"
-                    />
-                    <div
-                      v-if="currentIconScheme === scheme.id"
-                      class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-accent text-on-fill flex items-center justify-center shadow"
-                    >
-                      <Check class="w-3 h-3 stroke-[3]" />
-                    </div>
-                  </div>
-
-                  <div class="min-w-0 flex-1 space-y-1">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <span class="text-xs font-bold text-fg tracking-tight">{{ scheme.name }}</span>
-                      <span
-                        v-if="scheme.badge"
-                        class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30"
-                      >
-                        {{ scheme.badge }}
-                      </span>
-                    </div>
-                    <div class="text-[11px] font-mono text-fg-4">{{ scheme.subtitle }}</div>
-                    <div class="flex items-center gap-2 text-[11px] text-fg-3 flex-wrap pt-0.5">
-                      <span class="px-1.5 py-0.5 rounded bg-surface-2 border border-line text-[10px] text-fg-3">
-                        {{ scheme.style }}
-                      </span>
-                      <span class="text-[10px] text-accent-soft font-medium">
-                        防窥: {{ '★'.repeat(scheme.stars) + '☆'.repeat(5 - scheme.stars) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Footer tags & action -->
-                <div class="flex items-center justify-between pt-1 border-t border-line/40 text-[11px]">
-                  <div class="flex items-center gap-1.5 flex-wrap">
-                    <span
-                      v-for="tag in scheme.tags"
-                      :key="tag"
-                      class="text-[10px] text-fg-4"
-                    >
-                      #{{ tag }}
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <button
-                      @click.stop="downloadIconFile(scheme.id, 'png')"
-                      class="text-[11px] text-accent hover:underline flex items-center gap-1 shrink-0"
-                      title="下载高清 PNG 图标"
-                    >
-                      <Download class="w-3 h-3" />
-                      <span>PNG</span>
-                    </button>
-                    <span class="text-fg-4">·</span>
-                    <button
-                      @click.stop="downloadIconFile(scheme.id, 'svg')"
-                      class="text-[11px] text-fg-3 hover:text-accent hover:underline flex items-center gap-1 shrink-0"
-                      title="下载矢量 SVG 图标"
-                    >
-                      <span>SVG</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="text-xs text-fg-4 flex items-center gap-2 pt-1">
-              <Info class="w-3.5 h-3.5 text-fg-4 shrink-0" />
-              <span>所选图标将即时在应用导航栏、标签页中更新生效。您也可点击「下载矢量」获取源文件用于替换 macOS 应用与程序坞 (Dock) 图标。</span>
-            </div>
-          </div>
-
-          <!-- Section 0.2: Poster Display Scheme (Aligned with Android v2.10.0) -->
-          <div
-            v-if="settingsSubTab === 'all' || settingsSubTab === 'appearance'"
-            class="p-6 rounded-2xl bg-surface/60 border border-line space-y-4"
+            class="p-5 rounded-2xl bg-surface/60 border border-line space-y-3.5"
           >
             <div class="flex items-center gap-3">
-              <Eye class="w-5 h-5 text-accent" />
+              <Sparkles class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-fg">海报展示与翻转排版方案</div>
-                <div class="text-xs text-fg-3">支持自适应画廊与 3D 拟真实体卡片两种呈现范式（已对齐移动端 v2.10.0）</div>
+                <div class="text-sm font-bold text-fg">{{ t('settings.appIconTitle') }}</div>
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-2 gap-4 max-w-xs">
               <button
-                @click="savePrivacySettings({ posterDisplayMode: 'adaptive_pager' })"
-                class="text-left p-4 rounded-xl border transition flex flex-col justify-between cursor-pointer"
-                :class="privacySettings.posterDisplayMode === 'adaptive_pager'
-                  ? 'bg-accent-fill/10 border-accent-fill/40 shadow-sm ring-1 ring-accent-fill/30'
-                  : 'bg-surface border-line-strong hover:border-line-strong'"
+                v-for="scheme in ICON_SCHEMES"
+                :key="scheme.id"
+                type="button"
+                @click="setIconScheme(scheme.id)"
+                class="relative p-4 rounded-2xl border transition-all cursor-pointer flex flex-col items-center justify-center group"
+                :class="currentIconScheme === scheme.id
+                  ? 'bg-accent-fill/15 border-accent shadow-md shadow-accent-fill/10 ring-2 ring-accent/40'
+                  : 'bg-surface border-line hover:border-line-strong hover:bg-surface-2/60'"
               >
-                <div>
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold" :class="privacySettings.posterDisplayMode === 'adaptive_pager' ? 'text-accent-soft' : 'text-fg-2'">
-                      自适应高清画廊 (Adaptive Pager)
-                    </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-accent-fill/20 text-accent font-bold">默认推荐</span>
+                <div class="relative">
+                  <AppIcon
+                    :scheme="scheme.id"
+                    :size="76"
+                    class="rounded-2xl shadow-md border border-line/40 group-hover:scale-105 transition-transform"
+                  />
+                  <div
+                    v-if="currentIconScheme === scheme.id"
+                    class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-accent text-on-fill flex items-center justify-center shadow"
+                  >
+                    <Check class="w-3 h-3 stroke-[3]" />
                   </div>
-                  <!-- Visual Demo: Adaptive Pager -->
-                  <div class="my-2.5 p-3 rounded-xl bg-sunken/60 border border-line flex items-center justify-center gap-3">
-                    <div class="relative w-14 h-18 rounded-lg bg-surface-2 border border-accent/40 shadow-md flex flex-col items-center justify-between p-1.5 overflow-hidden">
-                      <div class="w-full h-10 rounded bg-accent/20 flex items-center justify-center text-[9px] text-accent font-bold">正面</div>
-                      <div class="flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
-                        <span class="w-1.5 h-1.5 rounded-full bg-fg-5"></span>
-                      </div>
-                    </div>
-                    <div class="text-[10px] text-fg-3 flex flex-col gap-0.5">
-                      <span class="font-semibold text-fg-2">平滑横向滑动</span>
-                      <span class="text-fg-4">正面/反面双面无缝平铺</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="mt-2 pt-2 border-t border-line/40 flex items-center gap-2 text-[10px] text-fg-4">
-                  <Check v-if="privacySettings.posterDisplayMode === 'adaptive_pager'" class="w-3.5 h-3.5 text-accent shrink-0" />
-                  <span>画廊式平铺 · 极速图片渲染</span>
-                </div>
-              </button>
-
-              <button
-                @click="savePrivacySettings({ posterDisplayMode: 'flip_3d' })"
-                class="text-left p-4 rounded-xl border transition flex flex-col justify-between cursor-pointer"
-                :class="privacySettings.posterDisplayMode === 'flip_3d'
-                  ? 'bg-accent-fill/10 border-accent-fill/40 shadow-sm ring-1 ring-accent-fill/30'
-                  : 'bg-surface border-line-strong hover:border-line-strong'"
-              >
-                <div>
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold" :class="privacySettings.posterDisplayMode === 'flip_3d' ? 'text-accent-soft' : 'text-fg-2'">
-                      3D 拟真实体卡片 (3D Physical Flip)
-                    </span>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 font-bold">沉浸式</span>
-                  </div>
-                  <!-- Visual Demo: 3D Physical Flip -->
-                  <div class="my-2.5 p-3 rounded-xl bg-sunken/60 border border-line flex items-center justify-center gap-3">
-                    <div style="perspective: 260px;" class="w-14 h-18 flex items-center justify-center">
-                      <div
-                        class="w-12 h-16 rounded-lg bg-gradient-to-br from-indigo-900/60 to-purple-950/80 border border-indigo-400/50 shadow-xl flex flex-col items-center justify-between p-1.5"
-                        style="transform: rotateY(-18deg) rotateX(4deg); box-shadow: -4px 6px 12px rgba(0,0,0,0.5);"
-                      >
-                        <div class="w-full h-8 rounded bg-indigo-500/30 flex items-center justify-center text-[9px] text-indigo-300 font-bold">3D</div>
-                        <div class="text-[8px] text-indigo-200/80 font-mono">实体翻转</div>
-                      </div>
-                    </div>
-                    <div class="text-[10px] text-fg-3 flex flex-col gap-0.5">
-                      <span class="font-semibold text-fg-2">60fps 景深透视</span>
-                      <span class="text-fg-4">拟真实体蓝光盒质感</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="mt-2 pt-2 border-t border-line/40 flex items-center gap-2 text-[10px] text-fg-4">
-                  <Check v-if="privacySettings.posterDisplayMode === 'flip_3d'" class="w-3.5 h-3.5 text-accent shrink-0" />
-                  <span>3D 景深物理透视 · 实体翻转胶囊</span>
                 </div>
               </button>
             </div>
           </div>
 
+          <!-- Section 0.5: Language & Localization -->
           <!-- Section 0.5: Language & Localization -->
           <div
             v-if="settingsSubTab === 'all' || settingsSubTab === 'localization'"
@@ -3442,19 +3233,19 @@ onUnmounted(() => {
             <div class="flex items-center gap-3">
               <Globe class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-fg">语言与本地化</div>
-                <div class="text-xs text-fg-3">支持 7 种界面菜单语言，即时切换界面文字</div>
+                <div class="text-sm font-bold text-fg">{{ t('settings.localization') }}</div>
+                <div class="text-xs text-fg-3">{{ t('settings.languageDesc') }}</div>
               </div>
             </div>
 
             <!-- UI Menu Language -->
             <div class="space-y-2.5">
-              <div class="text-xs font-semibold text-fg-2">菜单与界面语言</div>
+              <div class="text-xs font-semibold text-fg-2">{{ t('settings.menuLanguage') }}</div>
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   v-for="lang in SUPPORTED_LANGUAGES"
                   :key="lang.code"
-                  @click="setLocale(lang.code)"
+                  @click="onSelectLocale(lang.code)"
                   class="p-2.5 rounded-xl border text-xs font-medium flex items-center justify-between transition cursor-pointer"
                   :class="currentLocale === lang.code
                     ? 'bg-accent-fill/15 border-accent-fill/50 text-accent font-bold shadow-sm'
@@ -3468,6 +3259,60 @@ onUnmounted(() => {
                 </button>
               </div>
             </div>
+
+            <!-- Database Content Display Mode (Auto-match / Bilingual / Original) -->
+            <div class="space-y-2.5 pt-3 border-t border-line/60">
+              <div>
+                <div class="text-xs font-semibold text-fg-2">{{ t('settings.contentModeTitle') }}</div>
+                <div class="text-[11px] text-fg-4 mt-0.5">{{ t('settings.contentModeDesc') }}</div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <button
+                  type="button"
+                  @click="setContentLangMode('auto')"
+                  class="p-3 rounded-xl border text-xs text-left transition flex flex-col justify-between cursor-pointer"
+                  :class="contentLangMode === 'auto'
+                    ? 'bg-accent-fill/15 border-accent-fill/50 text-accent shadow-sm'
+                    : 'bg-surface border-line hover:border-line-strong text-fg-3 hover:text-fg-2'"
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="font-bold text-[11px]">{{ t('settings.contentModeAuto') }}</span>
+                    <Check v-if="contentLangMode === 'auto'" class="w-3.5 h-3.5 text-accent" />
+                  </div>
+                  <div class="text-[10px] text-fg-4 leading-normal">{{ t('settings.contentModeAutoDesc') }}</div>
+                </button>
+
+                <button
+                  type="button"
+                  @click="setContentLangMode('bilingual')"
+                  class="p-3 rounded-xl border text-xs text-left transition flex flex-col justify-between cursor-pointer"
+                  :class="contentLangMode === 'bilingual'
+                    ? 'bg-accent-fill/15 border-accent-fill/50 text-accent shadow-sm'
+                    : 'bg-surface border-line hover:border-line-strong text-fg-3 hover:text-fg-2'"
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="font-bold text-[11px]">{{ t('settings.contentModeBilingual') }}</span>
+                    <Check v-if="contentLangMode === 'bilingual'" class="w-3.5 h-3.5 text-accent" />
+                  </div>
+                  <div class="text-[10px] text-fg-4 leading-normal">{{ t('settings.contentModeBilingualDesc') }}</div>
+                </button>
+
+                <button
+                  type="button"
+                  @click="setContentLangMode('original')"
+                  class="p-3 rounded-xl border text-xs text-left transition flex flex-col justify-between cursor-pointer"
+                  :class="contentLangMode === 'original'
+                    ? 'bg-accent-fill/15 border-accent-fill/50 text-accent shadow-sm'
+                    : 'bg-surface border-line hover:border-line-strong text-fg-3 hover:text-fg-2'"
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="font-bold text-[11px]">{{ t('settings.contentModeOriginal') }}</span>
+                    <Check v-if="contentLangMode === 'original'" class="w-3.5 h-3.5 text-accent" />
+                  </div>
+                  <div class="text-[10px] text-fg-4 leading-normal">{{ t('settings.contentModeOriginalDesc') }}</div>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Section 0.6: Privacy & History -->
@@ -3478,8 +3323,8 @@ onUnmounted(() => {
             <div class="flex items-center gap-3">
               <Shield class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-fg">隐私与数据安全</div>
-                <div class="text-xs text-fg-3">所有使用统计和历史记录均保存在本地设备，永不上报任何云端服务器</div>
+                <div class="text-sm font-bold text-fg">{{ t('settings.privacyTitle') }}</div>
+                <div class="text-xs text-fg-3">{{ t('settings.analyticsDesc') }}</div>
               </div>
             </div>
 
@@ -3488,8 +3333,8 @@ onUnmounted(() => {
               <!-- Collect Analytics Toggle -->
               <div class="flex items-center justify-between p-3 rounded-xl bg-surface border border-line">
                 <div>
-                  <div class="text-xs font-semibold text-fg-2">收集本地使用统计数据</div>
-                  <div class="text-[11px] text-fg-4">记录停留时间、浏览次数、评星分布等维度，用于生成个人统计看板与解锁成就奖杯</div>
+                  <div class="text-xs font-semibold text-fg-2">{{ t('settings.analyticsToggle') }}</div>
+                  <div class="text-[11px] text-fg-4">{{ t('settings.statsCollectionDesc') }}</div>
                 </div>
                 <button
                   @click="savePrivacySettings({ collectAnalytics: !privacySettings.collectAnalytics })"
@@ -3506,8 +3351,8 @@ onUnmounted(() => {
               <!-- Keep Search History Toggle -->
               <div class="flex items-center justify-between p-3 rounded-xl bg-surface border border-line">
                 <div>
-                  <div class="text-xs font-semibold text-fg-2">保留搜索历史记录</div>
-                  <div class="text-[11px] text-fg-4">在搜索框聚焦时在下拉菜单展示最近搜索词，支持一键快捷回填</div>
+                  <div class="text-xs font-semibold text-fg-2">{{ t('settings.searchHistoryToggle') }}</div>
+                  <div class="text-[11px] text-fg-4">{{ t('settings.searchHistoryDetail') }}</div>
                 </div>
                 <button
                   @click="savePrivacySettings({ keepSearchHistory: !privacySettings.keepSearchHistory })"
@@ -3524,8 +3369,8 @@ onUnmounted(() => {
               <!-- Keep Browse History Toggle -->
               <div class="flex items-center justify-between p-3 rounded-xl bg-surface border border-line">
                 <div>
-                  <div class="text-xs font-semibold text-fg-2">保留浏览足迹历史</div>
-                  <div class="text-[11px] text-fg-4">记录最近探索的影片、演员、片商和导演</div>
+                  <div class="text-xs font-semibold text-fg-2">{{ t('settings.browseHistoryToggle') }}</div>
+                  <div class="text-[11px] text-fg-4">{{ t('settings.browseHistoryDetail') }}</div>
                 </div>
                 <button
                   @click="savePrivacySettings({ keepBrowseHistory: !privacySettings.keepBrowseHistory })"
@@ -3547,7 +3392,7 @@ onUnmounted(() => {
                 class="px-3.5 py-1.5 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs font-medium text-fg-3 hover:text-fg transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 class="w-3.5 h-3.5" />
-                <span>清空搜索历史</span>
+                <span>{{ t('settings.clearSearchHistory') }}</span>
               </button>
 
               <button
@@ -3555,7 +3400,7 @@ onUnmounted(() => {
                 class="px-3.5 py-1.5 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs font-medium text-fg-3 hover:text-fg transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 class="w-3.5 h-3.5" />
-                <span>清空浏览历史</span>
+                <span>{{ t('settings.clearBrowseHistory') }}</span>
               </button>
 
               <button
@@ -3563,7 +3408,7 @@ onUnmounted(() => {
                 class="px-3.5 py-1.5 rounded-xl bg-danger-fill/10 hover:bg-danger-fill/20 border border-danger-fill/30 text-xs font-semibold text-danger flex items-center gap-1.5 transition ml-auto cursor-pointer"
               >
                 <Trash2 class="w-3.5 h-3.5" />
-                <span>重置所有使用统计数据</span>
+                <span>{{ t('settings.clearAllStats') }}</span>
               </button>
             </div>
 
@@ -3571,15 +3416,15 @@ onUnmounted(() => {
             <div class="pt-4 border-t border-line/60 space-y-4">
               <div class="flex items-center gap-2">
                 <Lock class="w-4 h-4 text-accent" />
-                <span class="text-xs font-bold text-fg">应用安全锁与防窥套件 (Security & Privacy Suite)</span>
+                <span class="text-xs font-bold text-fg">{{ t('settings.privacySuiteTitle') }}</span>
               </div>
 
               <!-- PIN Lock Configuration -->
               <div class="p-4 rounded-xl bg-surface border border-line space-y-3">
                 <div class="flex items-center justify-between">
                   <div>
-                    <div class="text-xs font-semibold text-fg-2">PIN 码安全应用锁</div>
-                    <div class="text-[11px] text-fg-4">启动应用或锁屏恢复时需输入 4~6 位数字 PIN 码</div>
+                    <div class="text-xs font-semibold text-fg-2">{{ t('settings.pinLockTitle') }}</div>
+                    <div class="text-[11px] text-fg-4">{{ t('settings.pinLockDesc') }}</div>
                   </div>
                   <button
                     @click="savePrivacySettings({ pinLockEnabled: !privacySettings.pinLockEnabled })"
@@ -3595,13 +3440,13 @@ onUnmounted(() => {
 
                 <div v-if="privacySettings.pinLockEnabled" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-line/40">
                   <div>
-                    <label class="block text-[11px] font-medium text-fg-3 mb-1">设置/修改 PIN 码（4~6位数字）：</label>
+                    <label class="block text-[11px] font-medium text-fg-3 mb-1">{{ t('settings.setPinLabel') }}</label>
                     <div class="flex gap-2">
                       <input
                         v-model="pinEditInput"
                         type="password"
                         maxlength="6"
-                        placeholder="例如: 1234"
+                        :placeholder="t('settings.pinPlaceholder')"
                         class="w-full px-3 py-1.5 rounded-lg bg-surface-2 border border-line text-xs font-mono text-fg focus:outline-none focus:border-accent"
                         @blur="handleUpdatePin"
                         @keydown.enter="handleUpdatePin"
@@ -3609,23 +3454,23 @@ onUnmounted(() => {
                       <button
                         @click="handleUpdatePin"
                         class="px-3 py-1.5 rounded-lg bg-accent-fill text-on-fill text-xs font-bold shrink-0 transition hover:bg-accent cursor-pointer"
-                      >保存</button>
+                      >{{ t('common.save') }}</button>
                     </div>
                   </div>
 
                   <div>
-                    <label class="block text-[11px] font-medium text-fg-3 mb-1">自动锁定超时策略：</label>
+                    <label class="block text-[11px] font-medium text-fg-3 mb-1">{{ t('settings.lockTimeoutLabel') }}</label>
                     <select
                       :value="privacySettings.lockTimeoutMinutes"
                       @change="(e) => savePrivacySettings({ lockTimeoutMinutes: Number((e.target as HTMLSelectElement).value) })"
                       class="w-full px-3 py-1.5 rounded-lg bg-surface-2 border border-line text-xs text-fg focus:outline-none focus:border-accent cursor-pointer"
                     >
-                      <option :value="0">立即锁定（失焦即锁）</option>
-                      <option :value="1">离开/闲置 1 分钟后锁定</option>
-                      <option :value="5">离开/闲置 5 分钟后锁定（推荐）</option>
-                      <option :value="15">离开/闲置 15 分钟后锁定</option>
-                      <option :value="30">离开/闲置 30 分钟后锁定</option>
-                      <option :value="-1">仅手动锁屏（不自动锁定）</option>
+                      <option :value="0">{{ t('settings.lockTimeout0') }}</option>
+                      <option :value="1">{{ t('settings.lockTimeout1') }}</option>
+                      <option :value="5">{{ t('settings.lockTimeout5') }}</option>
+                      <option :value="15">{{ t('settings.lockTimeout15') }}</option>
+                      <option :value="30">{{ t('settings.lockTimeout30') }}</option>
+                      <option :value="-1">{{ t('settings.lockTimeoutManual') }}</option>
                     </select>
                   </div>
                 </div>
@@ -3634,8 +3479,8 @@ onUnmounted(() => {
               <!-- Window Blur Mask Toggle -->
               <div class="flex items-center justify-between p-3.5 rounded-xl bg-surface border border-line">
                 <div>
-                  <div class="text-xs font-semibold text-fg-2">窗口失焦隐私遮罩 (Window Blur Shield)</div>
-                  <div class="text-[11px] text-fg-4">切换到其他窗口或锁屏时，瞬间覆盖高斯毛玻璃防窥层（对齐 Android FLAG_SECURE 防录屏与防窥）</div>
+                  <div class="text-xs font-semibold text-fg-2">{{ t('settings.windowBlurShieldTitle') }}</div>
+                  <div class="text-[11px] text-fg-4">{{ t('settings.windowBlurShieldDesc') }}</div>
                 </div>
                 <button
                   @click="savePrivacySettings({ blurOnWindowBlur: !privacySettings.blurOnWindowBlur })"
@@ -3655,8 +3500,8 @@ onUnmounted(() => {
                   <div class="flex items-center gap-2.5">
                     <EyeOff class="w-4 h-4 text-accent" />
                     <div>
-                      <div class="text-xs font-semibold text-fg-2">截屏分享防窥模式 (Screenshot Privacy Mode)</div>
-                      <div class="text-[11px] text-fg-4">手动开启后高斯模糊所有界面的图片或介绍文字，专用于安全截屏分享</div>
+                      <div class="text-xs font-semibold text-fg-2">{{ t('settings.screenshotPrivacyTitle') }}</div>
+                      <div class="text-[11px] text-fg-4">{{ t('settings.screenshotPrivacyDesc') }}</div>
                     </div>
                   </div>
                   <button
@@ -3681,8 +3526,8 @@ onUnmounted(() => {
                       class="rounded text-accent focus:ring-accent"
                     />
                     <div>
-                      <div class="text-xs font-medium text-fg">模糊海报与剧照图片</div>
-                      <div class="text-[10px] text-fg-4">高斯模糊影片封面、剧照、演职员头像等图片</div>
+                      <div class="text-xs font-medium text-fg">{{ t('settings.blurImages') }}</div>
+                      <div class="text-[10px] text-fg-4">{{ t('settings.blurImagesDesc') }}</div>
                     </div>
                   </label>
 
@@ -3694,33 +3539,10 @@ onUnmounted(() => {
                       class="rounded text-accent focus:ring-accent"
                     />
                     <div>
-                      <div class="text-xs font-medium text-fg">模糊剧情介绍与敏感文字</div>
-                      <div class="text-[10px] text-fg-4">高斯模糊影片详情简介、分集概要等文字</div>
+                      <div class="text-xs font-medium text-fg">{{ t('settings.blurDescriptions') }}</div>
+                      <div class="text-[10px] text-fg-4">{{ t('settings.blurDescriptionsDesc') }}</div>
                     </div>
                   </label>
-                </div>
-              </div>
-
-
-              <!-- Window Disguise Title -->
-              <div class="p-3.5 rounded-xl bg-surface border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <div class="text-xs font-semibold text-fg-2">应用窗口伪装标题 (Disguise Title)</div>
-                  <div class="text-[11px] text-fg-4">自定义应用在 macOS 标题栏与任务管理器中呈现的标题名称</div>
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                  <input
-                    v-model="disguiseTitleInput"
-                    type="text"
-                    placeholder="GPDb"
-                    class="w-32 px-2.5 py-1 rounded-lg bg-surface-2 border border-line text-xs font-mono text-fg focus:outline-none focus:border-accent"
-                    @blur="handleUpdateDisguiseTitle"
-                    @keydown.enter="handleUpdateDisguiseTitle"
-                  />
-                  <button
-                    @click="handleUpdateDisguiseTitle"
-                    class="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 border border-line text-xs text-fg-2 transition cursor-pointer"
-                  >应用</button>
                 </div>
               </div>
             </div>
@@ -3735,8 +3557,8 @@ onUnmounted(() => {
               <div class="flex items-center gap-3">
                 <HardDrive class="w-5 h-5 text-accent" />
                 <div>
-                  <div class="text-sm font-bold text-fg">本地离线数据中心</div>
-                  <div class="text-xs text-fg-3">SQLite3 WAL 极速引擎 + FTS5 全文搜索</div>
+                  <div class="text-sm font-bold text-fg">{{ t('settings.dataCenterTitle') }}</div>
+                  <div class="text-xs text-fg-3">{{ t('settings.dataCenterDesc') }}</div>
                 </div>
               </div>
               <div class="flex items-center gap-2">
@@ -3745,14 +3567,14 @@ onUnmounted(() => {
                   class="px-2.5 py-1 rounded-full bg-success-fill/20 border border-success-fill/30 text-success-soft text-[11px] font-medium flex items-center gap-1.5"
                 >
                   <span class="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
-                  已连接数据库 ({{ dbInfo.file_size_mb }} MB)
+                  {{ t('settings.dbConnected', { size: dbInfo.file_size_mb }) }}
                 </span>
                 <span
                   v-else
                   class="px-2.5 py-1 rounded-full bg-danger-fill/20 border border-danger-fill/30 text-danger-soft text-[11px] font-medium flex items-center gap-1.5"
                 >
                   <span class="w-1.5 h-1.5 rounded-full bg-danger"></span>
-                  未找到有效数据库
+                  {{ t('settings.dbNotFound') }}
                 </span>
               </div>
             </div>
@@ -3760,17 +3582,17 @@ onUnmounted(() => {
             <!-- Database Path Configuration & Intelligent Detection -->
             <div class="p-4 rounded-xl bg-surface/80 border border-line-strong/60 space-y-3 text-xs">
               <div class="flex items-center justify-between gap-2">
-                <span class="font-semibold text-fg-2">数据库存储路径</span>
+                <span class="font-semibold text-fg-2">{{ t('settings.dbStoragePath') }}</span>
                 <span v-if="dbInfo?.custom_path" class="text-[10px] px-1.5 py-0.5 rounded bg-accent-fill/15 text-accent-soft border border-accent-fill/25">
-                  自定义路径
+                  {{ t('settings.customPath') }}
                 </span>
-                <span v-else class="text-[10px] text-fg-4">智能默认 / 自动解析</span>
+                <span v-else class="text-[10px] text-fg-4">{{ t('settings.smartDefault') }}</span>
               </div>
 
               <!-- Current resolved path display -->
               <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-sunken font-mono text-[11px] text-fg-3 break-all border border-line select-all">
-                <span class="text-fg-4 shrink-0">当前路径:</span>
-                <span class="flex-1 text-fg">{{ dbInfo?.path || '未关联数据库文件' }}</span>
+                <span class="text-fg-4 shrink-0">{{ t('settings.currentPath') }}:</span>
+                <span class="flex-1 text-fg">{{ dbInfo?.path || t('settings.noDbLinked') }}</span>
               </div>
 
               <!-- Custom path input and buttons -->
@@ -3779,7 +3601,7 @@ onUnmounted(() => {
                   <input
                     v-model="customDbInput"
                     type="text"
-                    placeholder="输入或粘贴 GPDb.db 绝对路径，如 ~/Documents/.../GPDb.db"
+                    :placeholder="t('settings.dbPathPlaceholder')"
                     class="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-fg font-mono focus:border-accent-fill/50 focus:outline-none"
                     @keydown.enter="applyCustomDbPath()"
                   />
@@ -3789,26 +3611,26 @@ onUnmounted(() => {
                     @click="handlePickDbFile"
                     :disabled="dbSwitching"
                     class="px-3 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-xs border border-line-strong flex items-center gap-1.5 transition disabled:opacity-50"
-                    title="在 Finder 中选取文件"
+                    :title="t('common.browseFinder')"
                   >
                     <FolderOpen class="w-3.5 h-3.5 text-accent" />
-                    <span>浏览…</span>
+                    <span>{{ t('settings.browseBtn') }}</span>
                   </button>
                   <button
                     @click="applyCustomDbPath()"
                     :disabled="dbSwitching || !customDbInput.trim()"
                     class="px-4 py-2 rounded-lg bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs shadow-sm flex items-center gap-1.5 transition disabled:opacity-40"
                   >
-                    <span>{{ dbSwitching ? '连接中…' : '保存并连接' }}</span>
+                    <span>{{ dbSwitching ? t('settings.connecting') : t('settings.saveAndConnect') }}</span>
                   </button>
                   <button
                     v-if="dbInfo?.custom_path"
                     @click="resetToAutoDbPath"
                     :disabled="dbSwitching"
                     class="px-3 py-2 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg-2 text-xs border border-line-strong transition"
-                    title="清除自定义路径，改由智能识别"
+                    :title="t('settings.resetAutoTooltip')"
                   >
-                    恢复自动
+                    {{ t('settings.resetAuto') }}
                   </button>
                 </div>
               </div>
@@ -3816,7 +3638,7 @@ onUnmounted(() => {
               <!-- Create new blank database action for settings -->
               <div class="pt-2 border-t border-line/60 flex items-center justify-between">
                 <div class="text-[11px] text-fg-4">
-                  首次使用或新建独立库？系统将在“文稿”目录创建全新标准数据库：
+                  {{ t('settings.createNewDbDesc') }}
                 </div>
                 <button
                   @click="handleCreateNewDatabase"
@@ -3824,7 +3646,7 @@ onUnmounted(() => {
                   class="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-rose-500/15 hover:from-amber-500/25 hover:to-rose-500/25 border border-amber-500/30 text-amber-300 text-[11px] font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer shrink-0"
                 >
                   <Sparkles class="w-3.5 h-3.5 text-amber-400" />
-                  <span>{{ dbSwitching ? '创建建表中…' : '一键创建全新空白影库' }}</span>
+                  <span>{{ dbSwitching ? t('settings.creatingDb') : t('settings.createDbBtn') }}</span>
                 </button>
               </div>
 
@@ -3832,7 +3654,7 @@ onUnmounted(() => {
               <div class="pt-2 border-t border-line/60 flex flex-col gap-2">
                 <div class="flex items-center justify-between">
                   <div class="text-[11px] text-fg-4">
-                    找不到文件？点击进行全盘毫秒级 Spotlight 扫描：
+                    {{ t('settings.scanDatabasesDesc') }}
                   </div>
                   <button
                     @click="handleScanDatabases"
@@ -3840,13 +3662,13 @@ onUnmounted(() => {
                     class="px-2.5 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong flex items-center gap-1.5 transition disabled:opacity-50"
                   >
                     <RefreshCw class="w-3 h-3 text-accent" :class="dbScanning ? 'animate-spin' : ''" />
-                    <span>{{ dbScanning ? '正在扫描全盘…' : '智能扫描系统中的数据库' }}</span>
+                    <span>{{ dbScanning ? t('settings.scanningDbs') : t('settings.scanDbsBtn') }}</span>
                   </button>
                 </div>
 
                 <!-- Detected candidates -->
                 <div v-if="dbCandidates.length > 0" class="space-y-1.5 pt-1">
-                  <div class="text-[10px] text-fg-4 font-semibold uppercase tracking-wider">智能识别到的候选数据库：</div>
+                  <div class="text-[10px] text-fg-4 font-semibold uppercase tracking-wider">{{ t('settings.candidateDbs') }}</div>
                   <div
                     v-for="cand in dbCandidates"
                     :key="cand"
@@ -3859,10 +3681,10 @@ onUnmounted(() => {
                       :disabled="dbSwitching"
                       class="px-2.5 py-1 rounded bg-accent-fill/15 hover:bg-accent-fill text-accent-soft hover:text-on-fill font-medium text-[11px] border border-accent-fill/30 transition shrink-0"
                     >
-                      切换至此库
+                      {{ t('settings.switchToThisDb') }}
                     </button>
                     <span v-else class="text-[10px] text-success-soft px-2 py-0.5 rounded bg-success-fill/10 border border-success-fill/20 shrink-0">
-                      当前使用中
+                      {{ t('settings.currentlyInUse') }}
                     </span>
                   </div>
                 </div>
@@ -3880,19 +3702,19 @@ onUnmounted(() => {
 
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
               <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">影片总收录</span>
+                <span class="text-fg-4">{{ t('settings.totalMoviesCount') }}</span>
                 <div class="text-base font-bold text-fg mt-0.5">{{ stats ? stats.movies.toLocaleString() : 0 }}</div>
               </div>
               <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">演员总收录</span>
+                <span class="text-fg-4">{{ t('settings.totalPerformersCount') }}</span>
                 <div class="text-base font-bold text-fg mt-0.5">{{ stats ? stats.performers.toLocaleString() : 0 }}</div>
               </div>
               <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">分集/片段</span>
+                <span class="text-fg-4">{{ t('settings.totalEpisodesCount') }}</span>
                 <div class="text-base font-bold text-accent mt-0.5">{{ stats ? stats.episodes.toLocaleString() : 0 }}</div>
               </div>
               <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">演职关联</span>
+                <span class="text-fg-4">{{ t('settings.totalCreditsCount') }}</span>
                 <div class="text-base font-bold text-fg-2 mt-0.5">{{ stats ? stats.movie_performers.toLocaleString() : 0 }}</div>
               </div>
             </div>
@@ -3907,14 +3729,14 @@ onUnmounted(() => {
               <div class="flex items-center gap-3">
                 <ImageIcon class="w-5 h-5 text-accent" />
                 <div>
-                  <div class="text-sm font-bold text-fg">离线图片磁盘缓存系统</div>
-                  <div class="text-xs text-fg-3">自动下载海报与分集图至本地磁盘，彻底告别外网依赖</div>
+                  <div class="text-sm font-bold text-fg">{{ t('settings.cacheSystemTitle') }}</div>
+                  <div class="text-xs text-fg-3">{{ t('settings.cacheSystemDesc') }}</div>
                 </div>
               </div>
               <button
                 @click="loadCacheStats"
                 class="p-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 hover:text-fg transition"
-                title="刷新缓存统计"
+                :title="t('settings.refreshCacheStats')"
               >
                 <RefreshCw class="w-3.5 h-3.5" />
               </button>
@@ -3923,18 +3745,18 @@ onUnmounted(() => {
             <!-- Stats metrics -->
             <div class="grid grid-cols-2 gap-3 text-xs pt-1">
               <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">已缓存图片数量</span>
-                <div class="text-base font-bold text-success mt-0.5">{{ cacheStats.count.toLocaleString() }} 张</div>
+                <span class="text-fg-4">{{ t('settings.cachedImageCount') }}</span>
+                <div class="text-base font-bold text-success mt-0.5">{{ t('settings.cachedUnits', { count: cacheStats.count.toLocaleString() }) }}</div>
               </div>
               <div class="p-3 rounded-xl bg-sunken/60 border border-line/80">
-                <span class="text-fg-4">占用磁盘空间</span>
+                <span class="text-fg-4">{{ t('settings.diskSpaceUsed') }}</span>
                 <div class="text-base font-bold text-accent-soft mt-0.5">{{ cacheStats.size_mb }} MB</div>
               </div>
             </div>
 
             <!-- Cache directory location -->
             <div v-if="cacheStats.path" class="text-[11px] text-fg-4 font-mono bg-sunken p-2.5 rounded-xl border border-line truncate">
-              本地存储目录: {{ cacheStats.path }}
+              {{ t('settings.localStorageDir') }}: {{ cacheStats.path }}
             </div>
 
             <div v-if="cacheStatusMsg" class="p-3 rounded-xl bg-accent-fill/10 border border-accent-fill/20 text-xs text-accent-soft">
@@ -3949,7 +3771,7 @@ onUnmounted(() => {
                 class="px-4 py-2 rounded-xl bg-accent-fill hover:bg-accent text-on-fill font-bold text-xs shadow-lg shadow-accent-fill/20 flex items-center gap-2 transition disabled:opacity-50"
               >
                 <Download class="w-3.5 h-3.5" />
-                <span>一键预下载离线图片库</span>
+                <span>{{ t('settings.preDownloadImages') }}</span>
               </button>
 
               <button
@@ -3958,7 +3780,7 @@ onUnmounted(() => {
                 class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-danger-fill/20 text-fg-2 hover:text-danger-soft border border-line-strong hover:border-danger-fill/30 text-xs font-medium flex items-center gap-2 transition disabled:opacity-50"
               >
                 <Trash2 class="w-3.5 h-3.5" />
-                <span>清空图片缓存</span>
+                <span>{{ t('settings.clearImageCache') }}</span>
               </button>
             </div>
           </div>
@@ -3971,9 +3793,9 @@ onUnmounted(() => {
             <div class="flex items-center gap-3">
               <Languages class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-fg">大模型 AI 翻译引擎与剧情简介翻译</div>
+                <div class="text-sm font-bold text-fg">{{ t('settings.aiEngineNoticeTitle') }}</div>
                 <div class="text-xs text-fg-3">
-                  已合并至「功能插件」专区，支持多模型 API 配置、目标语言切换、试跑与批量翻译
+                  {{ t('settings.aiEngineNoticeDesc') }}
                 </div>
               </div>
             </div>
@@ -3981,7 +3803,7 @@ onUnmounted(() => {
               @click="currentTab = 'plugins'"
               class="px-3.5 py-2 rounded-xl bg-accent-fill/15 hover:bg-accent-fill text-accent-soft hover:text-on-fill font-medium text-xs border border-accent-fill/30 transition shrink-0 cursor-pointer"
             >
-              前往插件中心配置 →
+              {{ t('settings.goToPlugins') }}
             </button>
           </div>
 
@@ -3995,18 +3817,17 @@ onUnmounted(() => {
             <div class="flex items-center gap-3">
               <Sparkles class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-fg">演员属性术语表</div>
+                <div class="text-sm font-bold text-fg">{{ t('settings.glossaryTitle') }}</div>
                 <div class="text-xs text-fg-3">
-                  身高、肤色、发色、纹身部位等属性取值来自一个很小的固定词表。整表翻译一次后客户端本地查表，
-                  浏览演员不再产生任何 API 调用。
+                  {{ t('settings.glossaryDesc') }}
                 </div>
               </div>
             </div>
 
             <div class="flex items-center gap-2 text-xs">
-              <span class="text-fg-4">已收录术语</span>
+              <span class="text-fg-4">{{ t('settings.glossaryCollected') }}</span>
               <span class="font-mono font-bold text-success">{{ glossaryCount() }}</span>
-              <span class="text-fg-5">条（浏览器本地已加载）</span>
+              <span class="text-fg-5">{{ t('settings.glossaryItemsLoaded') }}</span>
             </div>
 
             <div v-if="glossaryMsg" class="p-3 rounded-xl bg-success-fill/10 border border-success-fill/20 text-xs text-success-soft">
@@ -4024,7 +3845,7 @@ onUnmounted(() => {
               >
                 <Loader2 v-if="glossaryBusy" class="w-3.5 h-3.5 animate-spin" />
                 <Languages v-else class="w-3.5 h-3.5" />
-                <span>试跑（不写入）</span>
+                <span>{{ t('settings.glossaryDryRun') }}</span>
               </button>
 
               <button
@@ -4034,12 +3855,12 @@ onUnmounted(() => {
               >
                 <Loader2 v-if="glossaryBusy" class="w-3.5 h-3.5 animate-spin" />
                 <Sparkles v-else class="w-3.5 h-3.5" />
-                <span>{{ glossaryBusy ? '翻译中…' : '翻译术语表' }}</span>
+                <span>{{ glossaryBusy ? t('settings.glossaryTranslating') : t('settings.glossaryTranslateBtn') }}</span>
               </button>
             </div>
 
             <div v-else class="text-xs text-fg-3 leading-relaxed p-3 rounded-xl bg-surface-2/60 border border-line-strong">
-              桌面版直接读写本地数据库，请用命令行运行：
+              {{ t('settings.glossaryCliHint') }}
               <code class="font-mono text-fg-2">python3 translate.py --glossary</code>
             </div>
           </div>
@@ -4052,8 +3873,8 @@ onUnmounted(() => {
             <div class="flex items-center gap-3">
               <Download class="w-5 h-5 text-accent" />
               <div>
-                <div class="text-sm font-bold text-fg">数据导入、导出与数据库备份中心</div>
-                <div class="text-xs text-fg-3">支持完整 SQLite 数据库打包导出/导入，以及轻量个人扩展数据 (JSON) 的跨设备迁移</div>
+                <div class="text-sm font-bold text-fg">{{ t('settings.backupCenterTitle') }}</div>
+                <div class="text-xs text-fg-3">{{ t('settings.backupCenterDesc') }}</div>
               </div>
             </div>
 
@@ -4075,10 +3896,10 @@ onUnmounted(() => {
                 <div>
                   <div class="text-xs font-bold text-fg flex items-center gap-1.5">
                     <HardDrive class="w-4 h-4 text-purple-400" />
-                    <span>完整离线数据库打包 (.db)</span>
+                    <span>{{ t('settings.fullDbPackage') }}</span>
                   </div>
                   <p class="text-[11px] text-fg-4 mt-1 leading-relaxed">
-                    包含所有影视长片、演员档案、分集剧照索引、片商分类以及 AI 中文翻译库的完整数据库。
+                    {{ t('settings.fullDbPackageDesc') }}
                   </p>
                 </div>
 
@@ -4089,7 +3910,7 @@ onUnmounted(() => {
                     class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                   >
                     <Download class="w-3.5 h-3.5 text-purple-400" />
-                    <span>{{ isDbExporting ? '打包中…' : '打包导出数据库 (.db)' }}</span>
+                    <span>{{ isDbExporting ? t('settings.exportingDb') : t('settings.exportDbBtn') }}</span>
                   </button>
 
                   <button
@@ -4097,7 +3918,7 @@ onUnmounted(() => {
                     class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Upload class="w-3.5 h-3.5 text-purple-400" />
-                    <span>载入外部数据库 (.db)</span>
+                    <span>{{ t('settings.loadExternalDb') }}</span>
                   </button>
                 </div>
               </div>
@@ -4107,10 +3928,10 @@ onUnmounted(() => {
                 <div>
                   <div class="text-xs font-bold text-fg flex items-center gap-1.5">
                     <Bookmark class="w-4 h-4 text-accent" />
-                    <span>用户配置与数据备份/迁移 (跨设备通用 JSON)</span>
+                    <span>{{ t('settings.userJsonBackup') }}</span>
                   </div>
                   <p class="text-[11px] text-fg-4 mt-1 leading-relaxed">
-                    完整导出/导入“我的收藏”全部条目、个人统计时长、浏览历史、想看/已看状态、评星与私密标签。导出的备份文件在 macOS、Windows、Android 与 iOS 四端完全通用，无缝迁移！
+                    {{ t('settings.userJsonBackupDesc') }}
                   </p>
                 </div>
 
@@ -4120,7 +3941,7 @@ onUnmounted(() => {
                     class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Download class="w-3.5 h-3.5 text-accent" />
-                    <span>导出通用配置备份 (JSON)</span>
+                    <span>{{ t('settings.exportUserJson') }}</span>
                   </button>
 
                   <button
@@ -4128,7 +3949,7 @@ onUnmounted(() => {
                     class="px-3.5 py-2 rounded-xl bg-surface-3 hover:bg-surface-3/80 text-fg font-medium text-xs border border-line flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Upload class="w-3.5 h-3.5 text-accent" />
-                    <span>导入通用配置恢复 (JSON)</span>
+                    <span>{{ t('settings.importUserJson') }}</span>
                   </button>
                   <input ref="fileInputRef" type="file" accept=".json" class="hidden" @change="handleImportFile" />
                 </div>
@@ -4145,8 +3966,8 @@ onUnmounted(() => {
               <div class="flex items-center gap-3">
                 <Info class="w-5 h-5 text-accent" />
                 <div>
-                  <div class="text-sm font-bold text-fg">关于与软件更新</div>
-                  <div class="text-xs text-fg-3">当前版本: v2.15.0 · 巡检 GitHub Releases 官方发布并在线升级</div>
+                  <div class="text-sm font-bold text-fg">{{ t('settings.aboutTitle') }}</div>
+                  <div class="text-xs text-fg-3">{{ t('settings.currentVersionDesc', { version: '2.15.0' }) }}</div>
                 </div>
               </div>
               <button
@@ -4156,7 +3977,7 @@ onUnmounted(() => {
               >
                 <Loader2 v-if="isCheckingUpdate" class="w-3.5 h-3.5 animate-spin" />
                 <RefreshCw v-else class="w-3.5 h-3.5" />
-                <span>{{ isCheckingUpdate ? '正在检查…' : '检查更新' }}</span>
+                <span>{{ isCheckingUpdate ? t('settings.checkingUpdate') : t('settings.checkUpdateBtn') }}</span>
               </button>
             </div>
             <div v-if="manualUpdateCheckMsg" class="p-3 rounded-xl border text-xs flex items-center gap-2" :class="manualUpdateCheckMsg.isError ? 'bg-danger-fill/10 border-danger-fill/20 text-danger-soft' : 'bg-success-fill/10 border-success-fill/20 text-success-soft'">
@@ -4164,7 +3985,7 @@ onUnmounted(() => {
             </div>
             <div class="p-3.5 rounded-xl bg-surface-2/60 border border-line text-xs flex items-center justify-between">
               <div>
-                <span class="text-fg-3">开源代码仓库：</span>
+                <span class="text-fg-3">{{ t('settings.openSourceRepo') }}</span>
                 <span class="font-mono text-fg-2">github.com/GeavenMax/GPDb</span>
               </div>
               <a
@@ -4173,7 +3994,7 @@ onUnmounted(() => {
                 target="_blank"
                 rel="noopener noreferrer"
                 class="text-accent hover:underline text-xs cursor-pointer"
-              >访问仓库 ↗</a>
+              >{{ t('settings.visitRepo') }}</a>
             </div>
           </div>
         </div>
@@ -4211,6 +4032,7 @@ onUnmounted(() => {
       @toggle-entity-favorite="toggleFavoriteEntity"
       @user-data-changed="onUserDataChanged"
       @translated="onMovieTranslated"
+      @select-episode-id="openEpisodeDetailById"
     />
 
     <PerformerDetailModal
@@ -4361,8 +4183,8 @@ onUnmounted(() => {
     >
       <div class="p-6 rounded-3xl bg-surface/90 border border-line-strong flex flex-col items-center gap-3 shadow-2xl">
         <Shield class="w-10 h-10 text-accent animate-pulse" />
-        <div class="text-sm font-bold text-fg">隐私防窥保护生效中</div>
-        <div class="text-xs text-fg-4">点击任意位置恢复工作台界面</div>
+        <div class="text-sm font-bold text-fg">{{ t('settings.blurShieldActive') }}</div>
+        <div class="text-xs text-fg-4">{{ t('settings.blurShieldHint') }}</div>
       </div>
     </div>
   </div>

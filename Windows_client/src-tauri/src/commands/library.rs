@@ -78,6 +78,7 @@ pub fn get_episode_library(
     studio: Option<String>,
     has_zh: Option<bool>,
     has_performers: Option<bool>,
+    date_filter: Option<String>,
     page: Option<i64>,
     page_size: Option<i64>,
 ) -> Result<EpisodeLibrary, String> {
@@ -89,6 +90,7 @@ pub fn get_episode_library(
         studio,
         has_zh,
         has_performers,
+        date_filter,
         page,
         page_size,
     )

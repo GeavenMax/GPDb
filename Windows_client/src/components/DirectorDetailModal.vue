@@ -5,6 +5,7 @@ import type { Movie, DirectorWorks, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import { claimEscape } from '../utils/escape';
 import { titlePrimary } from '../utils/bilingual';
+import { t } from '../i18n';
 
 /**
  * A director, as the library grid and the favorites page know them.
@@ -188,11 +189,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           </div>
         </div>
         <div class="min-w-0 flex-1">
-          <div class="text-xs font-semibold text-accent uppercase tracking-wider">导演档案</div>
+          <div class="text-xs font-semibold text-accent uppercase tracking-wider">{{ t('director.profile') }}</div>
           <h1 class="text-2xl md:text-3xl font-extrabold text-fg truncate">{{ director.name }}</h1>
           <div class="text-xs text-fg-3 mt-1 flex items-center gap-3 flex-wrap">
-            <span class="text-accent/80">{{ worksCount }} 部作品</span>
-            <span v-if="studioOptions.length">{{ studioOptions.length }} 家合作片商</span>
+            <span class="text-accent/80">{{ worksCount }} {{ t('common.works') }}</span>
+            <span v-if="studioOptions.length">{{ t('director.collaboratingStudios', { count: studioOptions.length }) }}</span>
           </div>
         </div>
 
@@ -200,10 +201,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <button
             @click="emit('filter-director', director.name)"
             class="px-3 py-1.5 rounded-lg text-xs font-medium border border-line-strong bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg flex items-center gap-1.5 transition"
-            title="在全量影片库中查看该导演所有影片"
+            :title="t('director.viewInLibrary')"
           >
             <Film class="w-3.5 h-3.5" />
-            <span>在片库查看</span>
+            <span>{{ t('director.viewInLibrary') }}</span>
           </button>
 
           <!-- Fav button leaves room for the absolutely-positioned close button -->
@@ -217,7 +218,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             ]"
           >
             <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-            <span>{{ isFavorite ? '已收藏' : '收藏' }}</span>
+            <span>{{ isFavorite ? t('movie.favorited') : t('movie.favorite') }}</span>
           </button>
         </div>
       </div>
@@ -227,7 +228,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div class="flex items-center justify-between border-b border-line pb-4">
           <div class="flex items-center gap-2">
             <Film class="w-4 h-4 text-accent" />
-            <span class="text-sm font-bold text-fg">完整电影 ({{ visibleMovies.length }})</span>
+            <span class="text-sm font-bold text-fg">{{ t('studio.movies') }} ({{ visibleMovies.length }})</span>
             <span v-if="filterActive" class="text-[11px] text-fg-4 font-mono">/ {{ movies.length }}</span>
           </div>
           <Loader2 v-if="loading" class="w-4 h-4 text-accent animate-spin shrink-0" />
@@ -241,7 +242,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <input
               v-model="keyword"
               type="text"
-              placeholder="在这位导演的作品里搜索片名…"
+              :placeholder="t('director.searchPlaceholder')"
               class="w-full pl-9 pr-3 py-2 rounded-xl bg-surface-2/70 border border-line-strong text-xs text-fg placeholder:text-fg-5 focus:outline-none focus:border-accent-fill/50 transition"
             />
           </div>
@@ -250,15 +251,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             v-model.number="yearFilter"
             class="px-3 py-2 rounded-xl bg-surface-2/70 border border-line-strong text-xs text-fg-2 focus:outline-none focus:border-accent-fill/50 transition"
           >
-            <option :value="null">全部年份</option>
+            <option :value="null">{{ t('director.allYears') }}</option>
             <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
           </select>
 
           <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
             <button
               v-for="s in [
-                { id: 'year_desc', label: '按年份' },
-                { id: 'title_asc', label: '按片名' }
+                { id: 'year_desc', label: t('sort.byYear') },
+                { id: 'title_asc', label: t('sort.byTitle') }
               ]"
               :key="s.id"
               @click="sortBy = s.id as 'year_desc' | 'title_asc'"
@@ -279,14 +280,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         -->
         <div v-if="studioOptions.length > 1" class="space-y-1.5">
           <div class="flex items-center justify-between gap-2">
-            <span class="text-[11px] font-semibold text-fg-4 uppercase tracking-wider">合作片商</span>
+            <span class="text-[11px] font-semibold text-fg-4 uppercase tracking-wider">{{ t('director.studiosTitle') }}</span>
             <button
               v-if="collapsedStudioCount > 0 || studiosExpanded"
               type="button"
               @click="studiosExpanded = !studiosExpanded"
               class="text-[11px] font-medium text-fg-4 hover:text-accent-soft transition shrink-0"
             >
-              {{ studiosExpanded ? '收起' : `+${collapsedStudioCount} 更多` }}
+              {{ studiosExpanded ? t('common.collapse') : `+${collapsedStudioCount} ${t('common.more')}` }}
             </button>
           </div>
           <div :class="['flex items-center gap-2 flex-wrap', studiosExpanded ? 'max-h-40 overflow-y-auto' : '']">
@@ -295,7 +296,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               :key="opt.name"
               @click="emit('open-studio', opt.name)"
               class="px-2.5 py-1 rounded-lg text-xs font-medium border transition bg-surface-2/70 hover:bg-surface-2 border-line-strong text-fg-2 hover:text-accent-soft inline-flex items-center gap-1"
-              :title="`在片商库中查看「${opt.name}」`"
+              :title="opt.name"
             >
               {{ opt.name }}
               <span class="text-fg-4">{{ opt.count }}</span>
@@ -316,11 +317,11 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             @toggle-favorite="emit('toggle-entity-favorite', 'movie', String(m.id))"
           />
         </div>
-        <div v-else-if="loading" class="text-center py-12 text-fg-4 text-xs">正在读取作品清单…</div>
-        <div v-else-if="movies.length > 0" class="text-center py-12 text-fg-4 text-xs">没有符合筛选条件的作品</div>
+        <div v-else-if="loading" class="text-center py-12 text-fg-4 text-xs">{{ t('director.loadingWorks') }}</div>
+        <div v-else-if="movies.length > 0" class="text-center py-12 text-fg-4 text-xs">{{ t('filter.noResults') }}</div>
         <!-- An unknown name is not a failure: a favorite saved before the director
              roster was parsed can hold a whole glued string. -->
-        <div v-else class="text-center py-12 text-fg-4 text-xs">没找到这位导演的作品</div>
+        <div v-else class="text-center py-12 text-fg-4 text-xs">{{ t('director.noWorks') }}</div>
       </div>
     </div>
   </div>

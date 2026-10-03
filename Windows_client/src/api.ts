@@ -1071,7 +1071,7 @@ export const api = {
       const res = await fetch(`/api/studios/${encodeURIComponent(studioName)}/works`);
       if (res.ok) return await res.json();
     } catch {}
-    return { studio_name: studioName, movies: [], movies_count: 0, episodes: [], episodes_count: 0 };
+    return { studio_name: studioName, studio_name_zh: null, description_zh: null, movies: [], movies_count: 0, episodes: [], episodes_count: 0 };
   },
 
   /**
@@ -1203,12 +1203,6 @@ export const api = {
     return false;
   },
 
-  async runAiAnalysis(prompt: string): Promise<string> {
-    if (isTauri) {
-      return tauriInvoke<string>('run_ai_analysis', { prompt });
-    }
-    throw new Error('大模型分析功能需在桌面端环境下运行');
-  },
 
   async getHomeFeed(monthDay?: string): Promise<HomeFeedData> {
     if (isTauri) {

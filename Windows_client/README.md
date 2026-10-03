@@ -26,6 +26,10 @@ GPDb 官方离线影视库桌面端 —— Windows 专属客户端工程。基�
    - 默认采用 `installMode: "currentUser"`，安装无需 UAC 管理员提权，随装随用；
    - 内置高质量多分辨率矢量转换图标 (`icons/icon.ico`)。
 
+5. **纯 Rust TLS 离线图片高速直传与自动缓存**：
+   - 适配 WebView2 虚拟域安全规范端点 (`http://gpdb-img.localhost`)；
+   - 内置纯 Rust TLS 高性能客户端 (`ureq` + `rustls` + `webpki-roots`)，彻底摒弃并发外部 `curl.exe` 子进程，连接池复用与防盗链伪装，首次在线直读并持久化，后续 100% 毫秒级离线呈现。
+
 ---
 
 ## 🛠️ 本地开发与环境准备

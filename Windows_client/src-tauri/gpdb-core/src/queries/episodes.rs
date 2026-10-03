@@ -16,6 +16,7 @@ pub fn get_episode_library(conn: &Connection,
     studio: Option<String>,
     has_zh: Option<bool>,
     has_performers: Option<bool>,
+    date_filter: Option<String>,
     page: Option<i64>,
     page_size: Option<i64>,) -> Result<EpisodeLibrary> {
     let page = page.unwrap_or(1).max(1);
@@ -45,9 +46,8 @@ pub fn get_episode_library(conn: &Connection,
     if let Some(s) = studio {
         let s = s.trim().to_string();
         if !s.is_empty() {
-            // Same fallback as the SELECT: a standalone episode has no parent film, so
-            // filtering on `m.studio_name` alone would drop it from its own studio's list.
-            conditions.push("COALESCE(m.studio_name, e.studio_name) = ?".to_string());
+            // Same fallback as the SELECT: prioritize episode's own studio first, then fallback to movie
+            conditions.push("COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?".to_string());
             params_vec.push(Box::new(s));
         }
     }
@@ -59,15 +59,50 @@ pub fn get_episode_library(conn: &Connection,
             .push("EXISTS (SELECT 1 FROM episode_performers ep WHERE ep.episode_id = e.id)".to_string());
     }
 
+    let mut date_filter_sort: Option<&str> = None;
+    if let Some(ref df) = date_filter {
+        match df.as_str() {
+            "last_scraped" => {
+                // "上次入库": 刮削录入时间为准。对于隶属影片的分集借由 m.scraped_at，独立分集以 e.id 倒序
+                date_filter_sort = Some("COALESCE(m.scraped_at, '') DESC, e.id DESC");
+            }
+            "recent_7" => {
+                // "最近7天发行": 分集发行日期在过去7天内
+                conditions.push("(e.release_date IS NOT NULL AND trim(e.release_date) != '' AND e.release_date >= date('now', '-7 days'))".to_string());
+                date_filter_sort = Some("e.release_date DESC, e.id DESC");
+            }
+            "recent_30" => {
+                // "最近30天发行": 分集发行日期在过去30天内
+                conditions.push("(e.release_date IS NOT NULL AND trim(e.release_date) != '' AND e.release_date >= date('now', '-30 days'))".to_string());
+                date_filter_sort = Some("e.release_date DESC, e.id DESC");
+            }
+            "recent_90" => {
+                // "最近90天发行": 分集发行日期在过去90天内
+                conditions.push("(e.release_date IS NOT NULL AND trim(e.release_date) != '' AND e.release_date >= date('now', '-90 days'))".to_string());
+                date_filter_sort = Some("e.release_date DESC, e.id DESC");
+            }
+            "recent_year" => {
+                // "本年度发行": 分集发行年份为本年度
+                conditions.push("(e.release_date IS NOT NULL AND trim(e.release_date) != '' AND substr(e.release_date, 1, 4) >= strftime('%Y', 'now'))".to_string());
+                date_filter_sort = Some("e.release_date DESC, e.id DESC");
+            }
+            _ => {}
+        }
+    }
+
     let where_clause = if conditions.is_empty() {
         String::new()
     } else {
         format!("WHERE {}", conditions.join(" AND "))
     };
-    let sort_clause = match sort.as_deref() {
-        Some("year_desc") => "m.release_year DESC, e.id DESC",
-        Some("movie_asc") => "m.title COLLATE NOCASE ASC, e.id ASC",
-        _ => "e.id DESC",
+    let sort_clause = if let Some(dfs) = date_filter_sort {
+        dfs
+    } else {
+        match sort.as_deref() {
+            Some("year_desc") => "m.release_year DESC, e.id DESC",
+            Some("movie_asc") => "m.title COLLATE NOCASE ASC, e.id ASC",
+            _ => "e.id DESC",
+        }
     };
     let from_clause = "FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id";
 
@@ -83,7 +118,7 @@ pub fn get_episode_library(conn: &Connection,
     let sql = format!(
         "SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh, \
                 e.action_notes, m.title, \
-                COALESCE(m.studio_name, e.studio_name), \
+                COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name), \
                 COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)), \
                 (SELECT count(*) FROM episodes e2 \
                   WHERE e2.movie_id = e.movie_id AND e2.id <= e.id), \

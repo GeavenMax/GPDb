@@ -70,7 +70,6 @@ pub fn run() {
             commands::translate::export_translations,
             commands::translate::import_translations,
             commands::translate::fetch_provider_models,
-            commands::translate::run_ai_analysis,
             commands::sync::run_sync,
             commands::sync::start_scraper,
             commands::sync::stop_scraper,

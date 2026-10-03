@@ -16,7 +16,7 @@ const defaultStatus: ScraperStatus = {
   new_episodes: 0,
   speed_fps: 0,
   eta_minutes: 0,
-  message: '就绪',
+  message: '',
   logs: [],
   elapsed_secs: 0,
   finished: false,
