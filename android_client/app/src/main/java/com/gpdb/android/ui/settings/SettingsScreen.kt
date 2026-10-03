@@ -284,7 +284,10 @@ fun SettingsScreen(
 
                     SettingItemRow(
                         title = I18n.string("settings.appIcon"),
-                        subtitle = "伪装图标方案 $appIcon",
+                        subtitle = when (appIcon) {
+                            "D" -> "方案二：黑曜石金 (Scheme D)"
+                            else -> "方案一：经典典藏蓝 (Scheme A · 默认)"
+                        },
                         icon = Icons.Default.AppShortcut,
                         onClick = { showIconDialog = true }
                     )
@@ -981,7 +984,10 @@ fun SettingsScreen(
             title = { Text(I18n.string("settings.appIcon")) },
             text = {
                 Column {
-                    listOf("A" to "经典胶片 A", "B" to "极简黑色 B", "C" to "计算器伪装 C", "D" to "系统记事本 D").forEach { (iconKey, label) ->
+                    listOf(
+                        "A" to "方案一：经典典藏蓝 (Scheme A · 默认)",
+                        "D" to "方案二：黑曜石金 / 极简 (Scheme D)"
+                    ).forEach { (iconKey, label) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier

@@ -31,6 +31,7 @@ import type {
   RuntimeEnvironmentInfo,
 } from './types';
 import { FAVORITE_TYPES } from './types';
+import { pluginsConfig } from './services/pluginManager';
 
 // Detect if running inside Tauri runtime
 const isTauri = typeof window !== 'undefined' && ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
@@ -889,10 +890,26 @@ export const api = {
     source?: string; result?: string; error?: string;
   }> {
     if (isTauri) {
-      return {
-        success: false,
-        error: '桌面版暂不支持在此试译，请用命令行：python3 translate.py --list-profiles 与 --profile <名称>',
-      };
+      try {
+        const res = await tauriInvoke<{
+          profile: string;
+          model?: string;
+          elapsed?: number;
+          source: string;
+          result: string;
+          error?: string;
+        }>('test_translation_provider', { name: name || null });
+        if (res.error) {
+          return { success: false, ...res };
+        }
+        return { success: Boolean(res.result), ...res };
+      } catch (err: any) {
+        return {
+          success: false,
+          profile: name || '',
+          error: String(err?.message || err || '测试翻译失败'),
+        };
+      }
     }
     try {
       const res = await fetch('/api/translate/providers/test', {
@@ -951,10 +968,27 @@ export const api = {
    * request, so one call returns everything the detail modal needs. Returns null
    * on failure (the caller shows the settings hint).
    */
-  async translateMovie(movieId: number): Promise<{
+  async translateMovie(movieId: number, customPrompt?: string): Promise<{
     description_zh: string | null;
     episodes: Array<{ id: number; description_zh: string }>;
   } | null> {
+    if (isTauri) {
+      try {
+        const prompt = customPrompt || pluginsConfig.value.translationConfig?.customPromptTemplate || null;
+        const res = await tauriInvoke<{
+          id: number;
+          description_zh: string | null;
+          episodes: Array<{ id: number; description_zh: string }>;
+        }>('translate_movie', { movieId, customPrompt: prompt });
+        return {
+          description_zh: res?.description_zh || null,
+          episodes: Array.isArray(res?.episodes) ? res.episodes : [],
+        };
+      } catch (e) {
+        console.error('Tauri translate_movie failed:', e);
+        return null;
+      }
+    }
     try {
       const res = await fetch(`/api/movies/${movieId}/translate`, { method: 'POST' });
       const body = await res.json();
@@ -962,6 +996,45 @@ export const api = {
       return {
         description_zh: body?.description_zh || null,
         episodes: Array.isArray(body?.episodes) ? body.episodes : [],
+      };
+    } catch {}
+    return null;
+  },
+
+  /**
+   * Translate a single episode's synopsis on demand.
+   */
+  async translateEpisode(episodeId: number, customPrompt?: string): Promise<{
+    id: number;
+    movie_id?: number | null;
+    description_zh: string | null;
+  } | null> {
+    if (isTauri) {
+      try {
+        const prompt = customPrompt || pluginsConfig.value.translationConfig?.customPromptTemplate || null;
+        const res = await tauriInvoke<{
+          id: number;
+          movie_id?: number | null;
+          description_zh: string | null;
+        }>('translate_episode', { episodeId, customPrompt: prompt });
+        return {
+          id: res?.id ?? episodeId,
+          movie_id: res?.movie_id ?? null,
+          description_zh: res?.description_zh || null,
+        };
+      } catch (e) {
+        console.error('Tauri translate_episode failed:', e);
+        return null;
+      }
+    }
+    try {
+      const res = await fetch(`/api/episodes/${episodeId}/translate`, { method: 'POST' });
+      const body = await res.json();
+      if (!res.ok || body?.error) return null;
+      return {
+        id: body?.id ?? episodeId,
+        movie_id: body?.movie_id ?? null,
+        description_zh: body?.description_zh || null,
       };
     } catch {}
     return null;

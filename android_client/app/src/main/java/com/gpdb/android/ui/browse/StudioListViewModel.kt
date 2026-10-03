@@ -11,9 +11,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+data class StudioItem(
+    val name: String,
+    val nameZh: String? = null
+)
+
 data class StudioListUiState(
     val isLoading: Boolean = true,
-    val studios: List<String> = emptyList(),
+    val studios: List<StudioItem> = emptyList(),
     val sortBy: String = "works",
     val searchQuery: String = "",
     val error: String? = null
@@ -28,7 +33,7 @@ class StudioListViewModel : ViewModel() {
         val newQuery = query ?: _uiState.value.searchQuery
         val sortChanged = sortBy != null && sortBy != _uiState.value.sortBy
         val queryChanged = query != null && query != _uiState.value.searchQuery
-        
+
         if (sortChanged || queryChanged) {
             _uiState.update { it.copy(sortBy = newSortBy, searchQuery = newQuery) }
         } else if (_uiState.value.studios.isNotEmpty()) {
@@ -40,7 +45,12 @@ class StudioListViewModel : ViewModel() {
             try {
                 val repo = BrowseRepository(db.browseDao())
                 val list = repo.getAllStudios(newSortBy, _uiState.value.searchQuery)
-                _uiState.update { it.copy(isLoading = false, studios = list) }
+                val allEntities = try { db.studioDao().getAllStudios() } catch (_: Exception) { emptyList() }
+                val zhMap = allEntities.associate { it.name to it.nameZh }
+                val items = list.map { name ->
+                    StudioItem(name = name, nameZh = zhMap[name]?.takeIf { it.isNotBlank() })
+                }
+                _uiState.update { it.copy(isLoading = false, studios = items) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.localizedMessage) }
             }

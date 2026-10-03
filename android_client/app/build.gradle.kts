@@ -17,8 +17,8 @@ android {
         applicationId = "com.gpdb.android"
         minSdk = 26                          // Android 8.0+，覆盖 97%+ 活跃设备
         targetSdk = 35
-        versionCode = 315
-        versionName = "2.15.0"
+        versionCode = 316
+        versionName = "2.16.7"
 
         // Room schema export 目录（方便版本迁移审计）
         ksp {

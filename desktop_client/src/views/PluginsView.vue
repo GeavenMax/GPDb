@@ -578,7 +578,6 @@ onMounted(() => {
                     class="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong transition"
                   >{{ t('plugins.enable') }}</button>
                   <button
-                    v-if="!IS_TAURI"
                     @click="testProvider(p.name)"
                     class="px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-2 text-[11px] border border-line-strong transition"
                   >{{ t('plugins.test') }}</button>

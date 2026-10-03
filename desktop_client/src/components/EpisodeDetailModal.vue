@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { X, Film, Heart, Clapperboard, Calendar, ChevronLeft, ChevronRight, Languages, Share2 } from '@lucide/vue';
+import { X, Film, Heart, Clapperboard, Calendar, ChevronLeft, ChevronRight, Languages, Share2, Sparkles, Loader2 } from '@lucide/vue';
 import type { EpisodeSummary } from '../types';
 import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
@@ -10,6 +10,7 @@ import { pluginsConfig } from '../services/pluginManager';
 import { defineAsyncComponent } from 'vue';
 import { t, currentLocale } from '../i18n';
 import ShareCardModal, { type ShareCardData } from './ShareCardModal.vue';
+import { api } from '../api';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -39,14 +40,46 @@ const emit = defineEmits<{
   (e: 'select-performer', performerId: number): void;
   (e: 'filter-studio', studioName: string): void;
   (e: 'toggle-favorite', episode: EpisodeSummary): void;
+  (e: 'episode-translated', episodeId: number, descriptionZh: string): void;
 }>();
 
 const stillError = ref(false);
+const isTranslating = ref(false);
+const translateError = ref('');
+const showOriginal = ref(false);
+
+const hasZhDesc = computed(() => Boolean(props.episode?.description_zh?.trim()));
+
+const effectiveDescription = computed(() => {
+  if (!props.episode) return '';
+  if (hasZhDesc.value) {
+    return showOriginal.value ? (props.episode.description || '') : (pickZh(props.episode.description_zh, props.episode.description, props.lang) || '');
+  }
+  return props.episode.description || '';
+});
 
 // A different scene means a different still, so a failed load is retried.
 watch(() => props.episode?.id, () => {
   stillError.value = false;
+  showOriginal.value = false;
+  translateError.value = '';
+  isTranslating.value = false;
 });
+
+async function translateEpisodeNow() {
+  if (!props.episode || !props.episode.id) return;
+  isTranslating.value = true;
+  translateError.value = '';
+  const res = await api.translateEpisode(props.episode.id);
+  if (res && res.description_zh) {
+    props.episode.description_zh = res.description_zh;
+    showOriginal.value = false;
+    emit('episode-translated', props.episode.id, res.description_zh);
+  } else {
+    translateError.value = t('plugins.failed');
+  }
+  isTranslating.value = false;
+}
 
 /** The parent film's name in the chosen language; the scene's own title is a placeholder. */
 const filmPrimary = computed(() =>
@@ -62,10 +95,6 @@ const heading = computed(() =>
   props.episode
     ? episodeHeading(props.episode, filmPrimary.value || null)
     : ''
-);
-
-const shownDescription = computed(() =>
-  pickZh(props.episode?.description_zh, props.episode?.description, props.lang)
 );
 
 const index = computed(() => {
@@ -249,14 +278,41 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
         <!-- Synopsis -->
         <div>
-          <div class="text-xs font-bold text-fg-2 mb-2">{{ t('episode.synopsis') }}</div>
+          <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <div class="text-xs font-bold text-fg-2 flex items-center gap-2">
+              <Languages class="w-3.5 h-3.5 text-accent" />
+              <span>{{ t('episode.synopsis') }}</span>
+              <span v-if="hasZhDesc && !showOriginal" class="text-success-fill/80 text-[11px] font-normal normal-case">{{ t('episode.showTranslation') }}</span>
+              <span v-else-if="hasZhDesc" class="text-fg-5 text-[11px] font-normal normal-case">{{ t('episode.showOriginal') }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="hasZhDesc"
+                @click="showOriginal = !showOriginal"
+                class="text-xs px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg-2 border border-line-strong transition cursor-pointer"
+              >
+                {{ showOriginal ? t('movie.showTranslation') : t('movie.showOriginal') }}
+              </button>
+              <button
+                v-else-if="(episode.description || '').trim()"
+                @click="translateEpisodeNow"
+                :disabled="isTranslating"
+                class="text-xs px-2.5 py-1 rounded-lg bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                <Loader2 v-if="isTranslating" class="w-3.5 h-3.5 animate-spin" />
+                <Sparkles v-else class="w-3.5 h-3.5" />
+                <span>{{ isTranslating ? t('movie.translating') : t('movie.translateToZh') }}</span>
+              </button>
+            </div>
+          </div>
           <div
-            v-if="shownDescription"
+            v-if="effectiveDescription"
             class="text-sm text-fg-2 leading-relaxed max-h-[40vh] overflow-y-auto whitespace-pre-line pr-2"
           >
-            {{ shownDescription }}
+            {{ effectiveDescription }}
           </div>
           <div v-else class="text-xs text-fg-4 italic">{{ t('episode.noSynopsis') }}</div>
+          <div v-if="translateError" class="text-xs text-danger mt-1.5">{{ translateError }}</div>
         </div>
 
         <!-- Cast: a scene usually has one or two, so no folding needed. -->

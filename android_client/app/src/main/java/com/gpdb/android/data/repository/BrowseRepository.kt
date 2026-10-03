@@ -25,8 +25,10 @@ class BrowseRepository(private val browseDao: BrowseDao) {
     }
 
     suspend fun getAllStudios(sortBy: String = "works", search: String? = null): List<String> {
-        val searchCondition = if (!search.isNullOrBlank()) "AND m.studio_name LIKE ?" else ""
-        val args = if (!search.isNullOrBlank()) arrayOf("%${search}%") else emptyArray<Any>()
+        val searchCondition = if (!search.isNullOrBlank()) {
+            "AND (m.studio_name LIKE ? OR EXISTS (SELECT 1 FROM studios st WHERE st.name = m.studio_name AND st.name_zh LIKE ?))"
+        } else ""
+        val args = if (!search.isNullOrBlank()) arrayOf("%${search}%", "%${search}%") else emptyArray<Any>()
         val queryStr = if (sortBy == "name") {
             "SELECT studio_name FROM movies m WHERE studio_name IS NOT NULL AND studio_name != '' $searchCondition GROUP BY studio_name ORDER BY studio_name ASC"
         } else {

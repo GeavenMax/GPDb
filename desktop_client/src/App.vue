@@ -855,6 +855,18 @@ function onMovieTranslated(movieId: number, zh: string) {
   loadTranslationStats();
 }
 
+/** A single-episode synopsis translation finished; fold it into lists and active modal. */
+function onEpisodeTranslated(episodeId: number, zh: string) {
+  const ep = episodeList.value.find(x => x.id === episodeId);
+  if (ep) ep.description_zh = zh;
+  if (selectedEpisode.value?.id === episodeId) selectedEpisode.value.description_zh = zh;
+  if (selectedMovie.value?.episodes) {
+    const mep = selectedMovie.value.episodes.find(x => x.id === episodeId);
+    if (mep) mep.description_zh = zh;
+  }
+  loadTranslationStats();
+}
+
 async function onUserDataChanged(movieId: number) {
   recordRating();
   const updated = await api.getMovieDetail(movieId);
@@ -4097,6 +4109,7 @@ onUnmounted(() => {
       @select-performer="openPerformerDetail"
       @filter-studio="filterByStudio"
       @toggle-favorite="toggleEpisodeFavorite"
+      @episode-translated="onEpisodeTranslated"
     />
 
     <SeriesModal

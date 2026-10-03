@@ -186,6 +186,10 @@ pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
         Some(("Icons", &normalized[idx + "images/icons/".len()..]))
     } else if let Some(idx) = lower.find("images/logo/") {
         Some(("Logo", &normalized[idx + "images/logo/".len()..]))
+    } else if let Some(idx) = lower.find("images/logos/") {
+        Some(("Logos", &normalized[idx + "images/logos/".len()..]))
+    } else if let Some(idx) = lower.find("images/banners/") {
+        Some(("Banners", &normalized[idx + "images/banners/".len()..]))
     } else if let Some(idx) = lower.find("covers/") {
         Some(("Covers", &normalized[idx + "covers/".len()..]))
     } else if let Some(idx) = lower.find("episodes/") {
@@ -196,6 +200,10 @@ pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
         Some(("Icons", &normalized[idx + "icons/".len()..]))
     } else if let Some(idx) = lower.find("logo/") {
         Some(("Logo", &normalized[idx + "logo/".len()..]))
+    } else if let Some(idx) = lower.find("logos/") {
+        Some(("Logos", &normalized[idx + "logos/".len()..]))
+    } else if let Some(idx) = lower.find("banners/") {
+        Some(("Banners", &normalized[idx + "banners/".len()..]))
     } else {
         None
     };
@@ -311,6 +319,12 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
     // 2. On-demand download and persistent caching
     let remote_url = if target.starts_with("http://") || target.starts_with("https://") {
         Some(target.clone())
+    } else if target.starts_with("images/logos/") || target.starts_with("/images/logos/") {
+        let filename = target.trim_start_matches('/').trim_start_matches("images/logos/");
+        Some(format!("https://gayeroticvideoindex.com/images/{}", filename))
+    } else if target.starts_with("logos/") || target.starts_with("Logos/") {
+        let filename = target.trim_start_matches("logos/").trim_start_matches("Logos/");
+        Some(format!("https://gayeroticvideoindex.com/images/{}", filename))
     } else if target.starts_with("images/") || target.starts_with("/images/") {
         Some(format!("https://gayeroticvideoindex.com/{}", target.trim_start_matches('/')))
     } else if target.starts_with("Covers/") || target.starts_with("covers/")
