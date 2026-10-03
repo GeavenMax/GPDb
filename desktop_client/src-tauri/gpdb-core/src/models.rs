@@ -134,6 +134,8 @@ pub struct StudioSummary {
     pub name: String,
     pub name_zh: Option<String>,
     pub description_zh: Option<String>,
+    pub logo_url: Option<String>,
+    pub banner_url: Option<String>,
     pub works_count: i64,
     pub episodes_count: i64,
 }
@@ -211,6 +213,8 @@ pub struct StudioWorks {
     pub studio_name: String,
     pub studio_name_zh: Option<String>,
     pub description_zh: Option<String>,
+    pub logo_url: Option<String>,
+    pub banner_url: Option<String>,
     pub movies: Vec<Movie>,
     pub movies_count: i64,
     pub episodes: Vec<Episode>,
