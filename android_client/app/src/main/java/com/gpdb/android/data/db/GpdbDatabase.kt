@@ -15,8 +15,10 @@ import com.gpdb.android.data.db.entities.MoviePerformerEntity
 import com.gpdb.android.data.db.entities.PerformerEntity
 import com.gpdb.android.data.db.entities.EpisodeEntity
 import com.gpdb.android.data.db.entities.EpisodePerformerEntity
+import com.gpdb.android.data.db.entities.StudioEntity
 import com.gpdb.android.data.db.dao.SearchDao
 import com.gpdb.android.data.db.dao.BrowseDao
+import com.gpdb.android.data.db.dao.StudioDao
 import java.io.File
 
 import androidx.room.migration.Migration
@@ -37,9 +39,10 @@ import androidx.room.migration.Migration
         PerformerEntity::class,
         MoviePerformerEntity::class,
         EpisodeEntity::class,
-        EpisodePerformerEntity::class
+        EpisodePerformerEntity::class,
+        StudioEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class GpdbDatabase : RoomDatabase() {
@@ -49,10 +52,121 @@ abstract class GpdbDatabase : RoomDatabase() {
     abstract fun episodeDao(): com.gpdb.android.data.db.dao.EpisodeDao
     abstract fun searchDao(): SearchDao
     abstract fun browseDao(): BrowseDao
+    abstract fun studioDao(): StudioDao
     abstract fun userActionDao(): UserActionDao
 
     companion object {
         private const val TAG = "GpdbDatabase"
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "执行 4->5 平滑迁移: 补齐 studios 表及相关索引")
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (e: Exception) {
+                    Log.w(TAG, "迁移 4->5 告警: ${e.message}")
+                }
+            }
+        }
+
+        private val MIGRATION_3_5 = object : Migration(3, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_2_5 = object : Migration(2, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_1_5 = object : Migration(1, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_0_5 = object : Migration(0, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+            }
+        }
 
         private val MIGRATION_0_4 = object : Migration(0, 4) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -258,6 +372,43 @@ abstract class GpdbDatabase : RoomDatabase() {
                     );
                 """.trimIndent())
 
+                // 4. 补齐 studios 厂牌历史档案表结构及索引
+                rawDb.execSQL("""
+                    CREATE TABLE IF NOT EXISTS studios (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL UNIQUE,
+                        name_zh TEXT,
+                        description_zh TEXT,
+                        logo_url TEXT,
+                        banner_url TEXT,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """.trimIndent())
+                rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                try {
+                    rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+
+                val studioCols = mutableSetOf<String>()
+                rawDb.rawQuery("PRAGMA table_info(studios);", null).use { cursor ->
+                    val nameIdx = cursor.getColumnIndex("name")
+                    while (cursor.moveToNext()) {
+                        if (nameIdx >= 0) studioCols.add(cursor.getString(nameIdx))
+                    }
+                }
+                if (!studioCols.contains("name_zh")) {
+                    try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN name_zh TEXT;") } catch (_: Exception) {}
+                }
+                if (!studioCols.contains("description_zh")) {
+                    try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN description_zh TEXT;") } catch (_: Exception) {}
+                }
+                if (!studioCols.contains("logo_url")) {
+                    try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN logo_url TEXT;") } catch (_: Exception) {}
+                }
+                if (!studioCols.contains("banner_url")) {
+                    try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN banner_url TEXT;") } catch (_: Exception) {}
+                }
+
                 Log.i(TAG, "前置架构自愈检查完成，数据库物理列已就绪")
             } catch (e: Exception) {
                 Log.w(TAG, "前置架构自愈检查告警 (不阻断正常挂载): ${e.message}", e)
@@ -290,7 +441,8 @@ abstract class GpdbDatabase : RoomDatabase() {
                 .addMigrations(
                     MIGRATION_0_1, MIGRATION_0_2, MIGRATION_1_2,
                     MIGRATION_0_3, MIGRATION_1_3, MIGRATION_2_3,
-                    MIGRATION_0_4, MIGRATION_1_4, MIGRATION_2_4, MIGRATION_3_4
+                    MIGRATION_0_4, MIGRATION_1_4, MIGRATION_2_4, MIGRATION_3_4,
+                    MIGRATION_0_5, MIGRATION_1_5, MIGRATION_2_5, MIGRATION_3_5, MIGRATION_4_5
                 )
                 // ★ 关键修复：强制使用 TRUNCATE 日志模式，彻底消除 FUSE 下 WAL 模式的 -shm / -wal ioctl 权限冲突
                 .setJournalMode(JournalMode.TRUNCATE)
@@ -345,6 +497,21 @@ abstract class GpdbDatabase : RoomDatabase() {
                                     FOREIGN KEY(performer_id) REFERENCES performers(id) ON DELETE CASCADE
                                 );
                             """.trimIndent())
+                            db.execSQL("""
+                                CREATE TABLE IF NOT EXISTS studios (
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    name TEXT NOT NULL UNIQUE,
+                                    name_zh TEXT,
+                                    description_zh TEXT,
+                                    logo_url TEXT,
+                                    banner_url TEXT,
+                                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                                );
+                            """.trimIndent())
+                            db.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                            try {
+                                db.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                            } catch (_: Exception) {}
                             Log.i(TAG, "GPDb SQLite 成功就绪 (TRUNCATE mode on FUSE)")
                         } catch (e: Exception) {
                             Log.w(TAG, "配置 PRAGMA 出现警告: ${e.message}", e)
