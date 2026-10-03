@@ -1022,12 +1022,14 @@ class GPDbRequestHandler(BaseHTTPRequestHandler):
     def handle_studio_works(self, studio_name: str):
         with get_db_connection() as conn:
             st_row = conn.execute("""
-                SELECT name_zh, description_zh FROM studios
+                SELECT name_zh, description_zh, logo_url, banner_url FROM studios
                 WHERE trim(name) = trim(?) COLLATE NOCASE OR trim(name_zh) = trim(?)
                 LIMIT 1
             """, (studio_name, studio_name)).fetchone()
             studio_name_zh = st_row["name_zh"] if st_row else None
             description_zh = st_row["description_zh"] if st_row else None
+            logo_url = st_row["logo_url"] if st_row else None
+            banner_url = st_row["banner_url"] if st_row else None
 
             m_rows = conn.execute("""
                 SELECT m.id, m.title, m.studio_id, m.studio_name, m.release_year,
@@ -1047,6 +1049,8 @@ class GPDbRequestHandler(BaseHTTPRequestHandler):
                 "studio_name": studio_name,
                 "studio_name_zh": studio_name_zh,
                 "description_zh": description_zh,
+                "logo_url": logo_url,
+                "banner_url": banner_url,
                 "movies": [dict(m) for m in m_rows],
                 "movies_count": len(m_rows),
                 "episodes": eps,

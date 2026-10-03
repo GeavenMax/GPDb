@@ -1371,6 +1371,8 @@ class DatabaseManager:
             SELECT s.name,
                    st.name_zh,
                    st.description_zh,
+                   st.logo_url,
+                   st.banner_url,
                    COALESCE(m.cnt, 0) AS works_count,
                    COALESCE(e.cnt, 0) AS episodes_count
             FROM (
@@ -1399,8 +1401,10 @@ class DatabaseManager:
                 "name": r[0],
                 "name_zh": r[1],
                 "description_zh": r[2],
-                "works_count": r[3],
-                "episodes_count": r[4]
+                "logo_url": r[3],
+                "banner_url": r[4],
+                "works_count": r[5],
+                "episodes_count": r[6]
             }
             for r in cur.fetchall()
         ]

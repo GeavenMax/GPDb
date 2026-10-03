@@ -97,3 +97,39 @@ fn saving_a_copy_of_the_real_config_keeps_the_stored_key() {
         "saving without a key must leave the stored key alone"
     );
 }
+
+#[test]
+fn test_translation_provider_execution() {
+    tauri::async_runtime::block_on(async {
+        let Some(_) = repo_config() else {
+            eprintln!("skipping: no translate_config.json");
+            return;
+        };
+
+        // Test calling deepseek provider
+        let res = translate::test_translation_provider(Some("deepseek".to_string())).await;
+        match res {
+            Ok(test_res) => {
+                println!("DeepSeek test translation result: {:?}", test_res);
+                assert_eq!(test_res.profile, "deepseek");
+                assert!(!test_res.result.is_empty(), "result should not be empty: {:?}", test_res.error);
+            }
+            Err(e) => {
+                panic!("test_translation_provider failed: {}", e);
+            }
+        }
+
+        // Test calling active provider (Gemini with key rotation)
+        let res_active = translate::test_translation_provider(None).await;
+        match res_active {
+            Ok(test_res) => {
+                println!("Active provider test translation result: {:?}", test_res);
+                assert!(!test_res.result.is_empty(), "result should not be empty: {:?}", test_res.error);
+            }
+            Err(e) => {
+                panic!("active test_translation_provider failed: {}", e);
+            }
+        }
+    });
+}
+

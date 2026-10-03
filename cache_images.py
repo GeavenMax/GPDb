@@ -76,10 +76,14 @@ def get_cache_path(url: str, cache_dir: Path = DEFAULT_CACHE_DIR) -> Path:
     if not url:
         return cache_dir / "unknown.jpg"
     
-    # Check for GPDb standard paths: images/Covers/..., images/Episodes/..., images/Stars/...
-    m = re.search(r"images/(Covers|Episodes|Stars|icons|logo)/([^?#]+)", url, re.IGNORECASE)
+    # Check for GPDb standard paths: images/Covers/..., images/Episodes/..., images/Stars/..., images/Logos/...
+    m = re.search(r"images/(Covers|Episodes|Stars|icons|logo|logos|banners)/([^?#]+)", url, re.IGNORECASE)
     if m:
         folder = m.group(1).capitalize()
+        if folder.lower() in ("logo", "logos"):
+            folder = "Logos"
+        elif folder.lower() in ("banners", "banner"):
+            folder = "Banners"
         filename = m.group(2)
         target = cache_dir / folder / filename
     else:

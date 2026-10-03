@@ -562,10 +562,10 @@ onUnmounted(() => {
             <div class="flex items-center gap-2">
               <!-- The synopsis is translated but some episodes are not -->
               <button
-                v-if="pendingEpisodeCount > 0 && !IS_TAURI"
+                v-if="pendingEpisodeCount > 0"
                 @click="translateNow"
                 :disabled="isTranslating"
-                class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50"
+                class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                 :title="t('movie.clipsUntranslatedHint')"
               >
                 <Loader2 v-if="isTranslating" class="w-3 h-3 animate-spin" />
@@ -580,7 +580,7 @@ onUnmounted(() => {
                 {{ showOriginal ? t('movie.showTranslation') : t('movie.showOriginal') }}
               </button>
               <button
-                v-else-if="movie.description && !IS_TAURI"
+                v-else-if="movie.description"
                 @click="translateNow"
                 :disabled="isTranslating"
                 class="text-xs px-2.5 py-1 rounded-lg bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50 cursor-pointer"
@@ -589,14 +589,6 @@ onUnmounted(() => {
                 <Languages v-else class="w-3.5 h-3.5" />
                 {{ isTranslating ? t('movie.translating') : t('movie.translateToZh') }}
               </button>
-              <!-- Desktop build has no server process to relay the request -->
-              <span
-                v-else-if="movie.description"
-                class="text-xs text-fg-5"
-                :title="t('movie.batchTranslateHint')"
-              >
-                {{ t('movie.untranslated') }}
-              </span>
             </div>
           </div>
 

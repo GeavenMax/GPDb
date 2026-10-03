@@ -44,6 +44,12 @@ const PERFORMER_COLUMNS: &[(&str, &str)] = &[
     ("sj_url", "TEXT"),
 ];
 
+/// Columns on `studios` added after the initial release.
+const STUDIO_COLUMNS: &[(&str, &str)] = &[
+    ("logo_url", "TEXT"),
+    ("banner_url", "TEXT"),
+];
+
 /// Tables this crate reads. Verbatim from `schema.sql` §11 and §12.
 const TABLES: &str = "
 CREATE TABLE IF NOT EXISTS category_glossary (
@@ -71,6 +77,8 @@ CREATE TABLE IF NOT EXISTS studios (
     name           TEXT NOT NULL UNIQUE,
     name_zh        TEXT,
     description_zh TEXT,
+    logo_url       TEXT,
+    banner_url     TEXT,
     updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);
@@ -232,7 +240,9 @@ pub fn ensure_schema(conn: &Connection) -> Result<()> {
     // transaction two migrators can both read "column missing" and then collide on the
     // upgrade. (DEFERRED would surface as SQLITE_BUSY, IMMEDIATE just serialises.)
     conn.execute_batch("BEGIN IMMEDIATE")?;
-    let outcome = add_missing_movie_columns(conn).and_then(|()| add_missing_performer_columns(conn));
+    let outcome = add_missing_movie_columns(conn)
+        .and_then(|()| add_missing_performer_columns(conn))
+        .and_then(|()| add_missing_studio_columns(conn));
     match outcome {
         Ok(()) => {
             conn.execute_batch("COMMIT")?;
@@ -317,6 +327,26 @@ fn add_missing_performer_columns(conn: &Connection) -> Result<()> {
             continue;
         }
         add_column_to_table_tolerating_race(conn, "performers", name, ty)?;
+    }
+    Ok(())
+}
+
+fn add_missing_studio_columns(conn: &Connection) -> Result<()> {
+    let existing: Vec<String> = {
+        let mut stmt = conn.prepare("PRAGMA table_info(studios)")?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(1))?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()?
+    };
+
+    if existing.is_empty() {
+        return Ok(());
+    }
+
+    for (name, ty) in STUDIO_COLUMNS {
+        if existing.iter().any(|c| c == name) {
+            continue;
+        }
+        add_column_to_table_tolerating_race(conn, "studios", name, ty)?;
     }
     Ok(())
 }
