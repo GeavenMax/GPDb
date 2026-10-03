@@ -44,6 +44,7 @@ rather trade the dependency for the SDK.
 
 from __future__ import annotations
 import argparse
+import datetime
 import json
 import os
 import re
@@ -73,9 +74,16 @@ SYSTEM_PROMPT = """你是一名成人影片资料库的专职译者。你会收�
 1. 忠于原文：逐句对应，原文说了什么就译什么，不增不减、不概括、不改写、不调整叙述顺序。
 2. 非常直白：用词直接、露骨、不回避，按原文露骨程度如实翻译，不要替换成委婉语、暗示或模糊表述，绝不弱化、淡化、"净化"或美化原文内容。
 3. 不要意译或润色：宁可保持原文的句式和语序，也不要为了文采而改变原意。
-4. 人名、片名、厂牌名（Studio）一律保留原文拉丁字母写法，绝对不要音译成汉字（例：Count Vladimir 保持 "Count Vladimir"，不要写成 "弗拉基米尔伯爵"；Staxus 保持 "Staxus"）。
-5. 保持档案记录语气：只陈述原文内容，不添加主观评价。涉及成人内容、身体部位、性取向时照实翻译，使用中文成人语境中通用的直接说法，不要因内容露骨而删减、跳过或含糊处理。
-6. 严格契合男同性恋（Gay）语境：所有简介、分集和标题全部来自男同性恋题材，身体部位严禁出现任何针对女性的词汇（如严禁使用“逼”、“骚逼”、“屄”等）。涉及后庭器官或被插入部位时，必须使用“屁眼”、“菊花”、“菊门”、“肛门”、“后庭”等男性同性恋语境词汇；“操逼”一律译为“操屁股”、“干屁股”、“后入”或“猛操”。
+4. 人名、厂牌名（Studio）保留原文拉丁字母写法，绝对不要音译成汉字（例：Count Vladimir 保持 "Count Vladimir"，不要写成 "弗拉基米尔伯爵"；Falcon Studios 保持 "Falcon Studios"）。注意：仅人名和厂牌本身保留原文，厂牌衍生词和角色标签必须翻译（详见第9条）。
+5. 地名、国名翻译成规范中文（例：Prague 译为 "布拉格"；Budapest 译为 "布达佩斯"；Berlin 译为 "柏林"；California 译为 "加州"；France 译为 "法国"；Slovakia 译为 "斯洛伐克"；Czech 译为 "捷克" 等）。
+6. 作品片名处理：若简介中提及作品片名，无论原文大小写如何（全大写、小写或首字母大写），只要属于知名/已有中文译名的片名，一律规范翻译为中文片名并加上书名号《》；若无法确定义名则保留英文原名。
+7. 保持档案记录语气：只陈述原文内容，不添加主观评价。涉及成人内容、身体部位、性取向时照实翻译，使用中文成人语境中通用的直接说法，不要因内容露骨而删减、跳过或含糊处理。
+8. 严格契合男同性恋（Gay）语境：所有简介、分集和标题全部来自男同性恋题材，身体部位严禁出现任何针对女性的词汇（如严禁使用“逼”、“骚逼”、“屄”等）。涉及后庭器官或被插入部位时，必须使用“屁眼”、“菊花”、“菊门”、“肛门”、“后庭”等男性同性恋语境词汇；“操逼”一律译为“操屁股”、“干屁股”、“后入”或“猛操”。
+9. 行业术语、演员角色属性与演职词汇汉化（不是人名，严禁保留英文原文）：
+   - 厂牌专属演员称呼：Lucas Men 译为“Lucas 旗下演员/男优”；Falcon Men 译为“Falcon 旗下男优”；BelAmi Freshmen 译为“BelAmi 新人演员/新秀”；
+   - 签约与角色状态：Exclusive/Exclusives 译为“独家签约演员/专属男优”；newcomer 译为“新晋男优/新人”；debut 译为“首秀/出道作”；
+   - 演出方式与拍摄场景：featuring 译为“由...出演/特邀出演/主演”；casting 译为“试镜/选角”；solo 译为“单人秀/个人自慰秀”；hardcore 译为“硬核实战”；
+   - 生理与性爱角色：uncut 译为“未割包皮/原装包皮”；cut 译为“割包皮”；top 译为“1号/攻”；bottom 译为“0号/受”；vers/versatile 译为“0.5号/攻受兼备”；bareback/raw 译为“无套”；flip-flop/flip flop 译为“互攻”；rimming 译为“舔肛”；cumshot 译为“射精”；creampie 译为“内射”。
 
 只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
 
@@ -155,16 +163,60 @@ class TranslationError(RuntimeError):
     pass
 
 
+class AllKeysExhaustedError(TranslationError):
+    """Raised when all configured API keys have exhausted their daily quota or are unavailable."""
+    def __init__(self, message: str, retry_after_seconds: float = 0.0):
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
+
+
+def parse_gemini_retry_delay(error_body: str) -> float | None:
+    """Extract retryDelay seconds from Google RPC error response if available."""
+    try:
+        data = json.loads(error_body)
+        details = data.get("error", {}).get("details", [])
+        for item in details:
+            if isinstance(item, dict) and "retryDelay" in item:
+                val = str(item["retryDelay"]).rstrip("s")
+                return float(val)
+    except Exception:
+        pass
+
+    m = re.search(r"retry in (?:(\d+)h)?(?:(\d+)m)?(?:([\d\.]+)s)?", error_body)
+    if m:
+        h = float(m.group(1) or 0)
+        m_ = float(m.group(2) or 0)
+        s = float(m.group(3) or 0)
+        total = h * 3600 + m_ * 60 + s
+        if total > 0:
+            return total
+    return None
+
+
+def seconds_until_utc_midnight() -> float:
+    """Fallback: Calculate seconds until next 00:00:00 UTC with a 60s buffer."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    tomorrow = (now + datetime.timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    diff = (tomorrow - now).total_seconds()
+    return max(diff + 60.0, 300.0)
+
+
 class Provider:
     """Base class: one JSON-mode chat completion returning a list of strings."""
 
     def __init__(self, api_key: str, model: str, base_url: str = "",
                  timeout: float = 180.0, system_prompt: str | None = None,
-                 noun: str = "简介", echo_source: bool = False):
+                 noun: str = "简介", echo_source: bool = False,
+                 api_keys: list[str] | None = None,
+                 auto_wait: bool = True):
         self.api_key = api_key
+        self.api_keys = [k.strip() for k in api_keys if k and str(k).strip()] if api_keys else ([api_key] if api_key else [])
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.auto_wait = auto_wait
         # Which prompt to use depends on what is being translated (synopses vs the
         # attribute glossary vs film titles); everything else about the call is
         # identical.
@@ -198,6 +250,17 @@ class Provider:
                     return json.loads(resp.read().decode("utf-8", errors="ignore"))
             except urllib.error.HTTPError as e:
                 detail = e.read().decode("utf-8", errors="ignore")[:500]
+                if e.code == 429 and attempt < 2:
+                    wait_sec = 25
+                    # 尝试从错误信息中提取建议的等待时间
+                    m = re.search(r"retry in ([\d\.]+)s", detail)
+                    if m:
+                        try:
+                            wait_sec = min(max(float(m.group(1)) + 1, 5), 60)
+                        except Exception:
+                            pass
+                    time.sleep(wait_sec)
+                    continue
                 raise TranslationError(f"HTTP {e.code} from {url}: {detail}") from e
             except urllib.error.URLError as e:
                 if attempt < 2:
@@ -323,8 +386,231 @@ class OpenAICompatProvider(Provider):
 class GeminiProvider(Provider):
     """Google Gemini generateContent with a JSON response MIME type."""
 
-    DEFAULT_MODEL = "gemini-2.5-flash"
+    DEFAULT_MODEL = "gemini-3.5-flash-lite"
     DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com"
+
+    def __init__(self, api_key: str, model: str, base_url: str = "",
+                 timeout: float = 180.0, system_prompt: str | None = None,
+                 noun: str = "简介", echo_source: bool = False,
+                 api_keys: list[str] | None = None,
+                 auto_wait: bool = True,
+                 fallback_provider: Provider | None = None):
+        super().__init__(api_key, model, base_url, timeout, system_prompt, noun, echo_source, api_keys, auto_wait=auto_wait)
+        self.fallback_provider = fallback_provider
+        # 整理所有可用 keys，去重保持顺序
+        seen = set()
+        clean_keys = []
+        candidates = list(api_keys or [])
+        if api_key:
+            candidates.insert(0, api_key)
+        for k in candidates:
+            if isinstance(k, str) and k.strip() and k.strip() not in seen:
+                seen.add(k.strip())
+                clean_keys.append(k.strip())
+        self.api_keys = clean_keys or ([api_key.strip()] if api_key else [])
+        self.key_index = 0
+        if self.api_keys:
+            self.api_key = self.api_keys[0]
+
+        self.key_status = {
+            k: {"exhausted": False, "reset_time": 0.0, "reason": ""}
+            for k in self.api_keys
+        }
+        self._rotation_lock = threading.RLock()
+
+    def rotate_key(self, reason: str = "配额用尽") -> bool:
+        """切换到下一个可用 API Key。如果所有 key 均耗尽，返回 False。"""
+        with self._rotation_lock:
+            if len(self.api_keys) <= 1:
+                return False
+            now = time.time()
+            total = len(self.api_keys)
+            for step in range(1, total):
+                cand_idx = (self.key_index + step) % total
+                cand_key = self.api_keys[cand_idx]
+                st = self.key_status.get(cand_key, {})
+                if not st.get("exhausted", False) or now >= st.get("reset_time", 0.0):
+                    old_idx = self.key_index
+                    self.key_index = cand_idx
+                    self.api_key = cand_key
+                    if st.get("exhausted", False):
+                        st["exhausted"] = False
+                    old_hint = f"...{self.api_keys[old_idx][-6:]}" if len(self.api_keys[old_idx]) > 6 else "***"
+                    new_hint = f"...{self.api_key[-6:]}" if len(self.api_key) > 6 else "***"
+                    print(f"\n[🔄 Key 轮换] 检测到 {reason} (原 Key 尾号 {old_hint}) -> 自动切换至下一个 API Key [{self.key_index + 1}/{total}] (尾号 {new_hint})")
+                    return True
+            return False
+
+    def _wait_until_reset(self, wait_seconds: float) -> None:
+        """挂起进程，定时休眠等待至次日配额重置"""
+        wake_dt = datetime.datetime.now() + datetime.timedelta(seconds=wait_seconds)
+        wake_str = wake_dt.strftime("%Y-%m-%d %H:%M:%S")
+        hours = wait_seconds / 3600.0
+
+        print("\n" + "=" * 72)
+        print("⏸️  【所有 API Key 均已达今日调用上限 (Daily Quota Exceeded)】")
+        print(f"   已检测到全部 {len(self.api_keys)} 个 Gemini API Key 配额全部耗尽 (免费层 500次/天限制)。")
+        print(f"   预计最近配额重置时间：{wake_str} (本地时间)")
+        print(f"   需要休眠等待：约 {hours:.2f} 小时 (共计 {int(wait_seconds):,} 秒)")
+        print("   💤 程序已自动进入定时挂起等待，到时将自动唤醒继续流水线，无需人工干预...")
+        print("=" * 72)
+
+        start_wait = time.time()
+        target_time = start_wait + wait_seconds
+        last_log = start_wait
+
+        while True:
+            now = time.time()
+            rem = target_time - now
+            if rem <= 0:
+                break
+            # 每隔 30 分钟打印一次心跳提示
+            if now - last_log >= 1800:
+                last_log = now
+                rem_h = rem / 3600.0
+                print(f"[💤 挂起休眠中] 距离唤醒还需等待: {rem_h:.1f} 小时 (预计唤醒时间: {wake_str})")
+
+            sleep_step = min(rem, 30.0)
+            time.sleep(sleep_step)
+
+        print("\n" + "=" * 72)
+        print("⏰ 【定时唤醒】新的一天配额已刷新！")
+        print("   已到达配额重置时间，自动唤醒流水线，重新激活所有 API Key 继续翻译...")
+        print("=" * 72 + "\n")
+
+        with self._rotation_lock:
+            for k in self.api_keys:
+                self.key_status[k] = {"exhausted": False, "reset_time": 0.0, "reason": ""}
+            self.key_index = 0
+            self.api_key = self.api_keys[0]
+
+    def _post_with_rotation(self, url: str, payload: dict) -> dict:
+        total_keys = max(len(self.api_keys), 1)
+        data = json.dumps(payload).encode("utf-8")
+
+        while True:
+            with self._rotation_lock:
+                now = time.time()
+                cur_st = self.key_status.get(self.api_key, {})
+                if cur_st.get("exhausted", False) and now < cur_st.get("reset_time", 0.0):
+                    if not self.rotate_key(reason="当前 Key 配额已耗尽"):
+                        min_wait = max(
+                            min(self.key_status[k]["reset_time"] for k in self.api_keys) - now,
+                            10.0
+                        )
+                        if self.auto_wait:
+                            self._wait_until_reset(min_wait + 30.0)
+                            continue
+                        else:
+                            raise AllKeysExhaustedError(
+                                f"所有已配置的 {total_keys} 个 Gemini API Key 均已耗尽配额。",
+                                retry_after_seconds=min_wait
+                            )
+
+            headers = {
+                "Content-Type": "application/json",
+                "x-goog-api-key": self.api_key,
+            }
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+
+            rpm_retry = 0
+            key_switched = False
+
+            while rpm_retry < 2 and not key_switched:
+                try:
+                    with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                        return json.loads(resp.read().decode("utf-8", errors="ignore"))
+                except urllib.error.HTTPError as e:
+                    detail = e.read().decode("utf-8", errors="ignore")[:600]
+
+                    # 检查是否为每日额度耗尽 (Daily Quota Exceeded)
+                    is_daily_quota = (
+                        e.code == 429 and (
+                            "per day" in detail.lower() or
+                            "perday" in detail.lower() or
+                            "limit '500'" in detail or
+                            "limit 500" in detail or
+                            "resource_exhausted" in detail.lower() or
+                            bool(re.search(r"retry in \d+[hm]", detail))
+                        )
+                    )
+
+                    # 检查是否为无效 Key
+                    is_invalid_key = (
+                        "API_KEY_INVALID" in detail or
+                        (e.code == 400 and "api key not valid" in detail.lower())
+                    )
+
+                    if is_daily_quota or is_invalid_key:
+                        reason = "每日调用额度上限(500次/天)" if is_daily_quota else "API Key 无效"
+                        retry_sec = parse_gemini_retry_delay(detail)
+                        if retry_sec is None or retry_sec < 60:
+                            retry_sec = seconds_until_utc_midnight()
+
+                        with self._rotation_lock:
+                            self.key_status[self.api_key] = {
+                                "exhausted": True,
+                                "reset_time": time.time() + retry_sec,
+                                "reason": reason,
+                            }
+
+                        if self.rotate_key(reason=reason):
+                            key_switched = True
+                            time.sleep(1.0)
+                            break
+                        else:
+                            now = time.time()
+                            min_wait = max(
+                                min(self.key_status[k]["reset_time"] for k in self.api_keys) - now,
+                                10.0
+                            )
+                            if self.auto_wait:
+                                self._wait_until_reset(min_wait + 30.0)
+                                key_switched = True
+                                break
+                            else:
+                                raise AllKeysExhaustedError(
+                                    f"所有已配置的 {total_keys} 个 Gemini API Key 均已耗尽配额。",
+                                    retry_after_seconds=min_wait
+                                )
+
+                    # 普通 429 (RPM 频率限制)
+                    if e.code == 429:
+                        wait_sec = 25
+                        m = re.search(r"retry in ([\d\.]+)s", detail)
+                        if m:
+                            try:
+                                wait_sec = min(max(float(m.group(1)) + 1, 5), 45)
+                            except Exception:
+                                pass
+                        if len(self.api_keys) > 1 and rpm_retry >= 1:
+                            if self.rotate_key(reason="RPM 频率限流，轮换备用 Key"):
+                                key_switched = True
+                                time.sleep(1.0)
+                                break
+                        time.sleep(wait_sec)
+                        rpm_retry += 1
+                        continue
+
+                    # 处理 500 / 503 服务端暂时波动
+                    if e.code in (500, 503):
+                        if len(self.api_keys) > 1:
+                            if self.rotate_key(reason=f"服务端负载高峰 (HTTP {e.code})，轮换备用 Key"):
+                                key_switched = True
+                                time.sleep(3.0)
+                                break
+                        time.sleep(5.0)
+                        rpm_retry += 1
+                        continue
+
+                    raise TranslationError(f"HTTP {e.code} from {url}: {detail}") from e
+
+                except urllib.error.URLError as e:
+                    if rpm_retry < 1:
+                        time.sleep(2.0)
+                        rpm_retry += 1
+                        continue
+                    raise TranslationError(f"网络连接错误 {url}: {e.reason}") from e
 
     def translate(self, texts: list[str],
                   contexts: list[str] | None = None) -> list[str]:
@@ -341,27 +627,48 @@ class GeminiProvider(Provider):
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0.3},
             "safetySettings": safety_settings,
         }
-        body = self._post(
-            f"{base}/v1beta/models/{self.model}:generateContent",
-            payload,
-            {
-                "Content-Type": "application/json",
-                "x-goog-api-key": self.api_key,
-            },
-        )
+        url = f"{base}/v1beta/models/{self.model}:generateContent"
+
+        try:
+            body = self._post_with_rotation(url, payload)
+        except TranslationError as e:
+            if self.fallback_provider and ("PROHIBITED_CONTENT" in str(e) or "SAFETY" in str(e)):
+                print(f"\n[🛡️ 内容安全拦截] Gemini 拦截打回 -> 自动转交 DeepSeek ({self.fallback_provider.model}) 补救翻译 ({len(texts)} 条)...")
+                return self.fallback_provider.translate(texts, contexts)
+            raise
+
+        candidates = body.get("candidates") or []
+        prompt_feedback = body.get("promptFeedback") or {}
+        block_reason = prompt_feedback.get("blockReason")
+        finish_reason = candidates[0].get("finishReason") if candidates else None
+
+        # 检查是否被 Gemini 安全审核拦截（PROHIBITED_CONTENT 或 finishReason=SAFETY）
+        if block_reason == "PROHIBITED_CONTENT" or finish_reason in ("SAFETY", "PROHIBITED_CONTENT") or not candidates or "content" not in candidates[0]:
+            if self.fallback_provider:
+                print(f"\n[🛡️ 内容安全拦截] Gemini 判定内容露骨 (blockReason={block_reason}, finishReason={finish_reason}) -> 自动转交 DeepSeek ({self.fallback_provider.model}) 补救翻译 ({len(texts)} 条)...")
+                return self.fallback_provider.translate(texts, contexts)
+            raise TranslationError(f"Gemini 内容安全拦截 (blockReason={block_reason}, finishReason={finish_reason}): {json.dumps(body)[:400]}")
+
         try:
             text = "".join(
                 p.get("text", "")
-                for p in body["candidates"][0]["content"]["parts"]
+                for p in candidates[0]["content"]["parts"]
             )
         except (KeyError, IndexError) as e:
+            if self.fallback_provider:
+                print(f"\n[🛡️ 响应异常] Gemini 响应结构异常 -> 自动转交 DeepSeek ({self.fallback_provider.model}) 补救翻译 ({len(texts)} 条)...")
+                return self.fallback_provider.translate(texts, contexts)
             raise TranslationError(f"Unexpected response shape: {json.dumps(body)[:400]}") from e
+
+        # 严格遵守 Free Tier 15 RPM 限制 (每个请求间隔 4.2s)
+        time.sleep(4.2)
         return extract_translations(text, len(texts), sources=texts if self.echo_source else None)
 
 
 PROVIDERS: dict[str, type[Provider]] = {
     "anthropic": AnthropicProvider,
     "openai": OpenAICompatProvider,
+    "deepseek": OpenAICompatProvider,
     "gemini": GeminiProvider,
 }
 
@@ -436,14 +743,9 @@ def extract_translations(raw: str, expected: int,
 
 
 def _norm_source(s: str) -> str:
-    """Casefold and collapse whitespace, for matching an echoed source loosely.
-
-    Titles carry apostrophes, ampersands and double spaces ("Guess Who's Cummin' to
-    Dinner", "Nutt  Crackers"), and a model asked to echo one back may "tidy" it. An
-    exact-only match would then call every entry a miss, and the whole run would
-    return empty — the safe direction, but a total loss.
-    """
-    return " ".join(s.casefold().split())
+    """Casefold, collapse whitespace, and strip surrounding quotes for robust matching."""
+    cleaned = str(s).replace('"', '').replace("'", "").replace("“", "").replace("”", "").replace("‘", "").replace("’", "")
+    return " ".join(cleaned.casefold().split())
 
 
 def _match_by_source(items: list, sources: list[str]) -> list[str]:
@@ -633,14 +935,16 @@ def list_profiles() -> list[dict]:
     out = []
     for name, p in (cfg.get("profiles") or {}).items():
         key = p.get("api_key") or ""
+        keys = p.get("api_keys") or []
+        hint = f"{len(keys)} 个 Key 轮换池" if len(keys) > 1 else (f"{key[:6]}…{key[-4:]}" if len(key) > 12 else ("已保存" if key else ""))
         out.append({
             "name": name,
             "label": p.get("label") or name,
             "type": p.get("type") or "openai",
             "model": p.get("model") or "",
             "base_url": p.get("base_url") or "",
-            "has_key": bool(key),
-            "key_hint": f"{key[:6]}…{key[-4:]}" if len(key) > 12 else ("已保存" if key else ""),
+            "has_key": bool(key or keys),
+            "key_hint": hint,
             "active": name == active,
         })
     out.sort(key=lambda p: (not p["active"], p["label"]))
@@ -707,12 +1011,32 @@ def resolve_settings(args, profile: str | None = None) -> dict:
         return (getattr(args, attr, None) or os.environ.get(env)
                 or entry.get(key) or cfg.get(key) or default)
 
+    raw_key = pick("api_key", "GPDB_LLM_API_KEY", "api_key")
+    api_keys = entry.get("api_keys") or []
+    if isinstance(api_keys, str):
+        api_keys = [k.strip() for k in api_keys.replace("\n", ",").split(",") if k.strip()]
+    elif isinstance(api_keys, list):
+        api_keys = [str(k).strip() for k in api_keys if k and str(k).strip()]
+    else:
+        api_keys = []
+
+    if not api_keys and raw_key:
+        api_keys = [k.strip() for k in raw_key.replace("\n", ",").split(",") if k.strip()]
+    if not raw_key and api_keys:
+        raw_key = api_keys[0]
+
+    provider = pick("provider", "GPDB_LLM_PROVIDER", "type")
+    model = pick("model", "GPDB_LLM_MODEL", "model")
+    # 默认使用配置中的模型（如 gemini-3.5-flash-lite，拥有 500 次/天高配额）
+
     return {
         "profile": name,
-        "provider": pick("provider", "GPDB_LLM_PROVIDER", "type"),
-        "api_key": pick("api_key", "GPDB_LLM_API_KEY", "api_key"),
-        "model": pick("model", "GPDB_LLM_MODEL", "model"),
+        "provider": provider,
+        "api_key": raw_key,
+        "api_keys": api_keys,
+        "model": model,
         "base_url": pick("base_url", "GPDB_LLM_BASE_URL", "base_url"),
+        "fallback": entry.get("fallback") or cfg.get("fallback"),
     }
 
 
@@ -727,7 +1051,8 @@ def is_local_endpoint(base_url: str) -> bool:
 
 
 def build_provider(settings: dict, system_prompt: str | None = None,
-                   noun: str = "简介", echo_source: bool = False) -> Provider:
+                   noun: str = "简介", echo_source: bool = False,
+                   auto_wait: bool = True) -> Provider:
     name = (settings["provider"] or "").strip().lower()
     if not name:
         raise SystemExit(
@@ -743,14 +1068,38 @@ def build_provider(settings: dict, system_prompt: str | None = None,
             "   或在 translate_config.json 中写入 {\"api_key\": \"...\"}。"
         )
     cls = PROVIDERS[name]
-    return cls(
-        api_key=settings["api_key"],
-        model=settings["model"] or cls.DEFAULT_MODEL,
-        base_url=settings["base_url"] or cls.DEFAULT_BASE_URL,
-        system_prompt=system_prompt,
-        noun=noun,
-        echo_source=echo_source,
-    )
+    fallback_p = None
+    if name == "gemini":
+        cfg = load_config()
+        fb_name = settings.get("fallback") or cfg.get("fallback")
+        profiles = cfg.get("profiles", {})
+        if fb_name and fb_name in profiles:
+            fb_entry = profiles[fb_name]
+            fb_type = (fb_entry.get("type") or "deepseek").lower()
+            if fb_type in PROVIDERS:
+                fb_cls = PROVIDERS[fb_type]
+                fallback_p = fb_cls(
+                    api_key=fb_entry.get("api_key", ""),
+                    model=fb_entry.get("model") or fb_cls.DEFAULT_MODEL,
+                    base_url=fb_entry.get("base_url") or fb_cls.DEFAULT_BASE_URL,
+                    system_prompt=system_prompt,
+                    noun=noun,
+                    echo_source=echo_source,
+                )
+
+    kwargs = {
+        "api_key": settings["api_key"],
+        "model": settings["model"] or cls.DEFAULT_MODEL,
+        "base_url": settings["base_url"] or cls.DEFAULT_BASE_URL,
+        "system_prompt": system_prompt,
+        "noun": noun,
+        "echo_source": echo_source,
+        "api_keys": settings.get("api_keys"),
+        "auto_wait": auto_wait,
+    }
+    if name == "gemini":
+        kwargs["fallback_provider"] = fallback_p
+    return cls(**kwargs)
 
 
 # --------------------------------------------------------------------------
@@ -1095,6 +1444,8 @@ def translate_batch(provider: Provider, texts: list[str],
     """
     try:
         results = provider.translate(texts, contexts)
+    except AllKeysExhaustedError:
+        raise
     except TranslationError as e:
         print(f"\n  ⚠️  批次失败: {e}", file=sys.stderr)
         return [""] * len(texts)
@@ -1107,6 +1458,8 @@ def translate_batch(provider: Provider, texts: list[str],
                 )
                 if single and single[0]:
                     results[i] = single[0]
+            except AllKeysExhaustedError:
+                raise
             except TranslationError:
                 pass
     return results
@@ -1308,7 +1661,7 @@ def main():
     parser.add_argument("--db", type=str, default="GPDb.db", help="SQLite 数据库路径")
     parser.add_argument("--limit", type=int, default=None, help="本次最多翻译多少条")
     parser.add_argument("--batch-size", type=int, default=None,
-                        help="每批翻译多少条（默认：简介 20，片名 50）")
+                        help="每批翻译多少条（默认：简介 12，片名 50）")
     parser.add_argument("--workers", type=int, default=4, help="并发批次数 (默认 4)")
     parser.add_argument("--dry-run", action="store_true", help="试运行：只翻译不写库")
     parser.add_argument("--stats", action="store_true", help="只打印翻译进度统计后退出")
@@ -1323,6 +1676,8 @@ def main():
     parser.add_argument("--list-profiles", action="store_true",
                         help="列出已保存的翻译服务配置后退出 (不显示 API Key)")
     parser.add_argument("--studio", help="只翻译指定片商/厂牌的影片和分集内容 (如 'Treasure Island Media')")
+    parser.add_argument("--auto-wait", action=argparse.BooleanOptionalAction, default=True,
+                        help="当所有 API Key 均达到今日配额上限时，是否自动休眠等待至次日配额重置后继续 (默认开启)")
     args = parser.parse_args()
 
     if args.list_profiles:
@@ -1351,60 +1706,68 @@ def main():
         print(f"  - 翻译失败:       {s['failed']:,}")
         print(f"  - 完成度:         {(s['translated'] / s['translatable'] * 100) if s['translatable'] else 0:.1f}%\n")
         print("🎬 【片名翻译进度】(按去重后的片名计)")
-        print(f"  - 全库片名:       {t['titles']:,}")
+        print(f"  - 全库片名:       {t['translatable']:,}")
         print(f"  - 已翻译:         {t['translated']:,}")
         print(f"  - 待翻译:         {t['pending']:,}")
         print(f"  - 翻译失败:       {t['failed']:,}")
-        print(f"  - 完成度:         {(t['translated'] / t['titles'] * 100) if t['titles'] else 0:.1f}%\n")
+        print(f"  - 完成度:         {(t['translated'] / t['translatable'] * 100) if t['translatable'] else 0:.1f}%\n")
         return
 
-    if args.glossary:
-        # Built with the glossary prompt rather than the synopsis one, and from the
-        # CLI flags so --profile / --api-key behave the same as for a normal run.
-        translate_glossary(
-            db,
-            dry_run=args.dry_run,
-            provider=build_provider(resolve_settings(args),
-                                    system_prompt=GLOSSARY_SYSTEM_PROMPT, noun="属性词"),
-        )
-        return
+    try:
+        if args.glossary:
+            # Built with the glossary prompt rather than the synopsis one, and from the
+            # CLI flags so --profile / --api-key behave the same as for a normal run.
+            translate_glossary(
+                db,
+                dry_run=args.dry_run,
+                provider=build_provider(resolve_settings(args),
+                                        system_prompt=GLOSSARY_SYSTEM_PROMPT, noun="属性词",
+                                        auto_wait=args.auto_wait),
+            )
+            return
 
-    if args.categories:
-        translate_categories(
-            db,
-            dry_run=args.dry_run,
-            provider=build_provider(resolve_settings(args),
-                                    system_prompt=CATEGORY_SYSTEM_PROMPT, noun="分类词"),
-        )
-        return
+        if args.categories:
+            translate_categories(
+                db,
+                dry_run=args.dry_run,
+                provider=build_provider(resolve_settings(args),
+                                        system_prompt=CATEGORY_SYSTEM_PROMPT, noun="分类词",
+                                        auto_wait=args.auto_wait),
+            )
+            return
 
-    if args.titles:
-        # The only mode that echoes sources back (see extract_translations): titles are
-        # short enough that a positional shift is invisible and permanent.
-        run_title_translation(
+        if args.titles:
+            # The only mode that echoes sources back (see extract_translations): titles are
+            # short enough that a positional shift is invisible and permanent.
+            run_title_translation(
+                db=db,
+                provider=build_provider(resolve_settings(args),
+                                        system_prompt=TITLE_SYSTEM_PROMPT,
+                                        noun="片名", echo_source=True,
+                                        auto_wait=args.auto_wait),
+                limit=args.limit,
+                batch_size=args.batch_size or 50,
+                workers=args.workers,
+                dry_run=args.dry_run,
+                with_context=not args.no_context,
+                studio=args.studio,
+            )
+            return
+
+        provider = build_provider(resolve_settings(args), auto_wait=args.auto_wait)
+        run_translation(
             db=db,
-            provider=build_provider(resolve_settings(args),
-                                    system_prompt=TITLE_SYSTEM_PROMPT,
-                                    noun="片名", echo_source=True),
+            provider=provider,
             limit=args.limit,
-            batch_size=args.batch_size or 50,
+            batch_size=args.batch_size or 12,
             workers=args.workers,
             dry_run=args.dry_run,
-            with_context=not args.no_context,
             studio=args.studio,
         )
-        return
-
-    provider = build_provider(resolve_settings(args))
-    run_translation(
-        db=db,
-        provider=provider,
-        limit=args.limit,
-        batch_size=args.batch_size or 20,
-        workers=args.workers,
-        dry_run=args.dry_run,
-        studio=args.studio,
-    )
+    except AllKeysExhaustedError as e:
+        print(f"\n⏸️  [退出] 所有 API Key 配额耗尽 (返回码 42): {e}")
+        print(f"   距离下一次配额重置还需等待: {e.retry_after_seconds / 3600:.2f} 小时")
+        sys.exit(42)
 
 
 if __name__ == "__main__":

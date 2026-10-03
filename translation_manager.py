@@ -221,6 +221,38 @@ def sync_to_main_db(main_db_path: Path, trans_db_path: Path, target_lang: str = 
                          [(d[1], d[0]) for d in ep_descs])
     print(f"    - Synced {len(ep_descs)} episode descriptions (description_zh)")
 
+    # 4. Sync studio name & cultural descriptions
+    trans_cur.execute("""
+        SELECT src_text,
+               MAX(CASE WHEN field='name' THEN trans_text END),
+               MAX(CASE WHEN field='description' THEN trans_text END)
+        FROM translations
+        WHERE entity_type = 'studio' AND target_lang = ?
+        GROUP BY src_text
+    """, (target_lang,))
+    studio_rows = trans_cur.fetchall()
+    if studio_rows:
+        main_cur.execute("""
+            CREATE TABLE IF NOT EXISTS studios (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                name           TEXT NOT NULL UNIQUE,
+                name_zh        TEXT,
+                description_zh TEXT,
+                updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        main_cur.execute("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+        for s_name, s_name_zh, s_desc_zh in studio_rows:
+            main_cur.execute("""
+                INSERT INTO studios (name, name_zh, description_zh)
+                VALUES (?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    name_zh = excluded.name_zh,
+                    description_zh = excluded.description_zh,
+                    updated_at = CURRENT_TIMESTAMP
+            """, (s_name, s_name_zh, s_desc_zh))
+        print(f"    - Synced {len(studio_rows)} studio profiles into studios table (name_zh & description_zh)")
+
     main_conn.commit()
     main_conn.close()
     trans_conn.close()

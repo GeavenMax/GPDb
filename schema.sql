@@ -192,6 +192,7 @@ CREATE TABLE IF NOT EXISTS episodes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_episodes_movie_id ON episodes(movie_id);
+CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);
 
 -- 5. 爬取断点与进度跟踪表 (Checkpoint & Progress Tracking)
 CREATE TABLE IF NOT EXISTS scrape_progress (
@@ -375,3 +376,18 @@ CREATE TABLE IF NOT EXISTS category_glossary (
     zh         TEXT NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 13. 片商与厂牌中文档案表 (Studios)
+--
+-- 存放片商的官方中文译名与深度历史文化/艺术风格考证解析。
+-- 数据源自 translations.db (entity_type = 'studio', field = 'name' / 'description')
+-- 供客户端卡片及片商详情页展示主标题中文、副标题英文及历史百科专栏。
+CREATE TABLE IF NOT EXISTS studios (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    name           TEXT NOT NULL UNIQUE,
+    name_zh        TEXT,
+    description_zh TEXT,
+    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);

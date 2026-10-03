@@ -1312,12 +1312,12 @@ class DatabaseManager:
         cur.execute("""
             SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh,
                    e.action_notes, m.title as movie_title,
-                   COALESCE(m.studio_name, e.studio_name),
+                   COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name),
                    COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)),
                    m.title_zh
             FROM episodes e
             LEFT JOIN movies m ON e.movie_id = m.id
-            WHERE COALESCE(m.studio_name, e.studio_name) = ?
+            WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?
             ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC,
                      e.id DESC
         """, (studio_name,))
@@ -1342,43 +1342,66 @@ class DatabaseManager:
                      limit: int = 24, offset: int = 0) -> tuple[list[dict], int]:
         """One page of the studio library, plus how many studios match the search.
 
-        Studios exist only as a column on `movies` — there is no table for them and
-        no artwork — so both counts come from grouping that column. The episode
-        count needs the LEFT JOIN rather than a second GROUP BY, because a studio
-        whose films have no episodes must still be listed, with 0. joined row count
-        is movies + episodes, and idx_movies_studio / idx_episodes_movie_id cover it.
+        Kept in step with gpdb_core's queries::studios::get_studio_library.
+        Aggregates movies and episodes with effective studio resolution.
         """
-        where = "WHERE m.studio_name IS NOT NULL AND trim(m.studio_name) != ''"
+        where = "WHERE s.name IS NOT NULL AND trim(s.name) != ''"
         args: list = []
         if query:
-            where += " AND m.studio_name LIKE ? ESCAPE '\\'"
+            where += " AND s.name LIKE ? ESCAPE '\\'"
             # The search box is free text, so % and _ must reach LIKE as literals.
             escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             args.append(f"%{escaped}%")
 
         order = {
-            "name": "m.studio_name COLLATE NOCASE ASC",
-            "episodes": "episodes_count DESC, works_count DESC, m.studio_name COLLATE NOCASE ASC",
-        }.get(sort, "works_count DESC, m.studio_name COLLATE NOCASE ASC")
+            "name": "s.name COLLATE NOCASE ASC",
+            "episodes": "episodes_count DESC, works_count DESC, s.name COLLATE NOCASE ASC",
+        }.get(sort, "works_count DESC, episodes_count DESC, s.name COLLATE NOCASE ASC")
 
         row = self.conn.execute(
-            f"SELECT count(DISTINCT m.studio_name) FROM movies m {where}", args
+            f"""SELECT count(*) FROM (
+                SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != ''
+                UNION
+                SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != ''
+            ) s {where}""", args
         ).fetchone()
         total = row[0] if row else 0
 
         cur = self.conn.execute(f"""
-            SELECT m.studio_name,
-                   count(DISTINCT m.id) AS works_count,
-                   count(e.id) AS episodes_count
-            FROM movies m
-            LEFT JOIN episodes e ON e.movie_id = m.id
+            SELECT s.name,
+                   st.name_zh,
+                   st.description_zh,
+                   COALESCE(m.cnt, 0) AS works_count,
+                   COALESCE(e.cnt, 0) AS episodes_count
+            FROM (
+                SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != ''
+                UNION
+                SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != ''
+            ) s
+            LEFT JOIN studios st ON (trim(st.name) = trim(s.name) COLLATE NOCASE OR trim(st.name_zh) = trim(s.name))
+            LEFT JOIN (
+                SELECT studio_name, count(*) AS cnt FROM movies
+                WHERE studio_name IS NOT NULL AND trim(studio_name) != ''
+                GROUP BY studio_name
+            ) m ON m.studio_name = s.name
+            LEFT JOIN (
+                SELECT COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) AS eff_studio, count(*) AS cnt
+                FROM episodes e
+                LEFT JOIN movies m ON e.movie_id = m.id
+                GROUP BY eff_studio
+            ) e ON e.eff_studio = s.name
             {where}
-            GROUP BY m.studio_name
             ORDER BY {order}
             LIMIT ? OFFSET ?
         """, [*args, limit, offset])
         items = [
-            {"name": r[0], "works_count": r[1], "episodes_count": r[2]}
+            {
+                "name": r[0],
+                "name_zh": r[1],
+                "description_zh": r[2],
+                "works_count": r[3],
+                "episodes_count": r[4]
+            }
             for r in cur.fetchall()
         ]
         return items, total
