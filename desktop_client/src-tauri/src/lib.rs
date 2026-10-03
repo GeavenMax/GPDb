@@ -120,6 +120,7 @@ pub fn run() {
             commands::system::set_window_material,
             commands::system::set_close_to_tray,
             commands::system::get_close_to_tray,
+            commands::system::set_taskbar_progress,
             commands::environment::check_runtime_environment,
         ])
         .run(tauri::generate_context!())
