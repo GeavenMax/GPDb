@@ -225,7 +225,7 @@ const selectedMovie = ref<Movie | null>(null);
 const selectedPerformer = ref<Performer | null>(null);
 
 /** The studio being viewed, and its works. Fetched here so the modal stays presentational. */
-const selectedStudio = ref<{ name: string; name_zh?: string | null; description_zh?: string | null; works_count?: number; episodes_count?: number } | null>(null);
+const selectedStudio = ref<{ name: string; name_zh?: string | null; description_zh?: string | null; logo_url?: string | null; banner_url?: string | null; works_count?: number; episodes_count?: number } | null>(null);
 const studioWorks = ref<StudioWorks | null>(null);
 const studioWorksLoading = ref(false);
 
@@ -1521,7 +1521,7 @@ async function openPerformerDetail(id: number) {
  * page just the name), so the films and episodes are fetched here rather than being
  * handed in the way they are for a movie or a performer.
  */
-async function openStudioDetail(studio: { name: string; name_zh?: string | null; description_zh?: string | null; works_count?: number; episodes_count?: number }) {
+async function openStudioDetail(studio: { name: string; name_zh?: string | null; description_zh?: string | null; logo_url?: string | null; banner_url?: string | null; works_count?: number; episodes_count?: number }) {
   pushModal('studio');
   recordStudioView(studio.name);
   selectedStudio.value = studio;
@@ -1532,11 +1532,17 @@ async function openStudioDetail(studio: { name: string; name_zh?: string | null;
     // A slower fetch for studio A must not land on top of studio B's page.
     if (selectedStudio.value?.name === studio.name) {
       studioWorks.value = works;
-      if (works.studio_name_zh && !selectedStudio.value.name_zh) {
+      if (works.studio_name_zh) {
         selectedStudio.value.name_zh = works.studio_name_zh;
       }
-      if (works.description_zh && !selectedStudio.value.description_zh) {
+      if (works.description_zh) {
         selectedStudio.value.description_zh = works.description_zh;
+      }
+      if (works.logo_url) {
+        selectedStudio.value.logo_url = works.logo_url;
+      }
+      if (works.banner_url) {
+        selectedStudio.value.banner_url = works.banner_url;
       }
     }
   } finally {

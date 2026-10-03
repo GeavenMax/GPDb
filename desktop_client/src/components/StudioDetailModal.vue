@@ -82,6 +82,7 @@ const episodesCount = computed(() => props.works?.episodes_count ?? props.studio
 
 // Bilingual & In-depth brand profile metadata
 const fetchedDescriptionZh = ref<string | null>(null);
+const cachedDescriptionZh = ref<string | null>(null);
 const fetchedLogoUrl = ref<string | null>(null);
 const logoError = ref(false);
 
@@ -98,8 +99,9 @@ async function loadStudioArchive(name?: string | null) {
   if (!name) return;
   try {
     const works = await api.getStudioWorks(name);
-    if (works?.description_zh && !props.works?.description_zh && !props.studio?.description_zh) {
+    if (works?.description_zh) {
       fetchedDescriptionZh.value = works.description_zh;
+      cachedDescriptionZh.value = works.description_zh;
     }
     if (works?.logo_url && !props.works?.logo_url && !props.studio?.logo_url) {
       fetchedLogoUrl.value = works.logo_url;
@@ -109,9 +111,28 @@ async function loadStudioArchive(name?: string | null) {
   }
 }
 
+watch(
+  () => [props.studio?.description_zh, props.works?.description_zh, fetchedDescriptionZh.value],
+  ([studioDesc, worksDesc, fetchedDesc]) => {
+    for (const c of [worksDesc, studioDesc, fetchedDesc]) {
+      if (typeof c === 'string' && c.trim().length > 0) {
+        cachedDescriptionZh.value = c.trim();
+        return;
+      }
+    }
+  },
+  { immediate: true }
+);
+
 const effectiveNameZh = computed(() => (props.works?.studio_name_zh ?? props.studio?.name_zh ?? '').trim() || null);
 const effectiveDescriptionZh = computed(() => {
-  return (props.works?.description_zh || props.studio?.description_zh || fetchedDescriptionZh.value || '').trim() || null;
+  if (cachedDescriptionZh.value) return cachedDescriptionZh.value;
+  for (const c of [props.works?.description_zh, props.studio?.description_zh, fetchedDescriptionZh.value]) {
+    if (typeof c === 'string' && c.trim().length > 0) {
+      return c.trim();
+    }
+  }
+  return null;
 });
 const hasTranslation = computed(() => Boolean(effectiveNameZh.value || effectiveDescriptionZh.value));
 
@@ -167,6 +188,7 @@ watch(() => props.studio?.name, (newName) => {
   displayedEpisodeCount.value = BATCH_SIZE;
   showOriginalOverride.value = null;
   fetchedDescriptionZh.value = null;
+  cachedDescriptionZh.value = null;
   fetchedLogoUrl.value = null;
   logoError.value = false;
   if (newName) loadStudioArchive(newName);
@@ -224,7 +246,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       </button>
 
       <!-- Profile Header. Displays dual titles (Chinese main + light-gray English subtitle) when available. -->
-      <div class="p-6 md:p-8 bg-sunken border-b border-line flex items-center gap-6">
+      <div class="p-6 md:p-8 bg-sunken border-b border-line flex items-center gap-6 shrink-0">
         <!-- Studio Avatar / Official Logo -->
         <div class="w-24 h-20 md:w-32 md:h-24 rounded-2xl overflow-hidden shrink-0 shadow-lg shadow-accent-fill/10 ring-1 ring-line-strong/60 bg-surface-2/80 flex items-center justify-center p-2 relative group">
           <img
@@ -287,7 +309,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       <!-- Studio History & Brand Archive Column ("厂牌历史档案与风格深度解析专栏") -->
       <div
         v-if="effectiveDescriptionZh"
-        class="mx-6 md:mx-8 mt-6 p-6 md:p-8 rounded-3xl bg-gradient-to-br from-surface-2/95 via-surface/90 to-surface-2/70 border border-line-strong shadow-xl relative overflow-hidden group transition-all"
+        class="mx-6 md:mx-8 mt-6 p-6 md:p-8 rounded-3xl bg-gradient-to-br from-surface-2/95 via-surface/90 to-surface-2/70 border border-line-strong shadow-xl relative overflow-hidden group transition-all shrink-0 min-h-fit"
       >
         <!-- Background decorative watermark -->
         <div class="absolute -right-6 -bottom-8 text-accent/[0.04] pointer-events-none select-none transition-transform duration-500 group-hover:scale-105 group-hover:text-accent/[0.07]">
@@ -329,7 +351,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       </div>
 
       <!-- Works Section -->
-      <div class="p-6 md:p-8 space-y-6">
+      <div class="p-6 md:p-8 space-y-6 shrink-0">
         <div class="flex items-center justify-between border-b border-line pb-4">
           <div class="flex items-center gap-2">
             <button

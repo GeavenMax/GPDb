@@ -143,6 +143,7 @@ const providerForm = reactive({
   model: '',
   base_url: '',
   api_key: '',
+  active: true,
 });
 
 async function loadTranslationStats() {
@@ -166,6 +167,7 @@ function applyPreset(preset: TranslationPreset) {
   providerForm.model = preset.model;
   providerForm.base_url = preset.base_url;
   providerForm.api_key = '';
+  providerForm.active = true;
 }
 
 function openProviderForm(profile?: TranslationProfile) {
@@ -179,6 +181,7 @@ function openProviderForm(profile?: TranslationProfile) {
     providerForm.type = profile.type as any;
     providerForm.model = profile.model;
     providerForm.base_url = profile.base_url;
+    providerForm.active = profile.active || !providerList.value.some(p => p.active);
   } else {
     providerForm.editing = '';
     providerForm.name = '';
@@ -186,6 +189,7 @@ function openProviderForm(profile?: TranslationProfile) {
     providerForm.type = 'openai';
     providerForm.model = '';
     providerForm.base_url = '';
+    providerForm.active = providerList.value.length === 0 || !providerList.value.some(p => p.active);
   }
   providerForm.api_key = '';
 }
@@ -197,6 +201,8 @@ async function saveProvider() {
   }
   providerBusy.value = true;
   providerMsg.value = '';
+  const hasActive = providerList.value.some(p => p.active);
+  const shouldBeActive = providerForm.active || !hasActive || (!providerForm.editing && providerList.value.length === 0);
   const res = await api.saveTranslationProvider({
     name: providerForm.name.trim(),
     label: providerForm.label.trim() || providerForm.name.trim(),
@@ -204,7 +210,7 @@ async function saveProvider() {
     model: providerForm.model.trim(),
     base_url: providerForm.base_url.trim(),
     api_key: providerForm.api_key.trim(),
-    active: !providerForm.editing && providerList.value.length === 0,
+    active: shouldBeActive,
   });
   providerBusy.value = false;
   if (res.success) {
@@ -680,7 +686,16 @@ onMounted(() => {
                 {{ t('plugins.apiKeyTip') }}
               </div>
 
-              <div class="flex items-center gap-2">
+              <label class="flex items-center gap-2 text-xs text-fg-2 cursor-pointer select-none py-1">
+                <input
+                  type="checkbox"
+                  v-model="providerForm.active"
+                  class="rounded text-accent focus:ring-accent w-4 h-4 cursor-pointer"
+                />
+                <span>{{ t('plugins.setActiveOnSave') || '设为默认生效的翻译来源' }}</span>
+              </label>
+
+              <div class="flex items-center gap-2 pt-1">
                 <button
                   @click="saveProvider"
                   :disabled="providerBusy"

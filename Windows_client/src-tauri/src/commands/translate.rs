@@ -49,15 +49,63 @@ pub struct ProviderTestResult {
     pub error: Option<String>,
 }
 
-/// `translate_config.json`，与当前数据库同一个目录。
-fn config_path() -> PathBuf {
-    // 找不到数据库时退回当前目录（空 PathBuf 的 parent 就是它自己，join 出来是相对
-    // 路径，与 `translate.py` 在仓库根目录下的行为一致）。这里**不能**因为找不到库
-    // 就报错返回：设置页得能打开、能填 Key，否则用户连补救的机会都没有。
-    let dir = crate::db::find_db_path()
-        .and_then(|db| db.parent().map(Path::to_path_buf))
-        .unwrap_or_default();
-    dir.join(tc::CONFIG_FILE_NAME)
+/// `translate_config.json` 寻找策略：
+/// 1. 优先检查数据库同级目录下的 `translate_config.json`（若已存在，则保持同目录）
+/// 2. 检查应用数据目录 `com.gpdb.app/translate_config.json`（若已存在，则使用）
+/// 3. 若均不存在：
+///    - 若数据库同级目录存在且非空，使用数据库同级目录
+///    - 否则安全回退至系统应用数据目录 `com.gpdb.app`
+pub fn config_path() -> PathBuf {
+    if let Some(db_dir) = crate::db::find_db_path().and_then(|db| db.parent().map(Path::to_path_buf)) {
+        let p = db_dir.join(tc::CONFIG_FILE_NAME);
+        if p.is_file() {
+            return p;
+        }
+    }
+
+    if let Some(app_cfg) = crate::db::config_file_path() {
+        if let Some(parent) = app_cfg.parent() {
+            let p = parent.join(tc::CONFIG_FILE_NAME);
+            if p.is_file() {
+                return p;
+            }
+        }
+    }
+
+    if let Some(db_dir) = crate::db::find_db_path().and_then(|db| db.parent().map(Path::to_path_buf)) {
+        if !db_dir.as_os_str().is_empty() {
+            return db_dir.join(tc::CONFIG_FILE_NAME);
+        }
+    }
+
+    if let Some(app_cfg) = crate::db::config_file_path() {
+        if let Some(parent) = app_cfg.parent() {
+            let _ = std::fs::create_dir_all(parent);
+            return parent.join(tc::CONFIG_FILE_NAME);
+        }
+    }
+
+    PathBuf::from(tc::CONFIG_FILE_NAME)
+}
+
+/// 读取有效翻译配置：若主路径配置为空，自动尝试备用路径
+pub fn load_active_config() -> tc::Config {
+    let path = config_path();
+    let cfg = tc::load_config(&path);
+    if cfg.profiles.is_empty() {
+        if let Some(app_cfg) = crate::db::config_file_path() {
+            if let Some(parent) = app_cfg.parent() {
+                let alt = parent.join(tc::CONFIG_FILE_NAME);
+                if alt != path && alt.is_file() {
+                    let alt_cfg = tc::load_config(&alt);
+                    if !alt_cfg.profiles.is_empty() {
+                        return alt_cfg;
+                    }
+                }
+            }
+        }
+    }
+    cfg
 }
 
 /// 已保存的来源 + 可预填的预设。永远不含 API Key，只有 `has_key` / `key_hint`。
@@ -95,8 +143,13 @@ pub fn save_translation_provider(input: tc::ProfileInput) -> Result<Vec<tc::Prof
         active: input.active,
     };
     tc::save_profile(&path, &normalized).map_err(|e| e.to_string())?;
-    // 勾了「立即使用」才切换，与 HTTP 处理器一致：单独保存不动当前来源。
-    if input.active == Some(true) {
+
+    // 如果显式勾选了立即使用，或者当前尚未激活任何来源，或者正在编辑当前激活的来源，自动激活
+    let cur_cfg = tc::load_config(&path);
+    let should_activate = input.active == Some(true)
+        || cur_cfg.active.trim().is_empty()
+        || cur_cfg.active.trim() == name;
+    if should_activate {
         tc::set_active_profile(&path, &name).map_err(|e| e.to_string())?;
     }
     Ok(tc::list_profiles(&path))
@@ -328,7 +381,7 @@ fn build_user_turn(texts: &[String]) -> String {
     format!("请翻译以下 {} 条简介：\n\n{}", texts.len(), numbered)
 }
 
-fn extract_translations(raw: &str, expected: usize) -> Result<Vec<String>, String> {
+pub fn extract_translations(raw: &str, expected: usize) -> Result<Vec<String>, String> {
     let mut text = raw.trim();
     if text.starts_with("```") {
         if let Some(first_line_end) = text.find('\n') {
@@ -340,52 +393,164 @@ fn extract_translations(raw: &str, expected: usize) -> Result<Vec<String>, Strin
         text = text.trim();
     }
 
-    let parsed: serde_json::Value = if let Ok(val) = serde_json::from_str(text) {
-        val
-    } else {
-        let start = text.find('{').ok_or_else(|| format!("未在模型返回中找到有效 JSON: {}", &raw[..raw.len().min(300)]))?;
-        let end = text.rfind('}').ok_or_else(|| format!("未在模型返回中找到合法的 JSON 闭合括号: {}", &raw[..raw.len().min(300)]))?;
-        serde_json::from_str(&text[start..=end])
-            .map_err(|e| format!("解析模型返回 JSON 失败: {} (原文: {})", e, &raw[..raw.len().min(300)]))?
-    };
-
-    let mut out = vec![String::new(); expected];
-
-    if let Some(items) = parsed.get("translations").and_then(|v| v.as_array()).or_else(|| parsed.as_array()) {
-        for (pos, item) in items.iter().enumerate() {
-            if let Some(s) = item.as_str() {
-                if pos < expected {
-                    out[pos] = s.trim().to_string();
+    // 1. 单条翻译（影片档案页、分集档案页最普遍场景，与 Android 行为完全对齐）
+    if expected == 1 {
+        // 先检查是否为 JSON 结构
+        let parsed_json: Option<serde_json::Value> = serde_json::from_str(text).ok().or_else(|| {
+            if let (Some(start), Some(end)) = (text.find('{'), text.rfind('}')) {
+                if start < end {
+                    serde_json::from_str(&text[start..=end]).ok()
+                } else {
+                    None
                 }
-            } else if let Some(obj) = item.as_object() {
-                let idx = obj.get("i")
-                    .and_then(|v| v.as_i64())
-                    .map(|i| (i - 1) as usize)
-                    .unwrap_or(pos);
-                let val = obj.get("zh")
-                    .or_else(|| obj.get("translation"))
-                    .or_else(|| obj.get("text"))
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                if idx < expected && !val.trim().is_empty() {
-                    out[idx] = val.trim().to_string();
+            } else {
+                None
+            }
+        });
+
+        if let Some(parsed) = parsed_json {
+            if let Some(items) = parsed.get("translations").and_then(|v| v.as_array()).or_else(|| parsed.as_array()) {
+                if let Some(first) = items.first() {
+                    if let Some(s) = first.as_str() {
+                        let trimmed = s.trim();
+                        if !trimmed.is_empty() {
+                            return Ok(vec![trimmed.to_string()]);
+                        }
+                    } else if let Some(obj) = first.as_object() {
+                        let zh = obj.get("zh")
+                            .or_else(|| obj.get("translation"))
+                            .or_else(|| obj.get("text"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("");
+                        let trimmed = zh.trim();
+                        if !trimmed.is_empty() {
+                            return Ok(vec![trimmed.to_string()]);
+                        }
+                    }
+                }
+            } else if let Some(zh) = parsed.get("zh")
+                .or_else(|| parsed.get("translation"))
+                .or_else(|| parsed.get("result"))
+                .and_then(|v| v.as_str())
+            {
+                let trimmed = zh.trim();
+                if !trimmed.is_empty() {
+                    return Ok(vec![trimmed.to_string()]);
                 }
             }
         }
-    } else if expected == 1 {
-        if let Some(zh) = parsed.get("zh").or_else(|| parsed.get("translation")).or_else(|| parsed.get("result")).and_then(|v| v.as_str()) {
-            out[0] = zh.trim().to_string();
+
+        // 大模型通常直接返回纯文本翻译（如 Android 端一样），清理前缀序号和包裹符号
+        let mut s = text.trim();
+        for prefix in ["1.", "1、", "1:", "1：", "(1)", "（1）"] {
+            if s.starts_with(prefix) {
+                s = s[prefix.len()..].trim();
+                break;
+            }
+        }
+        let cleaned = s.trim_matches(|c| c == '"' || c == '\'' || c == '`' || c == '{' || c == '}').trim();
+        if !cleaned.is_empty() {
+            return Ok(vec![cleaned.to_string()]);
+        }
+        return Err(format!("模型返回了空译文: {}", &raw[..raw.len().min(300)]));
+    }
+
+    // 2. 多条批量翻译场景
+    let mut out = vec![String::new(); expected];
+
+    let parsed_opt: Option<serde_json::Value> = serde_json::from_str(text).ok().or_else(|| {
+        if let (Some(start), Some(end)) = (text.find('{'), text.rfind('}')) {
+            if start < end {
+                serde_json::from_str(&text[start..=end]).ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    });
+
+    if let Some(parsed) = parsed_opt {
+        if let Some(items) = parsed.get("translations").and_then(|v| v.as_array()).or_else(|| parsed.as_array()) {
+            for (pos, item) in items.iter().enumerate() {
+                if let Some(s) = item.as_str() {
+                    if pos < expected {
+                        out[pos] = s.trim().to_string();
+                    }
+                } else if let Some(obj) = item.as_object() {
+                    let idx = obj.get("i")
+                        .and_then(|v| v.as_i64())
+                        .map(|i| (i - 1) as usize)
+                        .unwrap_or(pos);
+                    let val = obj.get("zh")
+                        .or_else(|| obj.get("translation"))
+                        .or_else(|| obj.get("text"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    if idx < expected && !val.trim().is_empty() {
+                        out[idx] = val.trim().to_string();
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. 降级：如果模型按行或分段编号返回（例如 "1. xxx\n\n2. yyy"）
+    if out.iter().all(|s| s.is_empty()) {
+        let mut current_idx: Option<usize> = None;
+        let mut chunks: Vec<(usize, String)> = Vec::new();
+
+        for line in text.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let mut matched_idx = None;
+            for prefix_len in 1..=3 {
+                if trimmed.len() > prefix_len {
+                    let (num_part, rest) = trimmed.split_at(prefix_len);
+                    if let Ok(n) = num_part.parse::<usize>() {
+                        if rest.starts_with('.') || rest.starts_with('、') || rest.starts_with(':') || rest.starts_with('：') {
+                            matched_idx = Some((n, rest[rest.chars().next().unwrap().len_utf8()..].trim()));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if let Some((n, content)) = matched_idx {
+                if n >= 1 && n <= expected {
+                    current_idx = Some(n - 1);
+                    chunks.push((n - 1, content.to_string()));
+                    continue;
+                }
+            }
+
+            if let Some(idx) = current_idx {
+                if let Some(last) = chunks.iter_mut().find(|(i, _)| *i == idx) {
+                    last.1.push('\n');
+                    last.1.push_str(trimmed);
+                }
+            }
+        }
+
+        for (idx, content) in chunks {
+            if idx < expected {
+                out[idx] = content.trim().to_string();
+            }
+        }
+    }
+
+    // 如果仍为空但原始文本非空，将全文赋予第一项
+    if out.iter().all(|s| s.is_empty()) && !text.is_empty() {
+        let cleaned = text.trim_matches(|c| c == '{' || c == '}' || c == '"' || c == '`');
+        if !cleaned.is_empty() {
+            out[0] = cleaned.trim().to_string();
         }
     }
 
     if out.iter().all(|s| s.is_empty()) {
-        if expected == 1 && !text.is_empty() {
-            let cleaned = text.trim_matches(|c| c == '{' || c == '}' || c == '"' || c == '`');
-            if !cleaned.is_empty() {
-                out[0] = cleaned.trim().to_string();
-                return Ok(out);
-            }
-        }
         return Err(format!("未能从模型返回解析出有效译文: {}", &raw[..raw.len().min(300)]));
     }
 
@@ -481,15 +646,27 @@ pub fn call_llm_with_provider(
         return Ok((String::new(), String::new(), Vec::new()));
     }
 
-    let path = config_path();
-    let cfg = tc::load_config(&path);
+    let cfg = load_active_config();
     let active_name = match provider_name.filter(|s| !s.trim().is_empty()) {
         Some(p) => p.trim().to_string(),
         None => {
-            if cfg.active.trim().is_empty() {
-                return Err("尚未设置激活的翻译模型来源，请前往「设置 - 外部插件」配置并启用大模型".to_string());
+            if !cfg.active.trim().is_empty() && cfg.profiles.contains_key(cfg.active.trim()) {
+                cfg.active.trim().to_string()
+            } else {
+                // 容错：自动挑选第一个已配置 Key 的模型来源，或本地 Ollama
+                let candidate = cfg.profiles.iter().find(|(_, p)| {
+                    !p.api_key.trim().is_empty()
+                        || p.base_url.contains("localhost")
+                        || p.base_url.contains("127.0.0.1")
+                });
+                if let Some((name, _)) = candidate {
+                    name.clone()
+                } else if let Some((name, _)) = cfg.profiles.iter().next() {
+                    name.clone()
+                } else {
+                    return Err("尚未配置任何大模型翻译来源，请前往「设置 - 外部插件」添加大模型并填入 API Key".to_string());
+                }
             }
-            cfg.active.trim().to_string()
         }
     };
 
@@ -501,8 +678,6 @@ pub fn call_llm_with_provider(
         Some(p) => p,
         None => DEFAULT_SYSTEM_PROMPT,
     };
-
-    let user_turn = build_user_turn(texts);
 
     // 1. Google Gemini 模式 (支持多 Key 自动轮换与配额保护)
     if profile.kind == "gemini" {
@@ -522,20 +697,36 @@ pub fn call_llm_with_provider(
         };
         let endpoint = format!("{}/v1beta/models/{}:generateContent", base_url, model);
 
+        let (gemini_prompt, gemini_user_turn) = if texts.len() == 1 {
+            (prompt.to_string(), texts[0].trim().to_string())
+        } else {
+            (
+                format!(
+                    "{}\n\n只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。\n输出格式（严格遵守）：\n{{\"translations\": [{{\"i\": 1, \"zh\": \"第一条译文\"}}, ...]}}",
+                    prompt
+                ),
+                build_user_turn(texts),
+            )
+        };
+
+        let mut gen_config = serde_json::json!({
+            "temperature": 0.3
+        });
+        if texts.len() > 1 {
+            gen_config["responseMimeType"] = serde_json::json!("application/json");
+        }
+
         let payload = serde_json::json!({
             "systemInstruction": {
-                "parts": [{ "text": prompt }]
+                "parts": [{ "text": gemini_prompt }]
             },
             "contents": [
                 {
                     "role": "user",
-                    "parts": [{ "text": user_turn }]
+                    "parts": [{ "text": gemini_user_turn }]
                 }
             ],
-            "generationConfig": {
-                "responseMimeType": "application/json",
-                "temperature": 0.3
-            },
+            "generationConfig": gen_config,
             "safetySettings": [
                 {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
                 {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
@@ -664,14 +855,29 @@ pub fn call_llm_with_provider(
         };
         let endpoint = format!("{}/v1/messages", base_url);
 
-        let payload = serde_json::json!({
+        let (claude_system, claude_user) = if texts.len() == 1 {
+            (prompt.to_string(), texts[0].trim().to_string())
+        } else {
+            (
+                format!(
+                    "{}\n\n只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。\n输出格式（严格遵守）：\n{{\"translations\": [{{\"i\": 1, \"zh\": \"第一条译文\"}}, ...]}}",
+                    prompt
+                ),
+                build_user_turn(texts),
+            )
+        };
+
+        let mut payload = serde_json::json!({
             "model": model,
             "max_tokens": 16000,
-            "system": prompt,
+            "system": claude_system,
             "messages": [
-                { "role": "user", "content": user_turn }
-            ],
-            "output_config": {
+                { "role": "user", "content": claude_user }
+            ]
+        });
+
+        if texts.len() > 1 {
+            payload["output_config"] = serde_json::json!({
                 "effort": "low",
                 "format": {
                     "type": "json_schema",
@@ -695,8 +901,8 @@ pub fn call_llm_with_provider(
                         "additionalProperties": false
                     }
                 }
-            }
-        });
+            });
+        }
 
         let payload_str = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
         let headers = [
@@ -733,7 +939,8 @@ pub fn call_llm_with_provider(
         return Ok((active_name, model.to_string(), translations));
     }
 
-    // 3. 通用 OpenAI 兼容接口模式 (DeepSeek, Moonshot, Qwen, Ollama, OpenAI 等)
+    // 3. 通用 OpenAI 兼容接口模式 (DeepSeek, Moonshot, Qwen, Ollama, OpenAI, SiliconFlow 等)
+    // 行为完全对齐 Android 端（LLMTranslationService.kt），确保单条翻译直接可靠
     let api_key = profile.api_key.trim();
     let base_url = profile.base_url.trim().trim_end_matches('/');
     let is_local = base_url.contains("localhost") || base_url.contains("127.0.0.1");
@@ -756,21 +963,43 @@ pub fn call_llm_with_provider(
         "https://api.openai.com/v1/chat/completions".to_string()
     } else if base_url.ends_with("/chat/completions") {
         base_url.to_string()
-    } else if base_url.ends_with("/v1") {
+    } else if base_url.ends_with("/v1") || base_url.ends_with("/v4") || base_url.ends_with("/v3") {
+        format!("{}/chat/completions", base_url)
+    } else if base_url.contains("/v1/") {
+        format!("{}/chat/completions", base_url.trim_end_matches('/'))
+    } else if base_url.contains("deepseek.com") {
         format!("{}/chat/completions", base_url)
     } else {
-        format!("{}/chat/completions", base_url)
+        format!("{}/v1/chat/completions", base_url)
     };
 
-    let payload = serde_json::json!({
+    let (openai_system, openai_user) = if texts.len() == 1 {
+        (prompt.to_string(), texts[0].trim().to_string())
+    } else {
+        (
+            format!(
+                "{}\n\n只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。\n输出格式（严格遵守）：\n{{\"translations\": [{{\"i\": 1, \"zh\": \"第一条译文\"}}, ...]}}",
+                prompt
+            ),
+            build_user_turn(texts),
+        )
+    };
+
+    let mut payload = serde_json::json!({
         "model": model,
         "messages": [
-            { "role": "system", "content": prompt },
-            { "role": "user", "content": user_turn }
+            { "role": "system", "content": openai_system },
+            { "role": "user", "content": openai_user }
         ],
-        "response_format": { "type": "json_object" },
         "temperature": 0.3
     });
+
+    // 单条翻译绝不强制 json_object（避免 OpenAI / DeepSeek / 代理网关抛 HTTP 400，与 Android 端一致）
+    let should_try_json_object = texts.len() > 1 && custom_prompt.is_none();
+    if should_try_json_object {
+        payload["response_format"] = serde_json::json!({ "type": "json_object" });
+    }
+
     let payload_str = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
 
     let mut headers = vec![("Content-Type", "application/json")];
@@ -780,7 +1009,17 @@ pub fn call_llm_with_provider(
         headers.push(("Authorization", &auth_header));
     }
 
-    let resp_str = http_post(&endpoint, &headers, &payload_str, 90)?;
+    let resp_str = match http_post(&endpoint, &headers, &payload_str, 90) {
+        Ok(s) => s,
+        Err(e) if should_try_json_object && (e.contains("400") || e.to_lowercase().contains("response_format")) => {
+            log::warn!("OpenAI endpoint returned 400 with response_format, retrying without response_format: {}", e);
+            payload.as_object_mut().unwrap().remove("response_format");
+            let retry_payload = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
+            http_post(&endpoint, &headers, &retry_payload, 90)?
+        }
+        Err(e) => return Err(e),
+    };
+
     let resp_val: serde_json::Value = serde_json::from_str(&resp_str)
         .map_err(|e| format!("接口返回非 JSON 数据: {}", e))?;
 

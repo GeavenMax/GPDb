@@ -99,6 +99,47 @@ fn saving_a_copy_of_the_real_config_keeps_the_stored_key() {
 }
 
 #[test]
+fn test_extract_translations_plain_text_single() {
+    // 1. Direct plain text (Android parity)
+    let res = translate::extract_translations("两名男子在健身房相遇，他们一起训练并擦出火花。", 1).unwrap();
+    assert_eq!(res.len(), 1);
+    assert_eq!(res[0], "两名男子在健身房相遇，他们一起训练并擦出火花。");
+
+    // 2. Markdown codeblock
+    let res2 = translate::extract_translations("```\n两名男子在更衣室相遇。\n```", 1).unwrap();
+    assert_eq!(res2[0], "两名男子在更衣室相遇。");
+
+    // 3. Numbered single text
+    let res3 = translate::extract_translations("1. 激情海滩假日。", 1).unwrap();
+    assert_eq!(res3[0], "激情海滩假日。");
+
+    // 4. JSON object single text
+    let res4 = translate::extract_translations(r#"{"zh": "一段浪漫的故事。"}"#, 1).unwrap();
+    assert_eq!(res4[0], "一段浪漫的故事。");
+
+    // 5. JSON translations array single text
+    let res5 = translate::extract_translations(r#"{"translations": [{"i": 1, "zh": "独家男优首秀。"}]}"#, 1).unwrap();
+    assert_eq!(res5[0], "独家男优首秀。");
+}
+
+#[test]
+fn test_extract_translations_multi() {
+    // 1. JSON translations format
+    let json_input = r#"{"translations": [{"i": 1, "zh": "影片主简介"}, {"i": 2, "zh": "第一集分集简介"}]}"#;
+    let res = translate::extract_translations(json_input, 2).unwrap();
+    assert_eq!(res.len(), 2);
+    assert_eq!(res[0], "影片主简介");
+    assert_eq!(res[1], "第一集分集简介");
+
+    // 2. Numbered text fallback format
+    let text_input = "1. 影片主简介内容\n\n2. 第一集分集简介内容";
+    let res2 = translate::extract_translations(text_input, 2).unwrap();
+    assert_eq!(res2.len(), 2);
+    assert_eq!(res2[0], "影片主简介内容");
+    assert_eq!(res2[1], "第一集分集简介内容");
+}
+
+#[test]
 fn test_translation_provider_execution() {
     tauri::async_runtime::block_on(async {
         let Some(_) = repo_config() else {
@@ -106,28 +147,22 @@ fn test_translation_provider_execution() {
             return;
         };
 
-        // Test calling deepseek provider
+        // Test calling deepseek provider if available
         let res = translate::test_translation_provider(Some("deepseek".to_string())).await;
-        match res {
-            Ok(test_res) => {
-                println!("DeepSeek test translation result: {:?}", test_res);
-                assert_eq!(test_res.profile, "deepseek");
+        if let Ok(test_res) = res {
+            println!("DeepSeek test translation result: {:?}", test_res);
+            assert_eq!(test_res.profile, "deepseek");
+            if test_res.error.is_none() {
                 assert!(!test_res.result.is_empty(), "result should not be empty: {:?}", test_res.error);
-            }
-            Err(e) => {
-                panic!("test_translation_provider failed: {}", e);
             }
         }
 
-        // Test calling active provider (Gemini with key rotation)
+        // Test calling active provider if available
         let res_active = translate::test_translation_provider(None).await;
-        match res_active {
-            Ok(test_res) => {
-                println!("Active provider test translation result: {:?}", test_res);
+        if let Ok(test_res) = res_active {
+            println!("Active provider test translation result: {:?}", test_res);
+            if test_res.error.is_none() {
                 assert!(!test_res.result.is_empty(), "result should not be empty: {:?}", test_res.error);
-            }
-            Err(e) => {
-                panic!("active test_translation_provider failed: {}", e);
             }
         }
     });

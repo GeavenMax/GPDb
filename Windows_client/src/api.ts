@@ -971,6 +971,7 @@ export const api = {
   async translateMovie(movieId: number, customPrompt?: string): Promise<{
     description_zh: string | null;
     episodes: Array<{ id: number; description_zh: string }>;
+    error?: string;
   } | null> {
     if (isTauri) {
       try {
@@ -984,21 +985,37 @@ export const api = {
           description_zh: res?.description_zh || null,
           episodes: Array.isArray(res?.episodes) ? res.episodes : [],
         };
-      } catch (e) {
+      } catch (e: any) {
         console.error('Tauri translate_movie failed:', e);
-        return null;
+        const errMsg = typeof e === 'string' ? e : (e?.message || '翻译失败');
+        return {
+          description_zh: null,
+          episodes: [],
+          error: errMsg,
+        };
       }
     }
     try {
       const res = await fetch(`/api/movies/${movieId}/translate`, { method: 'POST' });
       const body = await res.json();
-      if (!res.ok || body?.error) return null;
+      if (!res.ok || body?.error) {
+        return {
+          description_zh: null,
+          episodes: [],
+          error: body?.error || `HTTP ${res.status}`,
+        };
+      }
       return {
         description_zh: body?.description_zh || null,
         episodes: Array.isArray(body?.episodes) ? body.episodes : [],
       };
-    } catch {}
-    return null;
+    } catch (e: any) {
+      return {
+        description_zh: null,
+        episodes: [],
+        error: e?.message || '网络请求失败',
+      };
+    }
   },
 
   /**
@@ -1008,6 +1025,7 @@ export const api = {
     id: number;
     movie_id?: number | null;
     description_zh: string | null;
+    error?: string;
   } | null> {
     if (isTauri) {
       try {
@@ -1022,22 +1040,41 @@ export const api = {
           movie_id: res?.movie_id ?? null,
           description_zh: res?.description_zh || null,
         };
-      } catch (e) {
+      } catch (e: any) {
         console.error('Tauri translate_episode failed:', e);
-        return null;
+        const errMsg = typeof e === 'string' ? e : (e?.message || '翻译失败');
+        return {
+          id: episodeId,
+          movie_id: null,
+          description_zh: null,
+          error: errMsg,
+        };
       }
     }
     try {
       const res = await fetch(`/api/episodes/${episodeId}/translate`, { method: 'POST' });
       const body = await res.json();
-      if (!res.ok || body?.error) return null;
+      if (!res.ok || body?.error) {
+        return {
+          id: episodeId,
+          movie_id: null,
+          description_zh: null,
+          error: body?.error || `HTTP ${res.status}`,
+        };
+      }
       return {
         id: body?.id ?? episodeId,
         movie_id: body?.movie_id ?? null,
         description_zh: body?.description_zh || null,
       };
-    } catch {}
-    return null;
+    } catch (e: any) {
+      return {
+        id: episodeId,
+        movie_id: null,
+        description_zh: null,
+        error: e?.message || '网络请求失败',
+      };
+    }
   },
 
   // --- Favorites (five entity types; see schema.sql §9) ---

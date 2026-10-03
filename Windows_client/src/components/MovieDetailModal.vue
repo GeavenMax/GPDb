@@ -313,7 +313,7 @@ async function translateNow() {
   translateError.value = '';
   const id = props.movie.id;
   const result = await api.translateMovie(id);
-  if (result) {
+  if (result && !result.error && (result.description_zh || result.episodes.length > 0)) {
     // Empty when the server skipped an already-translated synopsis and only sent
     // episodes — keep what is on screen rather than blanking it.
     const zh = (result.description_zh || '').trim();
@@ -326,7 +326,7 @@ async function translateNow() {
     applyEpisodeTranslations(result.episodes);
     emit('user-data-changed', id);
   } else {
-    translateError.value = t('plugins.failed');
+    translateError.value = result?.error || t('plugins.failed');
   }
   isTranslating.value = false;
 }

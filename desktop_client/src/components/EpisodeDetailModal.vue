@@ -71,12 +71,12 @@ async function translateEpisodeNow() {
   isTranslating.value = true;
   translateError.value = '';
   const res = await api.translateEpisode(props.episode.id);
-  if (res && res.description_zh) {
+  if (res && !res.error && res.description_zh) {
     props.episode.description_zh = res.description_zh;
     showOriginal.value = false;
     emit('episode-translated', props.episode.id, res.description_zh);
   } else {
-    translateError.value = t('plugins.failed');
+    translateError.value = res?.error || t('plugins.failed');
   }
   isTranslating.value = false;
 }

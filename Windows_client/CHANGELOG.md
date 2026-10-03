@@ -8,16 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.16.7] - 2026-10-03
 
 ### Fixed
+- **用户自填大模型 API Key 剧情与分集 AI 翻译失效彻底修复（全量对齐 Android 端行为）(`commands/translate.rs`, `PluginsView.vue`, `api.ts`, `MovieDetailModal.vue`, `EpisodeDetailModal.vue`, `i18n/index.ts`)**：
+  - **单条翻译纯文本解析兼容（消除 JSON 强制反序列化报错）**：查明此前用户配置自己的 API Key（如 DeepSeek/OpenAI/Moonshot/Claude 等）并在详情页点击 AI 翻译时，模型按直觉返回纯中文译文（正如 Android 端一样），但桌面端后端因强制调用 `text.find('{')` 解析 JSON 结构而导致抛出 `未在模型返回中找到有效 JSON` 并静默失败的根源；重构 `extract_translations`，当单条翻译（`expected == 1`）时优先容纳直接返回的纯中文正文，智能清理前缀序号与外层包裹，与 Android 端 `LLMTranslationService.kt` 行为 100% 对齐；
+  - **OpenAI 兼容接口去除单条强制 `response_format` 并支持智能 400 重试**：移除单条翻译请求中的 `"response_format": {"type": "json_object"}`，彻底杜绝 DeepSeek、Moonshot、通义千问、本地 Ollama 以及各种第三方 OpenAI 代理网关因不支持或提示词未显式包含 "json" 词汇而抛出 `HTTP 400 Bad Request` 的问题；多条翻译时若服务端仍报错 400 则自动去掉该参数重试；
+  - **端点 URL 自适应规范化补齐 `/v1`**：对于用户填入的 `https://api.openai.com`、`https://api.deepseek.com` 或反代域名，智能按协议规则自适应规范化补齐端点为 `/v1/chat/completions` 或 `/chat/completions`，避免 404；
+  - **来源保存自动激活与配置多路径智能漫游**：保存或编辑自填 API Key 时若当前尚未激活任何来源则自动设为生效来源，并新增“设为默认生效的翻译来源”直观切换开关；配置文件 `translate_config.json` 采用数据库同级目录与系统用户数据目录（`%APPDATA%/com.gpdb.app`）智能双向回退与合并加载，杜绝无写权限目录报错；
+  - **错误提示精准穿透直达 UI**：`api.ts` 与详情弹窗彻底废止吞掉报错返回 `null` 的做法，接口若报错（如 Key 无效、网络超时或未配置）实时将原因精准呈现在界面中，告别迷茫。
 - **桌面端大模型剧情与分集 AI 翻译无响应与按钮不可用彻底修复 (`commands/translate.rs`, `src-tauri/src/lib.rs`, `src/api.ts`, `MovieDetailModal.vue`, `EpisodeDetailModal.vue`, `PluginsView.vue`)**：
   - **纯 Rust 原生进程内翻译引擎**：彻底替换此前前端直连 `server.py` HTTP 接口的调用链，在桌面端内核中原生实现纯 Rust TLS 翻译引擎（支持 Google Gemini、OpenAI 兼容协议如 DeepSeek、Moonshot、智谱、通义千问、硅基流动、本地 Ollama 以及 Anthropic Claude 等全部模型）；
   - **Google Gemini API Key 智能轮换与配额保护**：针对 Gemini Free Tier 每日 500 次配额限制 (`RESOURCE_EXHAUSTED` / `429`)，原生实现原子级 API Key 轮换池，单 Key 额度耗尽自动无缝切换备用 Key；全部 Key 耗尽时自动智能转交 DeepSeek 等备用服务商补救，避免任务中断；
   - **影片档案页 AI 翻译全场景解除桌面端限制**：移除此前因缺少 HTTP 服务而设定的 `!IS_TAURI` 禁用条件与“未翻译”死文本，影片剧情与未翻译分集翻译按钮全量点亮并支持一键翻译联动；
   - **插件设置页桌面端直接「试译」**：解除原“桌面版暂不支持在此试译”限制，用户填入 API Key 后可直接在设置界面实时连通大模型进行单句试译测试并查看延迟与质量反馈。
-- **“厂牌历史档案与风格深度解析专栏”正文展示与版面舒展修复 (`StudioDetailModal.vue`, `i18n/index.ts`)**：
-  - 彻底修复此前片商档案详情弹窗中因高度受限导致的厂牌历史专栏被压缩成紧凑胶囊药丸、正文无法正常显示的视觉缺陷；
-  - 专栏卡片升级为大画幅舒展架构（`w-auto mx-6 md:mx-8 p-6 md:p-8 rounded-3xl`），搭配左侧专属主色边线（`border-l-2 border-accent/50`）、典籍徽标（`BookOpen`）与深度解析标签（`Sparkles`）；
-  - 正文排版采用 `text-sm md:text-[15px] leading-relaxed text-justify select-text whitespace-pre-line`，完整呈现 181 家核心厂牌创立年代、创始人背景、美学流派与文化演变深度历史档案；
-  - 规范并统一国际化专栏标题文案为「厂牌历史档案与风格深度解析专栏」。
+- **“厂牌历史档案与风格深度解析专栏”正文展示与版面舒展修复 (`StudioDetailModal.vue`, `App.vue`, `i18n/index.ts`)**：
+  - **彻底修复正文展示一瞬间后收缩变窄的布局缺陷**：查明因父弹窗容器采用 `max-h-[90vh] flex flex-col` 布局，当作品列表（如 Man's Best 的 622 部影片）加载完成突发撑高时，未设置 `shrink-0` 的历史专栏被 Flexbox 强制收缩并将正文裁剪溢出的根本原因；显式为 Header、专栏卡片与 Works Section 容器注入 `shrink-0 min-h-fit`，杜绝任何弹性压缩；
+  - **状态持久化防抖与响应式缓存保障 (`cachedDescriptionZh`)**：构建独立响应式缓存机制与多级兜底（`props.works` -> `props.studio` -> `fetchedDescriptionZh` -> `cachedDescriptionZh`），配合 `App.vue` 实时元数据回填，确保不论从片商库、收藏夹或跳转进入，正文首帧即显且在作品异步加载完成后恒定完整保留；
+  - **专栏卡片升级大画幅舒展架构**：卡片采用全宽舒展结构（`w-auto mx-6 md:mx-8 p-6 md:p-8 rounded-3xl`），搭配左侧专属主色边线（`border-l-2 border-accent/50`）、典籍徽标（`BookOpen`）与深度解析标签（`Sparkles`）；
+  - **优雅排版与多语言对齐**：正文排版采用 `text-sm md:text-[15px] leading-relaxed text-justify select-text whitespace-pre-line`，完整呈现 181 家核心厂牌创立年代、创始人背景、美学流派与文化演变深度历史档案；全语种统一更新标题为「厂牌历史档案与风格深度解析专栏」。
 
 ### Added
 - **分集档案页 (Episode) 全新上线「AI 翻译剧情」与双语对照切换 (`EpisodeDetailModal.vue`, `App.vue`, `api.ts`, `commands/translate.rs`)**：
