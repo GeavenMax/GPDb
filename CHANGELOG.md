@@ -6,10 +6,10 @@
 ## [v2.17.0] - 2026-10-03
 
 ### Changed
-- **片商官方横幅 (Banner) 与品牌 Logo 影视级自适应画幅系统 (`StudioDetailModal.vue`, `App.vue`)**：
-  - **流光画幅顶部 Hero Banner (Blurred Backdrop Hero)**：片商档案页最上方引入现代流光画幅架构。底层采用高斯模糊环境光（`blur-2xl opacity-40 scale-125`），中央自适应容纳任意比例官方 Banner 并配合水平两端微光渐变羽化（`[mask-image:linear-gradient(...)]`）自然过渡至内容区；无横幅时自动降级为品牌微光背景；
-  - **Logo 悬浮徽章半嵌画幅（位置 A）**：片商 Logo 采用悬浮半嵌入设计（跨越 Hero 底部与信息区缝隙），采用柔和毛玻璃底衬（`bg-surface-2/95 backdrop-blur-md shadow-xl`）与边框投影，彻底解决非正方形、非透明背景与长条形 Logo 变形或对比度不足的问题；无 Logo 时优雅降级为品牌首字母徽章；
-  - **片商库网格展示台升级**：将原片商网格中固定 64x64 正方形容器重构为统一样式的自适应宽幅展台（`w-full h-20 rounded-2xl`），`object-contain` 容纳非正方形与宽幅 Logo，保持网格整齐划一，图片加载异常时自动切换至精致单字徽标；
+- **片商头部沉浸式画幅与 Logo 动态边缘取色融底系统 (`StudioDetailModal.vue`, `App.vue`, `colorSampler.ts`)**：
+  - **Banner 整体化沉浸背景**：彻底取消原顶部独立分割的大条幅占位，改为将 Banner 作为片商档案头部的原生全景背景。底层叠加环境光模糊（`blur-2xl opacity-40 scale-125`），右侧自然展现官方条幅纹理并向左水平羽化渐变；片商 Logo、标题、作品统计及右侧操作按钮直接浮动覆盖于 Banner 背景之上，层次紧凑通透，绝无空间割裂感；
+  - **Logo 动态边缘取色融底与自适应画幅 (`colorSampler.ts`)**：针对非 PNG/无透明层（如白底或黑底 JPEG）以及各种比例异形 Logo，引入轻量级 Canvas 边缘探测取色算法。毫秒级探测 Logo 四角与边缘主色（自动识别透明通道、纯白底、纯黑底与品牌纯色底），动态填充 Logo 容器空白区域，彻底消除方形突兀色块边缘，使任何比例的 Logo 均与容器浑然一体；
+  - **片商库网格展示台同步边缘取色**：片商网格卡片内的展示展台（`w-full h-20`）同步接入边缘探测着色，非透明图片自动无缝融底，搭配等比缩放与无图首字母优雅降级；
   - **双端严格对齐**：完全覆盖并同步至 `desktop_client` 与 `Windows_client`。
 - **片商档案详情弹窗（Studio Modal）性能大幅调优与设计轻量化 (`StudioDetailModal.vue`, `MovieCard.vue`)**：
   - **精简“厂牌介绍”渲染开销**：移除过度繁琐的高消耗微光渐变层、专属书籍典籍标识（`BookOpen`）、深度解析徽标（`Sparkles`）以及底纹大水印设计，改为清爽扁平、自适应高对比度的卡片布局，降低 GPU 绘制负载；

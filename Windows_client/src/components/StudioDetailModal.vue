@@ -6,6 +6,7 @@ import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
 import { claimEscape } from '../utils/escape';
 import { getImageUrl } from '../utils/image';
+import { sampleImageEdgeColor, type SampledColorResult } from '../utils/colorSampler';
 import { pluginsConfig } from '../services/pluginManager';
 import { api } from '../api';
 import { t } from '../i18n';
@@ -119,6 +120,22 @@ function onBannerError() {
   bannerError.value = true;
 }
 
+const logoSampledResult = ref<SampledColorResult | null>(null);
+
+function onModalLogoLoad(e: Event) {
+  const img = e.target as HTMLImageElement;
+  if (img) {
+    logoSampledResult.value = sampleImageEdgeColor(img);
+  }
+}
+
+const logoBadgeStyle = computed(() => {
+  if (logoSampledResult.value?.bgColor) {
+    return logoSampledResult.value.containerStyle;
+  }
+  return {};
+});
+
 /**
  * Fallback archive fetcher: only called if works wasn't supplied by parent
  * or parent works did not contain description_zh, logo_url or banner_url.
@@ -226,6 +243,7 @@ watch(() => props.studio?.name, (newName) => {
   fetchedBannerUrl.value = null;
   logoError.value = false;
   bannerError.value = false;
+  logoSampledResult.value = null;
   nextTick(() => {
     if (modalContainerRef.value) {
       modalContainerRef.value.scrollTop = 0;
@@ -275,82 +293,92 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
       class="relative w-full max-w-5xl lg:max-w-6xl max-h-[90vh] chrome-panel border border-line-strong/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col text-fg"
       @scroll="handleScroll"
     >
-      <!-- Close Button: Pinned to top-right corner over the Hero Banner -->
+      <!-- Close Button: Pinned to top-right corner of the header -->
       <button
         @click="emit('close')"
-        class="absolute top-4 right-4 z-30 w-8 h-8 on-scrim rounded-full bg-scrim/60 hover:bg-scrim/90 border border-white/20 flex items-center justify-center text-fg-2 hover:text-fg transition shadow-md cursor-pointer"
+        class="absolute top-4 right-4 z-20 w-8 h-8 on-scrim rounded-full bg-scrim/60 hover:bg-scrim/90 border border-white/20 flex items-center justify-center text-fg-2 hover:text-fg transition shadow-md cursor-pointer"
       >
         <X class="w-4 h-4" />
       </button>
 
-      <!-- 1. Hero Banner: Blurred Backdrop Hero (流光画幅) -->
-      <div
-        class="relative w-full overflow-hidden shrink-0 select-none bg-sunken transition-all duration-300"
-        :class="effectiveBannerUrl ? 'h-48 sm:h-56 md:h-64' : 'h-32 sm:h-40 md:h-44'"
-      >
-        <!-- Banner Ambient Backdrop (底图流光环境色) -->
-        <div
-          v-if="effectiveBannerUrl"
-          class="absolute inset-0 bg-cover bg-center blur-2xl opacity-40 scale-125 pointer-events-none transform-gpu"
-          :style="{ backgroundImage: `url(${getImageUrl(effectiveBannerUrl)})` }"
-        ></div>
-        <div
-          v-else
-          class="absolute inset-0 bg-gradient-to-br from-accent-fill/15 via-surface-2 to-sunken pointer-events-none"
-        >
-          <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent/10 to-transparent"></div>
-        </div>
-
-        <!-- Center Sharp Artwork (居中高清主体条幅，两端优雅羽化渐变) -->
-        <div
-          v-if="effectiveBannerUrl"
-          class="absolute inset-0 flex items-center justify-center pointer-events-none p-4 md:p-6"
-        >
+      <!-- Unified Studio Profile Header: Banner serves as the immersive background across the full header -->
+      <div class="relative overflow-hidden border-b border-line p-6 md:p-8 shrink-0 bg-sunken min-h-[140px] md:min-h-[170px] flex items-center">
+        <!-- 1. Background Banner Layer (Behind all foreground content) -->
+        <div v-if="effectiveBannerUrl" class="absolute inset-0 pointer-events-none select-none overflow-hidden">
+          <!-- Ambient blurred glow filling header -->
+          <div
+            class="absolute inset-0 bg-cover bg-center blur-2xl opacity-40 scale-125 transform-gpu"
+            :style="{ backgroundImage: `url(${getImageUrl(effectiveBannerUrl)})` }"
+          ></div>
+          <!-- Sharp Artwork: Spread across right & center with feathered left mask -->
           <img
             :src="getImageUrl(effectiveBannerUrl)"
             :alt="mainTitle"
-            class="max-h-full w-auto max-w-[85%] object-contain drop-shadow-2xl transition-transform duration-500 [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
+            class="absolute right-0 top-0 h-full w-full object-cover object-center opacity-30 md:opacity-45 [mask-image:linear-gradient(to_left,black_25%,transparent_90%)]"
             @error="onBannerError"
           />
+          <!-- Contrast scrim overlays so text, logo, and buttons are crystal clear -->
+          <div class="absolute inset-0 bg-gradient-to-r from-sunken/95 via-sunken/80 to-sunken/45"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-sunken/90 via-transparent to-sunken/30"></div>
         </div>
+        <div v-else class="absolute inset-0 pointer-events-none select-none bg-gradient-to-br from-accent-fill/10 via-surface-2/40 to-sunken"></div>
 
-        <!-- Bottom Ambient Shadow & Gradient (底部渐变融入内容区) -->
-        <div class="absolute inset-0 bg-gradient-to-t from-sunken via-sunken/40 to-transparent pointer-events-none"></div>
-      </div>
-
-      <!-- 2. Profile Info Section with Position A Floating Logo Badge -->
-      <div class="px-6 md:px-8 pb-6 bg-sunken border-b border-line shrink-0 relative">
-        <!-- Floating Row: Logo Badge (半嵌在 Banner 下沿) + Action Controls -->
-        <div class="flex items-end justify-between gap-4 -mt-10 sm:-mt-12 md:-mt-14 relative z-10 flex-wrap sm:flex-nowrap">
-          <!-- Logo Badge (Position A) -->
-          <div class="flex items-end gap-3 min-w-0">
+        <!-- 2. Foreground Content: Floating directly on top of the banner background -->
+        <div class="relative z-10 w-full flex flex-col md:flex-row md:items-center justify-between gap-6 pr-8">
+          <!-- Left: Logo Badge + Studio Titles & Stats -->
+          <div class="flex items-center gap-5 min-w-0 flex-1">
+            <!-- Studio Logo (Edge color sampled, adaptive badge) -->
             <div
               v-if="effectiveLogoUrl"
-              class="h-16 sm:h-20 min-w-[72px] max-w-[220px] sm:max-w-[280px] px-3.5 py-2 rounded-2xl bg-surface-2/95 backdrop-blur-md border border-line-strong shadow-xl flex items-center justify-center shrink-0 overflow-hidden group"
+              class="h-16 md:h-20 min-w-[72px] max-w-[200px] md:max-w-[240px] px-3.5 py-2 rounded-2xl border shadow-xl flex items-center justify-center shrink-0 overflow-hidden transition-all duration-300 group"
+              :class="logoSampledResult?.bgColor ? '' : 'bg-surface-2/90 backdrop-blur-md border-line-strong/80'"
+              :style="logoBadgeStyle"
             >
               <img
                 :src="getImageUrl(effectiveLogoUrl)"
                 :alt="mainTitle"
+                crossorigin="anonymous"
                 class="w-auto h-full max-w-full max-h-full object-contain filter drop-shadow transition-transform duration-300 group-hover:scale-105"
+                @load="onModalLogoLoad"
                 @error="onLogoError"
               />
             </div>
+            <!-- Monogram Fallback when no logo -->
             <div
               v-else
-              class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-accent-deep to-accent-2 border border-line-strong shadow-xl flex items-center justify-center shrink-0 text-2xl font-black text-on-fill/80"
+              class="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-tr from-accent-deep to-accent-2 border border-line-strong/80 shadow-xl flex items-center justify-center shrink-0 text-2xl font-black text-on-fill/80"
             >
               {{ (mainTitle || studio.name).charAt(0).toUpperCase() }}
             </div>
+
+            <!-- Studio Titles & Counts -->
+            <div class="min-w-0 flex-1 space-y-1">
+              <div class="text-[11px] font-semibold text-accent uppercase tracking-wider">{{ t('studio.profile') }}</div>
+              <h1 class="text-2xl md:text-3xl lg:text-4xl font-black text-fg break-words line-clamp-2 leading-tight" :title="mainTitle">
+                {{ mainTitle }}
+              </h1>
+              <div v-if="subTitle" class="text-xs md:text-sm font-medium text-fg-4 break-words line-clamp-1 tracking-wide" :title="subTitle">
+                {{ subTitle }}
+              </div>
+              <div class="text-xs text-fg-3 pt-1 flex items-center gap-3 flex-wrap">
+                <span class="px-2.5 py-0.5 rounded-lg bg-surface-2/80 border border-line-strong text-accent font-medium">
+                  {{ worksCount }} {{ t('common.works') }}
+                </span>
+                <span v-if="episodesCount" class="px-2.5 py-0.5 rounded-lg bg-surface-2/80 border border-line-strong text-fg-3">
+                  {{ episodesCount }} {{ t('common.episodes') }}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <!-- Action buttons: BT Search, Google Search, Language Toggle, Favorite -->
-          <div class="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 flex-wrap">
+          <!-- Right: Action Buttons Group -->
+          <div class="shrink-0 flex items-center gap-2 flex-wrap self-start md:self-center">
             <template v-if="pluginsConfig.resourceSearchEnabled">
               <ResourceSearchWidget
                 type="studio"
                 :title="studio.name"
                 wrapper-class="contents"
-                button-class="py-1.5 px-3 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-fg shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+                button-class="py-2 px-3 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-fg shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap"
               />
             </template>
 
@@ -358,7 +386,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               v-if="hasTranslation"
               @click="toggleLang"
               :title="effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal')"
-              class="py-1.5 px-3 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-fg shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+              class="py-2 px-3 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-fg shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap"
             >
               <Languages class="w-3.5 h-3.5 shrink-0" />
               <span class="truncate">{{ effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal') }}</span>
@@ -367,7 +395,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <button
               @click="emit('toggle-favorite', studio.name)"
               :class="[
-                'py-1.5 px-3 rounded-xl text-xs font-medium border shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap',
+                'py-2 px-3 rounded-xl text-xs font-medium border shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap',
                 isFavorite
                   ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
                   : 'bg-surface-2/80 hover:bg-surface-3 border-line text-fg-3 hover:text-danger'
@@ -376,19 +404,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               <Heart class="w-3.5 h-3.5 shrink-0" :fill="isFavorite ? 'currentColor' : 'none'" />
               <span class="truncate">{{ isFavorite ? t('studio.favorited') : t('studio.favorite') }}</span>
             </button>
-          </div>
-        </div>
-
-        <!-- Studio Title, Subtitle, and Stats Counts -->
-        <div class="mt-4 min-w-0">
-          <div class="text-[11px] font-semibold text-accent uppercase tracking-wider">{{ t('studio.profile') }}</div>
-          <h1 class="text-2xl md:text-3xl lg:text-4xl font-black text-fg break-words line-clamp-2 leading-tight mt-1" :title="mainTitle">{{ mainTitle }}</h1>
-          <div v-if="subTitle" class="text-xs md:text-sm font-medium text-fg-4 mt-1 break-words line-clamp-2 tracking-wide" :title="subTitle">
-            {{ subTitle }}
-          </div>
-          <div class="text-xs text-fg-3 mt-2.5 flex items-center gap-3 flex-wrap">
-            <span class="text-accent/80 font-medium">{{ worksCount }} {{ t('common.works') }}</span>
-            <span v-if="episodesCount">{{ episodesCount }} {{ t('common.episodes') }}</span>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { ref, reactive, shallowReactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import Navbar from './components/Navbar.vue';
 import Sidebar from './components/Sidebar.vue';
 import MovieCard from './components/MovieCard.vue';
@@ -27,6 +27,7 @@ import {
   createEpisodeFilters, countActiveEpisodeFilters, EPISODE_SORTS, IS_TAURI,
 } from './api';
 import { getImageUrl } from './utils/image';
+import { sampleImageEdgeColor, type SampledColorResult } from './utils/colorSampler';
 import { openLightbox, viewableImageFrom, zoomsOnClick, lightboxImage } from './utils/lightbox';
 import { initTheme, setTheme, themeChoice, autoThemeOption, concreteThemeOptions } from './utils/theme';
 import AppIcon from './components/AppIcon.vue';
@@ -228,6 +229,37 @@ const selectedPerformer = ref<Performer | null>(null);
 const selectedStudio = ref<{ name: string; name_zh?: string | null; description_zh?: string | null; logo_url?: string | null; banner_url?: string | null; works_count?: number; episodes_count?: number } | null>(null);
 const studioWorks = ref<StudioWorks | null>(null);
 const studioWorksLoading = ref(false);
+
+const studioLogoColorMap = shallowReactive<Record<string, SampledColorResult>>({});
+
+function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
+  if (!logoUrl) return;
+  const img = e.target as HTMLImageElement;
+  if (!img) return;
+  const result = sampleImageEdgeColor(img);
+  if (result.bgColor) {
+    studioLogoColorMap[logoUrl] = result;
+  }
+}
+
+function getStudioShelfStyle(logoUrl?: string | null): Record<string, string> {
+  if (!logoUrl) return {};
+  const sampled = studioLogoColorMap[logoUrl];
+  if (sampled?.bgColor) {
+    return {
+      backgroundColor: sampled.bgColor,
+      borderColor: sampled.isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)',
+    };
+  }
+  return {};
+}
+
+function getStudioShelfClass(logoUrl?: string | null): string {
+  if (logoUrl && studioLogoColorMap[logoUrl]?.bgColor) {
+    return '';
+  }
+  return 'bg-surface-2/60 group-hover:bg-surface-2/80';
+}
 
 /**
  * The director being viewed, and their films. Fetched here so the modal stays
@@ -2282,14 +2314,20 @@ onUnmounted(() => {
               @click="openStudioDetail(s)"
               class="p-4 rounded-2xl bg-surface/60 border border-line hover:border-accent-fill/40 hover:bg-surface transition-all cursor-pointer flex flex-col items-center text-center group"
             >
-              <!-- Studio Logo Stand: Uniform wide adaptive display shelf -->
-              <div class="w-full h-20 rounded-2xl overflow-hidden shrink-0 shadow-sm border border-line-strong/60 group-hover:border-accent-fill/50 group-hover:bg-surface-2/80 transition-all bg-surface-2/60 flex items-center justify-center p-2.5 relative">
+              <!-- Studio Logo Stand: Uniform wide adaptive display shelf with edge color sampling -->
+              <div
+                class="w-full h-20 rounded-2xl overflow-hidden shrink-0 shadow-sm border border-line-strong/60 group-hover:border-accent-fill/50 transition-all flex items-center justify-center p-2.5 relative"
+                :class="getStudioShelfClass(s.logo_url)"
+                :style="getStudioShelfStyle(s.logo_url)"
+              >
                 <img
                   v-if="s.logo_url"
                   :src="getImageUrl(s.logo_url)"
                   :alt="s.name"
+                  crossorigin="anonymous"
                   class="max-w-[88%] max-h-full w-auto h-auto object-contain filter drop-shadow group-hover:scale-105 transition duration-300"
                   loading="lazy"
+                  @load="onStudioGridLogoLoad($event, s.logo_url)"
                   @error="s.logo_url = null"
                 />
                 <div
