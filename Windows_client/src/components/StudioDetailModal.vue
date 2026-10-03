@@ -327,10 +327,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div class="relative z-10 w-full flex flex-col md:flex-row md:items-center justify-between gap-6 pr-8">
           <!-- Left: Logo Badge + Studio Titles & Stats -->
           <div class="flex items-center gap-5 min-w-0 flex-1">
-            <!-- Studio Logo (Edge color sampled, adaptive badge) -->
+            <!-- Studio Logo (Fixed-size slightly larger square container with edge color sampling) -->
             <div
               v-if="effectiveLogoUrl"
-              class="h-16 md:h-20 min-w-[72px] max-w-[200px] md:max-w-[240px] px-3.5 py-2 rounded-2xl border shadow-xl flex items-center justify-center shrink-0 overflow-hidden transition-all duration-300 group"
+              class="w-20 h-20 md:w-24 md:h-24 p-2 rounded-2xl border shadow-xl flex items-center justify-center shrink-0 overflow-hidden transition-all duration-300 group"
               :class="logoSampledResult?.bgColor ? '' : 'bg-surface-2/90 backdrop-blur-md border-line-strong/80'"
               :style="logoBadgeStyle"
             >
@@ -338,7 +338,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 :src="getImageUrl(effectiveLogoUrl)"
                 :alt="mainTitle"
                 crossorigin="anonymous"
-                class="w-auto h-full max-w-full max-h-full object-contain filter drop-shadow transition-transform duration-300 group-hover:scale-105"
+                class="w-auto h-auto max-w-full max-h-full object-contain filter drop-shadow transition-transform duration-300 group-hover:scale-105"
                 @load="onModalLogoLoad"
                 @error="onLogoError"
               />
@@ -346,7 +346,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <!-- Monogram Fallback when no logo -->
             <div
               v-else
-              class="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-tr from-accent-deep to-accent-2 border border-line-strong/80 shadow-xl flex items-center justify-center shrink-0 text-2xl font-black text-on-fill/80"
+              class="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-tr from-accent-deep to-accent-2 border border-line-strong/80 shadow-xl flex items-center justify-center shrink-0 text-3xl font-black text-on-fill/80"
             >
               {{ (mainTitle || studio.name).charAt(0).toUpperCase() }}
             </div>
@@ -371,14 +371,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
           </div>
 
-          <!-- Right: Action Buttons Group -->
-          <div class="shrink-0 flex items-center gap-2 flex-wrap self-start md:self-center">
+          <!-- Right: Action Buttons Group (2 columns grid, 2 buttons per row) -->
+          <div class="shrink-0 grid grid-cols-2 gap-2 w-auto min-w-[210px] max-w-[260px] self-start md:self-center">
             <template v-if="pluginsConfig.resourceSearchEnabled">
               <ResourceSearchWidget
                 type="studio"
                 :title="studio.name"
                 wrapper-class="contents"
-                button-class="py-2 px-3 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-fg shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+                button-class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-fg shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full"
               />
             </template>
 
@@ -386,7 +386,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
               v-if="hasTranslation"
               @click="toggleLang"
               :title="effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal')"
-              class="py-2 px-3 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-fg shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap"
+              class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/80 hover:bg-surface-3 text-fg-3 hover:text-fg shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full"
             >
               <Languages class="w-3.5 h-3.5 shrink-0" />
               <span class="truncate">{{ effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal') }}</span>
@@ -395,7 +395,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             <button
               @click="emit('toggle-favorite', studio.name)"
               :class="[
-                'py-2 px-3 rounded-xl text-xs font-medium border shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap',
+                'py-1.5 px-2.5 rounded-xl text-xs font-medium border shadow-sm flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full',
                 isFavorite
                   ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
                   : 'bg-surface-2/80 hover:bg-surface-3 border-line text-fg-3 hover:text-danger'
