@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { t } from '../i18n';
+
 /**
  * One active filter, rendered on the page it narrows.
  *
@@ -39,8 +41,8 @@ defineEmits<{ remove: [] }>();
       type="button"
       @click="$emit('remove')"
       class="hover:text-fg transition"
-      :aria-label="`清除${label || ''}筛选：${value}`"
-      :title="`清除${label || ''}筛选`"
+      :aria-label="t('common.clearFilterNamed', { name: label ? `${label}: ${value}` : value })"
+      :title="t('common.clearFilterNamed', { name: label ? `${label}: ${value}` : value })"
     >
       ×
     </button>

@@ -8,6 +8,7 @@ import { api } from '../api';
 import { getImageUrl } from '../utils/image';
 import SeriesCollageCover from '../components/SeriesCollageCover.vue';
 import type { HomeFeedData, HomeSpotlightMovie, AppTab, SeriesCollectionItem, Movie } from '../types';
+import { t, currentLocale } from '../i18n';
 
 const emit = defineEmits<{
   (e: 'open-movie', id: number): void;
@@ -89,9 +90,12 @@ function handleSelectSpotlight(idx: number) {
 
 const todayFormatted = computed(() => {
   const now = new Date();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${m}月${d}日`;
+  if (currentLocale.value.startsWith('zh')) {
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${m}月${d}日`;
+  }
+  return now.toLocaleDateString(currentLocale.value, { month: 'short', day: 'numeric' });
 });
 
 const brokenImages = ref<Set<string>>(new Set());
@@ -201,7 +205,7 @@ onBeforeUnmount(() => {
           />
           <div class="absolute inset-0 bg-black/20 opacity-0 group-hover/poster:opacity-100 transition flex items-center justify-center">
             <span class="px-3 py-1.5 rounded-xl bg-black/70 backdrop-blur-md text-xs font-bold text-white border border-white/20">
-              查看详情
+              {{ t('home.viewDetail') }}
             </span>
           </div>
         </div>
@@ -212,7 +216,7 @@ onBeforeUnmount(() => {
           <div class="flex items-center justify-center md:justify-start gap-2 flex-wrap">
             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-accent-fill/15 text-accent border border-accent/20">
               <Sparkles class="w-3.5 h-3.5" />
-              <span>焦点推荐</span>
+              <span>{{ t('home.spotlight') }}</span>
             </span>
             <span v-if="currentSpotlight.release_year" class="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-surface-2 text-fg-3 border border-line">
               {{ currentSpotlight.release_year }}
@@ -221,7 +225,7 @@ onBeforeUnmount(() => {
               {{ currentSpotlight.studio_name }}
             </span>
             <span v-if="currentSpotlight.director_name" class="px-2 py-0.5 rounded-full text-xs bg-surface-2 text-fg-4 border border-line">
-              导演: {{ currentSpotlight.director_name }}
+              {{ t('filter.director') }}: {{ currentSpotlight.director_name }}
             </span>
             <span v-if="currentSpotlight.rating" class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
               <Star class="w-3 h-3 fill-amber-400" />
@@ -244,7 +248,7 @@ onBeforeUnmount(() => {
 
           <!-- Synopsis Excerpt -->
           <p class="text-xs md:text-sm text-fg-3 leading-relaxed line-clamp-3 md:line-clamp-4 max-w-2xl">
-            {{ currentSpotlight.description_zh || currentSpotlight.description || '暂无详细剧情简介。' }}
+            {{ (currentLocale.startsWith('zh') ? currentSpotlight.description_zh : null) || currentSpotlight.description || t('movie.noSynopsis') }}
           </p>
 
           <!-- Buttons & Switcher -->
@@ -253,17 +257,17 @@ onBeforeUnmount(() => {
               @click="emit('open-movie', currentSpotlight.id)"
               class="px-5 py-2.5 rounded-xl bg-accent-fill hover:bg-accent-fill/90 text-on-fill font-bold text-xs flex items-center gap-2 shadow-lg shadow-accent/20 transition cursor-pointer"
             >
-              <span>立即探索</span>
+              <span>{{ t('home.exploreNow') }}</span>
               <ArrowRight class="w-3.5 h-3.5" />
             </button>
 
             <button
               @click="handleManualNext"
               class="px-4 py-2.5 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 border border-line text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-              title="切换下一部焦点推荐"
+              :title="t('home.switchOne')"
             >
               <RefreshCw class="w-3.5 h-3.5" />
-              <span>换一部</span>
+              <span>{{ t('home.switchOne') }}</span>
             </button>
           </div>
         </div>
@@ -273,14 +277,14 @@ onBeforeUnmount(() => {
       <button
         @click="handleManualPrev"
         class="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/10 transition opacity-0 group-hover:opacity-100 z-20 cursor-pointer"
-        title="上一部"
+        :title="t('home.prev')"
       >
         <ChevronLeft class="w-4 h-4" />
       </button>
       <button
         @click="handleManualNext"
         class="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 hover:bg-black/70 text-white backdrop-blur-md border border-white/10 transition opacity-0 group-hover:opacity-100 z-20 cursor-pointer"
-        title="下一部"
+        :title="t('home.next')"
       >
         <ChevronRight class="w-4 h-4" />
       </button>
@@ -309,12 +313,12 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <h3 class="text-base font-extrabold text-fg tracking-tight flex items-center gap-2">
-              <span>往年今日 · 经典首映</span>
+              <span>{{ t('home.onThisDay') }}</span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 font-mono font-bold">
                 {{ todayFormatted }}
               </span>
             </h3>
-            <p class="text-xs text-fg-4 mt-0.5">历史上的今天在各大厂牌首发或收录的经典篇章</p>
+            <p class="text-xs text-fg-4 mt-0.5">{{ t('home.onThisDayDesc') }}</p>
           </div>
         </div>
       </div>
@@ -341,10 +345,10 @@ onBeforeUnmount(() => {
               class="text-sm font-bold text-fg line-clamp-2 min-h-[2.5rem] leading-snug group-hover:text-accent transition"
               :title="item.episode_title || item.movie_title_zh || item.movie_title || undefined"
             >
-              {{ item.episode_title || item.movie_title_zh || item.movie_title || '分集场景' }}
+              {{ item.episode_title || (currentLocale.startsWith('zh') ? item.movie_title_zh : null) || item.movie_title || t('home.episodeScene') }}
             </h4>
             <div class="flex items-center justify-between text-xs text-fg-4 pt-1.5 border-t border-line/40">
-              <span class="truncate max-w-[140px] font-medium">{{ item.studio_name || '独立制作' }}</span>
+              <span class="truncate max-w-[140px] font-medium">{{ item.studio_name || t('home.featuredStudio') }}</span>
               <span class="font-mono text-[11px] text-fg-3">{{ item.release_date }}</span>
             </div>
           </div>
@@ -361,9 +365,9 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <h3 class="text-base font-extrabold text-fg tracking-tight">
-              今日星光 · 标志面孔
+              {{ t('home.todayStars') }}
             </h3>
-            <p class="text-xs text-fg-4 mt-0.5">本地影库中备受瞩目的传奇演员与专属全集档案</p>
+            <p class="text-xs text-fg-4 mt-0.5">{{ t('home.todayStarsDesc') }}</p>
           </div>
         </div>
 
@@ -371,7 +375,7 @@ onBeforeUnmount(() => {
           @click="emit('change-tab', 'performers')"
           class="text-xs text-accent hover:underline flex items-center gap-1 font-bold cursor-pointer"
         >
-          <span>查看全部演员</span>
+          <span>{{ t('home.viewAllPerformers') }}</span>
           <ChevronRight class="w-3.5 h-3.5" />
         </button>
       </div>
@@ -403,7 +407,7 @@ onBeforeUnmount(() => {
               {{ perf.name }}
             </h4>
             <p class="text-xs text-fg-4 font-mono font-medium">
-              {{ perf.works_count }} 部作品
+              {{ perf.works_count }} {{ t('common.works') }}
             </p>
           </div>
         </div>
@@ -419,9 +423,9 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <h3 class="text-base font-extrabold text-fg tracking-tight">
-              经典系列大放送 · 连贯篇章
+              {{ t('home.classicSeries') }}
             </h3>
-            <p class="text-xs text-fg-4 mt-0.5">跨越多年的长篇经典企划，尽览多部曲全貌</p>
+            <p class="text-xs text-fg-4 mt-0.5">{{ t('home.classicSeriesDesc') }}</p>
           </div>
         </div>
 
@@ -430,17 +434,17 @@ onBeforeUnmount(() => {
             @click="loadSeriesList"
             :disabled="isSeriesRefreshing"
             class="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 font-semibold cursor-pointer px-2.5 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 transition disabled:opacity-50"
-            title="随机抽取换一批系列"
+            :title="t('home.luckyShuffle')"
           >
             <RefreshCw class="w-3 h-3" :class="{ 'animate-spin': isSeriesRefreshing }" />
-            <span>换一批</span>
+            <span>{{ t('home.switchBatch') }}</span>
           </button>
 
           <button
             @click="emit('change-tab', 'movies')"
             class="text-xs text-accent hover:underline flex items-center gap-1 font-bold cursor-pointer"
           >
-            <span>浏览全量影库</span>
+            <span>{{ t('home.browseFullLibrary') }}</span>
             <ChevronRight class="w-3.5 h-3.5" />
           </button>
         </div>
@@ -461,7 +465,7 @@ onBeforeUnmount(() => {
               class="w-full h-full group-hover:scale-105 transition-transform duration-300"
             />
             <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg bg-black/75 backdrop-blur-md text-[10px] font-bold text-accent border border-accent/30 font-mono">
-              {{ s.movie_count }} 部作品
+              {{ s.movie_count }} {{ t('common.works') }}
             </div>
           </div>
 
@@ -473,7 +477,7 @@ onBeforeUnmount(() => {
               {{ s.root_title }}
             </h4>
             <div class="flex items-center justify-between text-[11px] text-fg-4">
-              <span class="truncate max-w-[90px]">{{ s.studio_name || '精选厂牌' }}</span>
+              <span class="truncate max-w-[90px]">{{ s.studio_name || t('home.featuredStudio') }}</span>
               <span v-if="s.year_start && s.year_end" class="font-mono text-[10px]">
                 {{ s.year_start === s.year_end ? s.year_start : `${s.year_start}-${s.year_end}` }}
               </span>
@@ -492,9 +496,9 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <h3 class="text-base font-extrabold text-fg tracking-tight">
-              随心探索 · 盲盒发现
+              {{ t('home.luckyDiscovery') }}
             </h3>
-            <p class="text-xs text-fg-4 mt-0.5">漫无目的时，不妨从浩瀚影海中打捞几颗遗落的珍珠</p>
+            <p class="text-xs text-fg-4 mt-0.5">{{ t('home.luckyDiscoveryDesc') }}</p>
           </div>
         </div>
 
@@ -504,7 +508,7 @@ onBeforeUnmount(() => {
           class="px-3.5 py-1.5 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 border border-line text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
         >
           <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isLuckyLoading }" />
-          <span>换一批</span>
+          <span>{{ t('home.switchBatch') }}</span>
         </button>
       </div>
 
@@ -539,7 +543,7 @@ onBeforeUnmount(() => {
               {{ m.title_zh || m.title }}
             </h4>
             <div class="flex items-center justify-between text-[11px] text-fg-4">
-              <span class="truncate max-w-[100px]">{{ m.studio_name || '独立作品' }}</span>
+              <span class="truncate max-w-[100px]">{{ m.studio_name || t('home.featuredStudio') }}</span>
             </div>
           </div>
         </div>
@@ -554,9 +558,9 @@ onBeforeUnmount(() => {
         </div>
         <div>
           <h3 class="text-base font-extrabold text-fg tracking-tight">
-            影库纵览与快捷探索
+            {{ t('home.libraryOverview') }}
           </h3>
-          <p class="text-xs text-fg-4 mt-0.5">离线数据中心完整索引，点击即可直达各个专题媒体库</p>
+          <p class="text-xs text-fg-4 mt-0.5">{{ t('home.libraryOverviewDesc') }}</p>
         </div>
       </div>
 
@@ -577,7 +581,7 @@ onBeforeUnmount(() => {
               {{ feed.total_movies.toLocaleString() }}
             </div>
             <div class="text-xs text-fg-4 font-bold mt-0.5">
-              精选影视长片
+              {{ t('home.curatedMovies') }}
             </div>
           </div>
         </div>
@@ -598,7 +602,7 @@ onBeforeUnmount(() => {
               {{ feed.total_episodes.toLocaleString() }}
             </div>
             <div class="text-xs text-fg-4 font-bold mt-0.5">
-              独立分集与场景
+              {{ t('home.curatedEpisodes') }}
             </div>
           </div>
         </div>
@@ -619,7 +623,7 @@ onBeforeUnmount(() => {
               {{ feed.total_performers.toLocaleString() }}
             </div>
             <div class="text-xs text-fg-4 font-bold mt-0.5">
-              入库演员阵容
+              {{ t('home.curatedPerformers') }}
             </div>
           </div>
         </div>
@@ -640,7 +644,7 @@ onBeforeUnmount(() => {
               {{ feed.total_studios.toLocaleString() }}
             </div>
             <div class="text-xs text-fg-4 font-bold mt-0.5">
-              制片厂牌与品牌
+              {{ t('home.curatedStudios') }}
             </div>
           </div>
         </div>

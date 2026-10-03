@@ -199,7 +199,7 @@ pub const PERFORMER_COLUMNS: &str = "p.id, p.name, p.hair, p.eyes, p.body_hair, 
 /// COALESCE it would render with a blank studio and no year at all.
 pub const EPISODE_SQL: &str = "SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, \
      e.description_zh, e.action_notes, m.title, \
-     COALESCE(m.studio_name, e.studio_name), \
+     COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name), \
      COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)), \
      m.title_zh, \
      e.release_date \

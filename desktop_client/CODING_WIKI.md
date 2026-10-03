@@ -170,3 +170,17 @@ npm run tauri build
 - 安装包文件：`desktop_client/src-tauri/target/release/bundle/dmg/GPDb_*.dmg`
 - 顶层发布规范：根目录下生成的对应版本客户端安装包（如 `GPDb_macOS_v2.15.0.dmg`）
 - 产物完全遵循 macOS 沙盒与代码规范，内存与 CPU 负载表现平稳。
+
+---
+
+## 6. 客户端界面国际化与多语言规范 (i18n Spec)
+
+项目具备高规格的 7 语言本地化支持体系与二元解耦架构，严禁任何硬编码中文字符。
+详细规则与开发准则请参阅专用文档：
+👉 **[UI_I18N_SPEC.md](file:///Users/joel/iCloud%20Drive%20%28Archive%29/Documents/antigravity/%E6%B8%B8%E6%88%8F%E5%BA%93%E7%AE%A1%E7%90%86App/GEVI_Offline_Database/desktop_client/docs/UI_I18N_SPEC.md)**
+
+### 核心开发准则速记：
+1. **严格 1:1 键位完全对齐**：7 种支持语言（`zh-CN`, `zh-TW`, `en`, `ja`, `it`, `es`, `de`）所有字典键必须 100% 镜像对称（当前 1019 键）。每次增改均须通过 `python3 desktop_client/scripts/test_parity.py` 自动化检测。
+2. **严禁在模板中硬编码中文兜底参数**：统一使用 `t('key')` 或 `t('key', { param })`，杜绝 `t('key', '中文')` 造成的英文模式中文污染。
+3. **二元解耦**：系统菜单/控制层文本严格跟随 `currentLocale`；数据库实体（影视标题、简介）由 `bilingual.ts` 结合呈现模式统一调度。
+4. **编译与质量闸口**：提交前必须执行 `cd desktop_client && npm run build`（包含 `vue-tsc -b` 全量类型检查）。

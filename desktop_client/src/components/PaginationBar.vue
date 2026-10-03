@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { ChevronLeft, ChevronRight } from '@lucide/vue';
+import { t } from '../i18n';
 
 const props = defineProps<{
   page: number;
@@ -65,7 +66,7 @@ function changePageSize(e: Event) {
   <div class="flex items-center justify-center flex-wrap gap-3 py-6 text-xs">
     <!-- Page size -->
     <div class="flex items-center gap-2 bg-surface border border-line rounded-xl px-2.5 py-1.5">
-      <span class="text-fg-4">每页</span>
+      <span class="text-fg-4">{{ t('pagination.perPage') }}</span>
       <select
         :value="pageSize"
         @change="changePageSize"
@@ -73,7 +74,7 @@ function changePageSize(e: Event) {
       >
         <option v-for="s in sizes" :key="s" :value="s">{{ s }}</option>
       </select>
-      <span class="text-fg-4">条</span>
+      <span class="text-fg-4">{{ t('pagination.items') }}</span>
     </div>
 
     <!-- Prev / numbers / next -->
@@ -81,8 +82,8 @@ function changePageSize(e: Event) {
       <button
         @click="go(page - 1)"
         :disabled="page <= 1 || loading"
-        class="w-8 h-8 rounded-lg bg-surface border border-line hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 transition"
-        title="上一页"
+        class="w-8 h-8 rounded-lg bg-surface border border-line hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 transition cursor-pointer"
+        :title="t('pagination.prev')"
       >
         <ChevronLeft class="w-4 h-4" />
       </button>
@@ -94,7 +95,7 @@ function changePageSize(e: Event) {
           @click="go(item)"
           :disabled="loading"
           :class="[
-            'min-w-8 h-8 px-2 rounded-lg border font-mono font-medium transition disabled:pointer-events-none',
+            'min-w-8 h-8 px-2 rounded-lg border font-mono font-medium transition disabled:pointer-events-none cursor-pointer',
             item === page
               ? 'bg-accent-fill text-on-fill border-accent-fill font-bold'
               : 'bg-surface border-line text-fg-3 hover:text-fg hover:bg-surface-2'
@@ -107,8 +108,8 @@ function changePageSize(e: Event) {
       <button
         @click="go(page + 1)"
         :disabled="page >= totalPages || loading"
-        class="w-8 h-8 rounded-lg bg-surface border border-line hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 transition"
-        title="下一页"
+        class="w-8 h-8 rounded-lg bg-surface border border-line hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-fg-2 transition cursor-pointer"
+        :title="t('pagination.next')"
       >
         <ChevronRight class="w-4 h-4" />
       </button>
@@ -116,7 +117,7 @@ function changePageSize(e: Event) {
 
     <!-- Jump -->
     <div class="flex items-center gap-2 text-fg-4">
-      <span>第</span>
+      <span>{{ t('pagination.pagePrefix') }}</span>
       <input
         v-model="jumpText"
         @keydown.enter="commitJump"
@@ -124,7 +125,7 @@ function changePageSize(e: Event) {
         inputmode="numeric"
         class="w-14 bg-surface border border-line rounded-lg px-2 py-1 text-center text-fg-2 font-mono outline-none focus:border-accent-fill transition"
       />
-      <span>/ {{ totalPages.toLocaleString() }} 页 · 共 {{ total.toLocaleString() }} 条</span>
+      <span>{{ t('pagination.pageOfTotal', { totalPages: totalPages.toLocaleString(), total: total.toLocaleString() }) }}</span>
     </div>
   </div>
 </template>

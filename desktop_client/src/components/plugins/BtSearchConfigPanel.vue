@@ -80,10 +80,10 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h3 class="text-base font-bold text-fg">{{ t('plugins.resourceSearch', '资源搜索与外部扩展') }}</h3>
+            <h3 class="text-base font-bold text-fg">{{ t('plugins.resourceSearch') }}</h3>
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 font-bold border border-sky-500/20">v2.0</span>
           </div>
-          <p class="text-xs text-fg-4 mt-0.5">{{ t('plugins.resourceSearchDesc', '在影片、演员及分集页面一键跳转至主流 BT 磁力站点或外部资料网站检索相关资源') }}</p>
+          <p class="text-xs text-fg-4 mt-0.5">{{ t('plugins.resourceSearchDesc') }}</p>
         </div>
       </div>
 
@@ -105,17 +105,17 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
       <div class="space-y-3">
         <div class="flex items-center gap-2">
           <Compass class="w-4 h-4 text-sky-400" />
-          <div class="text-xs font-bold text-fg">BT 磁力搜索引擎预设：</div>
+          <div class="text-xs font-bold text-fg">{{ t('plugins.btEnginesPreset') }}</div>
         </div>
         <div class="flex gap-2 flex-wrap">
           <button
             v-for="eng in [
-              { id: 'bt4g', label: 'BT4G (默认推荐)' },
+              { id: 'bt4g', label: `BT4G (${t('common.recommended')})` },
               { id: 'btsearch', label: 'BTSearch (love)' },
               { id: 'sukebei', label: 'Sukebei (Nyaa)' },
               { id: '1337x', label: '1337x' },
               { id: 'torrentgalaxy', label: 'TorrentGalaxy' },
-              { id: 'custom', label: '自定义多模版库' }
+              { id: 'custom', label: t('plugins.customMultiTemplates') }
             ]"
             :key="eng.id"
             @click="updateBtEngine(eng.id as any)"
@@ -133,7 +133,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
         <!-- Multiple Custom Templates Management -->
         <div v-if="pluginsConfig.btSearchConfig.engine === 'custom'" class="pt-2 space-y-3">
           <div class="text-[11px] text-fg-4">
-            已保存的自定义检索模板列表（支持点击选中作为当前默认，搜索时将把 {query} 自动替换为影片名）：
+            {{ t('plugins.savedTemplatesDesc') }}
           </div>
 
           <div class="space-y-2">
@@ -164,7 +164,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
               <button
                 @click.stop="deleteCustomBtTemplate(tmpl.id)"
                 class="p-1.5 rounded-lg text-fg-4 hover:text-danger hover:bg-danger-fill/10 transition shrink-0 cursor-pointer"
-                title="删除该模板"
+                :title="t('plugins.deleteTemplate')"
               >
                 <Trash2 class="w-3.5 h-3.5" />
               </button>
@@ -173,16 +173,16 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
 
           <!-- Add new template form -->
           <div class="p-4 rounded-2xl bg-sunken/60 border border-line-strong/60 space-y-3">
-            <div class="text-xs font-bold text-fg-2">添加新的自定义搜索站点：</div>
+            <div class="text-xs font-bold text-fg-2">{{ t('plugins.addNewSite') }}</div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <input
                 v-model="newBtTemplateName"
-                placeholder="站点名称 (如: RuTracker)"
+                :placeholder="t('plugins.siteNamePlaceholder')"
                 class="bg-surface border border-line rounded-xl px-3 py-2 text-xs text-fg outline-none focus:border-accent"
               />
               <input
                 v-model="newBtTemplateUrl"
-                placeholder="检索 URL 模版 (含 {query})"
+                :placeholder="t('plugins.searchUrlPlaceholder')"
                 class="sm:col-span-2 bg-surface border border-line rounded-xl px-3 py-2 text-xs text-fg font-mono outline-none focus:border-accent"
               />
             </div>
@@ -192,7 +192,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
                 :disabled="!newBtTemplateName.trim() || !newBtTemplateUrl.trim()"
                 class="px-4 py-1.5 rounded-xl bg-accent-fill text-on-fill text-xs font-bold hover:bg-accent-fill/90 transition disabled:opacity-40 cursor-pointer"
               >
-                添加模版
+                {{ t('plugins.addTemplate') }}
               </button>
             </div>
           </div>
@@ -203,11 +203,9 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
       <div class="space-y-3 pt-3 border-t border-line/60">
         <div class="flex items-center gap-2">
           <Blocks class="w-4 h-4 text-amber-400" />
-          <div class="text-xs font-bold text-fg">外部网站资料跳转与直达按钮：</div>
+          <div class="text-xs font-bold text-fg">{{ t('plugins.externalSitesTitle') }}</div>
         </div>
-        <p class="text-xs text-fg-4">
-          启用后将在对应条目（影片或演员）页面展示一键直达按钮，与 BT 搜索按钮同排展示。各按钮可独立启用或关闭，互不干扰。
-        </p>
+        <p class="text-xs text-fg-4">{{ t('plugins.externalSitesDesc') }}</p>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
           <!-- BFTV Performer Jump -->
@@ -216,7 +214,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-fg flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-                  在 BFTV 搜索演员资料
+                  {{ t('plugins.bftvPerformer') }}
                 </span>
                 <input
                   type="checkbox"
@@ -225,9 +223,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
                   class="rounded accent-accent cursor-pointer"
                 />
               </div>
-              <p class="text-[11px] text-fg-4 leading-relaxed">
-                在演员档案页展示按钮，直达 BoyfriendTV 对应艺名的专页与高级搜索页。
-              </p>
+              <p class="text-[11px] text-fg-4 leading-relaxed">{{ t('plugins.bftvPerformerDesc') }}</p>
             </div>
             <div class="text-[10px] text-fg-5 font-mono truncate">
               boyfriendtv.com/pornstars/?q={name}
@@ -240,7 +236,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-fg flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-orange-400"></span>
-                  在 BFTV 搜索影片资料
+                  {{ t('plugins.bftvSearchMovie') }}
                 </span>
                 <input
                   type="checkbox"
@@ -249,9 +245,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
                   class="rounded accent-accent cursor-pointer"
                 />
               </div>
-              <p class="text-[11px] text-fg-4 leading-relaxed">
-                在影片详情页展示按钮，自动提取影片主标题（剥离序号与副标题）后精准检索。
-              </p>
+              <p class="text-[11px] text-fg-4 leading-relaxed">{{ t('plugins.bftvMovieDesc') }}</p>
             </div>
             <div class="text-[10px] text-fg-5 font-mono truncate">
               boyfriendtv.com/search/?q={clean_title}
@@ -264,7 +258,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
               <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-fg flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-blue-400"></span>
-                  Google 快速全网搜索
+                  {{ t('plugins.googleSearchFast') }}
                 </span>
                 <input
                   type="checkbox"
@@ -273,9 +267,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
                   class="rounded accent-accent cursor-pointer"
                 />
               </div>
-              <p class="text-[11px] text-fg-4 leading-relaxed">
-                以条目原名直接在 Google 进行全网检索，方便查找第三方影评与演员履历。
-              </p>
+              <p class="text-[11px] text-fg-4 leading-relaxed">{{ t('plugins.googleSearchDesc') }}</p>
             </div>
             <div class="text-[10px] text-fg-5 font-mono truncate">
               google.com/search?q={query}
@@ -286,7 +278,7 @@ function toggleWebJump(key: 'bftvPerformerEnabled' | 'bftvMovieEnabled' | 'googl
         <!-- Future Roadmap Notice -->
         <div class="p-3 rounded-xl bg-accent-fill/5 border border-accent-fill/15 flex items-center gap-2 text-xs text-fg-3">
           <Sparkles class="w-4 h-4 text-accent shrink-0" />
-          <span>待办清单：后续版本将持续支持接入更多垂直百科站点（如 IAFD、AEBN、Radar 等）。</span>
+          <span>{{ t('plugins.roadmapNotice') }}</span>
         </div>
       </div>
     </div>

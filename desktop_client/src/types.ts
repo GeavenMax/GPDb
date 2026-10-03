@@ -159,6 +159,8 @@ export type StudioSortBy = 'works_desc' | 'episodes_desc' | 'name_asc';
  */
 export interface StudioSummary {
   name: string;
+  name_zh?: string | null;
+  description_zh?: string | null;
   works_count: number;
   episodes_count: number;
 }
@@ -171,6 +173,8 @@ export interface StudioLibraryResponse {
 /** A studio's films and episodes, as the detail modal shows them. */
 export interface StudioWorks {
   studio_name: string;
+  studio_name_zh?: string | null;
+  description_zh?: string | null;
   movies: Movie[];
   movies_count: number;
   episodes: Episode[];
@@ -393,31 +397,31 @@ export interface Episode {
   release_date?: string | null;
 }
 
-export type PosterDisplayMode = 'adaptive_pager' | 'flip_3d';
 
 export type DateFilter = 'all' | 'last_scraped' | 'recent_7' | 'recent_30' | 'recent_90' | 'recent_year';
 
 export interface DateFilterOption {
   id: DateFilter;
+  labelKey?: string;
   label: string;
 }
 
 export const DATE_FILTER_OPTIONS: DateFilterOption[] = [
-  { id: 'all', label: '全部' },
-  { id: 'last_scraped', label: '上次入库' },
-  { id: 'recent_7', label: '最近7天' },
-  { id: 'recent_30', label: '最近30天' },
-  { id: 'recent_90', label: '最近90天' },
-  { id: 'recent_year', label: '本年度' },
+  { id: 'all', labelKey: 'common.all', label: 'All' },
+  { id: 'last_scraped', labelKey: 'filter.lastScraped', label: 'Last Scraped' },
+  { id: 'recent_7', labelKey: 'filter.recent7', label: 'Past 7 Days' },
+  { id: 'recent_30', labelKey: 'filter.recent30', label: 'Past 30 Days' },
+  { id: 'recent_90', labelKey: 'filter.recent90', label: 'Past 90 Days' },
+  { id: 'recent_year', labelKey: 'filter.recentYear', label: 'This Year' },
 ];
 
 export const EPISODE_DATE_FILTER_OPTIONS: DateFilterOption[] = [
-  { id: 'all', label: '全部' },
-  { id: 'last_scraped', label: '上次入库' },
-  { id: 'recent_7', label: '最近7天发行' },
-  { id: 'recent_30', label: '最近30天发行' },
-  { id: 'recent_90', label: '最近90天发行' },
-  { id: 'recent_year', label: '本年度发行' },
+  { id: 'all', labelKey: 'common.all', label: 'All' },
+  { id: 'last_scraped', labelKey: 'filter.lastScraped', label: 'Last Scraped' },
+  { id: 'recent_7', labelKey: 'filter.epRecent7', label: 'Past 7 Days' },
+  { id: 'recent_30', labelKey: 'filter.epRecent30', label: 'Past 30 Days' },
+  { id: 'recent_90', labelKey: 'filter.epRecent90', label: 'Past 90 Days' },
+  { id: 'recent_year', labelKey: 'filter.epRecentYear', label: 'This Year' },
 ];
 
 export interface FilterState {

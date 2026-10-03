@@ -6,6 +6,7 @@ import {
 } from '@lucide/vue';
 import { claimEscape } from '../utils/escape';
 import { api, IS_TAURI } from '../api';
+import { t } from '../i18n';
 
 export interface ShareCardData {
   type: 'movie' | 'episode';
@@ -246,7 +247,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   // Pre-calculate Meta badges
   const metaItems: string[] = [];
   if (props.data.releaseDate) metaItems.push(`📅 ${props.data.releaseDate}`);
-  if (props.data.durationMins) metaItems.push(`⏱ ${props.data.durationMins} 分钟`);
+  if (props.data.durationMins) metaItems.push(`⏱ ${props.data.durationMins} ${t('common.minutes')}`);
   if (props.data.studioName) metaItems.push(`🏢 ${props.data.studioName}`);
   if (props.data.episodeHeading) metaItems.push(props.data.episodeHeading);
   const metaH = metaItems.length > 0 ? 26 : 0;
@@ -259,13 +260,14 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   mCtx.font = '12px "Microsoft YaHei UI", sans-serif';
   const performers = props.data.performers || [];
   const castLines: string[] = [];
+  const castPrefix = `${t('share.castPrefix')}: `;
   if (performers.length > 0) {
-    let curCast = '主演: ';
+    let curCast = castPrefix;
     const maxCastW = width - padX * 2;
     for (let i = 0; i < performers.length; i++) {
       const name = performers[i];
-      const candidate = curCast === '主演: ' ? `主演: ${name}` : `${curCast}、${name}`;
-      if (mCtx.measureText(candidate).width > maxCastW && curCast !== '主演: ') {
+      const candidate = curCast === castPrefix ? `${castPrefix}${name}` : `${curCast}、${name}`;
+      if (mCtx.measureText(candidate).width > maxCastW && curCast !== castPrefix) {
         castLines.push(curCast);
         curCast = `     ${name}`;
       } else {
@@ -381,11 +383,11 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
 
   ctx.fillStyle = '#f59e0b';
   ctx.font = 'bold 12px "Microsoft YaHei UI", sans-serif';
-  ctx.fillText(isEpisode ? 'GPDb · 分集剧照档案' : 'GPDb · 影视私有档案', padX + 14, curY + 18);
+  ctx.fillText(isEpisode ? t('share.brandEpisode') : t('share.brandMovie'), padX + 14, curY + 18);
   ctx.restore();
 
   // Category Badge
-  const rightTag = props.data.category || (isEpisode ? '分集剧情' : '电影档案');
+  const rightTag = props.data.category || (isEpisode ? t('share.tagEpisode') : t('share.tagMovie'));
   ctx.save();
   ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
@@ -439,7 +441,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 12px "Microsoft YaHei UI", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('🔒 已防窥脱敏', cx + cw / 2, cy + ch / 2);
+        ctx.fillText('🔒 ' + t('share.posterRedacted'), cx + cw / 2, cy + ch / 2);
       } else {
         drawImageCover(ctx, img, cx, cy, cw, ch);
       }
@@ -449,7 +451,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.font = '12px "Microsoft YaHei UI", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(tagLabel ? `暂无${tagLabel}` : '暂无海报', cx + cw / 2, cy + ch / 2);
+      ctx.fillText(tagLabel ? `${t('common.noData')} ${tagLabel}` : t('share.noCover'), cx + cw / 2, cy + ch / 2);
     }
 
     if (tagLabel && !blurPoster.value) {
@@ -474,8 +476,8 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   }
 
   if (hasBackCover) {
-    drawCardCover(posterImg, posterX, posterY, posterW, posterH, '封面');
-    drawCardCover(backCoverImg, backCoverX, posterY, posterW, posterH, '封底');
+    drawCardCover(posterImg, posterX, posterY, posterW, posterH, t('movie.frontCover'));
+    drawCardCover(backCoverImg, backCoverX, posterY, posterW, posterH, t('movie.backCover'));
   } else {
     drawCardCover(posterImg, posterX, posterY, posterW, posterH);
   }
@@ -515,7 +517,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
     curY += 2;
     ctx.fillStyle = 'rgba(252, 211, 77, 0.9)';
     ctx.font = '500 12px "Microsoft YaHei UI", sans-serif';
-    ctx.fillText(`🎬 导演: ${props.data.directorName}`, width / 2, curY);
+    ctx.fillText(`🎬 ${t('filter.director')}: ${props.data.directorName}`, width / 2, curY);
     curY += 20;
   }
 
@@ -572,7 +574,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 11px "Microsoft YaHei UI", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('🔒 剧情介绍已脱敏隐藏', descX + descBoxW / 2, descY + descBoxH / 2 + 5);
+      ctx.fillText('🔒 ' + t('share.synopsisRedacted'), descX + descBoxW / 2, descY + descBoxH / 2 + 5);
     } else {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
       for (let j = 0; j < descLines.length; j++) {
@@ -597,7 +599,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 11px "Microsoft YaHei UI", sans-serif';
-  ctx.fillText('GPDb Offline Library · 本地私有影视库', padX, height - 48);
+  ctx.fillText(t('share.watermark'), padX, height - 48);
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.font = '10px "Microsoft YaHei UI", sans-serif';
@@ -606,7 +608,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
 
   ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
   ctx.font = '500 10px "Microsoft YaHei UI", sans-serif';
-  ctx.fillText('📢 官方频道: t.me/gpdbnews', padX, height - 16);
+  ctx.fillText('📢 ' + t('share.officialChannel'), padX, height - 16);
 
   // Right column: Telegram Channel QR Code in rounded white container
   const qrBoxSize = 52;
@@ -647,7 +649,7 @@ async function copyCardImage() {
 
   try {
     const canvas = await renderCardToCanvas();
-    if (!canvas) throw new Error('渲染画布失败');
+    if (!canvas) throw new Error('Canvas render failed');
 
     const dataUrl = canvas.toDataURL('image/png');
 
@@ -661,7 +663,7 @@ async function copyCardImage() {
     if (!copiedNatively && navigator.clipboard?.write) {
       await new Promise<void>((resolve, reject) => {
         canvas.toBlob(async (blob) => {
-          if (!blob) return reject(new Error('生成图片数据失败'));
+          if (!blob) return reject(new Error('Image blob generation failed'));
           try {
             await navigator.clipboard.write([
               new ClipboardItem({ 'image/png': blob })
@@ -677,7 +679,7 @@ async function copyCardImage() {
     isCopied.value = true;
     setTimeout(() => { isCopied.value = false; }, 2500);
   } catch (e) {
-    console.error('复制分享卡片失败，转为本地保存:', e);
+    console.error('Failed to copy share card to clipboard, falling back to saving file:', e);
     await saveCardImage();
   } finally {
     isCopying.value = false;
@@ -693,7 +695,7 @@ async function saveCardImage() {
 
   try {
     const canvas = await renderCardToCanvas();
-    if (!canvas) throw new Error('渲染画布失败');
+    if (!canvas) throw new Error('Canvas render failed');
 
     const dataUrl = canvas.toDataURL('image/png');
     const safeTitle = (props.data?.title || 'film')
@@ -707,7 +709,7 @@ async function saveCardImage() {
     isSaved.value = true;
     setTimeout(() => { isSaved.value = false; }, 3000);
   } catch (e) {
-    console.error('保存分享卡片失败:', e);
+    console.error('Failed to save share card image:', e);
   } finally {
     isSaving.value = false;
   }
@@ -732,8 +734,8 @@ async function saveCardImage() {
             <Share2 class="w-4 h-4" />
           </div>
           <div>
-            <h2 class="text-sm font-bold text-fg">一键生成分享卡片</h2>
-            <p class="text-[11px] text-fg-4">流光自适应渐变，支持敏感内容自主脱敏与全量信息完整呈现</p>
+            <h2 class="text-sm font-bold text-fg">{{ t('share.title') }}</h2>
+            <p class="text-[11px] text-fg-4">{{ t('share.subtitle') }}</p>
           </div>
         </div>
 
@@ -752,7 +754,7 @@ async function saveCardImage() {
           <div class="flex items-center justify-between text-xs font-semibold text-fg-3">
             <span class="flex items-center gap-1.5 text-accent">
               <Shield class="w-3.5 h-3.5" />
-              安全分享选项 (自主脱敏控制)
+              {{ t('share.securityOptions') }}
             </span>
             <label class="flex items-center gap-1.5 cursor-pointer text-[11px] text-fg-3 hover:text-fg">
               <input
@@ -760,7 +762,7 @@ async function saveCardImage() {
                 v-model="includeDescription"
                 class="rounded text-accent focus:ring-accent"
               />
-              <span>附带完整剧情简介</span>
+              <span>{{ t('share.includeSynopsis') }}</span>
             </label>
           </div>
 
@@ -779,8 +781,8 @@ async function saveCardImage() {
               <EyeOff v-if="blurPoster" class="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <Eye v-else class="w-3.5 h-3.5 text-fg-4 shrink-0" />
               <div class="text-xs">
-                <span class="font-medium">模糊海报封面</span>
-                <span class="text-[10px] block opacity-70">防窥敏感画面</span>
+                <span class="font-medium">{{ t('share.blurPoster') }}</span>
+                <span class="text-[10px] block opacity-70">{{ t('share.blurPosterDesc') }}</span>
               </div>
             </label>
 
@@ -797,8 +799,8 @@ async function saveCardImage() {
               <Lock v-if="blurDescription" class="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <Quote v-else class="w-3.5 h-3.5 text-fg-4 shrink-0" />
               <div class="text-xs">
-                <span class="font-medium">模糊剧情介绍</span>
-                <span class="text-[10px] block opacity-70">防剧透与文字脱敏</span>
+                <span class="font-medium">{{ t('share.blurSynopsis') }}</span>
+                <span class="text-[10px] block opacity-70">{{ t('share.blurSynopsisDesc') }}</span>
               </div>
             </label>
           </div>
@@ -828,10 +830,10 @@ async function saveCardImage() {
                 <span class="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold text-[10px] tracking-wide flex items-center gap-1 shadow-sm">
                   <Film v-if="data.type !== 'episode'" class="w-3 h-3" />
                   <Clapperboard v-else class="w-3 h-3" />
-                  {{ data.type === 'episode' ? 'GPDb · 分集剧照档案' : 'GPDb · 影视私有档案' }}
+                  {{ data.type === 'episode' ? t('share.badgeEpisode') : t('share.badgeMovie') }}
                 </span>
                 <span class="px-2 py-0.5 rounded-lg bg-white/10 border border-white/15 text-white/80 text-[10px] font-medium font-mono">
-                  {{ data.category || (data.type === 'episode' ? '分集剧情' : '电影档案') }}
+                  {{ data.category || (data.type === 'episode' ? t('share.badgeEpisode') : t('share.badgeMovie')) }}
                 </span>
               </div>
 
@@ -844,7 +846,7 @@ async function saveCardImage() {
                     <img
                       v-if="data.posterUrl"
                       :src="data.posterUrl"
-                      :alt="data.title + ' (封面)'"
+                      :alt="data.title + ' (' + t('movie.frontCover') + ')'"
                       class="w-full h-full object-cover transition-all duration-300 no-privacy-blur"
                       :style="{
                         filter: blurPoster ? 'blur(22px) brightness(0.82)' : 'none'
@@ -852,15 +854,15 @@ async function saveCardImage() {
                     />
                     <div v-else class="w-full h-full flex flex-col items-center justify-center text-white/40">
                       <Film class="w-6 h-6 mb-1 stroke-1" />
-                      <span class="text-[10px]">无封面</span>
+                      <span class="text-[10px]">{{ t('movie.noPoster') }}</span>
                     </div>
-                    <span v-if="!blurPoster" class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[9px] font-semibold text-white/90 border border-white/10">封面</span>
+                    <span v-if="!blurPoster" class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[9px] font-semibold text-white/90 border border-white/10">{{ t('movie.frontCover') }}</span>
                     <div
                       v-if="blurPoster"
                       class="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs text-white"
                     >
                       <Lock class="w-4 h-4 mb-0.5 text-amber-400" />
-                      <span class="text-[10px] font-bold">已脱敏</span>
+                      <span class="text-[10px] font-bold">{{ t('share.redacted') }}</span>
                     </div>
                   </div>
 
@@ -868,19 +870,19 @@ async function saveCardImage() {
                   <div class="relative w-1/2 aspect-[3/4.1] rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black/40">
                     <img
                       :src="data.coverBackUrl"
-                      :alt="data.title + ' (封底)'"
+                      :alt="data.title + ' (' + t('movie.backCover') + ')'"
                       class="w-full h-full object-cover transition-all duration-300 no-privacy-blur"
                       :style="{
                         filter: blurPoster ? 'blur(22px) brightness(0.82)' : 'none'
                       }"
                     />
-                    <span v-if="!blurPoster" class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[9px] font-semibold text-white/90 border border-white/10">封底</span>
+                    <span v-if="!blurPoster" class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[9px] font-semibold text-white/90 border border-white/10">{{ t('movie.backCover') }}</span>
                     <div
                       v-if="blurPoster"
                       class="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs text-white"
                     >
                       <Lock class="w-4 h-4 mb-0.5 text-amber-400" />
-                      <span class="text-[10px] font-bold">已脱敏</span>
+                      <span class="text-[10px] font-bold">{{ t('share.redacted') }}</span>
                     </div>
                   </div>
                 </div>
@@ -902,7 +904,7 @@ async function saveCardImage() {
                   />
                   <div v-else class="w-full h-full flex flex-col items-center justify-center text-white/40">
                     <Film class="w-8 h-8 mb-1 stroke-1" />
-                    <span class="text-[10px]">无封面</span>
+                    <span class="text-[10px]">{{ t('movie.noPoster') }}</span>
                   </div>
 
                   <!-- Blur Badge Indicator -->
@@ -911,7 +913,7 @@ async function saveCardImage() {
                     class="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs text-white"
                   >
                     <Lock class="w-5 h-5 mb-1 text-amber-400" />
-                    <span class="text-[11px] font-bold tracking-wider">封面已安全防窥脱敏</span>
+                    <span class="text-[11px] font-bold tracking-wider">{{ t('share.posterRedacted') }}</span>
                   </div>
                 </div>
               </div>
@@ -928,19 +930,19 @@ async function saveCardImage() {
                 <!-- Metadata Row -->
                 <div class="flex items-center justify-center gap-2 text-[11px] text-amber-400/90 font-medium flex-wrap pt-1">
                   <span v-if="data.releaseDate">{{ data.releaseDate }}</span>
-                  <span v-if="data.durationMins">· {{ data.durationMins }}分钟</span>
+                  <span v-if="data.durationMins">· {{ data.durationMins }} {{ t('common.minutes') }}</span>
                   <span v-if="data.studioName">· {{ data.studioName }}</span>
                   <span v-if="data.episodeHeading">· {{ data.episodeHeading }}</span>
                 </div>
 
                 <!-- Director -->
                 <p v-if="data.directorName" class="text-[11px] text-amber-300/80 font-medium pt-0.5">
-                  🎬 导演: {{ data.directorName }}
+                  🎬 {{ t('filter.director') }}: {{ data.directorName }}
                 </p>
 
                 <!-- Complete Cast (No truncation) -->
                 <p v-if="data.performers && data.performers.length > 0" class="text-[11px] text-white/70 pt-0.5 leading-relaxed">
-                  主演: {{ data.performers.join('、') }}
+                  {{ t('share.castPrefix') }}: {{ data.performers.join('、') }}
                 </p>
               </div>
 
@@ -964,21 +966,21 @@ async function saveCardImage() {
                   class="absolute inset-0 flex items-center justify-center bg-black/45 text-white font-bold text-[10px] tracking-wider"
                 >
                   <Lock class="w-3.5 h-3.5 mr-1 text-amber-400" />
-                  <span>剧情概要已脱敏隐藏</span>
+                  <span>{{ t('share.synopsisRedacted') }}</span>
                 </div>
               </div>
 
               <!-- Card Footer Watermark & Official TG Channel QR -->
               <div class="w-full pt-3.5 border-t border-white/10 flex items-center justify-between text-[10px] text-white/50">
                 <div class="space-y-0.5 text-left">
-                  <div class="text-white/85 font-semibold text-[11px]">GPDb Offline Library · 本地私有档案</div>
+                  <div class="text-white/85 font-semibold text-[11px]">{{ t('share.watermark') }}</div>
                   <div class="text-[9px] text-white/40">{{ itemTag }} · {{ formattedDate }}</div>
                   <div class="text-[9px] text-amber-400 font-mono flex items-center gap-1 pt-0.5">
-                    <span>📢 官方频道: t.me/gpdbnews</span>
+                    <span>📢 {{ t('share.officialChannel') }}</span>
                   </div>
                 </div>
                 <div class="flex items-center gap-2">
-                  <div class="p-1 bg-white rounded-lg shadow-md flex items-center justify-center shrink-0" title="扫描二维码关注 Telegram 官方频道">
+                  <div class="p-1 bg-white rounded-lg shadow-md flex items-center justify-center shrink-0" :title="t('share.qrTooltip')">
                     <svg class="w-10 h-10" viewBox="0 0 27 27" fill="none">
                       <path :d="tgQrSvgPath" fill="#000000" />
                     </svg>
@@ -997,7 +999,7 @@ async function saveCardImage() {
           @click="handleClose"
           class="px-4 py-2 rounded-xl text-xs font-medium text-fg-3 hover:text-fg hover:bg-surface-2 transition cursor-pointer"
         >
-          取消
+          {{ t('common.cancel') }}
         </button>
 
         <div class="flex items-center gap-2.5">
@@ -1007,11 +1009,11 @@ async function saveCardImage() {
             @click="saveCardImage"
             :disabled="isSaving"
             class="px-4 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line-strong text-xs font-semibold text-fg flex items-center gap-1.5 transition cursor-pointer disabled:opacity-60"
-            title="保存卡片为高清 PNG 文件"
+            :title="t('share.saveTooltip')"
           >
             <Check v-if="isSaved" class="w-3.5 h-3.5 text-success" />
             <Download v-else class="w-3.5 h-3.5" />
-            <span>{{ isSaved ? '已保存至下载！' : '保存图片' }}</span>
+            <span>{{ isSaved ? t('share.savedNotice') : t('share.saveImage') }}</span>
           </button>
 
           <!-- Copy to Clipboard Button -->
@@ -1020,11 +1022,11 @@ async function saveCardImage() {
             @click="copyCardImage"
             :disabled="isCopying"
             class="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-orange-500/20 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer active:scale-98 disabled:opacity-60"
-            title="直接将卡片复制为图片，可在社交应用中粘贴"
+            :title="t('share.copyTooltip')"
           >
             <Check v-if="isCopied" class="w-3.5 h-3.5 text-white" />
             <Copy v-else class="w-3.5 h-3.5" />
-            <span>{{ isCopied ? '已复制到剪贴板！' : '复制卡片图片' }}</span>
+            <span>{{ isCopied ? t('share.copiedNotice') : t('share.copyImage') }}</span>
           </button>
         </div>
       </div>

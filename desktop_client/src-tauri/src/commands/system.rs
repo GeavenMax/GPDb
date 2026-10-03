@@ -1,8 +1,6 @@
 //! System-level desktop utilities.
 
 const ICON_A: &[u8] = include_bytes!("../../../src/assets/icons/scheme-a.png");
-const ICON_B: &[u8] = include_bytes!("../../../src/assets/icons/scheme-b.png");
-const ICON_C: &[u8] = include_bytes!("../../../src/assets/icons/scheme-c.png");
 const ICON_D: &[u8] = include_bytes!("../../../src/assets/icons/scheme-d.png");
 
 #[tauri::command]
@@ -79,8 +77,6 @@ pub fn set_dock_icon(app: tauri::AppHandle, scheme_id: String) -> Result<(), Str
 pub fn get_icon_bytes(scheme_id: &str) -> &'static [u8] {
     match scheme_id.to_lowercase().as_str() {
         "scheme-a" | "a" => ICON_A,
-        "scheme-b" | "b" => ICON_B,
-        "scheme-c" | "c" => ICON_C,
         "scheme-d" | "d" => ICON_D,
         _ => ICON_A,
     }
@@ -334,7 +330,7 @@ mod tests {
 
     #[test]
     fn test_get_icon_bytes() {
-        for scheme in &["scheme-a", "scheme-b", "scheme-c", "scheme-d", "unknown"] {
+        for scheme in &["scheme-a", "scheme-d", "unknown"] {
             let bytes = get_icon_bytes(scheme);
             assert!(!bytes.is_empty(), "Icon bytes empty for {}", scheme);
         }

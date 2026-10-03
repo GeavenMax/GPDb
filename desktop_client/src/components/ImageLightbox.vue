@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { X, ZoomIn, ZoomOut, RotateCcw } from '@lucide/vue';
 import { claimEscape } from '../utils/escape';
 import { closeLightbox, lightboxImage } from '../utils/lightbox';
+import { t } from '../i18n';
 
 const zoom = ref(1.0);
 const panX = ref(0);
@@ -105,7 +106,7 @@ onUnmounted(() => {
   >
     <!-- Top Header Bar -->
     <div class="flex items-center justify-between gap-4 p-4 shrink-0 bg-black/40 border-b border-white/10 z-10">
-      <span class="text-sm font-medium text-fg-2 truncate pl-2">{{ lightboxImage.alt || '全屏海报灯箱' }}</span>
+      <span class="text-sm font-medium text-fg-2 truncate pl-2">{{ lightboxImage.alt || t('lightbox.title') }}</span>
 
       <!-- Zoom Toolbar -->
       <div class="flex items-center gap-2 shrink-0">
@@ -113,14 +114,14 @@ onUnmounted(() => {
           <button
             @click="handleZoomOut"
             :disabled="zoom <= 1.0"
-            title="缩小 (-)"
+            :title="t('lightbox.zoomOut')"
             class="p-1.5 rounded-lg text-fg-3 hover:text-fg hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
           >
             <ZoomOut class="w-4 h-4" />
           </button>
           <button
             @click="resetTransform"
-            title="复位 (0)"
+            :title="t('lightbox.reset')"
             class="px-2 py-1 text-xs font-mono font-bold text-accent hover:bg-surface-2 rounded-lg transition"
           >
             {{ Math.round(zoom * 100) }}%
@@ -128,7 +129,7 @@ onUnmounted(() => {
           <button
             @click="handleZoomIn"
             :disabled="zoom >= 5.0"
-            title="放大 (+)"
+            :title="t('lightbox.zoomIn')"
             class="p-1.5 rounded-lg text-fg-3 hover:text-fg hover:bg-surface-2 disabled:opacity-30 disabled:pointer-events-none transition"
           >
             <ZoomIn class="w-4 h-4" />
@@ -137,7 +138,7 @@ onUnmounted(() => {
 
         <button
           @click="resetTransform"
-          title="适应屏幕"
+          :title="t('lightbox.fitScreen')"
           class="p-2 rounded-xl bg-surface/80 border border-line-strong text-fg-3 hover:text-fg hover:bg-surface-2 transition shadow-lg"
         >
           <RotateCcw class="w-4 h-4" />
@@ -145,7 +146,7 @@ onUnmounted(() => {
 
         <button
           @click="closeLightbox"
-          title="关闭 (Esc)"
+          :title="t('common.close') + ' (Esc)'"
           class="p-2 rounded-xl bg-surface/80 border border-line-strong text-fg-3 hover:text-danger hover:bg-surface-2 transition shadow-lg ml-2"
         >
           <X class="w-4 h-4" />
@@ -181,7 +182,7 @@ onUnmounted(() => {
         v-if="zoom === 1.0"
         class="absolute bottom-6 px-3 py-1.5 rounded-full bg-black/60 border border-white/10 text-[11px] text-white/50 backdrop-blur-md pointer-events-none animate-fade-in"
       >
-        滚轮缩放 · 双击放大 · 拖拽平移
+        {{ t('lightbox.instructions') }}
       </div>
     </div>
   </div>

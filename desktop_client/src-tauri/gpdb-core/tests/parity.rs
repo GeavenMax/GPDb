@@ -1018,7 +1018,8 @@ fn standalone_episodes_survive_the_row_mapper() {
              VALUES (1, 'Attached Film', 'Falcon', 2005, '有归属的影片');
          INSERT INTO episodes (id, movie_id, title, studio_name, release_date) VALUES
              (10, 1,    'Attached Scene', 'Other Studio', '1999-01-01'),
-             (11, NULL, 'Pregame',        'Solo Studio',  '2011-04-02');",
+             (11, NULL, 'Pregame',        'Solo Studio',  '2011-04-02'),
+             (12, 1,    'Fallback Scene', NULL,           '2005-01-01');",
     )
     .unwrap();
 
@@ -1028,7 +1029,7 @@ fn standalone_episodes_survive_the_row_mapper() {
     .unwrap();
 
     let got: Vec<i64> = lib.items.iter().map(|e| e.id).collect();
-    assert_eq!(lib.total, 2, "total 少算了 —— 独立分集在 count 里就丢了");
+    assert_eq!(lib.total, 3, "total 少算了 —— 独立分集在 count 里就丢了");
     assert!(got.contains(&11), "独立分集被行映射器静默丢弃了，实际拿到 {:?}", got);
 
     let standalone = lib.items.iter().find(|e| e.id == 11).expect("id 11 应在结果里");
@@ -1044,11 +1045,14 @@ fn standalone_episodes_survive_the_row_mapper() {
     let attached = lib.items.iter().find(|e| e.id == 10).expect("id 10 应在结果里");
     assert_eq!(attached.movie_id, Some(1));
     assert_eq!(attached.movie_title.as_deref(), Some("Attached Film"));
-    // 有父影片时父影片赢，即使分集自己记了另一家片商和另一个日期。
-    assert_eq!(attached.studio_name.as_deref(), Some("Falcon"), "有父影片时该用影片的片商");
+    // 分集自带片商时该优先使用分集自己的片商（厂牌），年份以母片为主
+    assert_eq!(attached.studio_name.as_deref(), Some("Other Studio"), "分集自带独立片商时应优先取分集片商");
     assert_eq!(attached.release_year, Some(2005), "有父影片时该用影片的年份");
-    assert_eq!(attached.episode_count, 1);
-    assert_eq!(attached.episode_ordinal, 1);
+    assert_eq!(attached.episode_count, 2);
+
+    let fallback = lib.items.iter().find(|e| e.id == 12).expect("id 12 应在结果里");
+    assert_eq!(fallback.studio_name.as_deref(), Some("Falcon"), "分集未标注独立片商时回退至母片片商");
+    assert_eq!(fallback.release_year, Some(2005));
 }
 
 /// `get_episode_library` 有 (query, sort, studio) 三个相邻的 `Option<String>`。
@@ -1107,17 +1111,15 @@ fn episode_library_parameters_are_not_swapped() {
         by_studio.total,
         count1(
             &tx,
-            // COALESCE, not `m.studio_name`: a standalone episode (movie_id IS NULL) has no
-            // film to borrow a studio from, so filtering on the parent's column alone would
-            // drop it from its own studio's list. The Rust side does the same thing.
+            // COALESCE with NULLIF: prioritize episode's own studio first, then fallback to movie
             "SELECT count(*) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id \
-             WHERE COALESCE(m.studio_name, e.studio_name) = ?1",
+             WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1",
             studio.clone()
         )
     );
     assert_eq!(
         by_studio.items.iter().map(|i| i.id).collect::<Vec<_>>(),
-        ids(&tx, &format!("SELECT e.id {} WHERE COALESCE(m.studio_name, e.studio_name) = '{}' ORDER BY e.id DESC LIMIT 25", from, sql_lit(&studio)))
+        ids(&tx, &format!("SELECT e.id {} WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = '{}' ORDER BY e.id DESC LIMIT 25", from, sql_lit(&studio)))
     );
     for i in &by_studio.items {
         assert_eq!(i.studio_name.as_deref(), Some(studio.as_str()));
@@ -1359,7 +1361,7 @@ fn studio_library_counts_match_sql() {
             s.episodes_count,
             count1(
                 &tx,
-                "SELECT count(*) FROM episodes e JOIN movies m ON m.id = e.movie_id WHERE m.studio_name = ?1",
+                "SELECT count(*) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1",
                 s.name.clone()
             ),
             "片商 {} 的分集数",
@@ -1371,33 +1373,50 @@ fn studio_library_counts_match_sql() {
         lib.total,
         count(
             &tx,
-            "SELECT count(DISTINCT studio_name) FROM movies \
-             WHERE studio_name IS NOT NULL AND trim(studio_name) != ''"
+            "SELECT count(*) FROM ( \
+                SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+                UNION \
+                SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+            )"
         )
     );
 
-    // 默认排序：作品数降序，同数按名字（NOCASE）
+    // 默认排序：作品数降序，同数按分集数降序，再按名字（NOCASE）
+    let expected_names: Vec<String> = {
+        let mut stmt = tx.prepare(
+            "SELECT s.name FROM ( \
+                SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+                UNION \
+                SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+            ) s \
+            LEFT JOIN (SELECT studio_name, count(*) AS cnt FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' GROUP BY studio_name) m ON m.studio_name = s.name \
+            LEFT JOIN (SELECT COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) AS eff_studio, count(*) AS cnt FROM episodes e LEFT JOIN movies m ON e.movie_id = m.id GROUP BY eff_studio) e ON e.eff_studio = s.name \
+            ORDER BY COALESCE(m.cnt, 0) DESC, COALESCE(e.cnt, 0) DESC, s.name COLLATE NOCASE ASC LIMIT 10"
+        ).unwrap();
+        let rows = stmt.query_map([], |r| r.get(0)).unwrap();
+        rows.filter_map(|r| r.ok()).collect()
+    };
     assert_eq!(
         lib.items.iter().map(|s| s.name.clone()).collect::<Vec<_>>(),
-        strings(
-            &tx,
-            "SELECT m.studio_name FROM movies m LEFT JOIN episodes e ON e.movie_id = m.id \
-             WHERE m.studio_name IS NOT NULL AND trim(m.studio_name) != '' \
-             GROUP BY m.studio_name \
-             ORDER BY count(DISTINCT m.id) DESC, m.studio_name COLLATE NOCASE ASC LIMIT 10"
-        )
+        expected_names
     );
 
     // name_asc 走的是另一个分支
     let by_name = queries::studios::get_studio_library(&tx, None, Some("name_asc".into()), Some(1), Some(10)).unwrap();
+    let expected_by_name: Vec<String> = {
+        let mut stmt = tx.prepare(
+            "SELECT s.name FROM ( \
+                SELECT DISTINCT studio_name AS name FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+                UNION \
+                SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
+            ) s ORDER BY s.name COLLATE NOCASE ASC LIMIT 10"
+        ).unwrap();
+        let rows = stmt.query_map([], |r| r.get(0)).unwrap();
+        rows.filter_map(|r| r.ok()).collect()
+    };
     assert_eq!(
         by_name.items.iter().map(|s| s.name.clone()).collect::<Vec<_>>(),
-        strings(
-            &tx,
-            "SELECT m.studio_name FROM movies m \
-             WHERE m.studio_name IS NOT NULL AND trim(m.studio_name) != '' \
-             GROUP BY m.studio_name ORDER BY m.studio_name COLLATE NOCASE ASC LIMIT 10"
-        )
+        expected_by_name
     );
 }
 
@@ -1426,7 +1445,7 @@ fn studio_works_matches_sql() {
         w.episodes_count,
         count1(
             &tx,
-            "SELECT count(*) FROM episodes e JOIN movies m ON m.id = e.movie_id WHERE m.studio_name = ?1",
+            "SELECT count(*) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1",
             name.clone()
         )
     );

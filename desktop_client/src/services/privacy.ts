@@ -1,5 +1,4 @@
 import { ref } from 'vue';
-import type { PosterDisplayMode } from '../types';
 
 export interface PrivacySettings {
   collectAnalytics: boolean;
@@ -11,9 +10,6 @@ export interface PrivacySettings {
   lockTimeoutMinutes: number; // 0: immediate on blur, 1, 5, 15, -1: manual
   blurOnWindowBlur: boolean;
   panicModeEnabled: boolean;
-  disguiseAppName: string;
-  // Poster Display Scheme
-  posterDisplayMode: PosterDisplayMode;
   // Screenshot Privacy & Blur for Sharing
   screenshotPrivacyEnabled: boolean;
   blurImages: boolean;
@@ -32,8 +28,6 @@ function loadPrivacySettings(): PrivacySettings {
     lockTimeoutMinutes: 5,
     blurOnWindowBlur: false,
     panicModeEnabled: true,
-    disguiseAppName: 'GPDb',
-    posterDisplayMode: 'adaptive_pager',
     screenshotPrivacyEnabled: false,
     blurImages: true,
     blurDescriptions: true,
@@ -56,11 +50,6 @@ export const privacySettings = ref<PrivacySettings>(loadPrivacySettings());
 export function savePrivacySettings(updates: Partial<PrivacySettings>) {
   privacySettings.value = { ...privacySettings.value, ...updates };
   localStorage.setItem(PRIVACY_KEY, JSON.stringify(privacySettings.value));
-
-  // Sync document title if disguise name changed
-  if (updates.disguiseAppName) {
-    document.title = updates.disguiseAppName;
-  }
 }
 
 export function toggleScreenshotPrivacy() {
@@ -99,11 +88,6 @@ export function unlockApp(pin: string): boolean {
 }
 
 export function initPrivacyListeners() {
-  // Apply initial disguise title
-  if (privacySettings.value.disguiseAppName) {
-    document.title = privacySettings.value.disguiseAppName;
-  }
-
   // Window Focus / Blur Listener
   window.addEventListener('blur', () => {
     if (privacySettings.value.blurOnWindowBlur) {

@@ -39,7 +39,6 @@ export interface PluginsConfig {
   autoSyncConfig: AutoSyncScheduleConfig;
   translationEnabled: boolean;
   translationConfig: TranslationPluginConfig;
-  aiInsightEnabled: boolean;
 }
 
 const PLUGINS_KEY = 'gpdb_plugins_config';
@@ -88,7 +87,6 @@ const DEFAULT_CONFIG: PluginsConfig = {
     targetLanguage: 'zh-CN',
     customPromptTemplate: DEFAULT_TRANSLATION_PROMPT,
   },
-  aiInsightEnabled: true,
 };
 
 function loadConfig(): PluginsConfig {

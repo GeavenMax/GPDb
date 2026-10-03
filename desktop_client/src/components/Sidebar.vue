@@ -17,12 +17,12 @@ const emit = defineEmits<{
  * bottom instead of competing for a slot in the order.
  */
 const NAV_ITEMS = [
-  { id: 'movies', labelKey: 'nav.movies', label: '影片库', icon: Film },
-  { id: 'performers', labelKey: 'nav.performers', label: '演员库', icon: Users },
-  { id: 'studios', labelKey: 'nav.studios', label: '片商库', icon: Building2 },
-  { id: 'directors', labelKey: 'nav.directors', label: '导演库', icon: Megaphone },
-  { id: 'episodes', labelKey: 'nav.episodes', label: '分集库', icon: Clapperboard },
-  { id: 'favorites', labelKey: 'nav.favorites', label: '我的收藏', icon: Heart },
+  { id: 'movies', labelKey: 'nav.movies', icon: Film },
+  { id: 'performers', labelKey: 'nav.performers', icon: Users },
+  { id: 'studios', labelKey: 'nav.studios', icon: Building2 },
+  { id: 'directors', labelKey: 'nav.directors', icon: Megaphone },
+  { id: 'episodes', labelKey: 'nav.episodes', icon: Clapperboard },
+  { id: 'favorites', labelKey: 'nav.favorites', icon: Heart },
 ] as const;
 
 type NavId = (typeof NAV_ITEMS)[number]['id'];
@@ -130,17 +130,17 @@ function tabClass(id: AppTab, active: boolean) {
   <aside class="chrome-side w-56 border-r border-line p-4 flex flex-col justify-between select-none">
     <div class="space-y-4">
       <div class="px-2 text-[11px] font-semibold text-fg-4 uppercase tracking-wider">
-        {{ t('nav.sectionSearch', '资源检索') }}
+        {{ t('nav.sectionSearch') }}
       </div>
       <div class="space-y-1">
         <button
           @click="emit('change-tab', 'home')"
           :class="tabClass('home', currentTab === 'home')"
           class="w-full text-left cursor-pointer"
-          :title="t('nav.home', '主页')"
+          :title="t('nav.home')"
         >
           <Home class="w-4 h-4 shrink-0" />
-          <span>{{ t('nav.home', '主页') }}</span>
+          <span>{{ t('nav.home') }}</span>
         </button>
       </div>
       <nav class="space-y-1">
@@ -151,7 +151,7 @@ function tabClass(id: AppTab, active: boolean) {
           role="button"
           tabindex="0"
           :aria-current="currentTab === item.id ? 'page' : undefined"
-          :title="`${t(item.labelKey, item.label)}（拖动可调整顺序）`"
+          :title="`${t(item.labelKey)}${t('sidebar.dragTip')}`"
           @click="emit('change-tab', item.id)"
           @keydown.enter.prevent="emit('change-tab', item.id)"
           @keydown.space.prevent="emit('change-tab', item.id)"
@@ -166,7 +166,7 @@ function tabClass(id: AppTab, active: boolean) {
           ]"
         >
           <component :is="item.icon" class="w-4 h-4 shrink-0" />
-          <span>{{ t(item.labelKey, item.label) }}</span>
+          <span>{{ t(item.labelKey) }}</span>
           <!-- Where the row would land: a bar above or below the hovered entry. -->
           <span
             v-if="dropTargetId === item.id"
@@ -177,7 +177,7 @@ function tabClass(id: AppTab, active: boolean) {
           ></span>
         </div>
       </nav>
-      <div class="px-2 text-[10px] text-fg-5">{{ t('nav.reorderTip', '拖动条目可调整顺序') }}</div>
+      <div class="px-2 text-[10px] text-fg-5">{{ t('nav.reorderTip') }}</div>
     </div>
 
     <!-- Pinned: analytics, plugins, settings, then offline notice -->

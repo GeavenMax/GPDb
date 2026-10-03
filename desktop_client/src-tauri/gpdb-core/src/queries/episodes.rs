@@ -46,9 +46,8 @@ pub fn get_episode_library(conn: &Connection,
     if let Some(s) = studio {
         let s = s.trim().to_string();
         if !s.is_empty() {
-            // Same fallback as the SELECT: a standalone episode has no parent film, so
-            // filtering on `m.studio_name` alone would drop it from its own studio's list.
-            conditions.push("COALESCE(m.studio_name, e.studio_name) = ?".to_string());
+            // Same fallback as the SELECT: prioritize episode's own studio first, then fallback to movie
+            conditions.push("COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?".to_string());
             params_vec.push(Box::new(s));
         }
     }
@@ -119,7 +118,7 @@ pub fn get_episode_library(conn: &Connection,
     let sql = format!(
         "SELECT e.id, e.movie_id, e.title, e.thumbnail_url, e.description, e.description_zh, \
                 e.action_notes, m.title, \
-                COALESCE(m.studio_name, e.studio_name), \
+                COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name), \
                 COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)), \
                 (SELECT count(*) FROM episodes e2 \
                   WHERE e2.movie_id = e.movie_id AND e2.id <= e.id), \

@@ -5,6 +5,7 @@ import type { EpisodeSummary } from '../types';
 import { getImageUrl } from '../utils/image';
 import { episodeOrdinalLabel } from '../utils/episode';
 import { pickZh, titlePrimary, titleSecondary, sceneFilm } from '../utils/bilingual';
+import { t, currentLocale } from '../i18n';
 
 const props = withDefaults(defineProps<{
   episode: EpisodeSummary;
@@ -72,14 +73,14 @@ const isNew = computed(() => {
         class="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-b from-surface to-sunken text-fg-5"
       >
         <Clapperboard class="w-8 h-8 stroke-1 text-fg-5" />
-        <span class="text-[10px] font-medium">暂无剧照</span>
+        <span class="text-[10px] font-medium">{{ t('episode.noThumbnail') }}</span>
       </div>
 
       <!-- NEW Badge (Top Left) -->
       <span
         v-if="isNew"
         class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md shadow-rose-500/30 backdrop-blur-md z-10 flex items-center gap-0.5 tracking-wider uppercase"
-        title="最新入库/新近上线"
+        :title="t('movie.newlyAdded')"
       >
         <Sparkles class="w-2.5 h-2.5 fill-current" />
         NEW
@@ -100,10 +101,10 @@ const isNew = computed(() => {
       <span
         v-if="episode.description_zh?.trim()"
         class="absolute bottom-2.5 left-2.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-success-fill/90 text-on-fill backdrop-blur-md z-10 flex items-center gap-0.5"
-        title="已有中文简介"
+        :title="t('filter.hasZhSynopsis')"
       >
         <Languages class="w-2.5 h-2.5" />
-        中
+        {{ currentLocale.startsWith('zh') ? '中' : 'ZH' }}
       </span>
 
       <button
@@ -114,7 +115,7 @@ const isNew = computed(() => {
             ? 'bg-danger-fill text-on-danger shadow-lg shadow-danger-fill/40 opacity-100'
             : 'bg-scrim/40 text-fg-3 hover:text-danger hover:bg-scrim/80 opacity-0 group-hover:opacity-100'
         ]"
-        title="收藏"
+        :title="isFavorite ? t('movie.favorited') : t('movie.favorite')"
       >
         <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
       </button>
@@ -129,7 +130,7 @@ const isNew = computed(() => {
             type="button"
             :disabled="!episode.movie_id"
             @click.stop="episode.movie_id && emit('select-movie-id', episode.movie_id)"
-            :title="episode.movie_id ? `跳转到《${filmPrimary}》` : '该片段没有关联影片'"
+            :title="episode.movie_id ? t('episode.goToFilm', { title: filmPrimary }) : t('episode.noLinkedFilm')"
             :class="[
               'flex items-center gap-1 min-w-0 max-w-full px-1.5 py-0.5 rounded-md font-medium bg-surface-2 text-fg-2 border border-line-strong/50 transition',
               episode.movie_id ? 'hover:text-accent-soft hover:border-accent-fill/40' : 'cursor-default',
@@ -150,7 +151,7 @@ const isNew = computed(() => {
             type="button"
             @click.stop="emit('filter-studio', episode.studio_name)"
             class="px-1.5 py-0.5 rounded-md bg-surface-2/60 text-fg-3 border border-line-strong/40 hover:text-accent hover:border-accent-fill/40 transition truncate max-w-[110px]"
-            :title="`按片商 ${episode.studio_name} 筛选影片`"
+            :title="t('episode.filterByStudio', { studio: episode.studio_name })"
           >
             {{ episode.studio_name }}
           </button>
@@ -161,7 +162,7 @@ const isNew = computed(() => {
         <p v-if="shownDescription" class="text-[11px] text-fg-3 leading-relaxed line-clamp-3" :title="episode.title">
           {{ shownDescription }}
         </p>
-        <div v-else class="text-[11px] text-fg-5 italic" :title="episode.title">暂无简介</div>
+        <div v-else class="text-[11px] text-fg-5 italic" :title="episode.title">{{ t('movie.noSynopsis') }}</div>
       </div>
 
       <div class="space-y-1.5">
@@ -186,9 +187,9 @@ const isNew = computed(() => {
         <div
           v-if="episode.action_notes"
           class="text-[10px] text-fg-4 bg-surface px-2 py-1 rounded font-mono truncate"
-          :title="`动作标签: ${episode.action_notes}`"
+          :title="`${t('episode.actionNotes')}: ${episode.action_notes}`"
         >
-          动作标签: {{ episode.action_notes }}
+          {{ t('episode.actionNotes') }}: {{ episode.action_notes }}
         </div>
       </div>
     </div>

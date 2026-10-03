@@ -66,6 +66,14 @@ CREATE TABLE IF NOT EXISTS movie_directors (
 );
 CREATE INDEX IF NOT EXISTS idx_movie_directors_director ON movie_directors(director_id);
 CREATE INDEX IF NOT EXISTS idx_directors_name ON directors(name);
+CREATE TABLE IF NOT EXISTS studios (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    name           TEXT NOT NULL UNIQUE,
+    name_zh        TEXT,
+    description_zh TEXT,
+    updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);
 ";
 
 const CORE_SCHEMA: &str = "

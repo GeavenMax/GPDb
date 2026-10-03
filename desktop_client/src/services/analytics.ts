@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { privacySettings } from './privacy';
 
 export interface BrowseHistoryItem {
-  type: 'movie' | 'performer' | 'director' | 'studio';
+  type: 'movie' | 'performer' | 'director' | 'studio' | 'episode';
   id: string | number;
   title: string;
   time: number;
@@ -154,8 +154,8 @@ export function recordEpisodeView(id: number, title: string) {
 
   if (privacySettings.value.keepBrowseHistory) {
     analytics.value.browseHistory = [
-      { type: 'movie' as const, id, title: `片段: ${title}`, time: Date.now() },
-      ...analytics.value.browseHistory.filter(b => b.id !== id)
+      { type: 'episode' as const, id, title, time: Date.now() },
+      ...analytics.value.browseHistory.filter(b => !(b.id === id && b.type === 'episode'))
     ].slice(0, 100);
   }
 

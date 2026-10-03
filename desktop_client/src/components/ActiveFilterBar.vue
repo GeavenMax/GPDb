@@ -3,9 +3,9 @@ import { computed } from 'vue';
 import { SlidersHorizontal, RotateCcw } from '@lucide/vue';
 import FilterChip from './FilterChip.vue';
 import type { FilterState, PerformerFilterState, EpisodeFilterState } from '../types';
-import { DATE_FILTER_OPTIONS, EPISODE_DATE_FILTER_OPTIONS } from '../types';
 import { FACET_KEYS, FACET_LABELS } from '../api';
 import { trCategory } from '../utils/glossary';
+import { t } from '../i18n';
 
 interface ChipItem {
   id: string;
@@ -36,6 +36,37 @@ const emit = defineEmits<{
   (e: 'clear-director-query'): void;
 }>();
 
+function getDateFilterLabel(id: string, isEpisode: boolean = false): string {
+  if (id === 'all') return t('common.all');
+  if (id === 'last_scraped') return t('filter.lastScraped');
+  if (isEpisode) {
+    if (id === 'recent_7') return t('filter.epRecent7');
+    if (id === 'recent_30') return t('filter.epRecent30');
+    if (id === 'recent_90') return t('filter.epRecent90');
+    if (id === 'recent_year') return t('filter.epRecentYear');
+  } else {
+    if (id === 'recent_7') return t('filter.recent7');
+    if (id === 'recent_30') return t('filter.recent30');
+    if (id === 'recent_90') return t('filter.recent90');
+    if (id === 'recent_year') return t('filter.recentYear');
+  }
+  return id;
+}
+
+function facetLabel(key: string): string {
+  const map: Record<string, string> = {
+    bodyType: 'performer.bodyType',
+    hair: 'performer.hair',
+    eyes: 'performer.eyes',
+    skin: 'performer.skin',
+    bodyHair: 'performer.bodyHair',
+    facialHair: 'performer.facialHair',
+    dickSize: 'performer.dickSize',
+    foreskin: 'performer.foreskin',
+  };
+  return map[key] ? t(map[key]) : (FACET_LABELS[key] || key);
+}
+
 const activeChips = computed<ChipItem[]>(() => {
   const chips: ChipItem[] = [];
 
@@ -44,7 +75,7 @@ const activeChips = computed<ChipItem[]>(() => {
     if (f.studio) {
       chips.push({
         id: `m-studio-${f.studio}`,
-        label: '厂牌:',
+        label: `${t('filter.studio')}:`,
         value: f.studio,
         onRemove: () => emit('clear-movie-field', 'studio'),
       });
@@ -52,7 +83,7 @@ const activeChips = computed<ChipItem[]>(() => {
     if (f.director) {
       chips.push({
         id: `m-director-${f.director}`,
-        label: '导演:',
+        label: `${t('filter.director')}:`,
         value: f.director,
         onRemove: () => emit('clear-movie-field', 'director'),
       });
@@ -60,28 +91,27 @@ const activeChips = computed<ChipItem[]>(() => {
     if (f.category) {
       chips.push({
         id: `m-category-${f.category}`,
-        label: '分类:',
+        label: `${t('filter.category')}:`,
         value: trCategory(f.category),
         onRemove: () => emit('clear-movie-field', 'category'),
       });
     }
     if (f.dateFilter && f.dateFilter !== 'all') {
-      const opt = DATE_FILTER_OPTIONS.find(o => o.id === f.dateFilter);
       chips.push({
         id: `m-date-${f.dateFilter}`,
-        label: '时间:',
-        value: opt ? opt.label : f.dateFilter,
+        label: `${t('filter.time')}:`,
+        value: getDateFilterLabel(f.dateFilter, false),
         onRemove: () => emit('clear-movie-field', 'dateFilter'),
       });
     }
     if (f.yearMin != null || f.yearMax != null) {
       let val = '';
-      if (f.yearMin != null && f.yearMax != null) val = `${f.yearMin} - ${f.yearMax} 年`;
-      else if (f.yearMin != null) val = `≥ ${f.yearMin} 年`;
-      else if (f.yearMax != null) val = `≤ ${f.yearMax} 年`;
+      if (f.yearMin != null && f.yearMax != null) val = `${f.yearMin} - ${f.yearMax}`;
+      else if (f.yearMin != null) val = `≥ ${f.yearMin}`;
+      else if (f.yearMax != null) val = `≤ ${f.yearMax}`;
       chips.push({
         id: 'm-years',
-        label: '年代:',
+        label: `${t('filter.era')}:`,
         value: val,
         onRemove: () => emit('clear-movie-years'),
       });
@@ -89,7 +119,7 @@ const activeChips = computed<ChipItem[]>(() => {
     if (f.query?.trim()) {
       chips.push({
         id: 'm-query',
-        label: '影片搜索:',
+        label: `${t('filter.movieSearch')}:`,
         value: f.query.trim(),
         onRemove: () => emit('clear-movie-field', 'query'),
       });
@@ -102,7 +132,7 @@ const activeChips = computed<ChipItem[]>(() => {
         for (const val of list) {
           chips.push({
             id: `p-${key}-${val}`,
-            label: `${FACET_LABELS[key] || key}:`,
+            label: `${facetLabel(key)}:`,
             value: val,
             onRemove: () => emit('clear-performer-facet', key, val),
           });
@@ -113,15 +143,15 @@ const activeChips = computed<ChipItem[]>(() => {
       chips.push({
         id: 'p-has-image',
         label: '',
-        value: '仅有照片',
+        value: t('filter.onlyWithPhoto'),
         onRemove: () => emit('clear-performer-field', 'hasImage'),
       });
     }
     if (pf.minMovies != null) {
       chips.push({
         id: 'p-min-movies',
-        label: '作品数:',
-        value: `≥ ${pf.minMovies} 部`,
+        label: `${t('filter.worksCount')}:`,
+        value: `≥ ${pf.minMovies}`,
         onRemove: () => emit('clear-performer-field', 'minMovies'),
       });
     }
@@ -130,7 +160,7 @@ const activeChips = computed<ChipItem[]>(() => {
     if (ef.studio) {
       chips.push({
         id: `ep-studio-${ef.studio}`,
-        label: '片商:',
+        label: `${t('filter.studio')}:`,
         value: ef.studio,
         onRemove: () => emit('clear-episode-field', 'studio'),
       });
@@ -139,7 +169,7 @@ const activeChips = computed<ChipItem[]>(() => {
       chips.push({
         id: 'ep-has-zh',
         label: '',
-        value: '有中文简介',
+        value: t('filter.hasZhSynopsis'),
         onRemove: () => emit('clear-episode-field', 'hasZh'),
       });
     }
@@ -147,30 +177,29 @@ const activeChips = computed<ChipItem[]>(() => {
       chips.push({
         id: 'ep-has-performers',
         label: '',
-        value: '包含演员',
+        value: t('filter.hasPerformers'),
         onRemove: () => emit('clear-episode-field', 'hasPerformers'),
       });
     }
     if (ef.dateFilter && ef.dateFilter !== 'all') {
-      const opt = EPISODE_DATE_FILTER_OPTIONS.find(o => o.id === ef.dateFilter);
       chips.push({
         id: `ep-date-${ef.dateFilter}`,
-        label: '时间:',
-        value: opt ? opt.label : ef.dateFilter,
+        label: `${t('filter.time')}:`,
+        value: getDateFilterLabel(ef.dateFilter, true),
         onRemove: () => emit('clear-episode-field', 'dateFilter'),
       });
     }
   } else if (props.tab === 'studios' && props.studioQuery?.trim()) {
     chips.push({
       id: 'studio-query',
-      label: '搜索:',
+      label: `${t('common.search')}:`,
       value: props.studioQuery.trim(),
       onRemove: () => emit('clear-studio-query'),
     });
   } else if (props.tab === 'directors' && props.directorQuery?.trim()) {
     chips.push({
       id: 'director-query',
-      label: '搜索:',
+      label: `${t('common.search')}:`,
       value: props.directorQuery.trim(),
       onRemove: () => emit('clear-director-query'),
     });
@@ -202,7 +231,7 @@ function handleClearAll() {
     <div class="flex items-center gap-2.5 flex-wrap flex-1 min-w-0">
       <div class="flex items-center gap-1.5 text-xs font-bold text-accent shrink-0">
         <SlidersHorizontal class="w-3.5 h-3.5" />
-        <span>当前生效筛选 ({{ activeChips.length }})：</span>
+        <span>{{ t('filter.activeFilters') }} ({{ activeChips.length }}):</span>
       </div>
 
       <div class="flex items-center gap-1.5 flex-wrap">
@@ -220,11 +249,11 @@ function handleClearAll() {
     <button
       type="button"
       @click="handleClearAll"
-      class="shrink-0 flex items-center gap-1 text-xs text-fg-4 hover:text-accent font-medium px-2.5 py-1 rounded-xl bg-surface-2/60 hover:bg-surface-2 border border-line-strong hover:border-accent/30 transition shadow-xs"
-      title="清空当前页面所有筛选条件"
+      class="shrink-0 flex items-center gap-1 text-xs text-fg-4 hover:text-accent font-medium px-2.5 py-1 rounded-xl bg-surface-2/60 hover:bg-surface-2 border border-line-strong hover:border-accent/30 transition shadow-xs cursor-pointer"
+      :title="t('filter.clearAll')"
     >
       <RotateCcw class="w-3 h-3" />
-      <span>清空筛选</span>
+      <span>{{ t('filter.clearAll') }}</span>
     </button>
   </div>
 </template>

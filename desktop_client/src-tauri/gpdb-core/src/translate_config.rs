@@ -337,15 +337,29 @@ pub fn list_profiles(path: &Path) -> Vec<Profile> {
     let mut out: Vec<Profile> = cfg
         .profiles
         .iter()
-        .map(|(name, p)| Profile {
-            name: name.clone(),
-            label: non_empty(p.label.clone(), name),
-            kind: non_empty(p.kind.clone(), "openai"),
-            model: p.model.clone(),
-            base_url: p.base_url.clone(),
-            has_key: !p.api_key.is_empty(),
-            key_hint: key_hint(&p.api_key),
-            active: *name == cfg.active,
+        .map(|(name, p)| {
+            let keys_len = p
+                .extra
+                .get("api_keys")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let has_key = !p.api_key.is_empty() || keys_len > 0;
+            let hint = if keys_len > 1 {
+                format!("{} 个 Key 轮换池", keys_len)
+            } else {
+                key_hint(&p.api_key)
+            };
+            Profile {
+                name: name.clone(),
+                label: non_empty(p.label.clone(), name),
+                kind: non_empty(p.kind.clone(), "openai"),
+                model: p.model.clone(),
+                base_url: p.base_url.clone(),
+                has_key,
+                key_hint: hint,
+                active: *name == cfg.active,
+            }
         })
         .collect();
     // The source in use first, then by label. `translate.py` sorts the same way, so

@@ -10,6 +10,7 @@ import {
 } from '../../services/scraper';
 import { pluginsConfig } from '../../services/pluginManager';
 import { nextRunDescription } from '../../services/autoSync';
+import { t } from '../../i18n';
 
 const props = defineProps<{
   open: boolean;
@@ -75,7 +76,7 @@ function handleDismissToBackground() {
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${m}分${s.toString().padStart(2, '0')}秒`;
+  return `${m}m ${s.toString().padStart(2, '0')}s`;
 }
 </script>
 
@@ -93,7 +94,7 @@ function formatElapsed(seconds: number): string {
       <button
         @click="emit('close')"
         class="absolute top-5 right-5 text-fg-3 hover:text-fg p-1.5 rounded-xl hover:bg-surface-2 transition cursor-pointer"
-        title="关闭（若任务在运行，将继续在后台静默执行）"
+        :title="t('sync.closeTooltip')"
       >
         <X class="w-4 h-4" />
       </button>
@@ -110,24 +111,24 @@ function formatElapsed(seconds: number): string {
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h2 class="text-lg font-black tracking-tight text-fg">自动化刮削与同步中心</h2>
+            <h2 class="text-lg font-black tracking-tight text-fg">{{ t('sync.centerTitle') }}</h2>
             <span
               v-if="isScrapingRunning"
               class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1"
             >
               <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-              后台运行中
+              {{ t('sync.runningBg') }}
             </span>
             <span
               v-else-if="pluginsConfig.autoSyncConfig.enabled"
               class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1 cursor-help"
-              :title="`定时后台更新计划生效中，下次：${nextRunDescription}`"
+              :title="t('sync.scheduleNext', { time: nextRunDescription })"
             >
               <Clock class="w-3 h-3" />
-              定时同步生效中
+              {{ t('sync.scheduleActive') }}
             </span>
           </div>
-          <p class="text-xs text-fg-4 mt-0.5">支持极速增量与全量工业级搜刮，断点续传零数据竞争，界面完全解耦</p>
+          <p class="text-xs text-fg-4 mt-0.5">{{ t('sync.centerDesc') }}</p>
         </div>
       </div>
 
@@ -136,24 +137,24 @@ function formatElapsed(seconds: number): string {
         <div class="space-y-0.5">
           <div class="text-fg-4 flex items-center gap-1.5 text-[11px]">
             <Film class="w-3.5 h-3.5 text-indigo-400" />
-            <span>本地已收录电影</span>
+            <span>{{ t('sync.localMovies') }}</span>
           </div>
-          <div class="text-base font-black text-fg">{{ stats.movies.toLocaleString() }} 部</div>
+          <div class="text-base font-black text-fg">{{ stats.movies.toLocaleString() }} {{ t('common.movie') }}</div>
         </div>
         <div class="space-y-0.5">
           <div class="text-fg-4 flex items-center gap-1.5 text-[11px]">
             <Users class="w-3.5 h-3.5 text-purple-400" />
-            <span>本地演员档案</span>
+            <span>{{ t('sync.localPerformers') }}</span>
           </div>
-          <div class="text-base font-black text-fg">{{ stats.performers.toLocaleString() }} 位</div>
+          <div class="text-base font-black text-fg">{{ stats.performers.toLocaleString() }} {{ t('common.performer') }}</div>
         </div>
         <div class="space-y-0.5 col-span-2 sm:col-span-1">
           <div class="text-fg-4 flex items-center gap-1.5 text-[11px]">
             <Layers class="w-3.5 h-3.5 text-amber-400" />
-            <span>本次运行入库</span>
+            <span>{{ t('sync.currentRunIndexed') }}</span>
           </div>
           <div class="text-base font-black text-amber-300">
-            +{{ (scraperState.new_movies + scraperState.new_performers).toLocaleString() }} 项
+            {{ t('sync.countItems', { count: (scraperState.new_movies + scraperState.new_performers).toLocaleString() }) }}
           </div>
         </div>
       </div>
@@ -162,7 +163,7 @@ function formatElapsed(seconds: number): string {
       <div class="flex-1 overflow-y-auto space-y-4 pr-1">
         <!-- MODE SELECTOR (Only shown when NOT currently running) -->
         <div v-if="!isScrapingRunning && !scraperState.finished" class="space-y-2.5">
-          <label class="text-xs font-bold text-fg-3 uppercase tracking-wider block">选择刮削策略</label>
+          <label class="text-xs font-bold text-fg-3 uppercase tracking-wider block">{{ t('sync.selectStrategy') }}</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <!-- Mode 1: Incremental sync -->
             <button
@@ -175,10 +176,10 @@ function formatElapsed(seconds: number): string {
             >
               <div class="flex items-center gap-2 mb-1">
                 <Zap class="w-4 h-4" :class="selectedMode === 'incremental' ? 'text-indigo-400' : 'text-fg-4'" />
-                <span class="font-bold text-xs" :class="selectedMode === 'incremental' ? 'text-indigo-300' : 'text-fg'">增量极速同步</span>
+                <span class="font-bold text-xs" :class="selectedMode === 'incremental' ? 'text-indigo-300' : 'text-fg'">{{ t('sync.incrementalTitle') }}</span>
               </div>
               <p class="text-[11px] text-fg-4 leading-relaxed">
-                检查官网 /newm 与 /newp 获取近期上映新片与新星（推荐日常使用，30 秒完成）。
+                {{ t('sync.incrementalDesc') }}
               </p>
             </button>
 
@@ -193,10 +194,10 @@ function formatElapsed(seconds: number): string {
             >
               <div class="flex items-center gap-2 mb-1">
                 <Sparkles class="w-4 h-4" :class="selectedMode === 'movies_boost' ? 'text-amber-400' : 'text-fg-4'" />
-                <span class="font-bold text-xs" :class="selectedMode === 'movies_boost' ? 'text-amber-300' : 'text-fg'">最新精选快速建库</span>
+                <span class="font-bold text-xs" :class="selectedMode === 'movies_boost' ? 'text-amber-300' : 'text-fg'">{{ t('sync.boostTitle') }}</span>
               </div>
               <p class="text-[11px] text-fg-4 leading-relaxed">
-                逆序抓取最新 1,000 部热门影视作品（新空白库立竿见影，几分钟即可填满主页）。
+                {{ t('sync.boostDesc') }}
               </p>
             </button>
 
@@ -211,10 +212,10 @@ function formatElapsed(seconds: number): string {
             >
               <div class="flex items-center gap-2 mb-1">
                 <ArrowDownToLine class="w-4 h-4" :class="selectedMode === 'movies_full' ? 'text-purple-400' : 'text-fg-4'" />
-                <span class="font-bold text-xs" :class="selectedMode === 'movies_full' ? 'text-purple-300' : 'text-fg'">全站电影全量建库</span>
+                <span class="font-bold text-xs" :class="selectedMode === 'movies_full' ? 'text-purple-300' : 'text-fg'">{{ t('sync.moviesFullTitle') }}</span>
               </div>
               <p class="text-[11px] text-fg-4 leading-relaxed">
-                从 #1 扫到 #76,000 完整入库 6 万部电影，8 线程并发，支持随时暂停与断点续爬。
+                {{ t('sync.moviesFullDesc') }}
               </p>
             </button>
 
@@ -229,10 +230,10 @@ function formatElapsed(seconds: number): string {
             >
               <div class="flex items-center gap-2 mb-1">
                 <Users class="w-4 h-4" :class="selectedMode === 'performers_full' ? 'text-rose-400' : 'text-fg-4'" />
-                <span class="font-bold text-xs" :class="selectedMode === 'performers_full' ? 'text-rose-300' : 'text-fg'">已知演员全量档案补齐</span>
+                <span class="font-bold text-xs" :class="selectedMode === 'performers_full' ? 'text-rose-300' : 'text-fg'">{{ t('sync.performersFullTitle') }}</span>
               </div>
               <p class="text-[11px] text-fg-4 leading-relaxed">
-                根据已录入电影的演员名单，为所有出演演员批量爬取身体属性、曾用名与高清头像。
+                {{ t('sync.performersFullDesc') }}
               </p>
             </button>
 
@@ -247,11 +248,11 @@ function formatElapsed(seconds: number): string {
             >
               <div class="flex items-center gap-2 mb-1">
                 <Globe class="w-4 h-4" :class="selectedMode === 'bftv_catalog' ? 'text-emerald-400' : 'text-fg-4'" />
-                <span class="font-bold text-xs" :class="selectedMode === 'bftv_catalog' ? 'text-emerald-300' : 'text-fg'">BFTV 演员主页全网极速匹配</span>
-                <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">3秒入库万条</span>
+                <span class="font-bold text-xs" :class="selectedMode === 'bftv_catalog' ? 'text-emerald-300' : 'text-fg'">{{ t('sync.bftvCatalogTitle') }}</span>
+                <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">{{ t('sync.bftvCatalogBadge') }}</span>
               </div>
               <p class="text-[11px] text-fg-4 leading-relaxed">
-                反向遍历 BoyfriendTV 全站 12,000+ 模特/演员档案，智能剥离后缀别名，3 秒内将直达个人主页注入数据库，再无漫长等待！
+                {{ t('sync.bftvCatalogDesc') }}
               </p>
             </button>
           </div>
@@ -267,7 +268,7 @@ function formatElapsed(seconds: number): string {
                   class="w-2 h-2 rounded-full"
                   :class="isScrapingRunning ? 'bg-amber-400 animate-ping' : (scraperState.error ? 'bg-rose-400' : 'bg-emerald-400')"
                 ></span>
-                {{ scraperState.message || '运行就绪' }}
+                {{ scraperState.message || t('sync.ready') }}
               </span>
               <span class="font-mono text-fg-3 text-[11px]">
                 {{ scraperState.percent.toFixed(1) }}%
@@ -285,19 +286,19 @@ function formatElapsed(seconds: number): string {
             <!-- Metrics grid -->
             <div class="grid grid-cols-4 gap-2 pt-1 text-center font-mono">
               <div class="p-2 rounded-xl bg-surface/60 border border-line/60">
-                <div class="text-[10px] text-fg-4">已新增电影</div>
+                <div class="text-[10px] text-fg-4">{{ t('sync.newMoviesCount') }}</div>
                 <div class="text-xs font-bold text-indigo-300">+{{ scraperState.new_movies }}</div>
               </div>
               <div class="p-2 rounded-xl bg-surface/60 border border-line/60">
-                <div class="text-[10px] text-fg-4">已新增演员</div>
+                <div class="text-[10px] text-fg-4">{{ t('sync.newPerformersCount') }}</div>
                 <div class="text-xs font-bold text-purple-300">+{{ scraperState.new_performers }}</div>
               </div>
               <div class="p-2 rounded-xl bg-surface/60 border border-line/60">
-                <div class="text-[10px] text-fg-4">当前速度</div>
-                <div class="text-xs font-bold text-emerald-300">{{ scraperState.speed_fps > 0 ? `${scraperState.speed_fps.toFixed(1)}/s` : '连接中' }}</div>
+                <div class="text-[10px] text-fg-4">{{ t('sync.currentSpeed') }}</div>
+                <div class="text-xs font-bold text-emerald-300">{{ scraperState.speed_fps > 0 ? `${scraperState.speed_fps.toFixed(1)}/s` : t('sync.connecting') }}</div>
               </div>
               <div class="p-2 rounded-xl bg-surface/60 border border-line/60">
-                <div class="text-[10px] text-fg-4">已耗时</div>
+                <div class="text-[10px] text-fg-4">{{ t('sync.timeElapsed') }}</div>
                 <div class="text-xs font-bold text-fg-2">{{ formatElapsed(scraperState.elapsed_secs) }}</div>
               </div>
             </div>
@@ -308,9 +309,9 @@ function formatElapsed(seconds: number): string {
             <div class="flex items-center justify-between text-[11px] text-fg-4">
               <span class="flex items-center gap-1.5 font-bold">
                 <Terminal class="w-3.5 h-3.5 text-indigo-400" />
-                <span>实时刮削日志输出</span>
+                <span>{{ t('sync.liveLogTitle') }}</span>
               </span>
-              <span class="font-mono text-[10px]">保留最新 60 条记录</span>
+              <span class="font-mono text-[10px]">{{ t('sync.logRetention') }}</span>
             </div>
             <div
               ref="terminalRef"
@@ -321,15 +322,15 @@ function formatElapsed(seconds: number): string {
                 :key="idx"
                 class="leading-tight break-all"
                 :class="{
-                  'text-amber-300 font-bold': log.includes('+ 新增'),
-                  'text-emerald-300': log.includes('完成') || log.includes('200 OK'),
-                  'text-rose-400': log.includes('Error') || log.includes('失败') || log.includes('🛑'),
-                  'text-fg-4': log.includes('404') || log.includes('跳过'),
+                  'text-amber-300 font-bold': log.includes('+ 新增') || log.includes('+ Added') || log.includes('+ New'),
+                  'text-emerald-300': log.includes('完成') || log.includes('Done') || log.includes('Success') || log.includes('200 OK'),
+                  'text-rose-400': log.includes('Error') || log.includes('失败') || log.includes('Failed') || log.includes('🛑'),
+                  'text-fg-4': log.includes('404') || log.includes('跳过') || log.includes('Skipped'),
                 }"
               >
                 {{ log }}
               </div>
-              <div v-if="scraperState.logs.length === 0" class="text-fg-5 italic">等待引擎任务初始化...</div>
+              <div v-if="scraperState.logs.length === 0" class="text-fg-5 italic">{{ t('sync.waitingInit') }}</div>
             </div>
           </div>
         </div>
@@ -350,10 +351,8 @@ function formatElapsed(seconds: number): string {
         >
           <CheckCircle2 class="w-5 h-5 shrink-0 text-success" />
           <div>
-            <div class="font-bold text-success">刮削任务已顺利完成！</div>
-            <div class="mt-0.5 text-fg-3">
-              本次运行已成功入库 {{ scraperState.new_movies }} 部新电影，{{ scraperState.new_performers }} 位新演员档案。
-            </div>
+            <div class="font-bold text-success">{{ t('sync.taskCompleted') }}</div>
+            <div class="mt-0.5 text-fg-3">{{ t('sync.taskCompletedDesc', { movies: scraperState.new_movies, performers: scraperState.new_performers }) }}</div>
           </div>
         </div>
       </div>
@@ -367,7 +366,7 @@ function formatElapsed(seconds: number): string {
             class="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
           >
             <Sparkles class="w-4 h-4 text-indigo-200" />
-            <span>后台静默运行（关闭此窗口，随时可唤回）</span>
+            <span>{{ t('sync.runInBackground') }}</span>
           </button>
 
           <button
@@ -375,7 +374,7 @@ function formatElapsed(seconds: number): string {
             class="py-3 px-4 rounded-2xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-98 shrink-0"
           >
             <Square class="w-3.5 h-3.5 fill-rose-300" />
-            <span>停止抓取</span>
+            <span>{{ t('sync.stopScraping') }}</span>
           </button>
         </template>
 
@@ -386,7 +385,7 @@ function formatElapsed(seconds: number): string {
             class="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-white font-bold text-xs shadow-lg shadow-orange-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
           >
             <RefreshCw class="w-4 h-4 text-amber-200" />
-            <span>开始执行刮削任务</span>
+            <span>{{ t('sync.startScraping') }}</span>
           </button>
         </template>
 
@@ -397,13 +396,13 @@ function formatElapsed(seconds: number): string {
             class="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
           >
             <CheckCircle2 class="w-4 h-4" />
-            <span>完成并查看新片库</span>
+            <span>{{ t('sync.finishAndView') }}</span>
           </button>
           <button
             @click="scraperState.finished = false"
             class="py-3 px-4 rounded-2xl bg-surface-2 hover:bg-surface-3 border border-line text-fg text-xs font-medium transition cursor-pointer"
           >
-            重新配置
+            {{ t('sync.reconfigure') }}
           </button>
         </template>
       </div>

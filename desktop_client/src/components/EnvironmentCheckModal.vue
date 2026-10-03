@@ -5,6 +5,7 @@ import {
   Copy, Check, Database, Sparkles, Cpu
 } from '@lucide/vue';
 import { api } from '../api';
+import { t } from '../i18n';
 import type { RuntimeEnvironmentInfo } from '../types';
 
 const props = defineProps<{
@@ -79,32 +80,32 @@ onMounted(() => {
               <div>
                 <div class="flex items-center gap-2">
                   <h3 class="text-lg md:text-xl font-black text-fg tracking-tight">
-                    运行环境诊断与配置向导
+                    {{ t('envCheck.title') }}
                   </h3>
                   <span
                     v-if="envInfo?.all_ready"
                     class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1"
                   >
                     <CheckCircle2 class="w-3 h-3" />
-                    就绪
+                    {{ t('envCheck.allReady') }}
                   </span>
                   <span
                     v-else
                     class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30 flex items-center gap-1"
                   >
                     <AlertTriangle class="w-3 h-3" />
-                    需配置
+                    {{ t('envCheck.needsConfig') }}
                   </span>
                 </div>
                 <p class="text-xs text-fg-4 mt-0.5">
-                  确保自动化数据同步、抓取与图片离线缓存功能正常运转
+                  {{ t('envCheck.subtitle') }}
                 </p>
               </div>
             </div>
             <button
               @click="handleDismiss"
               class="p-2 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg transition cursor-pointer"
-              title="关闭"
+              :title="t('common.close')"
             >
               <X class="w-4 h-4" />
             </button>
@@ -131,18 +132,18 @@ onMounted(() => {
                   </div>
                   <div class="space-y-0.5">
                     <div class="flex items-center gap-2">
-                      <span class="text-xs font-bold text-fg">Python 3 运行环境</span>
+                      <span class="text-xs font-bold text-fg">{{ t('envCheck.pyTitle') }}</span>
                       <span
                         class="text-[10px] px-1.5 py-0.5 rounded font-mono font-medium"
                         :class="envInfo?.python_installed ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'"
                       >
-                        {{ envInfo?.python_installed ? (envInfo.python_version || '已就绪') : '未检测到' }}
+                        {{ envInfo?.python_installed ? (envInfo.python_version || t('envCheck.pyReady')) : t('envCheck.pyNotDetected') }}
                       </span>
                     </div>
                     <p class="text-[11px] text-fg-4 leading-relaxed">
                       {{ envInfo?.python_installed
-                        ? `路径: ${envInfo.python_path || '系统默认'} (用于自动化刮削更新插件)`
-                        : '核心自动化同步脚本依赖 Python 3。若未配置，全网同步与离线图库功能将受限。' }}
+                        ? t('envCheck.pyPath', { path: envInfo.python_path || 'python3' })
+                        : t('envCheck.pyMissingDesc') }}
                     </p>
                   </div>
                 </div>
@@ -154,7 +155,7 @@ onMounted(() => {
 
               <!-- Install guidance if python missing -->
               <div v-if="envInfo && !envInfo.python_installed" class="mt-3 pt-3 border-t border-line/60 space-y-2">
-                <p class="text-[11px] text-fg-3 font-medium">推荐在 macOS 终端中运行以下任一命令快速安装：</p>
+                <p class="text-[11px] text-fg-3 font-medium">{{ t('envCheck.pyInstallTip') }}</p>
                 <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-3/80 border border-line font-mono text-xs text-fg-2">
                   <span class="truncate">xcode-select --install</span>
                   <button
@@ -163,7 +164,7 @@ onMounted(() => {
                   >
                     <Check v-if="copiedKey === 'xcode'" class="w-3 h-3 text-emerald-400" />
                     <Copy v-else class="w-3 h-3" />
-                    <span>{{ copiedKey === 'xcode' ? '已复制' : '复制命令' }}</span>
+                    <span>{{ copiedKey === 'xcode' ? t('envCheck.copied') : t('envCheck.copyCmd') }}</span>
                   </button>
                 </div>
                 <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-3/80 border border-line font-mono text-xs text-fg-2">
@@ -174,7 +175,7 @@ onMounted(() => {
                   >
                     <Check v-if="copiedKey === 'brew'" class="w-3 h-3 text-emerald-400" />
                     <Copy v-else class="w-3 h-3" />
-                    <span>{{ copiedKey === 'brew' ? '已复制' : '复制命令' }}</span>
+                    <span>{{ copiedKey === 'brew' ? t('envCheck.copied') : t('envCheck.copyCmd') }}</span>
                   </button>
                 </div>
               </div>
@@ -199,18 +200,18 @@ onMounted(() => {
                   </div>
                   <div class="space-y-0.5">
                     <div class="flex items-center gap-2">
-                      <span class="text-xs font-bold text-fg">本地 SQLite 影视数据库</span>
+                      <span class="text-xs font-bold text-fg">{{ t('envCheck.dbTitle') }}</span>
                       <span
                         class="text-[10px] px-1.5 py-0.5 rounded font-medium"
                         :class="envInfo?.database_ready ? 'text-emerald-400 bg-emerald-500/10' : 'text-amber-400 bg-amber-500/10'"
                       >
-                        {{ envInfo?.database_ready ? '已连接' : '未连接' }}
+                        {{ envInfo?.database_ready ? t('envCheck.dbConnected') : t('envCheck.dbNotConnected') }}
                       </span>
                     </div>
                     <p class="text-[11px] text-fg-4 leading-relaxed truncate max-w-sm">
                       {{ envInfo?.database_ready
-                        ? `存储路径: ${envInfo.database_path}`
-                        : '尚未连接或创建本地 GPDb.db 数据库文件。' }}
+                        ? t('envCheck.dbPath', { path: envInfo.database_path })
+                        : t('envCheck.dbMissing') }}
                     </p>
                   </div>
                 </div>
@@ -223,7 +224,7 @@ onMounted(() => {
                   @click="emit('open-database-setup')"
                   class="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/30 text-xs font-bold transition shrink-0 cursor-pointer"
                 >
-                  去配置
+                  {{ t('envCheck.goConfigure') }}
                 </button>
               </div>
             </div>
@@ -242,16 +243,16 @@ onMounted(() => {
                   </div>
                   <div class="space-y-0.5">
                     <div class="flex items-center gap-2">
-                      <span class="text-xs font-bold text-fg">BFTV 演员直达穿透扩展 (Playwright)</span>
+                      <span class="text-xs font-bold text-fg">{{ t('envCheck.playwrightTitle') }}</span>
                       <span
                         class="text-[10px] px-1.5 py-0.5 rounded font-medium"
                         :class="envInfo?.playwright_available ? 'text-emerald-400 bg-emerald-500/10' : 'text-indigo-400 bg-indigo-500/10'"
                       >
-                        {{ envInfo?.playwright_available ? '已启用 (无感过盾)' : '可选安装' }}
+                        {{ envInfo?.playwright_available ? t('envCheck.playwrightActive') : t('envCheck.playwrightOptional') }}
                       </span>
                     </div>
                     <p class="text-[11px] text-fg-4 leading-relaxed">
-                      用于全自动穿透 BoyfriendTV Cloudflare 盾，极速批量提取演员个人主页直达链接。
+                      {{ t('envCheck.playwrightDesc') }}
                     </p>
                   </div>
                 </div>
@@ -270,7 +271,7 @@ onMounted(() => {
                   >
                     <Check v-if="copiedKey === 'playwright'" class="w-3 h-3 text-emerald-400" />
                     <Copy v-else class="w-3 h-3" />
-                    <span>{{ copiedKey === 'playwright' ? '已复制' : '复制命令' }}</span>
+                    <span>{{ copiedKey === 'playwright' ? t('envCheck.copied') : t('envCheck.copyCmd') }}</span>
                   </button>
                 </div>
               </div>
@@ -285,7 +286,7 @@ onMounted(() => {
               class="px-4 py-2.5 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 hover:text-fg text-xs font-bold flex items-center gap-2 transition border border-line cursor-pointer disabled:opacity-50"
             >
               <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': checking }" />
-              <span>{{ checking ? '正在重新检测...' : '重新检测环境' }}</span>
+              <span>{{ checking ? t('envCheck.rechecking') : t('envCheck.recheckBtn') }}</span>
             </button>
 
             <div class="flex items-center gap-2 ml-auto">
@@ -293,7 +294,7 @@ onMounted(() => {
                 @click="handleDismiss"
                 class="px-5 py-2.5 rounded-xl bg-accent-fill text-on-fill text-xs font-bold hover:bg-accent-fill/90 transition shadow-lg shadow-accent-fill/20 cursor-pointer"
               >
-                {{ envInfo?.all_ready ? '环境良好，立即体验' : '知道了，暂不配置' }}
+                {{ envInfo?.all_ready ? t('envCheck.readyBtn') : t('envCheck.laterBtn') }}
               </button>
             </div>
           </div>

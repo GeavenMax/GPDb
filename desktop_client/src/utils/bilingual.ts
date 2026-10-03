@@ -12,8 +12,20 @@
  * glossary load.
  */
 
-/** Which language to show. Matches the `descLang` switch in the UI. */
+import type { ContentLangMode } from './prefs';
+
+/** Which language to show for database content: 'zh' (dual/Chinese) or 'en' (original). */
 export type Lang = 'zh' | 'en';
+
+/**
+ * Resolves the concrete database content language from the user's display mode preference
+ * and the current UI locale.
+ */
+export function resolveContentLang(mode: ContentLangMode = 'auto', uiLocale = 'zh-CN'): Lang {
+  if (mode === 'original') return 'en';
+  if (mode === 'bilingual') return 'zh';
+  return uiLocale.startsWith('zh') ? 'zh' : 'en';
+}
 
 /** Anything carrying a title and an optional Chinese one — `Movie`, `FavoriteItem`. */
 export interface Titled {
@@ -80,4 +92,30 @@ export function sceneFilm(e: {
   title_zh?: string | null;
 }): Titled {
   return { title: e.movie_title, title_zh: e.movie_title_zh ?? e.title_zh };
+}
+
+/** Anything carrying a studio name and an optional Chinese one — `StudioSummary`, `StudioWorks`. */
+export interface StudioNamed {
+  name?: string | null;
+  name_zh?: string | null;
+  studio_name?: string | null;
+  studio_name_zh?: string | null;
+}
+
+/** The studio's name to lead with in cards and modals. */
+export function studioPrimary(s: StudioNamed, lang: Lang = 'zh'): string {
+  const zh = s.studio_name_zh ?? s.name_zh;
+  const orig = s.studio_name ?? s.name;
+  return pickZh(zh, orig, lang);
+}
+
+/**
+ * The original studio name to show beneath `studioPrimary`, or `''` when absent / in English mode.
+ */
+export function studioSecondary(s: StudioNamed, lang: Lang = 'zh'): string {
+  if (lang !== 'zh') return '';
+  const zh = ((s.studio_name_zh ?? s.name_zh) || '').trim();
+  const orig = ((s.studio_name ?? s.name) || '').trim();
+  if (!zh || !orig || zh === orig) return '';
+  return orig;
 }

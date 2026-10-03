@@ -55,8 +55,6 @@ export async function loadDeepInsights(): Promise<DeepInsightsData> {
     const favs = await api.getFavorites();
     const allMovies: FavoriteItem[] = [
       ...(favs.movie || []),
-      ...(favs.watched || []),
-      ...(favs.wishlist || []),
     ];
 
     // Deduplicate by key or id
@@ -69,21 +67,21 @@ export async function loadDeepInsights(): Promise<DeepInsightsData> {
 
     // 1. Era Distribution
     const eraCounts: Record<string, number> = {
-      '经典老片 (1990以前)': 0,
-      '黄金繁荣期 (90年代)': 0,
-      '数码探索期 (00年代)': 0,
-      '超清蓝光期 (10年代)': 0,
-      '先锋现代期 (20年代+)': 0,
+      'analytics.eraClassic': 0,
+      'analytics.eraGolden': 0,
+      'analytics.eraDigital': 0,
+      'analytics.eraBluray': 0,
+      'analytics.eraModern': 0,
     };
 
     for (const m of movies) {
       const y = m.release_year;
       if (!y) continue;
-      if (y < 1990) eraCounts['经典老片 (1990以前)']++;
-      else if (y < 2000) eraCounts['黄金繁荣期 (90年代)']++;
-      else if (y < 2010) eraCounts['数码探索期 (00年代)']++;
-      else if (y < 2020) eraCounts['超清蓝光期 (10年代)']++;
-      else eraCounts['先锋现代期 (20年代+)']++;
+      if (y < 1990) eraCounts['analytics.eraClassic']++;
+      else if (y < 2000) eraCounts['analytics.eraGolden']++;
+      else if (y < 2010) eraCounts['analytics.eraDigital']++;
+      else if (y < 2020) eraCounts['analytics.eraBluray']++;
+      else eraCounts['analytics.eraModern']++;
     }
 
     const eras: EraStat[] = Object.entries(eraCounts).map(([era, count]) => ({
