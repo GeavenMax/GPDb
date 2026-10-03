@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
-import { X, Film, Layers, Heart, Loader2, BookOpen, Languages } from '@lucide/vue';
+import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent, nextTick } from 'vue';
+import { X, Film, Layers, Heart, Loader2, Languages } from '@lucide/vue';
 import type { Movie, StudioWorks, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
@@ -80,6 +80,9 @@ function loadMoreEpisodes() {
 const worksCount = computed(() => props.works?.movies_count ?? props.studio?.works_count ?? 0);
 const episodesCount = computed(() => props.works?.episodes_count ?? props.studio?.episodes_count ?? 0);
 
+// Modal container ref to reset scroll position on studio switch
+const modalContainerRef = ref<HTMLElement | null>(null);
+
 // Bilingual & In-depth brand profile metadata
 const fetchedDescriptionZh = ref<string | null>(null);
 const cachedDescriptionZh = ref<string | null>(null);
@@ -102,8 +105,16 @@ function onLogoError() {
   logoError.value = true;
 }
 
+/**
+ * Fallback archive fetcher: only called if works wasn't supplied by parent
+ * or parent works did not contain description_zh.
+ */
 async function loadStudioArchive(name?: string | null) {
   if (!name) return;
+  // If we already have description and logo from props, skip redundant IPC call
+  if ((props.works?.description_zh || props.studio?.description_zh) && (props.works?.logo_url || props.studio?.logo_url)) {
+    return;
+  }
   try {
     const works = await api.getStudioWorks(name);
     if (works?.description_zh) {
@@ -180,7 +191,6 @@ const subTitle = computed(() => {
   return '';
 });
 
-
 function isFav(type: FavoriteType, key: string | null | undefined): boolean {
   if (!key) return false;
   return Boolean(props.favoriteKeys?.[type]?.has(key));
@@ -196,17 +206,16 @@ watch(() => props.studio?.name, (newName) => {
   cachedDescriptionZh.value = null;
   fetchedLogoUrl.value = null;
   logoError.value = false;
-  if (newName) loadStudioArchive(newName);
-}, { immediate: true });
-
-watch(
-  () => [props.works?.description_zh, props.studio?.description_zh],
-  ([worksDesc, studioDesc]) => {
-    if (!worksDesc && !studioDesc && props.studio?.name) {
-      loadStudioArchive(props.studio.name);
+  nextTick(() => {
+    if (modalContainerRef.value) {
+      modalContainerRef.value.scrollTop = 0;
     }
+  });
+  // Only fetch if parent didn't already provide works or description
+  if (newName && !props.works?.description_zh && !props.studio?.description_zh) {
+    loadStudioArchive(newName);
   }
-);
+}, { immediate: true });
 
 watch(activeTab, () => {
   displayedEpisodeCount.value = BATCH_SIZE;
@@ -239,6 +248,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     @click.self="emit('close')"
   >
     <div
+      ref="modalContainerRef"
       class="relative w-full max-w-5xl lg:max-w-6xl max-h-[90vh] chrome-panel border border-line-strong/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col text-fg"
       @scroll="handleScroll"
     >
@@ -316,34 +326,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
       </div>
 
-      <!-- Studio Introduction ("厂牌介绍") -->
+      <!-- Studio Introduction ("厂牌介绍") - Clean, lightweight and responsive -->
       <div
         v-if="effectiveDescriptionZh"
-        class="mx-6 md:mx-8 mt-6 p-6 md:p-8 rounded-3xl bg-gradient-to-br from-surface-2/95 via-surface/90 to-surface-2/70 border border-line-strong shadow-xl relative overflow-hidden group transition-all shrink-0 min-h-fit"
+        class="mx-6 md:mx-8 mt-5 p-4 md:p-5 rounded-2xl bg-surface-2/50 border border-line/60 shrink-0 min-h-fit"
       >
-        <!-- Background decorative watermark -->
-        <div class="absolute -right-6 -bottom-8 text-accent/[0.04] pointer-events-none select-none transition-transform duration-500 group-hover:scale-105 group-hover:text-accent/[0.07]">
-          <BookOpen class="w-48 h-48 stroke-[1]" />
+        <div class="text-xs font-bold text-accent uppercase tracking-wider mb-2">
+          {{ t('studio.historyArchive') }}
         </div>
-
-        <div class="relative z-10 space-y-4">
-          <!-- Card Header with Title -->
-          <div class="flex items-center gap-3 pb-3 border-b border-line-strong/60">
-            <div class="w-8 h-8 rounded-xl bg-accent-fill/15 border border-accent-fill/30 flex items-center justify-center text-accent shrink-0 shadow-sm ring-1 ring-accent-fill/10">
-              <BookOpen class="w-4 h-4" />
-            </div>
-            <h2 class="text-base md:text-lg font-bold text-fg tracking-wide">
-              {{ t('studio.historyArchive') }}
-            </h2>
-          </div>
-
-          <!-- Body: Expansive, legible, comfortable line-height and blockquote styling -->
-          <div class="relative pl-4 md:pl-5 border-l-2 border-accent/50 py-1.5 mt-2">
-            <p class="text-sm md:text-[15px] text-fg leading-relaxed tracking-normal font-normal text-justify select-text whitespace-pre-line">
-              {{ effectiveDescriptionZh }}
-            </p>
-          </div>
-        </div>
+        <p class="text-xs md:text-sm text-fg-2 leading-relaxed text-justify select-text whitespace-pre-line">
+          {{ effectiveDescriptionZh }}
+        </p>
       </div>
 
       <!-- Works Section -->
@@ -384,9 +377,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div v-if="activeTab === 'movies'">
           <div v-if="movies.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             <MovieCard
-              v-for="m in movies"
+              v-for="(m, idx) in movies"
               :key="m.id"
               :movie="m"
+              :priority="idx < 16"
               :lang="effectiveLang"
               :is-favorite="isFav('movie', String(m.id))"
               @select="emit('select-movie', m)"

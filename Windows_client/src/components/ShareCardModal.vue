@@ -52,11 +52,6 @@ const displayDescription = computed(() => {
   return props.data.descriptionZh?.trim() || props.data.description?.trim() || '';
 });
 
-const formattedDate = computed(() => {
-  const d = new Date();
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-});
-
 const itemTag = computed(() => {
   if (!props.data) return '';
   return props.data.type === 'episode' ? `#EP-${props.data.id}` : `#MOV-${props.data.id}`;
@@ -604,7 +599,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.font = '10px "Microsoft YaHei UI", sans-serif';
   const itemTagStr = isEpisode ? `#EP-${props.data.id}` : `#MOV-${props.data.id}`;
-  ctx.fillText(`${itemTagStr}  ·  ${formattedDate.value}`, padX, height - 32);
+  ctx.fillText(itemTagStr, padX, height - 32);
 
   ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
   ctx.font = '500 10px "Microsoft YaHei UI", sans-serif';
@@ -974,7 +969,7 @@ async function saveCardImage() {
               <div class="w-full pt-3.5 border-t border-white/10 flex items-center justify-between text-[10px] text-white/50">
                 <div class="space-y-0.5 text-left">
                   <div class="text-white/85 font-semibold text-[11px]">{{ t('share.watermark') }}</div>
-                  <div class="text-[9px] text-white/40">{{ itemTag }} · {{ formattedDate }}</div>
+                  <div class="text-[9px] text-white/40">{{ itemTag }}</div>
                   <div class="text-[9px] text-amber-400 font-mono flex items-center gap-1 pt-0.5">
                     <span>📢 {{ t('share.officialChannel') }}</span>
                   </div>

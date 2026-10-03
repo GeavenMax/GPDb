@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.15.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.17.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -185,9 +185,9 @@
 
 | 平台 | 安裝套件檔案名稱 | 安裝方式與說明 |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.15.0.dmg` | 按兩下掛載後將 `GPDb.app` 拖入 `Applications`（應用程式）資料夾即可。<br>*(首次開啟若提示未公證，可在「系統設定 → 隱私權與安全性」點擊「仍要開啟」，或在終端機執行 `sudo xattr -cr /Applications/GPDb.app`)* |
-| **🪟 Windows** | `GPDb-Windows-v2.15.0.exe` | 按兩下安裝程式完成安裝。採用 NSIS 單使用者免提權架構，無需管理員權限，隨裝即用。 |
-| **🤖 Android** | `GPDb-Android-v2.15.0-signed.apk` | 手機下載後直接點擊安裝（已通過官方公鑰強簽名，若系統提示允許未知來源安裝，請予以允許）。 |
+| ** macOS** | `GPDb-macOS-v2.17.0.dmg` | 按兩下掛載後將 `GPDb.app` 拖入 `Applications`（應用程式）資料夾即可。<br>*(首次開啟若提示未公證，可在「系統設定 → 隱私權與安全性」點擊「仍要開啟」，或在終端機執行 `sudo xattr -cr /Applications/GPDb.app`)* |
+| **🪟 Windows** | `GPDb-Windows-v2.17.0.exe` | 按兩下安裝程式完成安裝。採用 NSIS 單使用者免提權架構，無需管理員權限，隨裝即用。 |
+| **🤖 Android** | `GPDb-Android-v2.17.0-signed.apk` | 手機下載後直接點擊安裝（已通過官方公鑰強簽名，若系統提示允許未知來源安裝，請予以允許）。 |
 
 ---
 

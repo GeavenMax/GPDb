@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.17.0] - 2026-10-03
+
+### Changed
+- **影片档案海报展示优化 (`MovieDetailScreen.kt`)**：
+  - 优化多海报自适应平铺排版，在水平居中容器内采用流式横向排布，优化边缘圆角与阴影层级，全面对齐桌面端 `v2.17.0` 视觉规范；
+  - 演员档案与厂牌档案操作按钮交互对齐，版本号统一升级至 `v2.17.0` (versionCode 317)。
+
 ## [2.16.7] - 2026-10-03
 
 ### Added

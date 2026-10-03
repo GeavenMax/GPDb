@@ -5,6 +5,23 @@
 
 ## [v2.17.0] - 2026-10-03
 
+### Changed
+- **片商档案详情弹窗（Studio Modal）性能大幅调优与设计轻量化 (`StudioDetailModal.vue`, `MovieCard.vue`)**：
+  - **精简“厂牌介绍”渲染开销**：移除过度繁琐的高消耗微光渐变层、专属书籍典籍标识（`BookOpen`）、深度解析徽标（`Sparkles`）以及底纹大水印设计，改为清爽扁平、自适应高对比度的卡片布局，降低 GPU 绘制负载；
+  - **消除重复 IPC 查询导致的打开卡顿**：重构片商数据监听器与缓存机制，移除 `StudioDetailModal.vue` 中在父组件已拉取数据时的冗余 `getStudioWorks` 触发点，彻底避免重复进行全量 SQLite 连表查询与大 JSON 序列化，弹窗秒开无延迟；
+  - **修复首批前三排影片封面空白不显示问题**：支持 `priority` 预加载属性，为首屏前 16 部影片启用 `loading="eager"`，彻底解决 WebKit / WebView 内置懒加载在模态弹窗初始渲染时计算不到位导致的白块占位问题；并在切换片商时自动复位模态容器滚动条位置至顶部。
+- **演员档案详情弹窗（Performer Modal）右侧操作按钮布局优化 (`PerformerDetailModal.vue`)**：
+  - **右侧专属小块单列排布**：修复此前演员信息与艺名等文本被横向多按钮挤占排版空间的痛点，将“BT 磁力资源搜索扩展、BFTV、PBC 百科、SmutJunkies、Google 搜索、收藏演员”等外部链接与收藏操作按钮统一定位收纳于右侧紧凑专区（单列垂直排布，宽度自适应收束），释放左侧核心演员档案与本名/出道年份等信息呈现空间。
+
+### Fixed
+- **浅色主题背景与文字对比度与可读性修复 (`theme.css`, `App.vue`)**：
+  - **窗口材质深色变量隔离**：排查并彻底解决 Windows 11 Mica / Acrylic 材质全局注入导致浅色主题（`classic-light`、`glass-light`、`my-light`）背景发黑、暗色文字（zinc-900）与暗黑背景对比度崩塌难以阅读的根本原因；
+  - **浅色主题半透明底色正向适配**：限制深色材质变量仅在暗色主题下生效（`:not([data-theme*='light'])`），并为浅色主题适配高亮度通透半透明底色（`oklch(97.5% ...)` / `#ffffff`），确保所有浅色主题在任何系统材质与环境下均呈现清晰纯净的浅色背景与高对比度易读文字；
+  - **非 Windows 平台原生材质环境隔离**：在 macOS / Linux 等非 Windows 环境下默认将窗口材质设为 `default` 并移除 `data-window-material` 属性，设置面板中「窗口背景材质」选项仅在 Windows 系统下展示，杜绝跨平台样式干扰。
+- **影视分享卡片底部日期与官方频道链接修正 (`ShareCardModal.vue`, `i18n/index.ts`)**：
+  - **移除分享卡片底部写入的日期**：Canvas 生成图与 DOM 预览均移除日期展示，仅保留纯净作品编号（如 `#MOV-12345` / `#EP-6789`）；
+  - **修正官方 Telegram 频道链接**：将 7 种语言国际化字典中的官方频道链接统一修正为 `t.me/gpdbnews`。
+
 ### Added
 - **Windows 11 原生 Mica / Acrylic 材质融合与 Fluent Design 现代感增强 (`commands/system.rs`, `lib.rs`, `App.vue`, `theme.css`, `tauri.conf.json`, `prefs.ts`)**：
   - **Windows 11 Mica / Mica Alt (Tabbed) / Acrylic 窗口效果原生驱动**：利用 Tauri v2 窗口材质特效引擎 (`EffectsBuilder` & `Effect::Mica` / `Effect::Tabbed` / `Effect::Acrylic`)，窗口透明度与桌面壁纸原生融合，带来 Windows 11 标志性 Fluent Design 半透明现代质感；

@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.15.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.17.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -200,9 +200,9 @@
 
 | プラットフォーム | インストールファイル | インストール方法と説明 |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.15.0.dmg` | ダブルクリックしてマウント後、`GPDb.app` を `Applications`（アプリケーション）フォルダにドラッグ＆ドロップするだけです。<br>*（初回起動時に未公証の警告が表示される場合は、「システム設定 → プライバシーとセキュリティ」で「このまま開く」をクリックするか、ターミナルで `sudo xattr -cr /Applications/GPDb.app` を実行してください）* |
-| **🪟 Windows** | `GPDb-Windows-v2.15.0.exe` | インストーラーをダブルクリックしてインストール完了。NSIS シングルユーザー・権限昇格不要のアーキテクチャを採用しており、管理者権限不要でそのまま使えます。 |
-| **🤖 Android** | `GPDb-Android-v2.15.0-signed.apk` | スマートフォンにダウンロードしてそのままタップしてインストール（公式秘密鍵で強力に署名済み。システムが「提供元不明のアプリのインストール」を確認した場合は許可してください）。 |
+| ** macOS** | `GPDb-macOS-v2.17.0.dmg` | ダブルクリックしてマウント後、`GPDb.app` を `Applications`（アプリケーション）フォルダにドラッグ＆ドロップするだけです。<br>*（初回起動時に未公証の警告が表示される場合は、「システム設定 → プライバシーとセキュリティ」で「このまま開く」をクリックするか、ターミナルで `sudo xattr -cr /Applications/GPDb.app` を実行してください）* |
+| **🪟 Windows** | `GPDb-Windows-v2.17.0.exe` | インストーラーをダブルクリックしてインストール完了。NSIS シングルユーザー・権限昇格不要のアーキテクチャを採用しており、管理者権限不要でそのまま使えます。 |
+| **🤖 Android** | `GPDb-Android-v2.17.0-signed.apk` | スマートフォンにダウンロードしてそのままタップしてインストール（公式秘密鍵で強力に署名済み。システムが「提供元不明のアプリのインストール」を確認した場合は許可してください）。 |
 
 ---
 

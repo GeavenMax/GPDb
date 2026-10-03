@@ -1,9 +1,11 @@
 # GPDb 离线影视库 — 项目交接说明
 
-> 最后更新：2026-09-22 夜间。写给接手的人或模型：先读这一份，再动代码。
+> 最后更新：2026-10-03。写给接手的人或模型：先读这一份，再动代码。
 > 文中所有数字都是当时实测值，不是估计值。
-> 本轮完成了顶部活动筛选栏（ActiveFilterBar）、我的收藏想看/已看双模可折叠手风琴升级、典藏成就奖杯插件版权清理（去PSN）/难度重构/进度重置/音效开关、大模型翻译设置合并至插件中心，以及App图标重构设计建议；通过了 69 项 Rust 测试与 Vue-tsc 检查，已重新打包部署至 /Applications/GPDb.app；
-> 后台全量图片下载任务（PID 73199）保持不间断稳定运行（见 §5.2）。
+> 当前版本：**v2.17.0**。全端通过 `vue-tsc -b`、`npm run build`、`cargo test`（69 项全部通过）。
+> macOS Release 产物已自动构建并覆盖安装至 `/Applications/GPDb.app`。
+> 本轮核心修复：浅色主题可读性/对比度修复、Windows 11 Mica/Acrylic 材质深色变量隔离、片商详情轻量化与秒开防卡顿、前三排首屏海报白块修复、演员详情右侧按钮单列排布、影视分享卡片官方频道链接修正 (`t.me/gpdbnews`) 等。
+> 项目代码架构与最新状态详见 §4.0 与 §5。
 
 ---
 
@@ -154,7 +156,40 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 
 ## 4. 已完成的工作
 
-### 4.0 本轮（2026-09-22 夜间）：全功能矩阵升级与插件系统实施
+### 4.0 最新（2026-10-03）：v2.17.0 性能调优、浅色主题对比度修复与 Windows 11 Fluent 材质原生化
+
+**1. 浅色主题背景与文字对比度与可读性彻底修复 (`theme.css`, `App.vue`)**：
+- **根因排查**：在新增 Windows 11 Fluent Mica / Acrylic 材质支持时，在 `theme.css` 末尾全局写入了 `html[data-window-material='...']` 的深色变量覆盖（`--app: oklch(14.1% ... / 0.78)` 与 `--surface: oklch(18% ... / 0.75)`）。由于 `App.vue` 默认给 `<html>` 打上了 `data-window-material="mica"`，无论在哪个平台和哪个主题下，背景均被强制变黑。浅色主题（`classic-light`、`glass-light`、`my-light`）下的文字主色是深色 zinc-900，深色文字在深色背景下对比度崩溃，导致可读性极差。
+- **正向修复**：
+  1. 限制深色材质变量仅在暗色主题生效：`html[data-window-material='mica']:not([data-theme*='light'])`；
+  2. 针对浅色主题单独配置通透的高亮半透明底色（`oklch(97.5% ... / 0.82)` 与 `oklch(100% 0 0 / 0.85)`）；
+  3. 非 Windows 平台（macOS / Linux）默认将窗口材质置为 `'default'` 并移除该属性，设置界面的「窗口背景材质」卡片仅在 Windows 平台展示。
+
+**2. 片商档案详情弹窗（Studio Modal）轻量化与性能大幅调优 (`StudioDetailModal.vue`, `MovieCard.vue`)**：
+- **厂牌介绍轻量化**：移除过于花哨的高消耗微光渐变圆角面板、专属书籍典籍标识（`BookOpen`）、深度解析徽标（`Sparkles`）以及底纹大水印设计，精简为清爽扁平、自适应高对比度的卡片；
+- **解决打开片商弹窗卡顿**：重构片商数据监听器与缓存机制，移除 `StudioDetailModal.vue` 中在父组件已拉取数据时的冗余 `getStudioWorks` 触发点，彻底避免重复进行全量 SQLite 连表查询与大 JSON 序列化，弹窗秒开无延迟；
+- **解决前三排影片封面空白不显示 Bug**：支持 `priority` 预加载属性，为首屏前 16 部影片启用 `loading="eager"`，彻底解决 WebKit / WebView 内置懒加载在模态弹窗初始渲染时计算不到位导致的白块占位问题；并在切换片商时自动复位模态容器滚动条位置至顶部；
+- **细长 Logo 布局优化**：片商 Logo 移至右侧各个操作按钮上方自适应宽度呈现，避免原有微缩方式看不清。
+
+**3. 演员档案详情弹窗（Performer Modal）右侧操作按钮布局优化 (`PerformerDetailModal.vue`)**：
+- 将“BT 磁力资源搜索扩展、BFTV、PBC 百科、Google 搜索、收藏演员”等外部链接与收藏操作按钮统一定位收纳于右侧紧凑专区（单列垂直排布，宽度自适应收束），释放左侧核心演员档案与本名/出道年份等信息呈现空间，杜绝文本被横向多按钮挤占排版空间的痛点。
+
+**4. 影视分享卡片细节修正 (`ShareCardModal.vue`, `i18n/index.ts`)**：
+- **移除底部写入的日期**：Canvas 生成图与 DOM 预览均移除日期展示，仅保留纯净作品编号；
+- **修正官方 Telegram 频道链接**：将 7 种语言国际化字典中的官方频道链接统一修正为 `t.me/gpdbnews`。
+
+**5. Windows 11 原生 Mica / Acrylic 材质与系统托盘驻留 (`commands/system.rs`, `lib.rs`, `App.vue`, `theme.css`)**：
+- 支持 Tauri v2 原生窗口材质（Mica / Tabbed / Acrylic）；
+- 原生系统托盘图标、Jump List 快捷导航直达、左键单击极速切换窗口、关闭时最小化到系统托盘；
+- 任务栏实时进度指示（Taskbar Progress Indicator），刮削时呈现原生绿色进度条。
+
+**6. 大模型翻译纯文本解析兼容与密钥双向漫游 (`commands/translate.rs`, `PluginsView.vue`)**：
+- 修复自填 API Key 单条翻译强制解析 JSON 报错的问题，兼容纯文本正文解析，行为与 Android 端 100% 对齐；
+- OpenAI 兼容接口去除单条强制 `response_format: json_object` 并支持智能 400 重试；
+- 端点 URL 自适应规范化补齐 `/v1`；
+- 配置文件 `translate_config.json` 采用数据库同级目录与系统用户数据目录（`%APPDATA%/com.gpdb.app`）智能双向回退与合并加载。
+
+### 4.1 历史里程碑（2026-09-22 夜间）：全功能矩阵升级与插件系统实施
 
 **1. 离线图片缓存统计修复 (Cache Stats Fix)**：
 - 根因：前端打包后运行于 `tauri://localhost`，相对路径 `fetch('/api/cache/stats')` 失败回退为 0。
@@ -402,20 +437,22 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 
 ## 5. 待完成事项
 
-### 5.1 提交状态：工作区干净
+### 5.1 提交与发布状态
 
-- **最新提交（图片下载接入 void 账本）**：`36c4a3f`（在 `gpdb-plus` 分支）
-  - `cache_images.py` 把「源头没有这张图」记进 `scrape_voids`（新命名空间
-    `item_type='episode'`），并把 `#164539` 的假图当「没有图」处理。
-  - 数据侧结论见 §5.2；新增 flag 见 §6；踩坑见 §7.16 与 §7.18。
-  - ⚠️ 工作区里那 16 个 `desktop_client/**` 改动**不是本轮的**（另一个会话在动），
-    所以只提交了 `cache_images.py` / `schema.sql` 两个文件。
-- **上一提交（长任务收尾订正）**：`95359dc`
-  - 空目标走 `_report_empty_work_list()` 讲清原因、`--revert-missing-hd` 的 `--apply` 前
-    先警告「本地缺 ≠ 站点没有」、HANDOVER 按探针跑完后的真实数字重写。
-- **再上一提交（图片下载器维护模式）**：`835fbac`
-  - 四遍下载 + 回滚 + 清孤儿这一轮**只动数据和缓存，没有改代码**；
-    数据侧结论见 §5.2。
+- **主分支**：`main`
+- **当前 Release**：`v2.17.0`（Git tag & Cargo/npm 对齐）
+- **macOS 本地安装包**：已通过 `npm run tauri build` 打包并覆盖部署至 `/Applications/GPDb.app`
+- **Windows / macOS 双端对齐**：`desktop_client` 与 `Windows_client` 代码 100% 同步一致（含 `App.vue`、`theme.css`、组件与 i18n）。
+- **待提交工作区改动**：
+  - `desktop_client` & `Windows_client`:
+    - `theme.css`: 浅色主题窗口材质变量隔离与通透底色适配；
+    - `App.vue`: 平台判断、窗口材质 macOS 隔离；
+    - `components/StudioDetailModal.vue`: 厂牌介绍扁平化、防卡顿与 Logo 布局；
+    - `components/MovieCard.vue`: 首屏前 16 部影片启用 `priority` 预加载（`loading="eager"`）；
+    - `components/PerformerDetailModal.vue`: 右侧操作按钮单列收纳布局；
+    - `components/ShareCardModal.vue`: 移除卡片底部日期；
+    - `i18n/index.ts`: 官方 Telegram 频道链接统一为 `t.me/gpdbnews`；
+    - `CHANGELOG.md`: 根目录及子客户端日志已补充。
 
 
 ### 5.2 数据侧：两个长任务（**必须串行，别开两个终端同时跑**）
@@ -587,22 +624,21 @@ PNG 368、WebP 151、GIF 3——站点在 `.jpg` 这个 URL 下会回别的格�
   （打开导演档案）。本轮只改了后者（用户要求的是「点击收藏」「收纳导演数据」），
   前者是原来的筛选语义，没动。要不要统一成「都打开导演档案」是个产品决定。
 
-### 5.4 翻译（几乎没开始）
+### 5.4 翻译现状与能力
 
-`movies.description_zh` 只做了 2,367 / 63,238；`title_zh` 全空；`episodes.description_zh` 77。
-`translate.py` 有片名/分类/简介几个模式，术语表 81 条（注意：`J/O` 是自慰不是手交）。
-跑之前确认 `translate_config.json` 在位（含用户自己的 DeepSeek key，**别提交**）。
+- 桌面端已内置 **纯 Rust 原生 LLM 翻译引擎**（支持 Google Gemini API Key 智能轮换池、OpenAI 兼容协议如 DeepSeek/Moonshot/Ollama/Qwen 等、Claude 原生协议）；
+- 前端支持在影片详情、分集详情中单篇试译/保存，并在设置中心支持用户配置自定义 Key；单条翻译已支持纯文本兼容解析（对齐 Android 端行为）。
+- 离线全量批量翻译：`movies.description_zh` 仍有大量待翻译空间；有需要批量离线翻译时可参考 `translate.py`。跑之前确认 `translate_config.json` 在位（**别提交包含真实 Key 的配置**）。
 
-### 5.5 用户主动推迟的
+### 5.5 已落地与后续关注项
 
-- **片商 logo 抓取**：用户推迟了。开工前必读那份设计稿，里面记了**两条最伤数据的坑**。
+- **片商 Logo 与 Banner**：数据库已在 `studios` 表扩充 `logo_url` 与 `banner_url` 列，前端详情已支持自适应展示片商 Logo 与 Banner，并在 `MovieCard` 与详情页中自适应排布；
+- **双端代码 100% 同步**：`desktop_client` 与 `Windows_client` 共享同一套业务代码，改动任何一方必须同步另一方。
 
 ### 5.6 明确不做
 
 - 重抓 32,125 条分集页去补 `action_notes`（coep 没有这个字段，分集页实测也多为空）。
-- 多语种 i18n、演员艺名合并、原生窗口 vibrancy。
-- **导演库本轮不动数据**：不跑 `refresh_director_counts()`、不重抓、不改任何现有行
-  （导演库不读那列，见 §3.6）。
+- **导演库不动数据**：不跑 `refresh_director_counts()`、不重抓、不改任何现有行（导演库不读那列，见 §3.6）。
 
 ---
 

@@ -20,9 +20,12 @@ const props = withDefaults(defineProps<{
    * so it cannot derive the badge from `description_zh` the way other callers do.
    */
   translated?: boolean;
+  /** Whether to prioritize loading (loading="eager" instead of "lazy") */
+  priority?: boolean;
 }>(), {
   view: 'grid',
   lang: 'zh',
+  priority: false,
 });
 
 const emit = defineEmits<{
@@ -241,7 +244,7 @@ const directorTitle = computed(() => {
         v-if="movie.cover_full && !imgError"
         :src="getImageUrl(movie.cover_full)"
         :alt="movie.title"
-        loading="lazy"
+        :loading="priority ? 'eager' : 'lazy'"
         referrerpolicy="no-referrer"
         @error="handleImgError"
         class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"

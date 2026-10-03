@@ -441,16 +441,33 @@ html[data-window-material='acrylic'] #app {
   background-color: transparent !important;
 }
 
-html[data-window-material='mica'],
-html[data-window-material='tabbed'] {
+/* Dark themes under Mica / Tabbed */
+html[data-window-material='mica']:not([data-theme*='light']),
+html[data-window-material='tabbed']:not([data-theme*='light']) {
   --app: oklch(14.1% 0.005 285.823 / 0.78);
   --sunken: oklch(14.1% 0.005 285.823 / 0.86);
   --surface: oklch(18% 0.005 285.823 / 0.75);
 }
 
-html[data-window-material='acrylic'] {
+/* Dark themes under Acrylic */
+html[data-window-material='acrylic']:not([data-theme*='light']) {
   --app: oklch(14.1% 0.005 285.823 / 0.70);
   --sunken: oklch(14.1% 0.005 285.823 / 0.80);
   --surface: oklch(18% 0.005 285.823 / 0.65);
+}
+
+/* Light themes under Mica / Tabbed: maintain bright translucent surfaces */
+html[data-window-material='mica'][data-theme*='light'],
+html[data-window-material='tabbed'][data-theme*='light'] {
+  --app: oklch(97.5% 0 0 / 0.82);
+  --sunken: oklch(95.6% 0.001 286.375 / 0.88);
+  --surface: oklch(100% 0 0 / 0.85);
+}
+
+/* Light themes under Acrylic: maintain bright translucent surfaces */
+html[data-window-material='acrylic'][data-theme*='light'] {
+  --app: oklch(97.5% 0 0 / 0.72);
+  --sunken: oklch(95.6% 0.001 286.375 / 0.78);
+  --surface: oklch(100% 0 0 / 0.75);
 }
 

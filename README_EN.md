@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.15.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.17.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -182,9 +182,9 @@ Head directly to the repository's [Releases page](https://github.com/GeavenMax/G
 
 | Platform | Installer Filename | Installation Notes |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.15.0.dmg` | Double-click to mount, then drag `GPDb.app` into your `Applications` folder.<br>*(On first launch, if macOS warns the app is not notarized, go to System Settings → Privacy & Security and click "Open Anyway", or run `sudo xattr -cr /Applications/GPDb.app` in Terminal.)* |
-| **🪟 Windows** | `GPDb-Windows-v2.15.0.exe` | Double-click the installer to complete setup. Uses NSIS single-user no-elevation architecture — no administrator privileges required. |
-| **🤖 Android** | `GPDb-Android-v2.15.0-signed.apk` | Download to your phone and tap to install. (Signed with the official release key. If prompted to allow installation from unknown sources, please permit it.) |
+| ** macOS** | `GPDb-macOS-v2.17.0.dmg` | Double-click to mount, then drag `GPDb.app` into your `Applications` folder.<br>*(On first launch, if macOS warns the app is not notarized, go to System Settings → Privacy & Security and click "Open Anyway", or run `sudo xattr -cr /Applications/GPDb.app` in Terminal.)* |
+| **🪟 Windows** | `GPDb-Windows-v2.17.0.exe` | Double-click the installer to complete setup. Uses NSIS single-user no-elevation architecture — no administrator privileges required. |
+| **🤖 Android** | `GPDb-Android-v2.17.0-signed.apk` | Download to your phone and tap to install. (Signed with the official release key. If prompted to allow installation from unknown sources, please permit it.) |
 
 ---
 

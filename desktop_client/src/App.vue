@@ -318,14 +318,19 @@ function onSelectLocale(locale: SupportedLocale) {
   }
 }
 
-const windowMaterial = ref<string>(localStorage.getItem(PREFS.windowMaterial) || 'mica');
+const isWindowsPlatform = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows');
+const windowMaterial = ref<string>(localStorage.getItem(PREFS.windowMaterial) || (isWindowsPlatform ? 'mica' : 'default'));
 const closeToTray = ref<boolean>(localStorage.getItem(PREFS.closeToTray) === 'true');
 
 function setWindowMaterialChoice(material: string) {
   windowMaterial.value = material;
   localStorage.setItem(PREFS.windowMaterial, material);
-  document.documentElement.setAttribute('data-window-material', material);
-  api.setWindowMaterial(material);
+  if (isWindowsPlatform) {
+    document.documentElement.setAttribute('data-window-material', material);
+    api.setWindowMaterial(material);
+  } else {
+    document.documentElement.removeAttribute('data-window-material');
+  }
 }
 
 function setCloseToTrayChoice(enabled: boolean) {
@@ -1697,8 +1702,12 @@ onMounted(async () => {
   initTheme();
 
   // 激活保存的 Windows 11 Mica / Acrylic 材质效果与系统托盘驻留偏好
-  document.documentElement.setAttribute('data-window-material', windowMaterial.value);
-  api.setWindowMaterial(windowMaterial.value);
+  if (isWindowsPlatform) {
+    document.documentElement.setAttribute('data-window-material', windowMaterial.value);
+    api.setWindowMaterial(windowMaterial.value);
+  } else {
+    document.documentElement.removeAttribute('data-window-material');
+  }
   api.setCloseToTray(closeToTray.value);
 
   // Hearts come from the database, not localStorage — so they survive a browser
@@ -3287,7 +3296,7 @@ onUnmounted(() => {
 
           <!-- Section 0.2: 窗口背景材质 (Windows 11 Mica / Acrylic) -->
           <div
-            v-if="settingsSubTab === 'all' || settingsSubTab === 'appearance'"
+            v-if="isWindowsPlatform && (settingsSubTab === 'all' || settingsSubTab === 'appearance')"
             class="p-5 rounded-2xl bg-surface/60 border border-line space-y-3.5"
           >
             <div class="flex items-center gap-3">

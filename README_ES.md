@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.15.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.17.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -184,9 +184,9 @@ Descargue el instalador precompilado de la versión **`v2.15.0`** desde la secci
 
 | Plataforma | Archivo de instalación | Instrucciones |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.15.0.dmg` | Haga doble clic para montar el archivo y arrastre `GPDb.app` a la carpeta `Aplicaciones`.<br>*(Si al abrir por primera vez aparece una advertencia de notarización, vaya a «Configuración del sistema → Privacidad y seguridad» y haga clic en «Abrir de todas formas», o ejecute `sudo xattr -cr /Applications/GPDb.app` en la terminal)* |
-| **🪟 Windows** | `GPDb-Windows-v2.15.0.exe` | Haga doble clic en el instalador para completar la instalación. Arquitectura NSIS de usuario único sin privilegios de administrador: listo para usar de inmediato. |
-| **🤖 Android** | `GPDb-Android-v2.15.0-signed.apk` | Descargue el archivo en su dispositivo y toque para instalar (firmado con clave oficial; si el sistema solicita permitir instalación desde fuentes desconocidas, acéptelo). |
+| ** macOS** | `GPDb-macOS-v2.17.0.dmg` | Haga doble clic para montar el archivo y arrastre `GPDb.app` a la carpeta `Aplicaciones`.<br>*(Si al abrir por primera vez aparece una advertencia de notarización, vaya a «Configuración del sistema → Privacidad y seguridad» y haga clic en «Abrir de todas formas», o ejecute `sudo xattr -cr /Applications/GPDb.app` en la terminal)* |
+| **🪟 Windows** | `GPDb-Windows-v2.17.0.exe` | Haga doble clic en el instalador para completar la instalación. Arquitectura NSIS de usuario único sin privilegios de administrador: listo para usar de inmediato. |
+| **🤖 Android** | `GPDb-Android-v2.17.0-signed.apk` | Descargue el archivo en su dispositivo y toque para instalar (firmado con clave oficial; si el sistema solicita permitir instalación desde fuentes desconocidas, acéptelo). |
 
 ---
 

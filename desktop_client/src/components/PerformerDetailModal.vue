@@ -387,8 +387,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
             </div>
           </div>
 
-          <!-- Action buttons (BT Search + BFTV + PBC + Fav) -->
-          <div class="mr-10 shrink-0 self-start flex items-center gap-2 flex-wrap">
+          <!-- Action buttons (BT Search, BFTV, PBC, SmutJunkies, Google Search, Fav) - Dedicated right-side single column -->
+          <div class="mr-10 shrink-0 self-start flex flex-col gap-1.5 w-36 sm:w-40">
             <template v-if="pluginsConfig.resourceSearchEnabled">
               <ResourceSearchWidget
                 type="performer"
@@ -396,20 +396,22 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
                 :bftvUrl="performer.bftv_url"
                 :pbcUrl="performer.pbc_url || pbcProfile?.pbc_url"
                 :sjUrl="performer.sj_url"
+                wrapper-class="flex flex-col gap-1.5 w-full"
+                button-class="w-full justify-center"
               />
             </template>
 
             <button
               @click="emit('toggle-favorite', performer)"
               :class="[
-                'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition cursor-pointer',
+                'py-1.5 px-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full',
                 isFavorite
                   ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
-                  : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
+                  : 'bg-surface-2/60 hover:bg-surface-3 border-line text-fg-3 hover:text-danger'
               ]"
             >
-              <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-              <span>{{ isFavorite ? t('movie.favorited') : t('movie.favorite') }}</span>
+              <Heart class="w-3.5 h-3.5 shrink-0" :fill="isFavorite ? 'currentColor' : 'none'" />
+              <span class="truncate">{{ isFavorite ? t('movie.favorited') : t('movie.favorite') }}</span>
             </button>
           </div>
         </div>
