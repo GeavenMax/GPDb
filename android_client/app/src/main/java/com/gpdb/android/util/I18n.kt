@@ -92,7 +92,6 @@ object I18n {
             "settings.language" to "界面语言",
             "settings.languageDesc" to "切换应用交互语言，即时生效",
             "settings.appIcon" to "应用图标与伪装",
-            "settings.posterMode" to "海报展示模式",
             "settings.dynamicColor" to "动态取色 (Material You)",
 
             "settings.privacy" to "隐私与安全",
@@ -175,7 +174,6 @@ object I18n {
             "settings.language" to "介面語言",
             "settings.languageDesc" to "切換應用程式互動語言，即時生效",
             "settings.appIcon" to "應用程式圖示與偽裝",
-            "settings.posterMode" to "海報展示模式",
             "settings.dynamicColor" to "動態取色 (Material You)",
 
             "settings.privacy" to "隱私與安全",
@@ -258,7 +256,6 @@ object I18n {
             "settings.language" to "Display Language",
             "settings.languageDesc" to "Switch UI language with instant preview",
             "settings.appIcon" to "App Icon & Alias Disguise",
-            "settings.posterMode" to "Poster Display Mode",
             "settings.dynamicColor" to "Dynamic Color (Material You)",
 
             "settings.privacy" to "Privacy & Security",

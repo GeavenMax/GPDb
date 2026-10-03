@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "GPDb",
   "mainBinaryName": "gpdb",
-  "version": "2.16.7",
+  "version": "2.17.0",
   "identifier": "com.gpdb.app",
   "build": {
     "frontendDist": "../dist",
@@ -21,7 +21,14 @@
         "minHeight": 640,
         "resizable": true,
         "fullscreen": false,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "transparent": true,
+        "windowEffects": {
+          "effects": [
+            "mica",
+            "acrylic"
+          ]
+        }
       }
     ],
     "security": {
@@ -30,13 +37,17 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "resources": [
       "../../sync_gpdb.py",
       "../../sync_bftv_catalog.py",
       "../../batch_scraper.py",
       "../../db_manager.py",
       "../../scrape_bftv_performers.py",
+      "../../scrape_pbc_actors.py",
+      "../../scrape_smutjunkies_actors.py",
       "../../cache_images.py"
     ],
     "icon": [

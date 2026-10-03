@@ -12,7 +12,7 @@ export interface AppReleaseInfo {
 }
 
 const GITHUB_REPO = 'GeavenMax/GPDb';
-export const CURRENT_VERSION = '2.16.6';
+export const CURRENT_VERSION = '2.17.0';
 
 /**
  * 对比远程语义化版本号与当前客户端版本号

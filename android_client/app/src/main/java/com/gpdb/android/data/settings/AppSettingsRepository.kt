@@ -27,7 +27,6 @@ class AppSettingsRepository(private val context: Context) {
 
         val PERIODIC_SYNC_ENABLED = booleanPreferencesKey("periodic_sync_enabled")
 
-        val POSTER_DISPLAY_MODE = stringPreferencesKey("poster_display_mode") // "adaptive_pager" or "flip_3d"
         val SAVE_IMAGES_TO_EXTERNAL = booleanPreferencesKey("save_images_to_external") // default = false (strictly sandboxed)
 
         val FLAG_SECURE_ENABLED = booleanPreferencesKey("flag_secure_enabled") // default = false
@@ -135,14 +134,6 @@ class AppSettingsRepository(private val context: Context) {
 
     suspend fun setPeriodicSyncEnabled(enabled: Boolean) {
         context.dataStore.edit { it[PERIODIC_SYNC_ENABLED] = enabled }
-    }
-
-    val posterDisplayModeFlow: Flow<String> = context.dataStore.data.map { preferences ->
-        preferences[POSTER_DISPLAY_MODE] ?: "adaptive_pager"
-    }
-
-    suspend fun setPosterDisplayMode(mode: String) {
-        context.dataStore.edit { it[POSTER_DISPLAY_MODE] = mode }
     }
 
     val saveImagesToExternalFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->

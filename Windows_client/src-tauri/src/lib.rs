@@ -21,6 +21,14 @@ pub fn run() {
         })
         .plugin(tauri_plugin_log::Builder::default().build())
         .setup(|app| {
+            #[cfg(target_os = "windows")]
+            {
+                std::env::set_var(
+                    "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+                    "--enable-features=msWebView2EnableDraggableRegions --disable-features=CalculateNativeWinOcclusion --high-dpi-support=1 --force-device-scale-factor=1 --enable-gpu-rasterization --enable-zero-copy",
+                );
+            }
+
             #[cfg(target_os = "macos")]
             {
                 let scheme = commands::system::get_saved_icon_scheme();
@@ -31,6 +39,24 @@ pub fn run() {
                     let _ = commands::system::set_dock_icon_macos(&bytes_vec);
                 });
             }
+
+            // 注册系统托盘 (System Tray) 与点击唤醒逻辑
+            let _ = commands::system::setup_tray(app.handle());
+
+            // 绑定主窗口关闭事件（支持「关闭窗口时最小化到系统托盘」）
+            use tauri::Manager;
+            if let Some(w) = app.get_webview_window("main") {
+                let w_clone = w.clone();
+                w.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        if commands::system::should_close_to_tray() {
+                            api.prevent_close();
+                            let _ = w_clone.hide();
+                        }
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -91,6 +117,9 @@ pub fn run() {
             commands::system::copy_image_to_clipboard,
             commands::system::save_update_file,
             commands::system::install_update_file,
+            commands::system::set_window_material,
+            commands::system::set_close_to_tray,
+            commands::system::get_close_to_tray,
             commands::environment::check_runtime_environment,
         ])
         .run(tauri::generate_context!())

@@ -41,7 +41,6 @@ class SettingsViewModel(
     val appIcon = appPreferences.appIconFlow.stateIn(viewModelScope, SharingStarted.Lazily, "B")
     val periodicSyncEnabled = appSettingsRepository.periodicSyncEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
 
-    val posterDisplayMode = appSettingsRepository.posterDisplayModeFlow.stateIn(viewModelScope, SharingStarted.Lazily, "adaptive_pager")
     val saveImagesToExternal = appSettingsRepository.saveImagesToExternalFlow.stateIn(viewModelScope, SharingStarted.Lazily, false)
 
     val flagSecureEnabled = appSettingsRepository.flagSecureEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, false)
@@ -183,12 +182,6 @@ class SettingsViewModel(
 
     fun resetSyncStatus() {
         _syncStatus.value = SyncStatus.Idle
-    }
-
-    fun setPosterDisplayMode(mode: String) {
-        viewModelScope.launch {
-            appSettingsRepository.setPosterDisplayMode(mode)
-        }
     }
 
     fun setSaveImagesToExternal(enabled: Boolean) {

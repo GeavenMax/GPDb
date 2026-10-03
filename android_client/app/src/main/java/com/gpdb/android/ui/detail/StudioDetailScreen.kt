@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -15,7 +16,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
@@ -124,115 +124,50 @@ fun StudioDetailScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // ★ 厂牌历史档案与风格深度解析专栏 (181 家核心厂牌深度专栏)
-                    if (!uiState.descriptionZh.isNullOrBlank()) {
-                        var isExpanded by rememberSaveable { mutableStateOf(false) }
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 6.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.fillMaxWidth()
+                var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+                val tabs = listOf("发行作品 (${uiState.movies.size})", "发行分集 (${uiState.episodes.size})")
+
+                if (selectedTabIndex == 0) {
+                    LazyVerticalGrid(
+                        state = movieGridState,
+                        columns = GridCells.Fixed(3),
+                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        if (!uiState.descriptionZh.isNullOrBlank()) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                StudioIntroductionCard(
+                                    descriptionZh = uiState.descriptionZh ?: ""
+                                )
+                            }
+                        }
+
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            StudioTabRow(
+                                tabs = tabs,
+                                selectedTabIndex = selectedTabIndex,
+                                onTabSelected = { selectedTabIndex = it }
+                            )
+                        }
+
+                        if (uiState.movies.isEmpty()) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "厂牌历史档案与风格深度解析专栏",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        modifier = Modifier.padding(horizontal = 2.dp)
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Icon(
-                                                Icons.Default.AutoAwesome,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(11.dp),
-                                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                            Spacer(modifier = Modifier.width(3.dp))
-                                            Text(
-                                                text = "深度解析",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                SelectionContainer {
-                                    Text(
-                                        text = uiState.descriptionZh ?: "",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        lineHeight = 19.sp,
-                                        maxLines = if (isExpanded) Int.MAX_VALUE else 3,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                if ((uiState.descriptionZh?.length ?: 0) > 100) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = if (isExpanded) "收起专栏" else "展开全文阅读",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier
-                                            .align(Alignment.End)
-                                            .clickable { isExpanded = !isExpanded }
-                                            .padding(top = 2.dp, bottom = 2.dp, start = 8.dp)
+                                        text = "暂无发行作品记录",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
-                        }
-                    }
-
-                    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
-                    val tabs = listOf("发行作品 (${uiState.movies.size})", "发行分集 (${uiState.episodes.size})")
-
-                    TabRow(selectedTabIndex = selectedTabIndex) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
-                                text = { Text(title) }
-                            )
-                        }
-                    }
-
-                    if (selectedTabIndex == 0) {
-                        LazyVerticalGrid(
-                            state = movieGridState,
-                            columns = GridCells.Fixed(3),
-                            contentPadding = PaddingValues(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
+                        } else {
                             items(
                                 items = uiState.movies,
                                 key = { it.id ?: it.hashCode() },
@@ -246,13 +181,46 @@ fun StudioDetailScreen(
                                 )
                             }
                         }
-                    } else {
-                        LazyColumn(
-                            state = episodeListState,
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
+                    }
+                } else {
+                    LazyColumn(
+                        state = episodeListState,
+                        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        if (!uiState.descriptionZh.isNullOrBlank()) {
+                            item {
+                                StudioIntroductionCard(
+                                    descriptionZh = uiState.descriptionZh ?: ""
+                                )
+                            }
+                        }
+
+                        item {
+                            StudioTabRow(
+                                tabs = tabs,
+                                selectedTabIndex = selectedTabIndex,
+                                onTabSelected = { selectedTabIndex = it }
+                            )
+                        }
+
+                        if (uiState.episodes.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "暂无发行分集记录",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
                             items(
                                 items = uiState.episodes,
                                 key = { it.id ?: 0L },
@@ -264,7 +232,7 @@ fun StudioDetailScreen(
                                     thumbnailUrl = episode.thumbnailUrl,
                                     physicalRootPath = physicalRootPath,
                                     releaseDate = episode.releaseDate,
-                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    modifier = Modifier.padding(horizontal = 8.dp),
                                     onClick = { episode.id?.let { onEpisodeClick(it) } }
                                 )
                             }
@@ -272,6 +240,80 @@ fun StudioDetailScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StudioIntroductionCard(
+    descriptionZh: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "厂牌介绍",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SelectionContainer {
+                Text(
+                    text = descriptionZh,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StudioTabRow(
+    tabs: List<String>,
+    selectedTabIndex: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    TabRow(
+        selectedTabIndex = selectedTabIndex,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp)
+    ) {
+        tabs.forEachIndexed { index, title ->
+            Tab(
+                selected = selectedTabIndex == index,
+                onClick = { onTabSelected(index) },
+                text = { Text(title) }
+            )
         }
     }
 }

@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 翻译完成实时触发 `@episode-translated` 事件，自动同步更新分集列表、影片内分集及全局翻译统计状态。
 
 ### Optimized
+- **片商档案页头部按钮矩阵化多列重构与标题防遮挡 (`StudioDetailModal.vue`, `ResourceSearchWidget.vue`)**：
+  - **彻底修复按钮挤压标题截断缺陷**：针对原 4 颗操作按钮（BT 磁力资源搜索扩展、Google 搜索、双语切换、收藏厂牌）单行横排横向挤占近 500px 宽度，导致左侧厂牌名称被严重挤压截断（如“狂烈...”与“Raging Stal...”）的问题，全面重构操作区为规整对称的 2 列网格矩阵（`grid grid-cols-2 gap-2`），横向宽度缩减近 40%；
+  - **`ResourceSearchWidget` 灵动穿透适配**：为外挂资源组件引入 `wrapperClass` 与 `buttonClass`，在多列网格下利用 CSS `contents` 属性让各外链按钮直接作为独立网格单元居中对称排布，兼顾其它视图弹性排版，零代码冗余与零副作用；
+  - **厂牌标题与作品统计舒展呈现**：主标题与副标题由单行强制截断升级为 `break-words line-clamp-2 leading-tight`，为中文名称与长英文原名留足空间，作品数与分集数平齐舒展排布，消除视觉拥挤。
+- **片商专栏重构为「厂牌介绍」并剔除多余修饰 (`StudioDetailModal.vue`, `i18n/index.ts`)**：
+  - **标题纯粹化更名**：将原「厂牌历史档案与风格深度解析专栏」全面精简更名为「厂牌介绍」（全语种镜像同步：Studio Overview / 廠牌介紹 / スタジオ紹介 / Presentazione studio / Presentación del estudio / Studio-Übersicht）；
+  - **剔除冗余修饰字样**：彻底移除专栏右上角“深度解析”高亮徽标（`studio.historyBadge` / `Sparkles`）以及副标题“厂牌沿革与美学风格深度透视”（`studio.historySubtitle`），正文保留优雅左侧主色边线与典籍图标，界面更加纯净干练。
 - **影片档案页布局重构：剧情简介板块移至海报下方通栏展示，操作按钮组矩阵化收拢 (`MovieDetailModal.vue`)**：
   - **剧情简介板块位置重塑与通栏拓宽**：将原位于右侧狭窄元数据列的「剧情简介 (Synopsis)」板块挪至海报与元数据区下方，宽度横向延伸贯穿至右侧边缘（`w-full rounded-2xl p-4 md:p-5`），赋予长篇剧情梗概、双语切换（中文译文/英文原文）及 AI 翻译操作极佳的阅读空间；
   - **核心操作按钮组矩阵化收拢**：将此前分散排布在顶栏及底部的「BT 磁力资源搜索扩展」「在BFTV搜索影片资料」「Google 搜索」「生成影视分享卡片」「收藏电影」等 5 项核心交互按钮，集中归拢并重塑为美观的操作按钮功能组，置于厂牌与导演标签下方；

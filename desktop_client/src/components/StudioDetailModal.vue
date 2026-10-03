@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, defineAsyncComponent } from 'vue';
-import { X, Film, Layers, Heart, Loader2, BookOpen, Sparkles, Languages } from '@lucide/vue';
+import { X, Film, Layers, Heart, Loader2, BookOpen, Languages } from '@lucide/vue';
 import type { Movie, StudioWorks, FavoriteType } from '../types';
 import MovieCard from './MovieCard.vue';
 import EpisodeRow from './EpisodeRow.vue';
@@ -234,7 +234,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
     @click.self="emit('close')"
   >
     <div
-      class="relative w-full max-w-4xl max-h-[90vh] chrome-panel border border-line-strong/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col text-fg"
+      class="relative w-full max-w-5xl lg:max-w-6xl max-h-[90vh] chrome-panel border border-line-strong/80 rounded-3xl shadow-2xl overflow-y-auto flex flex-col text-fg"
       @scroll="handleScroll"
     >
       <!-- Close Button -->
@@ -265,48 +265,53 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
         <div class="min-w-0 flex-1">
           <div class="text-xs font-semibold text-accent uppercase tracking-wider">{{ t('studio.profile') }}</div>
-          <h1 class="text-2xl md:text-3xl font-extrabold text-fg truncate" :title="mainTitle">{{ mainTitle }}</h1>
-          <div v-if="subTitle" class="text-xs md:text-sm font-medium text-fg-4 mt-0.5 truncate tracking-wide" :title="subTitle">
+          <h1 class="text-xl md:text-2xl lg:text-3xl font-extrabold text-fg break-words line-clamp-2 leading-tight" :title="mainTitle">{{ mainTitle }}</h1>
+          <div v-if="subTitle" class="text-xs md:text-sm font-medium text-fg-4 mt-1 break-words line-clamp-2 tracking-wide" :title="subTitle">
             {{ subTitle }}
           </div>
-          <div class="text-xs text-fg-3 mt-1.5 flex items-center gap-3 flex-wrap">
+          <div class="text-xs text-fg-3 mt-2 flex items-center gap-3 flex-wrap">
             <span class="text-accent/80 font-medium">{{ worksCount }} {{ t('common.works') }}</span>
             <span v-if="episodesCount">{{ episodesCount }} {{ t('common.episodes') }}</span>
           </div>
         </div>
 
-        <!-- Action buttons: Resource Search + Language Toggle + Fav -->
-        <div class="mr-10 shrink-0 self-start flex items-center gap-2 flex-wrap">
+        <!-- Action buttons: Multi-column grid (BT Search, Google Search, Language Toggle, Favorite) -->
+        <div class="mr-10 shrink-0 self-center grid grid-cols-2 gap-2 w-auto min-w-[280px] max-w-[340px]">
           <template v-if="pluginsConfig.resourceSearchEnabled">
-            <ResourceSearchWidget type="studio" :title="studio.name" />
+            <ResourceSearchWidget
+              type="studio"
+              :title="studio.name"
+              wrapper-class="contents"
+              button-class="w-full justify-center"
+            />
           </template>
 
           <button
             v-if="hasTranslation"
             @click="toggleLang"
             :title="effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal')"
-            class="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-line-strong bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg flex items-center gap-1.5 transition cursor-pointer"
+            class="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-fg flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full"
           >
-            <Languages class="w-3.5 h-3.5" />
-            <span>{{ effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal') }}</span>
+            <Languages class="w-3.5 h-3.5 shrink-0" />
+            <span class="truncate">{{ effectiveLang === 'en' ? t('movie.showTranslation') : t('movie.showOriginal') }}</span>
           </button>
 
           <button
             @click="emit('toggle-favorite', studio.name)"
             :class="[
-              'px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition cursor-pointer',
+              'py-1.5 px-2.5 rounded-xl text-xs font-medium border flex items-center justify-center gap-1.5 transition cursor-pointer whitespace-nowrap w-full',
               isFavorite
                 ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
-                : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
+                : 'bg-surface-2/60 hover:bg-surface-3 border-line text-fg-3 hover:text-danger'
             ]"
           >
-            <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-            <span>{{ isFavorite ? t('studio.favorited') : t('studio.favorite') }}</span>
+            <Heart class="w-3.5 h-3.5 shrink-0" :fill="isFavorite ? 'currentColor' : 'none'" />
+            <span class="truncate">{{ isFavorite ? t('studio.favorited') : t('studio.favorite') }}</span>
           </button>
         </div>
       </div>
 
-      <!-- Studio History & Brand Archive Column ("厂牌历史档案与风格深度解析专栏") -->
+      <!-- Studio Introduction ("厂牌介绍") -->
       <div
         v-if="effectiveDescriptionZh"
         class="mx-6 md:mx-8 mt-6 p-6 md:p-8 rounded-3xl bg-gradient-to-br from-surface-2/95 via-surface/90 to-surface-2/70 border border-line-strong shadow-xl relative overflow-hidden group transition-all shrink-0 min-h-fit"
@@ -317,31 +322,17 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
 
         <div class="relative z-10 space-y-4">
-          <!-- Column Header with Title, Tagline and Badge -->
-          <div class="flex items-center justify-between gap-4 pb-3.5 border-b border-line-strong/60 flex-wrap">
-            <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-xl bg-accent-fill/15 border border-accent-fill/30 flex items-center justify-center text-accent shrink-0 shadow-sm ring-2 ring-accent-fill/10">
-                <BookOpen class="w-5 h-5" />
-              </div>
-              <div>
-                <h2 class="text-base md:text-lg font-bold text-fg tracking-wide flex items-center gap-2">
-                  <span>{{ t('studio.historyArchive') }}</span>
-                </h2>
-                <div class="text-xs text-fg-4 font-medium tracking-wide mt-0.5">
-                  {{ t('studio.historySubtitle') }}
-                </div>
-              </div>
+          <!-- Card Header with Title -->
+          <div class="flex items-center gap-3 pb-3 border-b border-line-strong/60">
+            <div class="w-8 h-8 rounded-xl bg-accent-fill/15 border border-accent-fill/30 flex items-center justify-center text-accent shrink-0 shadow-sm ring-1 ring-accent-fill/10">
+              <BookOpen class="w-4 h-4" />
             </div>
-
-            <div class="shrink-0 flex items-center gap-2">
-              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-accent-fill/15 text-accent border border-accent-fill/30 shadow-sm">
-                <Sparkles class="w-3.5 h-3.5" />
-                <span>{{ t('studio.historyBadge') }}</span>
-              </span>
-            </div>
+            <h2 class="text-base md:text-lg font-bold text-fg tracking-wide">
+              {{ t('studio.historyArchive') }}
+            </h2>
           </div>
 
-          <!-- Column Content Body: Expansive, legible, comfortable line-height and blockquote styling -->
+          <!-- Body: Expansive, legible, comfortable line-height and blockquote styling -->
           <div class="relative pl-4 md:pl-5 border-l-2 border-accent/50 py-1.5 mt-2">
             <p class="text-sm md:text-[15px] text-fg leading-relaxed tracking-normal font-normal text-justify select-text whitespace-pre-line">
               {{ effectiveDescriptionZh }}

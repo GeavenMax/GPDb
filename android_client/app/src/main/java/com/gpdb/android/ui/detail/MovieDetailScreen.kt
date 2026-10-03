@@ -1,12 +1,12 @@
 package com.gpdb.android.ui.detail
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -148,19 +148,17 @@ fun MovieDetailScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // ★ 封面画廊：自然画幅自适应呈现
-                    val pagerState = rememberPagerState(pageCount = { validCovers.size })
-
+                    // ★ 封面画廊：自适应同时呈现多张封面 (对齐 macOS 桌面端)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(380.dp)
+                            .height(340.dp)
                             .background(Color.Black)
                     ) {
                         // 动态底层氛围虚化
-                        val currentCoverUrl = validCovers.getOrNull(pagerState.currentPage) ?: validCovers.first()
+                        val primaryCover = validCovers.firstOrNull() ?: "image_cache/Covers/${movie.id}.jpg"
                         GpdbAsyncImage(
-                            url = currentCoverUrl,
+                            url = primaryCover,
                             physicalRootPath = physicalRootPath,
                             fallbackEntityId = movie.id,
                             defaultFolder = "Covers",
@@ -172,37 +170,119 @@ fun MovieDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.45f))
+                                .background(Color.Black.copy(alpha = 0.5f))
                         )
 
-                        // 前景完整自适应画廊
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxSize()
-                        ) { page ->
-                            val url = validCovers[page]
+                        // 前景封面并列呈现：单图居中呈现，多图（正封面/封底/变体）平铺横向滑动同时展示
+                        if (validCovers.size == 1) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                                    .padding(vertical = 16.dp, horizontal = 24.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Card(
-                                    shape = RoundedCornerShape(12.dp),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
                                     modifier = Modifier.wrapContentSize()
                                 ) {
-                                    GpdbAsyncImage(
-                                        url = url,
-                                        physicalRootPath = physicalRootPath,
-                                        contentDescription = "${movie.title} - 海报 $page",
-                                        fallbackEntityId = movie.id,
-                                        defaultFolder = "Covers",
-                                        contentScale = ContentScale.Fit,
+                                    Box(contentAlignment = Alignment.TopEnd) {
+                                        GpdbAsyncImage(
+                                            url = validCovers[0],
+                                            physicalRootPath = physicalRootPath,
+                                            contentDescription = "${movie.title} - 海报",
+                                            fallbackEntityId = movie.id,
+                                            defaultFolder = "Covers",
+                                            contentScale = ContentScale.Fit,
+                                            modifier = Modifier
+                                                .fillMaxHeight()
+                                                .clickable { showFullImageIndex = 0 }
+                                        )
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = Color.Black.copy(alpha = 0.6f),
+                                            modifier = Modifier.padding(10.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.ZoomIn,
+                                                contentDescription = "放大查看",
+                                                tint = Color.White,
+                                                modifier = Modifier.padding(4.dp).size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            LazyRow(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                itemsIndexed(validCovers) { index, url ->
+                                    Card(
+                                        shape = RoundedCornerShape(16.dp),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
                                         modifier = Modifier
                                             .fillMaxHeight()
-                                            .clickable { showFullImageIndex = page }
-                                    )
+                                            .wrapContentWidth()
+                                    ) {
+                                        Box {
+                                            GpdbAsyncImage(
+                                                url = url,
+                                                physicalRootPath = physicalRootPath,
+                                                contentDescription = "${movie.title} - 封面 ${index + 1}",
+                                                fallbackEntityId = movie.id,
+                                                defaultFolder = "Covers",
+                                                contentScale = ContentScale.Fit,
+                                                modifier = Modifier
+                                                    .fillMaxHeight()
+                                                    .clickable { showFullImageIndex = index }
+                                            )
+
+                                            // 封面徽章 (正封面 / 封底 / #N)
+                                            val badgeText = when (index) {
+                                                0 -> "正封面"
+                                                1 -> if (movie.coverBack != null) "封底" else "#2"
+                                                else -> "#${index + 1}"
+                                            }
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Color.Black.copy(alpha = 0.65f),
+                                                border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f)),
+                                                modifier = Modifier
+                                                    .align(Alignment.TopStart)
+                                                    .padding(8.dp)
+                                            ) {
+                                                Text(
+                                                    text = badgeText,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White.copy(alpha = 0.95f),
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+
+                                            // 放大镜图标
+                                            Surface(
+                                                shape = CircleShape,
+                                                color = Color.Black.copy(alpha = 0.6f),
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .padding(8.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.ZoomIn,
+                                                    contentDescription = "放大查看",
+                                                    tint = Color.White,
+                                                    modifier = Modifier.padding(4.dp).size(14.dp)
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -211,7 +291,7 @@ fun MovieDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(60.dp)
+                                .height(50.dp)
                                 .align(Alignment.BottomCenter)
                                 .background(
                                     Brush.verticalGradient(
@@ -219,39 +299,6 @@ fun MovieDetailScreen(
                                     )
                                 )
                         )
-
-                        // 底部药丸指示器
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = Color.Black.copy(alpha = 0.65f),
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = 12.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                val tagText = when (pagerState.currentPage) {
-                                    0 -> "正面封面"
-                                    1 -> if (movie.coverBack != null) "封底封套" else "变体海报"
-                                    else -> "变体海报"
-                                }
-                                Text(
-                                    "${pagerState.currentPage + 1}/${validCovers.size} · $tagText",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    Icons.Default.ZoomIn,
-                                    contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(12.dp)
-                                )
-                            }
-                        }
                     }
 
                     // 影片元数据区域

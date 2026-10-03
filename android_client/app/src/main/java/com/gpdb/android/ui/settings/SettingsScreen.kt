@@ -105,7 +105,6 @@ fun SettingsScreen(
     val language by viewModel.language.collectAsState()
     val themeChoice by viewModel.themeChoice.collectAsState()
     val dynamicColor by viewModel.dynamicColor.collectAsState()
-    val posterMode by viewModel.posterDisplayMode.collectAsState()
     val appIcon by viewModel.appIcon.collectAsState()
     val recordHistory by viewModel.recordHistory.collectAsState()
 
@@ -140,7 +139,6 @@ fun SettingsScreen(
     var showLangDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showIconDialog by remember { mutableStateOf(false) }
-    var showPosterModeDialog by remember { mutableStateOf(false) }
     var showLlmDialog by remember { mutableStateOf(false) }
     var showPinDialog by remember { mutableStateOf(false) }
     var showTimeoutDialog by remember { mutableStateOf(false) }
@@ -269,15 +267,6 @@ fun SettingsScreen(
                         subtitle = "${currentAppLang.displayName} (${currentAppLang.nativeName})",
                         icon = Icons.Default.Language,
                         onClick = { showLangDialog = true }
-                    )
-
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
-
-                    SettingItemRow(
-                        title = I18n.string("settings.posterMode"),
-                        subtitle = if (posterMode == "flip_3d") "3D 景深翻转卡片" else "平铺自适应画廊 (默认)",
-                        icon = Icons.Default.ViewCarousel,
-                        onClick = { showPosterModeDialog = true }
                     )
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
@@ -871,109 +860,6 @@ fun SettingsScreen(
                 TextButton(onClick = { showLangDialog = false }) {
                     Text(I18n.string("common.close"))
                 }
-            }
-        )
-    }
-
-    if (showPosterModeDialog) {
-        AlertDialog(
-            onDismissRequest = { showPosterModeDialog = false },
-            title = { Text("海报展示与翻转排版方案") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Option A: 自适应高清画廊
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (posterMode == "adaptive_pager") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        border = BorderStroke(1.dp, if (posterMode == "adaptive_pager") MaterialTheme.colorScheme.primary else Color.Transparent),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                viewModel.setPosterDisplayMode("adaptive_pager")
-                                showPosterModeDialog = false
-                            }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(12.dp)
-                        ) {
-                            // Visual Illustration Box A
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 48.dp, height = 64.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.Black.copy(alpha = 0.4f))
-                                    .border(0.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        Box(modifier = Modifier.size(3.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
-                                        Box(modifier = Modifier.size(3.dp).background(Color.White.copy(alpha = 0.4f), CircleShape))
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("平铺自适应画廊", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                Text("完整海报无裁切呈现，左右平滑滑动手势翻页", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            RadioButton(
-                                selected = posterMode == "adaptive_pager",
-                                onClick = {
-                                    viewModel.setPosterDisplayMode("adaptive_pager")
-                                    showPosterModeDialog = false
-                                }
-                            )
-                        }
-                    }
-
-                    // Option B: 3D 景深翻转卡片
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (posterMode == "flip_3d") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                        border = BorderStroke(1.dp, if (posterMode == "flip_3d") MaterialTheme.colorScheme.primary else Color.Transparent),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                viewModel.setPosterDisplayMode("flip_3d")
-                                showPosterModeDialog = false
-                            }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(12.dp)
-                        ) {
-                            // Visual Illustration Box B
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 48.dp, height = 64.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color.Black.copy(alpha = 0.4f))
-                                    .border(0.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(8.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(Icons.Default.FlipCameraAndroid, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("3D 景深翻转卡片", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                                Text("拟真实体卡带手感，点击卡片触发正背面 3D 翻转", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            RadioButton(
-                                selected = posterMode == "flip_3d",
-                                onClick = {
-                                    viewModel.setPosterDisplayMode("flip_3d")
-                                    showPosterModeDialog = false
-                                }
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showPosterModeDialog = false }) { Text(I18n.string("common.close")) }
             }
         )
     }

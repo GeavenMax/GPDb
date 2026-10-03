@@ -322,7 +322,136 @@ pub fn install_update_file(filepath: String) -> Result<(), String> {
     }
 }
 
+use std::sync::atomic::{AtomicBool, Ordering};
 
+static CLOSE_TO_TRAY: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+pub fn set_close_to_tray(enabled: bool) -> Result<(), String> {
+    CLOSE_TO_TRAY.store(enabled, Ordering::Relaxed);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_close_to_tray() -> Result<bool, String> {
+    Ok(CLOSE_TO_TRAY.load(Ordering::Relaxed))
+}
+
+pub fn should_close_to_tray() -> bool {
+    CLOSE_TO_TRAY.load(Ordering::Relaxed)
+}
+
+#[tauri::command]
+pub fn set_window_material(window: tauri::WebviewWindow, material: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use tauri::utils::config::{WindowEffectsConfig, WindowEffect};
+        let effects = match material.as_str() {
+            "mica" => Some(WindowEffectsConfig {
+                effects: vec![WindowEffect::Mica],
+                state: None,
+                radius: None,
+                color: None,
+            }),
+            "tabbed" => Some(WindowEffectsConfig {
+                effects: vec![WindowEffect::Tabbed],
+                state: None,
+                radius: None,
+                color: None,
+            }),
+            "acrylic" => Some(WindowEffectsConfig {
+                effects: vec![WindowEffect::Acrylic],
+                state: None,
+                radius: None,
+                color: None,
+            }),
+            _ => None,
+        };
+        let _ = window.set_effects(effects);
+    }
+    #[cfg(target_os = "macos")]
+    {
+        use tauri::utils::config::{WindowEffectsConfig, WindowEffect};
+        let effects = match material.as_str() {
+            "acrylic" | "mica" | "tabbed" => Some(WindowEffectsConfig {
+                effects: vec![WindowEffect::WindowBackground],
+                state: None,
+                radius: None,
+                color: None,
+            }),
+            _ => None,
+        };
+        let _ = window.set_effects(effects);
+    }
+    let _ = window;
+    let _ = material;
+    Ok(())
+}
+
+pub fn setup_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem};
+    use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
+    use tauri::Manager;
+
+    let show = MenuItemBuilder::with_id("show", "显示主界面 (Show)").build(app)?;
+    let hide = MenuItemBuilder::with_id("hide", "最小化到托盘 (Hide)").build(app)?;
+    let privacy = MenuItemBuilder::with_id("privacy", "截屏防窥模式 (Privacy Shield)").build(app)?;
+    let sep = PredefinedMenuItem::separator(app)?;
+    let quit = MenuItemBuilder::with_id("quit", "退出 GPDb (Quit)").build(app)?;
+    let menu = MenuBuilder::new(app).items(&[&show, &hide, &privacy, &sep, &quit]).build()?;
+
+    let mut builder = TrayIconBuilder::new()
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .tooltip("GPDb — 离线影视库")
+        .on_menu_event(|app, event| {
+            match event.id.as_ref() {
+                "show" => {
+                    if let Some(w) = app.get_webview_window("main") {
+                        let _ = w.show();
+                        let _ = w.unminimize();
+                        let _ = w.set_focus();
+                    }
+                }
+                "hide" => {
+                    if let Some(w) = app.get_webview_window("main") {
+                        let _ = w.hide();
+                    }
+                }
+                "privacy" => {
+                    use tauri::Emitter;
+                    let _ = app.emit("toggle-privacy-mode", ());
+                }
+                "quit" => {
+                    app.exit(0);
+                }
+                _ => {}
+            }
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                let app = tray.app_handle();
+                if let Some(w) = app.get_webview_window("main") {
+                    if let Ok(is_visible) = w.is_visible() {
+                        if is_visible {
+                            let _ = w.hide();
+                        } else {
+                            let _ = w.show();
+                            let _ = w.unminimize();
+                            let _ = w.set_focus();
+                        }
+                    }
+                }
+            }
+        });
+
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+
+    builder.build(app)?;
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {
@@ -334,5 +463,13 @@ mod tests {
             let bytes = get_icon_bytes(scheme);
             assert!(!bytes.is_empty(), "Icon bytes empty for {}", scheme);
         }
+    }
+
+    #[test]
+    fn test_close_to_tray() {
+        set_close_to_tray(true).unwrap();
+        assert!(should_close_to_tray());
+        set_close_to_tray(false).unwrap();
+        assert!(!should_close_to_tray());
     }
 }

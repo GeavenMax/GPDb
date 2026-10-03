@@ -28,10 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 修复 `EpisodeEntity` 与 `episodes` 表索引一致性，补充 `idx_episodes_studio` 声明。
 
 ### Optimized
-- **影片档案页布局重塑：剧情简介通栏展开与核心操作按钮矩阵化收拢 (`MovieDetailScreen.kt`)**：
-  - **剧情简介移至海报与操作组下方通栏展示**：`TranslationSection` 独占全宽，赋予长篇剧情梗概、双语对比与 AI 翻译操作极佳的阅读空间；
+- **厂牌详情页专栏重构与「厂牌介绍」流式全文展示 (`StudioDetailScreen.kt`)**：
+  - 将原「厂牌历史档案与风格深度解析专栏」精炼改名为「厂牌介绍」，移除冗余的「深度解析」标签；
+  - 彻底解除宽度与折叠限制：废弃原外部固定容器与 3 行折叠限制，将「厂牌介绍」与作品分类 Tab 统一作为流式 Item 嵌入 `LazyVerticalGrid`（作品）与 `LazyColumn`（分集），整页单流滚动，自然舒展全文；
+  - 补充作品与分集空状态优雅提示。
+- **影片档案页海报展示模式重构：对齐 macOS 多图自适应同时平铺呈现 (`MovieDetailScreen.kt`, `SettingsScreen.kt`, `SettingsViewModel.kt`, `AppSettingsRepository.kt`, `I18n.kt`)**：
+  - **移除「海报展示模式」设置项**：彻底废弃单一海报翻页设置选项及相关状态弹窗，精简设置交互；
+  - **默认采用 macOS 同款自适应多海报平铺模式**：
+    - 单封面时：采用居中大画幅艺术卡片全幅呈现；
+    - 多封面时：采用平铺横向自适应流式展示（`LazyRow`），直观同时呈现正封面、封底及扩展海报，每张保留原生比例，左上角徽章动态标注「正封面 / 封底 / #N」，右上角常驻缩放图标，点击直达手势无级缩放灯箱 (`ZoomableImageDialog`)；
+    - 底层融合首图氛围毛玻璃高斯模糊过渡与背景渐变。
+- **剧情简介通栏展开与核心操作按钮矩阵化收拢 (`MovieDetailScreen.kt`)**：
+  - **剧情简介通栏展示**：`TranslationSection` 独占全宽，赋予长篇剧情梗概、双语对比与 AI 翻译操作极佳的阅读空间；
   - **核心操作按钮矩阵化收拢 (Action Matrix Panel)**：将「BT 磁链」「BFTV 检索」「Google 检索」「分享卡片」「收藏电影」等 5 项核心按钮集中规整为操作芯片组（`SuggestionChip` 与 `FilterChip`），置于元数据标签正下方；
-  - **多图封面画廊自适应呈现**：自然画幅自适应画廊，支持正封面、封底写真及变体海报平滑水平翻页，配合底部半透明药丸指示器与轻触无级手势缩放灯箱 (`ZoomableImageDialog`)；
   - **移除冗余评星打分**：精简页面垂直杂讯，与 macOS 桌面端标准体验完全对齐。
 - **应用图标方案精简至 Scheme A 与 Scheme D (`SettingsScreen.kt`)**：
   - 精简设置页伪装图标方案，重点聚焦于「方案一：经典典藏蓝 (Scheme A · 默认)」与「方案二：黑曜石金 / 极简 (Scheme D)」，与桌面端多端一致。
