@@ -446,27 +446,6 @@ onUnmounted(() => {
               <span v-if="movie.category" class="px-2.5 py-1 rounded-lg text-xs font-medium bg-surface-2 text-fg-2 border border-line-strong">
                 {{ categoryLabel }}
               </span>
-              <button
-                type="button"
-                @click="showShareModal = true"
-                class="ml-auto px-3 py-1 rounded-lg text-xs font-medium border border-line-strong bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
-                :title="t('movie.shareCardTooltip')"
-              >
-                <Share2 class="w-3.5 h-3.5" />
-                <span>{{ t('movie.shareCard') }}</span>
-              </button>
-              <button
-                @click="emit('toggle-favorite', movie)"
-                :class="[
-                  'px-3 py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition',
-                  isFavorite
-                    ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
-                    : 'bg-surface-2 hover:bg-surface-3 border-line-strong text-fg-3 hover:text-danger'
-                ]"
-              >
-                <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
-                <span>{{ isFavorite ? t('movie.favorited') : t('movie.favorite') }}</span>
-              </button>
             </div>
 
             <h1 class="text-2xl md:text-3xl font-extrabold text-fg tracking-tight">
@@ -533,100 +512,118 @@ onUnmounted(() => {
                     class="transition"
                     :class="isFav('director', name) ? 'text-danger' : 'text-fg-5 hover:text-danger'"
                   >
-                    <Heart class="w-3 h-3" :fill="isFav('director', name) ? 'currentColor' : 'none'" />
+                    <Heart class="w-3.5 h-3.5" :fill="isFav('director', name) ? 'currentColor' : 'none'" />
                   </button>
                 </template>
               </div>
             </div>
 
-            <!-- Description (Chinese when translated, original otherwise) -->
-            <div
-              v-if="movie.description || hasZh"
-              class="text-xs md:text-sm text-fg-2 leading-relaxed bg-sunken/60 border border-line/60 p-4 rounded-xl"
-            >
-              <div class="flex items-center justify-between gap-2 mb-1.5">
-                <div class="text-[11px] font-semibold text-fg-4 uppercase tracking-wider flex items-center gap-1.5">
-                  <Languages class="w-3 h-3" />
-                  {{ t('movie.synopsis') }}
-                  <span v-if="hasZh && !showOriginal" class="text-success-fill/80 normal-case">{{ t('episode.showTranslation') }}</span>
-                  <span v-else-if="hasZh" class="text-fg-5 normal-case">{{ t('episode.showOriginal') }}</span>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <!-- The synopsis is translated but some episodes are not -->
-                  <button
-                    v-if="pendingEpisodeCount > 0 && !IS_TAURI"
-                    @click="translateNow"
-                    :disabled="isTranslating"
-                    class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50"
-                    :title="t('movie.clipsUntranslatedHint')"
-                  >
-                    <Loader2 v-if="isTranslating" class="w-3 h-3 animate-spin" />
-                    <Languages v-else class="w-3 h-3" />
-                    {{ isTranslating ? t('movie.translating') : `${t('movie.translateEpisodes')} (${pendingEpisodeCount})` }}
-                  </button>
-                  <button
-                    v-if="hasZh"
-                    @click="toggleOriginal"
-                    class="text-[10px] px-2 py-0.5 rounded-md bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg-2 border border-line-strong transition cursor-pointer"
-                  >
-                    {{ showOriginal ? t('movie.showTranslation') : t('movie.showOriginal') }}
-                  </button>
-                  <button
-                    v-else-if="movie.description && !IS_TAURI"
-                    @click="translateNow"
-                    :disabled="isTranslating"
-                    class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50 cursor-pointer"
-                  >
-                    <Loader2 v-if="isTranslating" class="w-3 h-3 animate-spin" />
-                    <Languages v-else class="w-3 h-3" />
-                    {{ isTranslating ? t('movie.translating') : t('movie.translateToZh') }}
-                  </button>
-                  <!-- Desktop build has no server process to relay the request -->
-                  <span
-                    v-else-if="movie.description"
-                    class="text-[10px] text-fg-5"
-                    :title="t('movie.batchTranslateHint')"
-                  >
-                    {{ t('movie.untranslated') }}
-                  </span>
-                </div>
-              </div>
-
-              <!--
-                Long synopses scroll in place instead of stretching the card: some
-                descriptions run to 8,000+ characters, which would otherwise push the
-                cast list and everything below it far out of view.
-              -->
-              <div
-                ref="descriptionBoxRef"
-                class="max-h-72 overflow-y-auto pr-2 -mr-2"
-                @scroll.passive="onDescriptionScroll"
+            <!-- Action Buttons Group: BT Search, BFTV Search, Google Search, Share Card, Favorite -->
+            <div class="flex items-center gap-2 flex-wrap pt-2">
+              <ResourceSearchWidget type="movie" :title="movie.title" />
+              <button
+                type="button"
+                @click="showShareModal = true"
+                class="py-1.5 px-3 rounded-xl text-xs font-medium border border-line bg-surface-2/60 hover:bg-surface-3 text-fg-3 hover:text-accent flex items-center gap-1.5 transition cursor-pointer"
+                :title="t('movie.shareCardTooltip')"
               >
-                <p class="whitespace-pre-line synopsis-text" data-privacy="text">{{ displayedDescription }}</p>
-              </div>
-
-              <!-- Fades in while there is more text below, so the cut-off is visible -->
-              <div
-                v-if="descriptionOverflows && !descriptionAtEnd"
-                class="mt-1 text-[10px] text-fg-4 flex items-center gap-1"
+                <Share2 class="w-3.5 h-3.5" />
+                <span>{{ t('movie.shareCard') }}</span>
+              </button>
+              <button
+                @click="emit('toggle-favorite', movie)"
+                :class="[
+                  'py-1.5 px-3 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition cursor-pointer',
+                  isFavorite
+                    ? 'bg-danger-fill/20 text-danger-soft border-danger-fill/40'
+                    : 'bg-surface-2/60 hover:bg-surface-3 border-line text-fg-3 hover:text-danger'
+                ]"
               >
-                <ChevronDown class="w-3 h-3" />
-                {{ t('movie.scrollNotice') }}
-              </div>
+                <Heart class="w-3.5 h-3.5" :fill="isFavorite ? 'currentColor' : 'none'" />
+                <span>{{ isFavorite ? t('movie.favorited') : t('movie.favorite') }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
-              <div v-if="translateError" class="text-[11px] text-danger mt-2">
-                {{ translateError }}
-              </div>
+        <!-- Description (Chinese when translated, original otherwise) - Positioned below posters and metadata, extending full width to the right -->
+        <div
+          v-if="movie.description || hasZh"
+          class="relative z-10 mt-6 w-full text-xs md:text-sm text-fg-2 leading-relaxed bg-sunken/60 border border-line/60 p-4 md:p-5 rounded-2xl"
+        >
+          <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-line/40 flex-wrap">
+            <div class="text-xs font-bold text-fg-3 uppercase tracking-wider flex items-center gap-2">
+              <Languages class="w-3.5 h-3.5 text-accent" />
+              <span>{{ t('movie.synopsis') }}</span>
+              <span v-if="hasZh && !showOriginal" class="text-success-fill/80 text-[11px] font-normal normal-case">{{ t('episode.showTranslation') }}</span>
+              <span v-else-if="hasZh" class="text-fg-5 text-[11px] font-normal normal-case">{{ t('episode.showOriginal') }}</span>
             </div>
 
-            <!-- Search Row (directly below synopsis) -->
-            <div class="pt-1 flex items-center justify-end gap-3 flex-wrap">
-              <!-- Resource Search Plugin Button Group (Lazy Loaded) -->
-              <div class="flex items-center gap-1.5 flex-wrap ml-auto">
-                <ResourceSearchWidget type="movie" :title="movie.title" />
-              </div>
+            <div class="flex items-center gap-2">
+              <!-- The synopsis is translated but some episodes are not -->
+              <button
+                v-if="pendingEpisodeCount > 0 && !IS_TAURI"
+                @click="translateNow"
+                :disabled="isTranslating"
+                class="text-[10px] px-2 py-0.5 rounded-md bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50"
+                :title="t('movie.clipsUntranslatedHint')"
+              >
+                <Loader2 v-if="isTranslating" class="w-3 h-3 animate-spin" />
+                <Languages v-else class="w-3 h-3" />
+                {{ isTranslating ? t('movie.translating') : `${t('movie.translateEpisodes')} (${pendingEpisodeCount})` }}
+              </button>
+              <button
+                v-if="hasZh"
+                @click="toggleOriginal"
+                class="text-xs px-2.5 py-1 rounded-lg bg-surface-2 hover:bg-surface-3 text-fg-3 hover:text-fg-2 border border-line-strong transition cursor-pointer"
+              >
+                {{ showOriginal ? t('movie.showTranslation') : t('movie.showOriginal') }}
+              </button>
+              <button
+                v-else-if="movie.description && !IS_TAURI"
+                @click="translateNow"
+                :disabled="isTranslating"
+                class="text-xs px-2.5 py-1 rounded-lg bg-accent-fill/10 hover:bg-accent-fill/20 text-accent border border-accent-fill/30 transition flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+              >
+                <Loader2 v-if="isTranslating" class="w-3.5 h-3.5 animate-spin" />
+                <Languages v-else class="w-3.5 h-3.5" />
+                {{ isTranslating ? t('movie.translating') : t('movie.translateToZh') }}
+              </button>
+              <!-- Desktop build has no server process to relay the request -->
+              <span
+                v-else-if="movie.description"
+                class="text-xs text-fg-5"
+                :title="t('movie.batchTranslateHint')"
+              >
+                {{ t('movie.untranslated') }}
+              </span>
             </div>
+          </div>
+
+          <!--
+            Long synopses scroll in place instead of stretching the card: some
+            descriptions run to 8,000+ characters, which would otherwise push the
+            cast list and everything below it far out of view.
+          -->
+          <div
+            ref="descriptionBoxRef"
+            class="max-h-72 overflow-y-auto pr-2 -mr-2"
+            @scroll.passive="onDescriptionScroll"
+          >
+            <p class="whitespace-pre-line synopsis-text leading-relaxed select-text" data-privacy="text">{{ displayedDescription }}</p>
+          </div>
+
+          <!-- Fades in while there is more text below, so the cut-off is visible -->
+          <div
+            v-if="descriptionOverflows && !descriptionAtEnd"
+            class="mt-1.5 text-xs text-fg-4 flex items-center gap-1"
+          >
+            <ChevronDown class="w-3.5 h-3.5" />
+            {{ t('movie.scrollNotice') }}
+          </div>
+
+          <div v-if="translateError" class="text-xs text-danger mt-2">
+            {{ translateError }}
           </div>
         </div>
       </div>

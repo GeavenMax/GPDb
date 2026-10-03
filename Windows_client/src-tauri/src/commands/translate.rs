@@ -13,7 +13,41 @@
 //! 路径会一并换掉翻译配置 —— 这正是用户把库和配置当成一套东西时的预期。
 
 use gpdb_core::translate_config as tc;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static GEMINI_KEY_INDEX: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TranslatedEpisodeItem {
+    pub id: i64,
+    pub description_zh: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MovieTranslateResult {
+    pub id: i64,
+    pub description_zh: Option<String>,
+    pub episodes: Vec<TranslatedEpisodeItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EpisodeTranslateResult {
+    pub id: i64,
+    pub movie_id: Option<i64>,
+    pub description_zh: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderTestResult {
+    pub profile: String,
+    pub model: Option<String>,
+    pub elapsed: u64,
+    pub source: String,
+    pub result: String,
+    pub error: Option<String>,
+}
 
 /// `translate_config.json`，与当前数据库同一个目录。
 fn config_path() -> PathBuf {

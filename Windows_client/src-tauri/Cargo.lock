@@ -1238,7 +1238,7 @@ dependencies = [
 
 [[package]]
 name = "gpdb"
-version = "2.16.6"
+version = "2.16.7"
 dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",
@@ -1257,7 +1257,7 @@ dependencies = [
 
 [[package]]
 name = "gpdb-core"
-version = "2.16.6"
+version = "2.16.7"
 dependencies = [
  "rusqlite",
  "serde",

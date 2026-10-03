@@ -5,6 +5,21 @@ All notable changes to the GPDb Windows Client project will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.16.7] - 2026-10-03
+
+### Fixed
+- **“厂牌历史档案与风格深度解析专栏”正文展示与版面舒展修复 (`StudioDetailModal.vue`, `i18n/index.ts`)**：
+  - 彻底修复此前片商档案详情弹窗中因高度受限导致的厂牌历史专栏被压缩成紧凑胶囊药丸、正文无法正常显示的视觉缺陷；
+  - 专栏卡片升级为大画幅舒展架构（`w-auto mx-6 md:mx-8 p-6 md:p-8 rounded-3xl`），搭配左侧专属主色边线（`border-l-2 border-accent/50`）、典籍徽标（`BookOpen`）与深度解析标签（`Sparkles`）；
+  - 正文排版采用 `text-sm md:text-[15px] leading-relaxed text-justify select-text whitespace-pre-line`，完整呈现 181 家核心厂牌创立年代、创始人背景、美学流派与文化演变深度历史档案；
+  - 规范并统一国际化专栏标题文案为「厂牌历史档案与风格深度解析专栏」。
+
+### Optimized
+- **影片档案页布局重构：剧情简介板块移至海报下方通栏展示，操作按钮组矩阵化收拢 (`MovieDetailModal.vue`)**：
+  - **剧情简介板块位置重塑与通栏拓宽**：将原位于右侧狭窄元数据列的「剧情简介 (Synopsis)」板块挪至海报与元数据区下方，宽度横向延伸贯穿至右侧边缘（`w-full rounded-2xl p-4 md:p-5`），赋予长篇剧情梗概、双语切换（中文译文/英文原文）及 AI 翻译操作极佳的阅读空间；
+  - **核心操作按钮组矩阵化收拢**：将此前分散排布在顶栏及底部的「BT 磁力资源搜索扩展」「在BFTV搜索影片资料」「Google 搜索」「生成影视分享卡片」「收藏电影」等 5 项核心交互按钮，集中归拢并重塑为美观的操作按钮功能组，置于厂牌与导演标签下方；
+  - **顶栏元数据净化**：顶栏纯粹聚焦于上映日期/年份、片长及分类标签，消除视觉杂讯。
+
 ## [2.16.6] - 2026-10-03
 
 ### Fixed
