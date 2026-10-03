@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.16.1] - 2026-10-02
 
+### Added
+- **用户自选外观主题设置与暗色模式默认配置 (`AppTheme.swift`, `AppEnvironment.swift`, `SettingsView.swift`, `GPDbApp.swift`)**：
+  - **支持三种外观模式自由切换**：新增 `AppThemeMode` 枚举定义，提供「暗色模式」（Dark）、「浅色模式」（Light）与「跟随系统」（System）三种外观选择；
+  - **默认采用高沉浸暗色模式**：遵循用户体验偏好，默认初始外观全面设为暗色模式（Dark），兼顾 OLED 极致省电与午夜观影视效；
+  - **设置页原生分段选择器与触感反馈**：在「设置」页显式新增「外观主题」专属配置区块，配备分段胶囊选择器（`.segmented`）与图标标题组合，切换时附带轻触微震触感反馈；
+  - **全局动态响应式渲染 (`preferredColorScheme`)**：在 App 根视图 `WindowGroup` 挂载响应式颜色方案修饰符，用户切换主题时全 App 秒级平滑淡入淡出（`0.25s easeInOut`）；
+  - **UserDefaults 本地持久化**：用户的主题选择自动写入 `gpdb_pref_theme`，冷启动时秒级恢复；
+  - **启动冷启屏文字色彩对比度调优 (`DatabaseLoadingView.swift`)**：针对午夜星空背景优化开屏装载文字颜色，确保在各外观模式下均具备极高的清晰辨识度。
+
 ### Optimized
 - **演员档案页作品分类切换栏重塑为沉浸式悬浮胶囊药丸岛 (`PerformerDetailView.swift`)**：
   - **沉浸式胶囊药丸岛造型**：彻底废弃此前平铺直述的通栏矩形切条与机械分割线，升级为悬浮于底部的极简流线型胶囊药丸岛（Floating Capsule Pill Island）；
@@ -56,6 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 修复原硬编码 `pageSize: 10000` 导致大于一万条记录的大型片商作品被截断的缺陷；
   - 在 `BrowseRepository` 新增专门获取片商作品总数（电影数与分集数）的专用接口 `getStudioWorksCounts(studio:)`，并在标签栏准确显示真实数据库总数；
   - 单次拉取上限提升至 50,000 条，解除单次写死限制；同步将分类系列过滤页面的加载上限提升至 50,000。
+- **影片档案页多导演识别与全链路展示支持 (`MovieRepository.swift`, `MovieDetailView.swift`, `MovieRecord.swift`, `BrowseRepository.swift`)**：
+  - **根因定位与对标解决**：原实现仅直接读取 `movies.director_name` 单一字符串字段并整体渲染为一个胶囊。在多导演共同执导的影片中，该字段可能由历史抓取器连接（如 `Richard MorganTony Banks`）或以 ` / ` 分隔，导致多个导演被错误识别为一个单一人名，且无法按单一导演独立点击检索；
+  - **对齐 Android 与桌面端架构**：在 `MovieRepository.getMovieDetail` 中接入 `movie_directors` 与 `directors` 关联表查询（`ORDER BY md.position ASC, d.id ASC`），将真实导演花名册映射至 `MovieDetailData.directors`；
+  - **双重容错与独立胶囊渲染**：在 `MovieDetailView` 中，优先使用关联表读取的真实导演列表，无关联表数据时通过 `fallbackDirectorNames` 自动按 `" / "` 拆解；将每位导演独立渲染为可点击交互的 `BadgePill`（“导演: [姓名]”），点击直达该导演专属影片作品列表；
+  - **检索与分享卡片多导演同步**：在 `BrowseRepository` 电影检索中增加 `movie_directors` 关联匹配，确保点击任意一位联合导演均可准确查出合导影片；同时优化长图分享卡片中的联合导演展示。
 
 ## [2.15.0] - 2026-10-01
 

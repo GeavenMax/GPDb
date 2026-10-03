@@ -32,7 +32,7 @@ public struct MovieDetailView: View {
 
                     VStack(alignment: .leading, spacing: 14) {
                         // 2. 标题与核心元数据
-                        titlesAndBadges(movie: data.movie)
+                        titlesAndBadges(movie: data.movie, directors: data.directors)
 
                         Divider()
 
@@ -86,6 +86,13 @@ public struct MovieDetailView: View {
         }
         .sheet(isPresented: $showShareCardSheet) {
             if let data = detailData {
+                let directorDisplay: String? = {
+                    if !data.directors.isEmpty {
+                        return data.directors.map { $0.name }.joined(separator: " / ")
+                    }
+                    return data.movie.fallbackDirectorNames.joined(separator: " / ")
+                }()
+
                 ShareCardModalView(
                     title: data.movie.displayTitle,
                     titleAlt: data.movie.displaySubtitle,
@@ -93,7 +100,7 @@ public struct MovieDetailView: View {
                     year: data.movie.releaseYear,
                     duration: data.movie.formattedDuration,
                     studio: data.movie.studioName,
-                    director: data.movie.directorName,
+                    director: directorDisplay,
                     performers: data.performers.map { $0.name },
                     synopsis: data.movie.displayDescription,
                     posterPath: data.movie.coverFull ?? data.movie.coverIcon,
@@ -168,7 +175,7 @@ public struct MovieDetailView: View {
         }
     }
 
-    private func titlesAndBadges(movie: MovieRecord) -> some View {
+    private func titlesAndBadges(movie: MovieRecord, directors: [DirectorRecord]) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             // 长标题循环平滑滚动跑马灯 (超长标题不截断)
             MarqueeText(
@@ -201,9 +208,18 @@ public struct MovieDetailView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                if let dir = movie.directorName {
+
+                // 独立导演胶囊列表：优先使用关联表读取的真实多导演列表；若无则通过 fallbackDirectorNames 拆分 " / "
+                let directorNames: [String] = {
+                    if !directors.isEmpty {
+                        return directors.map { $0.name }.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                    }
+                    return movie.fallbackDirectorNames
+                }()
+
+                ForEach(directorNames, id: \.self) { dir in
                     NavigationLink(destination: FilteredMovieListView(title: dir, filterKey: "director", filterValue: dir)) {
-                        BadgePill(text: dir, icon: "person.crop.circle", isInteractive: true)
+                        BadgePill(text: "导演: \(dir)", icon: "person.crop.circle", isInteractive: true)
                     }
                     .buttonStyle(.plain)
                 }

@@ -193,7 +193,7 @@ public struct StudioDetailView: View {
             async let fetchEpisodes = repository.getEpisodes(studio: studioName, pageSize: 50000)
             async let fetchFav = userRepo.isFavorite(entityType: "studio", entityKey: studioName)
 
-            let (counts, mList, epList, fav) = try await (fetchCounts, fetchMovies, fetchEpisodes, (try? await fetchFav) ?? false)
+            let (counts, mList, epList, fav) = try await (fetchCounts, fetchMovies, fetchEpisodes, await fetchFav)
 
             self.totalMoviesCount = counts.moviesCount
             self.totalEpisodesCount = counts.episodesCount

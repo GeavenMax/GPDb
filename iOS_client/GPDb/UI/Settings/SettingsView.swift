@@ -83,6 +83,20 @@ public struct SettingsView: View {
                     }
                 }
 
+                // 2. 外观主题
+                Section(header: Text("外观主题"), footer: Text("支持暗色模式、浅色模式或跟随系统自动切换。当前默认使用暗色模式。")) {
+                    Picker("界面外观", selection: Binding(
+                        get: { environment.appTheme },
+                        set: { environment.setAppTheme($0) }
+                    )) {
+                        ForEach(AppThemeMode.allCases) { mode in
+                            Label(mode.title, systemImage: mode.icon)
+                                .tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.vertical, 4)
+                }
 
                 // 3. 隐私与安全
                 Section("隐私与安全保护") {
@@ -131,7 +145,7 @@ public struct SettingsView: View {
                     HStack {
                         Text("当前版本")
                         Spacer()
-                        Text("v2.15.0")
+                        Text("v2.16.1")
                             .foregroundStyle(.secondary)
                     }
 

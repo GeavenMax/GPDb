@@ -81,12 +81,12 @@ public struct DatabaseLoadingView: View {
                     VStack(spacing: 6) {
                         Text(environment.mountingProgressText)
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Color.primary.opacity(0.9))
+                            .foregroundStyle(Color.white.opacity(0.92))
                             .animation(.easeInOut(duration: 0.25), value: environment.mountingProgressText)
 
                         Text(environment.mountingSubText)
                             .font(.system(size: 10))
-                            .foregroundStyle(.secondary.opacity(0.7))
+                            .foregroundStyle(Color.white.opacity(0.65))
                             .kerning(1)
                             .animation(.easeInOut(duration: 0.25), value: environment.mountingSubText)
                     }

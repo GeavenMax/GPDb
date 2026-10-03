@@ -131,4 +131,16 @@ public struct MovieRecord: Codable, FetchableRecord, TableRecord, PersistableRec
         }
         return "\(m)分钟"
     }
+
+    /// 备用单字段导演拆分列表 (当缺少关联表数据时拆解 "Director A / Director B")
+    public var fallbackDirectorNames: [String] {
+        guard let raw = directorName?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return []
+        }
+        // 若包含 " / "，拆分为独立导演列表；若无则返回原整串
+        let parts = raw.components(separatedBy: " / ")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return parts.isEmpty ? [raw] : parts
+    }
 }

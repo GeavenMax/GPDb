@@ -36,14 +36,16 @@ public final class BrowseRepository {
             var arguments: [DatabaseValueConvertible] = []
 
             if let q = query?.trimmingCharacters(in: .whitespacesAndNewlines), !q.isEmpty {
-                // 多字段容错联合检索：原名、中文名、片商、导演、中文简介、演员
+                // 多字段容错联合检索：原名、中文名、片商、导演、中文简介、演员、多导演关联表
                 conditions.append("""
                 (m.title LIKE ? OR m.title_zh LIKE ? OR m.studio_name LIKE ? OR m.director_name LIKE ? OR m.description_zh LIKE ? OR EXISTS (
                     SELECT 1 FROM movie_performers mp WHERE mp.movie_id = m.id AND mp.performer_name LIKE ?
+                ) OR EXISTS (
+                    SELECT 1 FROM movie_directors md JOIN directors d ON d.id = md.director_id WHERE md.movie_id = m.id AND d.name LIKE ?
                 ))
                 """)
                 let match = "%\(q)%"
-                arguments.append(contentsOf: [match, match, match, match, match, match])
+                arguments.append(contentsOf: [match, match, match, match, match, match, match])
             }
 
             if let s = studio, !s.isEmpty {
@@ -52,7 +54,14 @@ public final class BrowseRepository {
             }
 
             if let d = director, !d.isEmpty {
-                conditions.append("m.director_name = ?")
+                conditions.append("""
+                (m.director_name = ? OR EXISTS (
+                    SELECT 1 FROM movie_directors md
+                    JOIN directors d ON d.id = md.director_id
+                    WHERE md.movie_id = m.id AND d.name = ?
+                ))
+                """)
+                arguments.append(d)
                 arguments.append(d)
             }
 

@@ -7,7 +7,7 @@ public extension String {
     }()
 
     /// 将数据库中存储的 `images/Covers/xxx.jpg` 格式 URL 转换为本地相对路径
-    public func toImageCachePath() -> String? {
+    func toImageCachePath() -> String? {
         var trimmed = self.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return nil }
 

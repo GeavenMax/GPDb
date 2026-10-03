@@ -34,6 +34,7 @@ public final class AppEnvironment: ObservableObject {
     // 布局与偏好
     @Published public var layoutColumns: Int = 2
     @Published public var use3DFlipCards: Bool = false
+    @Published public var appTheme: AppThemeMode = .dark
 
     // 底部导航栏联动 (瀑布流滑动自动收缩与展开)
     @Published public var isTabBarHidden: Bool = false
@@ -53,6 +54,7 @@ public final class AppEnvironment: ObservableObject {
     private let kBiometricEnabled = "gpdb_pref_biometric_enabled"
     private let kLayoutColumns = "gpdb_pref_layout_columns"
     private let k3DFlip = "gpdb_pref_3d_flip"
+    private let kAppTheme = "gpdb_pref_theme"
 
     private var activeDbSecurityUrl: URL?
     private var activeImagesSecurityUrl: URL?
@@ -63,6 +65,11 @@ public final class AppEnvironment: ObservableObject {
         self.isBiometricLockEnabled = defaults.bool(forKey: kBiometricEnabled)
         self.layoutColumns = defaults.object(forKey: kLayoutColumns) as? Int ?? 2
         self.use3DFlipCards = defaults.bool(forKey: k3DFlip)
+        if let themeStr = defaults.string(forKey: kAppTheme), let mode = AppThemeMode(rawValue: themeStr) {
+            self.appTheme = mode
+        } else {
+            self.appTheme = .dark
+        }
         self.isUnlocked = !isBiometricLockEnabled
 
         configureImageCache()
@@ -387,6 +394,18 @@ public final class AppEnvironment: ObservableObject {
     public func toggle3DFlipCards() {
         self.use3DFlipCards.toggle()
         defaults.set(self.use3DFlipCards, forKey: k3DFlip)
+    }
+
+    public func setAppTheme(_ theme: AppThemeMode) {
+        guard appTheme != theme else { return }
+        withAnimation(.easeInOut(duration: 0.25)) {
+            self.appTheme = theme
+        }
+        defaults.set(theme.rawValue, forKey: kAppTheme)
+        #if canImport(UIKit)
+        let impact = UIImpactFeedbackGenerator(style: .light)
+        impact.impactOccurred()
+        #endif
     }
 
     public func setTabBarHidden(_ hidden: Bool, animated: Bool = true) {

@@ -360,7 +360,7 @@ public final class ShareCardImageLoader {
 
         // 1. 尝试从本地 ZIP 归档或挂载目录提取
         if let relPath = path.toImageCachePath() {
-            if let zipPath = env.imageZipPath {
+            if env.imageZipPath != nil {
                 if let data = try? await ZipArchiveService.shared.extract(path: relPath),
                    let img = PlatformImage(data: data) {
                     return img

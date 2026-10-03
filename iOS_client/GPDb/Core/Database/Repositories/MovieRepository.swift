@@ -5,6 +5,7 @@ public struct MovieDetailData {
     public let movie: MovieRecord
     public let performers: [PerformerRecord]
     public let episodes: [EpisodeRecord]
+    public let directors: [DirectorRecord]
     public let userData: UserMovieDataRecord?
     public let isFavorite: Bool
 
@@ -12,12 +13,14 @@ public struct MovieDetailData {
         movie: MovieRecord,
         performers: [PerformerRecord] = [],
         episodes: [EpisodeRecord] = [],
+        directors: [DirectorRecord] = [],
         userData: UserMovieDataRecord? = nil,
         isFavorite: Bool = false
     ) {
         self.movie = movie
         self.performers = performers
         self.episodes = episodes
+        self.directors = directors
         self.userData = userData
         self.isFavorite = isFavorite
     }
@@ -52,6 +55,15 @@ public final class MovieRepository {
             """
             let episodes = try EpisodeRecord.fetchAll(db, sql: episodesSql, arguments: [id])
 
+            // 关联导演列表 (从 movie_directors 关联表读取真实多导演花名册)
+            let directorsSql = """
+            SELECT d.* FROM directors d
+            JOIN movie_directors md ON d.id = md.director_id
+            WHERE md.movie_id = ?
+            ORDER BY md.position ASC, d.id ASC
+            """
+            let directors = try DirectorRecord.fetchAll(db, sql: directorsSql, arguments: [id])
+
             // 用户评分与私密笔记
             let userData = try UserMovieDataRecord.fetchOne(db, key: id)
 
@@ -63,6 +75,7 @@ public final class MovieRepository {
                 movie: movie,
                 performers: performers,
                 episodes: episodes,
+                directors: directors,
                 userData: userData,
                 isFavorite: isFav
             )

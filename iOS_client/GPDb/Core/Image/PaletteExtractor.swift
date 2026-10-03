@@ -95,7 +95,7 @@ public final class PaletteExtractor: @unchecked Sendable {
         }
 
         // 2. 尝试从沙盒 ZIP 归档读取 Data
-        if let zip = zipPath, let relPath = rawPath.toImageCachePath() {
+        if zipPath != nil, let relPath = rawPath.toImageCachePath() {
             let data: Data? = await withCheckedContinuation { continuation in
                 ZipArchiveService.shared.extract(path: relPath) { result in
                     continuation.resume(returning: try? result.get())

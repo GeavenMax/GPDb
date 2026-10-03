@@ -53,6 +53,7 @@ struct GPDbApp: App {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 await environment.checkForUpdates()
             }
+            .preferredColorScheme(environment.appTheme.colorScheme)
         }
     }
 }

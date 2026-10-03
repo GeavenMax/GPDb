@@ -27,7 +27,7 @@ public struct UniversalBackup: Codable {
     public init(
         format: String = "gpdb_universal_backup",
         version: Int = 2,
-        appVersion: String = "2.15.0",
+        appVersion: String = "2.16.1",
         platform: String = "ios",
         exportedAt: String = ISO8601DateFormatter().string(from: Date()),
         favorites: [BackupFavorite] = [],
