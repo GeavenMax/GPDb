@@ -646,7 +646,13 @@ class GeminiProvider(Provider):
         if block_reason == "PROHIBITED_CONTENT" or finish_reason in ("SAFETY", "PROHIBITED_CONTENT") or not candidates or "content" not in candidates[0]:
             if self.fallback_provider:
                 print(f"\n[🛡️ 内容安全拦截] Gemini 判定内容露骨 (blockReason={block_reason}, finishReason={finish_reason}) -> 自动转交 DeepSeek ({self.fallback_provider.model}) 补救翻译 ({len(texts)} 条)...")
-                return self.fallback_provider.translate(texts, contexts)
+                try:
+                    return self.fallback_provider.translate(texts, contexts)
+                except Exception as fb_err:
+                    if "402" in str(fb_err) or "Insufficient Balance" in str(fb_err):
+                        print(f"  ⚠️  [Fallback 提示] DeepSeek 账户余额已耗尽 (HTTP 402)，暂停 fallback 接盘。")
+                        self.fallback_provider = None
+                    raise TranslationError(f"Gemini 内容安全拦截且 Fallback 失败: {fb_err}")
             raise TranslationError(f"Gemini 内容安全拦截 (blockReason={block_reason}, finishReason={finish_reason}): {json.dumps(body)[:400]}")
 
         try:
@@ -657,7 +663,13 @@ class GeminiProvider(Provider):
         except (KeyError, IndexError) as e:
             if self.fallback_provider:
                 print(f"\n[🛡️ 响应异常] Gemini 响应结构异常 -> 自动转交 DeepSeek ({self.fallback_provider.model}) 补救翻译 ({len(texts)} 条)...")
-                return self.fallback_provider.translate(texts, contexts)
+                try:
+                    return self.fallback_provider.translate(texts, contexts)
+                except Exception as fb_err:
+                    if "402" in str(fb_err) or "Insufficient Balance" in str(fb_err):
+                        print(f"  ⚠️  [Fallback 提示] DeepSeek 账户余额已耗尽 (HTTP 402)，暂停 fallback 接盘。")
+                        self.fallback_provider = None
+                    raise TranslationError(f"Gemini 响应结构异常且 Fallback 失败: {fb_err}")
             raise TranslationError(f"Unexpected response shape: {json.dumps(body)[:400]}") from e
 
         # 严格遵守 Free Tier 15 RPM 限制 (每个请求间隔 4.2s)

@@ -184,10 +184,10 @@ pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
         Some(("Stars", &normalized[idx + "images/stars/".len()..]))
     } else if let Some(idx) = lower.find("images/icons/") {
         Some(("Icons", &normalized[idx + "images/icons/".len()..]))
-    } else if let Some(idx) = lower.find("images/logo/") {
-        Some(("Logo", &normalized[idx + "images/logo/".len()..]))
     } else if let Some(idx) = lower.find("images/logos/") {
         Some(("Logos", &normalized[idx + "images/logos/".len()..]))
+    } else if let Some(idx) = lower.find("images/logo/") {
+        Some(("Logo", &normalized[idx + "images/logo/".len()..]))
     } else if let Some(idx) = lower.find("images/banners/") {
         Some(("Banners", &normalized[idx + "images/banners/".len()..]))
     } else if let Some(idx) = lower.find("covers/") {
@@ -198,10 +198,10 @@ pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
         Some(("Stars", &normalized[idx + "stars/".len()..]))
     } else if let Some(idx) = lower.find("icons/") {
         Some(("Icons", &normalized[idx + "icons/".len()..]))
-    } else if let Some(idx) = lower.find("logo/") {
-        Some(("Logo", &normalized[idx + "logo/".len()..]))
     } else if let Some(idx) = lower.find("logos/") {
         Some(("Logos", &normalized[idx + "logos/".len()..]))
+    } else if let Some(idx) = lower.find("logo/") {
+        Some(("Logo", &normalized[idx + "logo/".len()..]))
     } else if let Some(idx) = lower.find("banners/") {
         Some(("Banners", &normalized[idx + "banners/".len()..]))
     } else {
@@ -486,6 +486,16 @@ mod tests {
         let sample3 = "covers/2/video2.jpg";
         let (path3, _) = resolve_cache_target_path(sample3).expect("Failed to resolve sample3");
         assert!(path3.to_string_lossy().ends_with("Covers/2/video2.jpg"));
+
+        let sample_logos = "images/logos/falcon_video.png";
+        let (path_logos, mime_logos) = resolve_cache_target_path(sample_logos).expect("Failed to resolve sample_logos");
+        assert_eq!(mime_logos, "image/png");
+        assert!(path_logos.to_string_lossy().ends_with("Logos/falcon_video.png"));
+
+        let sample_logo = "images/logo/old_logo.png";
+        let (path_logo, mime_logo) = resolve_cache_target_path(sample_logo).expect("Failed to resolve sample_logo");
+        assert_eq!(mime_logo, "image/png");
+        assert!(path_logo.to_string_lossy().ends_with("Logo/old_logo.png"));
 
         let sample_external = "https://pbc.xxx/wiki/Special:FilePath/Austin_Wilde.jpg";
         let (path_ext, mime_ext) = resolve_cache_target_path(sample_external).expect("Failed to resolve external");

@@ -8,7 +8,6 @@ import { claimEscape } from '../utils/escape';
 import { getImageUrl } from '../utils/image';
 import { sampleImageEdgeColor, type SampledColorResult } from '../utils/colorSampler';
 import { pluginsConfig } from '../services/pluginManager';
-import { api } from '../api';
 import { t } from '../i18n';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
@@ -76,6 +75,21 @@ function loadMoreEpisodes() {
   displayedEpisodeCount.value = Math.min(displayedEpisodeCount.value + BATCH_SIZE, episodes.value.length);
 }
 
+const MOVIE_BATCH_SIZE = 40;
+const displayedMovieCount = ref(MOVIE_BATCH_SIZE);
+
+const displayedMovies = computed(() => {
+  return movies.value.slice(0, displayedMovieCount.value);
+});
+
+const hasMoreMovies = computed(() => {
+  return displayedMovieCount.value < movies.value.length;
+});
+
+function loadMoreMovies() {
+  displayedMovieCount.value = Math.min(displayedMovieCount.value + MOVIE_BATCH_SIZE, movies.value.length);
+}
+
 // Counts come from the loaded works, falling back to whatever the caller knew
 // before the fetch landed so the header is populated from the first frame.
 const worksCount = computed(() => props.works?.movies_count ?? props.studio?.works_count ?? 0);
@@ -136,34 +150,7 @@ const logoBadgeStyle = computed(() => {
   return {};
 });
 
-/**
- * Fallback archive fetcher: only called if works wasn't supplied by parent
- * or parent works did not contain description_zh, logo_url or banner_url.
- */
-async function loadStudioArchive(name?: string | null) {
-  if (!name) return;
-  const hasDesc = Boolean(props.works?.description_zh || props.studio?.description_zh);
-  const hasLogo = Boolean(props.works?.logo_url || props.studio?.logo_url);
-  const hasBanner = Boolean(props.works?.banner_url || props.studio?.banner_url);
-  if (hasDesc && hasLogo && hasBanner) {
-    return;
-  }
-  try {
-    const works = await api.getStudioWorks(name);
-    if (works?.description_zh) {
-      fetchedDescriptionZh.value = works.description_zh;
-      cachedDescriptionZh.value = works.description_zh;
-    }
-    if (works?.logo_url && !props.works?.logo_url && !props.studio?.logo_url) {
-      fetchedLogoUrl.value = works.logo_url;
-    }
-    if (works?.banner_url && !props.works?.banner_url && !props.studio?.banner_url) {
-      fetchedBannerUrl.value = works.banner_url;
-    }
-  } catch {
-    // Ignore fetch error
-  }
-}
+
 
 
 watch(
@@ -233,8 +220,9 @@ function isFav(type: FavoriteType, key: string | null | undefined): boolean {
 
 // A different studio means a different pairing of tabs, so the one that was open
 // is not carried over — as in PerformerDetailModal.
-watch(() => props.studio?.name, (newName) => {
+watch(() => props.studio?.name, () => {
   activeTab.value = 'movies';
+  displayedMovieCount.value = MOVIE_BATCH_SIZE;
   displayedEpisodeCount.value = BATCH_SIZE;
   showOriginalOverride.value = null;
   fetchedDescriptionZh.value = null;
@@ -249,25 +237,22 @@ watch(() => props.studio?.name, (newName) => {
       modalContainerRef.value.scrollTop = 0;
     }
   });
-  // Only fetch if parent didn't already provide all metadata
-  const hasDesc = Boolean(props.works?.description_zh || props.studio?.description_zh);
-  const hasLogo = Boolean(props.works?.logo_url || props.studio?.logo_url);
-  const hasBanner = Boolean(props.works?.banner_url || props.studio?.banner_url);
-  if (newName && (!hasDesc || !hasLogo || !hasBanner)) {
-    loadStudioArchive(newName);
-  }
 }, { immediate: true });
 
 watch(activeTab, () => {
   displayedEpisodeCount.value = BATCH_SIZE;
+  displayedMovieCount.value = MOVIE_BATCH_SIZE;
 });
 
 function handleScroll(e: Event) {
-  if (activeTab.value !== 'episodes' || !hasMoreEpisodes.value) return;
   const target = e.target as HTMLElement;
   if (!target) return;
   if (target.scrollTop + target.clientHeight >= target.scrollHeight - 400) {
-    loadMoreEpisodes();
+    if (activeTab.value === 'movies' && hasMoreMovies.value) {
+      loadMoreMovies();
+    } else if (activeTab.value === 'episodes' && hasMoreEpisodes.value) {
+      loadMoreEpisodes();
+    }
   }
 }
 
@@ -307,19 +292,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div v-if="effectiveBannerUrl" class="absolute inset-0 pointer-events-none select-none overflow-hidden">
           <!-- Ambient blurred glow filling header -->
           <div
-            class="absolute inset-0 bg-cover bg-center blur-2xl opacity-40 scale-125 transform-gpu"
+            class="absolute inset-0 bg-cover bg-center blur-xl opacity-35 scale-110 transform-gpu"
             :style="{ backgroundImage: `url(${getImageUrl(effectiveBannerUrl)})` }"
           ></div>
-          <!-- Sharp Artwork: Spread across right & center with feathered left mask -->
+          <!-- Sharp Artwork: Spread across right & center -->
           <img
             :src="getImageUrl(effectiveBannerUrl)"
             :alt="mainTitle"
-            class="absolute right-0 top-0 h-full w-full object-cover object-center opacity-30 md:opacity-45 [mask-image:linear-gradient(to_left,black_25%,transparent_90%)]"
+            class="absolute right-0 top-0 h-full w-full object-cover object-center opacity-40"
             @error="onBannerError"
           />
           <!-- Contrast scrim overlays so text, logo, and buttons are crystal clear -->
-          <div class="absolute inset-0 bg-gradient-to-r from-sunken/95 via-sunken/80 to-sunken/45"></div>
-          <div class="absolute inset-0 bg-gradient-to-t from-sunken/90 via-transparent to-sunken/30"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-sunken/95 via-sunken/80 to-sunken/40"></div>
+          <div class="absolute inset-0 bg-gradient-to-t from-sunken/90 via-transparent to-sunken/20"></div>
         </div>
         <div v-else class="absolute inset-0 pointer-events-none select-none bg-gradient-to-br from-accent-fill/10 via-surface-2/40 to-sunken"></div>
 
@@ -459,15 +444,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         <div v-if="activeTab === 'movies'">
           <div v-if="movies.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             <MovieCard
-              v-for="(m, idx) in movies"
+              v-for="(m, idx) in displayedMovies"
               :key="m.id"
               :movie="m"
-              :priority="idx < 16"
+              :priority="idx < 12"
               :lang="effectiveLang"
               :is-favorite="isFav('movie', String(m.id))"
               @select="emit('select-movie', m)"
               @toggle-favorite="emit('toggle-entity-favorite', 'movie', String(m.id))"
             />
+          </div>
+          <div v-if="hasMoreMovies" class="text-center py-6 text-fg-4 text-xs flex items-center justify-center gap-2">
+            <Loader2 class="w-4 h-4 animate-spin text-accent" />
+            <span>{{ t('common.loading') }}...</span>
           </div>
           <div v-else-if="loading" class="text-center py-12 text-fg-4 text-xs">{{ t('studio.loadingMovies') }}</div>
           <div v-else class="text-center py-12 text-fg-4 text-xs">{{ t('studio.noMovies') }}</div>

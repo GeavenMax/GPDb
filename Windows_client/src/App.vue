@@ -231,6 +231,7 @@ const studioWorks = ref<StudioWorks | null>(null);
 const studioWorksLoading = ref(false);
 
 const studioLogoColorMap = shallowReactive<Record<string, SampledColorResult>>({});
+const studioLogoErrorSet = shallowReactive(new Set<string>());
 
 function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
   if (!logoUrl) return;
@@ -239,6 +240,12 @@ function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
   const result = sampleImageEdgeColor(img);
   if (result.bgColor) {
     studioLogoColorMap[logoUrl] = result;
+  }
+}
+
+function onStudioGridLogoError(logoUrl?: string | null) {
+  if (logoUrl) {
+    studioLogoErrorSet.add(logoUrl);
   }
 }
 
@@ -2354,14 +2361,14 @@ onUnmounted(() => {
                 :style="getStudioShelfStyle(s.logo_url)"
               >
                 <img
-                  v-if="s.logo_url"
+                  v-if="s.logo_url && !studioLogoErrorSet.has(s.logo_url)"
                   :src="getImageUrl(s.logo_url)"
                   :alt="s.name"
                   crossorigin="anonymous"
                   class="max-w-[88%] max-h-full w-auto h-auto object-contain filter drop-shadow group-hover:scale-105 transition duration-300"
                   loading="lazy"
                   @load="onStudioGridLogoLoad($event, s.logo_url)"
-                  @error="s.logo_url = null"
+                  @error="onStudioGridLogoError(s.logo_url)"
                 />
                 <div
                   v-else
