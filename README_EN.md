@@ -34,10 +34,10 @@
 
 **GPDb** (Gay Pornography Database Manager) is an advanced, full-featured **offline media database and metadata client** designed specifically for gay adult film enthusiasts, digital archivists, and media researchers.
 
-In adult media, an individual's viewing history, curated collections, and personal aesthetic preferences constitute **vital and strictly personal privacy**. Commercial streaming platforms and cloud-based services present persistent risks of user tracking, data leaks, and sudden library deletions due to copyright expiration.
+In adult media, an individual's viewing history, curated collections, and personal aesthetic preferences constitute **vital and strictly personal privacy**. Commercial streaming platforms and centralized online services present persistent risks of user tracking, data analysis leaks, and sudden library deletions due to copyright expiration.
 
 **GPDb is engineered around a strict "100% Offline-First & Zero-Trace Privacy" philosophy**:
-- **Zero Cloud Dependence**: All media metadata, performer body profiles, poster/thumbnail caches, personal ratings, tags, and collection history remain strictly stored on your device's physical disk — never leaving your machine.
+- **Zero Cloud Dependence**: All media metadata, performer body profiles, poster/thumbnail caches, personal ratings, tags, and collection history remain strictly stored on your device's physical disk.
 - **Pure Local Architecture**: No account registration, no telemetry, no analytics, and zero external tracking or background uploads of any kind.
 - **Uncompromised Performance**: Powered by a high-performance **Rust core engine (`gpdb-core`)** combined with **Tauri v2 + Vue 3** (macOS / Windows desktop) and **Kotlin + Jetpack Compose + Room** (Android native mobile). Effortlessly manages **60,000+ full-length films, 100,000+ individual scenes, 6,000+ detailed performer body profiles, and 1,300+ classic & modern studios** with fluid 60fps rendering and millisecond-level instant search.
 
@@ -47,13 +47,11 @@ In adult media, an individual's viewing history, curated collections, and person
 
 ### 1. Granular Performer Body Attributes & Deep Filtering
 - **Fine-Grained Anatomical & Morphological Search**:
-  Filter performers by **Body Type / Build** (Muscle, Twink, Bear, Hunk, etc.), **Hair Color**, **Eye Color**, **Facial & Body Hair density**, **Height & Weight**, **Ethnicity / Skin Tone**, **Penis Size / Foreskin status**, and **Tattoos / Piercings** — combinable in any configuration.
+  Filter performers by **Body Type / Build** (Muscle, Twink, Bear, Hunk, etc.), **Hair Color**, **Eye Color**, **Facial & Body Hair density**, **Height & Weight**, **Skin Tone**, **Penis Size / Foreskin status**, and **Tattoos / Piercings** — combinable in any configuration.
 - **Performer Aliases & Cross-Studio Alignment**:
   Intelligently reconciles alternate screen names and aliases used across different production companies and eras, preventing missed appearances due to name changes.
 - **Precise Film vs. Scene Distinction**:
   Seamlessly view a performer's appearances in feature-length movies (**Films**) separately from their standalone episodic vignettes (**Scenes**) — every credit accounted for at a glance.
-- **PBC Wiki Comprehensive Performer Data Integration**:
-  Performer profiles now integrate rich metadata sourced from the PBC (Porn Base Central) Wiki, including **birth name**, **career start year**, **active / retired status badge**, **astrology sign & ethnicity**, **performance style tags**, **wiki biography card**, and **cross-platform connected profiles** (IAFD / IMDb / X / OnlyFans / Instagram) — delivering a complete, authoritative reference card for every performer in your library.
 - **High-Tolerance Multi-Field Unified Search Engine**:
   - FTS5 high-speed recall → automatic fallback to standard SQL multi-field combined search → Room / SQLite safety net, eliminating empty results caused by tokenization or missing virtual tables.
   - A single query simultaneously searches the English title (`title`), Chinese title (`title_zh`), studio name (`studio_name`), director name (`director_name`), Chinese synopsis (`description_zh`), and the full performer cast.
@@ -61,96 +59,112 @@ In adult media, an individual's viewing history, curated collections, and person
   - Options include "All", "Last Scraped", "Released in Last 7 Days", "Released in Last 30 Days", "Released in Last 90 Days", and "This Year".
   - Film and scene release time granularity is precisely separated (features by year, scenes by exact date).
   - Newly indexed entries display a dynamic gradient `NEW` highlight badge.
+- **PBC Wiki Comprehensive Performer Data Integration**:
+  Performer profiles now integrate rich metadata sourced from Porn Base Central Wiki, including **birth name, debut year, active/retired status badge, astrology sign & ethnicity, performance style tags, wiki biography card**, and **cross-platform connected profiles** (IAFD / IMDb / X / OnlyFans / Instagram), powering deep performer research and cross-platform verification.
 
-### 2. Streaming-Grade Immersive Home Feed & 3D Collector Cards
+### 2. Streaming-Grade Immersive Home Feed & Multi-Poster Tile Gallery
 - **Five Discovery Streams**:
   - **Hero Carousel**: Smooth auto-cycling full-resolution billboard posters with delicate parallax interaction at the top of the home screen.
-  - **On This Day (Retro Premieres)**: Intelligently cross-references the current calendar date against historical premiere records to surface classic titles from the golden eras of the 1980s, 1990s, and 2000s.
-  - **Star Spotlight (Today's Icons)**: Strictly validates local disk poster file availability, intelligently featuring iconic performers with high-definition headshots — no generic letter placeholders ever shown.
-  - **Legendary Franchises Showcase**: Surfaces long-running multi-installment cinematic series spanning ten or more entries, with random shuffle exploration and instant "Shuffle" refresh.
+  - **On This Day (Retro Premieres)**: Intelligently cross-references historical calendar records to revisit classic titles premiering on the same date from the golden eras (1980s, 1990s, and 2000s).
+  - **Star Spotlight (Today's Icons)**: Strictly validates local physical disk poster files, intelligently recommending iconic performers with high-definition headshots while eliminating generic letter placeholders.
+  - **Iconic Series Showcase**: Surfaces long-running multi-installment cinematic IP series spanning ten or more entries, with random shuffle exploration and one-click refresh.
   - **Lucky Discovery (Blind Box)**: Roll the dice to randomly uncover hidden vintage gems from over 60,000 titles.
-- **Dual Poster Layout Modes & Full-Screen Gesture/Scroll Lightbox**:
-  - Supports **Adaptive HD Gallery (`adaptive_pager`)** and **3D Realistic Collector Cards (`flip_3d`)**: featuring 60fps CSS 3D depth-of-field physical perspective, tactile flip capsule buttons, and collector-grade ambient glow.
-  - **Full-Screen Zoom Lightbox (`ImageLightbox.vue` / Compose zoom)**: Supports smooth mouse-wheel zoom (1.0x ~ 5.0x), click-and-drag panning, double-click smart zoom/reset, keyboard shortcuts (+/-/0/Esc), and mobile pinch-to-zoom.
+- **Multi-Poster Adaptive Tile Gallery & Full-Screen Zoom Lightbox**:
+  - **Multi-Poster Adaptive Tile Display**: Titles with front covers, back cover photoshoots, or alternate poster editions adaptively tile horizontally at the same time, equipped with Front/Back pill badges and one-click activation of high-res lightbox.
+  - **Full-Screen Zoom Lightbox (`ImageLightbox.vue` / Compose zoom)**: Supports smooth mouse-wheel zoom (1.0x ~ 5.0x), click-and-drag panning, double-click smart zoom/reset, keyboard shortcuts (+/-/0/Esc), and smooth mobile pinch-to-zoom gestures.
 
 ### 3. Smart Series Aggregation & Dynamic Collage Covers
 - **Algorithmic Clustering**: Built-in Roman numeral and subtitle recognition automatically groups scattered franchise entries (e.g., *Part I, Part II, Part III*) into unified, coherent collections.
 - **Adaptive Poster Collages**: Automatically renders single-cover posters, symmetrical 2-panel splits, 3-cover stepped layouts, or 4-quadrant grid collages for series albums — with vignette lighting and instantaneous offline rendering.
 - **Series-Exclusive Bookmarks**: Bookmark your favorite classic series with a single tap to a dedicated "Saved Series" shelf for easy follow-up browsing.
 
-### 4. Director Profiles & Studio Genre Index
-- **Director Filmographies**: Click any director's name on a film's detail page to instantly reveal their full directorial catalog, with one-click library filtering by director.
-- **Comprehensive Studio Catalog**: Covers historic celluloid giants (Falcon, Colt, Catalina, etc.) through to modern high-definition powerhouses (Men.com, BelAmi, Lucas Entertainment, Corbin Fisher, etc.) — complete with release timelines and signature genre tags.
+### 4. Director Profiles & 180+ Studio Deep Archives
+- **Director Profiles & Filmographies**: Click any director's name on a film's detail page to instantly reveal their dedicated profile card showcasing their full historical directorial catalog, with one-click filtering by director in the movie library.
+- **Studio Deep Archives & Visual Index**:
+  - **181 Core Studios Comprehensive History & Overview**: Fully documents founding eras, founder backgrounds, aesthetic styles, and cultural evolutions across classic and modern production studios;
+  - **Automatic Scraping & Sharp Display of 74 Studio Logos & Banners**: Covers high-resolution official logos and banner artworks for 74 core studios, rendered sharp and distortion-free in large formats, with graceful fallback to multi-dimensional gradient dual-initial badges for studios without logos;
+  - **Redesigned Movie Detail Layout**: Movie synopsis expanded full-width directly below the poster for comfortable readability, with core action buttons consolidated into a compact matrix layout.
 
-### 5. 📸 Screenshot Privacy Blur & Share Cards (v2.15.0 Enhanced)
+### 5. 📸 Screenshot Privacy Blur & Ambient Share Cards (v2.17.0 Enhanced)
 - **Global One-Tap Screenshot Privacy Mode**:
-  - The top navigation bar features a one-tap "Privacy Mode" eye toggle; supports keyboard shortcuts and instant status switching (Privacy Active / Normal Browsing).
-  - **Android Home Feed One-Tap Privacy Blur Button**: The top app bar of the Android home feed provides a dedicated quick-action toggle button to instantly switch privacy blur on and off across all feed sections via `LocalPrivacyBlur` reactive state flow.
-  - **Granular Privacy Redaction Controls**:
-    - `Blur Posters & Media Images`: Applies global Gaussian blur (`blur(24px)`) to all film covers, scene stills, and performer headshots, preventing visual exposure in screenshots or social media shares.
-    - `Blur Synopses & Sensitive Text`: Applies Gaussian blur (`blur(7px)`) to film synopses and scene descriptions while disabling text selection, preventing spoiler or sensitive content leakage.
-  - Android mobile uses `LocalPrivacyBlur` reactive state flow, taking effect instantly across the entire screen.
+  - The top navigation bar features a one-tap "Screenshot Privacy" eye toggle; supports keyboard shortcuts and instant status switching (Privacy Active / Normal Browsing).
+  - **Android Home Feed Top-Bar One-Tap Privacy Toggle**: The mobile home feed features a persistent top-bar quick-action toggle button for effortless, single-hand one-tap privacy blur switching.
+  - **Fine-Grained Privacy Redaction Controls**:
+    - `Blur Posters & Media Images`: Globally applies Gaussian blur (`blur(24px)`) to all movie covers, scene stills, and performer avatars, preventing visual leakage during screenshots or social sharing;
+    - `Blur Synopses & Sensitive Text`: Applies Gaussian blur (`blur(7px)`) to movie synopses and scene descriptions while disabling text selection, preventing spoilers and sensitive exposure.
+  - Driven by `LocalPrivacyBlur` reactive state flow on Android mobile, instantly taking effect across the full screen.
 - **Adaptive Poster Ambient Share Card Generator**:
   - One tap on any film or scene detail page generates an Apple Music / Spotify-style ambient share card.
-  - **Front & Back Double Poster Side-by-Side Display**: When a film includes both front and back cover artwork, the share card automatically arranges both side-by-side in an elegant dual-poster layout with frosted "Front" and "Back" tactile pill badges.
-  - **16:9 Scene Aspect Ratio Preservation**: Scene and episode share cards automatically adapt to a 16:9 widescreen showcase utilizing a centered `object-fit: cover` algorithm, strictly preserving original proportions without distortion or face stretching.
-  - **Dual Offscreen Bilinear Blur Redaction**: Employs a hardware-agnostic bilinear downsample blur algorithm for both cover art and synopses, delivering an ultra-smooth, premium frosted-glass redaction texture on exported cards while drastically reducing main-thread GPU rasterization overhead.
-  - **Bottom-Corner Telegram Official Channel QR Code**: The footer integrates a sharp 27x27 dot-matrix QR code linking directly to the official [GPDb Telegram News Channel](https://t.me/gpdbnews) (`t.me/gpdbnews`), paired with a clean watermark and generation timestamp.
-  - **Adaptive Dynamic Height**: Full cast credits and synopses are rendered adaptively without truncation or arbitrary line clamping.
-  - **Pre-Share Privacy Redaction**: Independently toggle "Blur Poster" and "Blur Text" with instant overlay stamps to ensure completely safe sharing across social groups and public networks.
+  - **Front & Back Double Poster Side-by-Side Display**: Feature films support automatic extraction or side-by-side presentation of Front / Back double posters, combining visual completeness with collectible aesthetic quality.
+  - **Clean Sharing Experience & Official Channel QR Code**: Neatly embeds the official Telegram channel QR code and identifier (`t.me/gpdbnews`) in the bottom corner of the card, removing redundant creation date timestamps while preserving the canonical title/identifier cleanly.
+  - **Pure Offscreen Bilinear Blur & 16:9 Distortion-Free Centered Cropping**: Employs offscreen bilinear blur rendering algorithms for background ambient glow; scene and episode stills feature smart 16:9 centered cropping with zero distortion or aspect stretching.
+  - Background glow dynamically extracts hue directly from the poster artwork and applies high-precision, large-radius Gaussian blur (`blur(45px~60px)`), offering three signature presets: "Vibrant", "Dark", and "Midnight".
+  - **Pre-Share Privacy Redaction**: Independently toggle "Blur Poster" and "Blur Text" to guarantee completely safe sharing across social chats and public forums.
   - **Lossless Dual-Platform Export**:
-    - **Desktop**: Offline HTML5 Canvas 2D engine rasterizes at 2x Retina resolution — one-click copy PNG to system clipboard (paste directly into WeChat/QQ/Telegram/Discord/X) or export and save locally.
-    - **Mobile**: Compose 1.8 hardware-accelerated bitmap capture engine — one-tap lossless save to the system photo album (`MediaStore`), with Android native share sheet invoked via `FileProvider`.
+    - **Desktop**: Rendered via offline HTML5 Canvas 2D engine at 2x Retina ultra-HD resolution — one-click copy PNG to system clipboard (paste directly into WeChat, QQ, Telegram, Discord, X) or export and save locally.
+    - **Mobile**: Compose 1.8 hardware-accelerated bitmap capture engine — one-tap lossless save to system photo library (`MediaStore`), invoking native Android share sheet via `FileProvider`.
 
-### 6. 🛡️ Full-Spectrum Privacy & Security Suite
-- **PIN Lock Screen & Focus-Loss Protection**:
-  - Set a dedicated 4–6 digit PIN app lock; on focus loss or timeout (1/5/15/30 minutes) the app is instantly covered by a glassmorphic lock screen overlay (`AppLockOverlay.vue`).
-  - Window focus loss or app switching triggers an immediate Gaussian frosted-glass privacy layer.
-- **Mobile Emergency Panic Switch & Streamlined Desktop Security**:
-  - **Mobile Panic Disguise**: On Android mobile, supports flipping or placing the screen face-down to immediately transform into a fully functional Apple-style dark-mode calculator (`FakeCalculatorModal.vue`) supporting real arithmetic operations. Entering the correct PIN followed by `=` or tapping the title safely unlocks and returns to the library.
-  - **Streamlined Desktop Experience**: The legacy desktop fake calculator panic switch has been streamlined and removed in v2.15.0 to return the desktop client to a pure, high-performance experience, while mobile retains physical gesture panic disguise, PIN app lock, and screenshot privacy blur.
-- **Innocuous App Title & Icon Disguise**:
-  - Supports custom window titles (e.g., "Calculator", "Notes") to prevent exposure in the system app switcher.
-  - Ships with multiple premium design theme icons (e.g., "Dual Mars Fire Totem", "Obsidian Film Vault") plus harmless decoy icons (notepad, ledger, calculator).
+### 6. 🛡️ Full-Spectrum Privacy & Security Suite (Enterprise-Grade Privacy & Security)
+- **Desktop Streamlined Design Focused on Archiving**:
+  - The desktop client has completely streamlined and removed the legacy disguised emergency calculator, focusing purely on high-performance, minimalist offline media asset management and library curation.
+- **Mobile PIN Lock & Biometric Authentication**:
+  - Android mobile supports custom 4–6 digit PIN application lock and fingerprint/face biometric unlocking, automatically superimposing a glassmorphic secure lock screen upon losing focus or timing out (1/5/15/30 minutes).
+  - Instantly covers an opaque frosted-glass privacy layer when switching apps or losing window focus.
 - **Mobile System-Level Physical Isolation**:
-  - Hooks into Android's system-level `FLAG_SECURE` to block screen recording, screenshots, and recent apps preview thumbnails.
-  - Physical sandbox storage isolation with recursive `.nomedia` injection across all directories to completely block third-party gallery scanning.
+  - Integrates Android system-level `FLAG_SECURE` to block screen recordings, screenshots, and recent task switcher preview snapshots.
+  - Physical sandbox storage isolation with recursive `.nomedia` file injection across directories to strictly prevent scanning by third-party photo galleries.
 
-### 7. AI Persona Insights & LLM Multi-Language Translation
-- **AI Fan Persona Insights & Aesthetic Profiling**:
-  - **Fully Async Non-Blocking Architecture**: Background threads independently orchestrate local or remote large language models (DeepSeek, OpenAI, Claude, etc.) — zero UI stutter or application freeze.
-  - **Deep Aesthetic Portrait Report**: Based on your actual private favorites and tagging history, analyzes your aesthetic DNA to generate a 2,000-word in-depth art appreciation report including a "Core Aesthetic Archetype" codename (e.g., *"Retro New-Wave Explorer"*) and an "Era Audio-Visual Spectrum" section.
-  - **Real-Time Progress Modal**: A premium frosted-glass floating panel displays LLM encrypted handshake, fingerprint extraction, and portrait generation progress step by step.
-- **LLM Multi-Language Translation & Cross-Platform Data Portability**:
-  - Native integration with OpenAI, DeepSeek, Claude, Gemini, ByteDance Doubao, and other major providers.
-  - "Detect Available Models" button for one-click live API model discovery.
-  - Translation data can be seamlessly imported/exported as standard JSON across platforms (macOS / Windows / Android) with zero data loss.
+### 7. Native In-Process LLM Translation Engine & Bilingual Dual-View
+- **Pure Rust Native In-Process Multi-LLM Engine**:
+  - Completely eliminates external Python HTTP service dependencies; natively implements asynchronous concurrent TLS request channels within the desktop Rust core, delivering lightning-fast single-sentence test translations and batch operations.
+  - Native support for Google Gemini, OpenAI protocol ecosystem (DeepSeek, Moonshot, Qwen, Zhipu GLM, SiliconFlow, local Ollama), and Anthropic Claude.
+- **Google Gemini API Key Rotation Pool & Quota Protection**:
+  - Built-in atomic API key rotation pool automatically switches to backup keys in milliseconds upon triggering rate limits (HTTP 429); gracefully delegates to secondary fallback providers if all keys exceed quotas.
+- **Bilingual Dual-View for Scenes & Films with Plain-Text Auto-Tolerance**:
+  - Seamless one-click AI translation and local SQLite caching for both feature-length films and standalone scene vignettes, with instant one-tap switching between Chinese translation and English original text.
+  - Deeply optimized for custom API keys: automatically tolerates plain-text Chinese output from LLMs, completely eliminating strict JSON parsing errors; automatically normalizes and appends missing `/v1` endpoint paths.
+- **Cross-Platform Lossless Translation Portability**:
+  - Translation data seamlessly exports and imports bidirectionally across platforms (macOS / Windows / Android) via standardized JSON with zero data loss.
 
-### 8. Resource Search & External Plugin System (v2.0)
-- **Direct Multi-Site Navigation**: On film and performer pages, one click jumps to BoyfriendTV, Google, and major video database sites using the canonical English title — with system-browser opening natively handled.
-- **BT Magnet Search Integration**: Formats canonical movie titles and studio names into ready-made search queries for external resource engines.
-- **Modular Independent Toggles**: The Plugin Center allows granular enable/disable configuration for each individual external lookup source.
-- **Incremental Scrape & Sync Engine**: Supports on-demand network scraping updates and local poster/thumbnail offline caching.
-- **PBC (Porn Base Central) Wiki Scraper Engine** (`scrape_pbc_actors.py`):
-  A dedicated MediaWiki full-depth crawl engine targeting the PBC performer wiki. Covers **1,200+ performer profiles** with incremental revision detection to avoid redundant re-scrapes. Performs **25+ attribute field comparison** per profile update, achieving a **97.3% match rate** against existing library records. Automatically reconciles birth names, career timelines, active/retired status, astrology, ethnicity, performance style tags, biography text, and cross-platform profile links (IAFD / IMDb / X / OnlyFans / Instagram).
-- **SmutJunkies Scraper Engine** (`scrape_smutjunkies_actors.py`):
-  A full-site index scraper targeting the SmutJunkies gay performer directory. Covers **6,700+ gay adult performers** across **26-letter full-site index coverage** (A–Z). Employs a **4-tier high-resilience alignment algorithm** for robust name matching under spelling variants and aliases, with **bidirectional incremental sync** to detect both newly added and soft-deleted entries across successive scrape runs.
+### 8. Resource Search & Plugins System (v2.0)
+- **Multi-Site Direct Lookups & Compact Matrix Layout**:
+  - Film and performer detail pages feature compact single-row matrix action buttons for one-click direct navigation to BoyfriendTV, Google, and major authoritative video databases without re-typing.
+- **BT Magnet Search Integration**: Automatically combines movie titles and studio names into standardized search queries, linking straight to external resource search engines.
+- **Independent Modular Toggles**: Plugin Center provides granular toggles to enable or disable individual external lookup providers independently.
+- **Incremental Scraper & Sync Engine**: Supports on-demand network scraping updates and local offline caching of posters and thumbnails.
+- **PBC (Porn Base Central) Performer Wiki Scraper (`scrape_pbc_actors.py`)**:
+  - Covers **1,200+ performers**, performing full-depth crawls via MediaWiki API;
+  - Built-in **incremental revision detection** synchronizes only entries modified since the last run, drastically slashing network bandwidth;
+  - Meticulously compares **25+ attribute fields** (birth name, debut year, ethnicity, astrology, active status, external platform links, etc.);
+  - Tested performer name matching accuracy reaches **97.3%**.
+- **SmutJunkies Performer Scraper (`scrape_smutjunkies_actors.py`)**:
+  - Indexes **6,700+ gay adult performers** across the full 26-letter alphabetical index with **100% full-site coverage**;
+  - Employs a **4-tier fault-tolerant precision alignment algorithm** (exact match → normalized fuzzy match → alias cross-verification → manual review queue), ensuring high-confidence cross-source alignment;
+  - Supports **bidirectional incremental sync**: automatically imports new entries and updates field-level diffs on existing profiles with zero data loss.
 
-### 9. Full Multi-Language Localization & Streamlined Core Performance
+### 9. Full Localization & Streamlined UX (Internationalization & Streamlined UX)
 - **7 Fully Localized Interface Languages**: Simplified Chinese (`zh-CN`), Traditional Chinese (`zh-TW`), English (`en`), Italian (`it`), Japanese (`ja`), Spanish (`es`), and German (`de`).
-- **Streamlined Architecture (Trophy System Retired)**:
-  - In v2.15.0, the legacy 77+ PlayStation-style gamified achievement trophy system has been completely removed to dramatically reduce app bundle size, eliminate background event listeners and tracking overhead, and maximize UI rendering performance across all platforms.
+- **Lightweight & Streamlined Architecture**:
+  - Completely retired the PlayStation virtual trophy achievement system, eliminating redundant compute overhead and obsolete code;
+  - Retired the experimental "AI Persona Analysis" plugin, focusing the plugin architecture strictly on its three core pillars: magnet search, data scraping, and LLM translation;
+  - Retired the 5-star rating system and complex 3D flip card rendering, drastically reducing application memory footprint and GPU rendering overhead.
 
-### 10. Full Cross-Platform Coverage & Multi-Client Data Harmony (macOS / Windows / Android / iOS)
-- **Cross-Platform Universal Data Backup & Restore (`GPDb_Backup.json`)**:
-  - A unified, standardized JSON export format (`gpdb_universal_backup`) enables seamless cross-device data backup, restore, and complete library migration across **macOS, Windows, Android, and iOS**.
-  - Comprehensively packages all user data: favorite films, scenes, performers, directors, studios, and series; custom user tags; want-to-watch and watched flags; private star ratings and personal notes; viewing focus statistics; and UI preferences.
-- **Integrated In-App "Check for Updates" & GitHub Releases API**:
-  - Dedicated "About & Updates" section in Settings features a manual "Check for Updates" button connecting directly to the official GitHub Releases API with real-time feedback.
-  - Automatic silent background update checks on launch notify users when a new release is available. On desktop (macOS), supports in-app downloading and automatic DMG mounting for effortless upgrades.
-- **macOS Native Desktop (`desktop_client/`)**: Built on Tauri v2 + Rust with full Apple Silicon and Intel support, native glassmorphism UI, and keyboard shortcut interactions.
-- **Windows Native Desktop (`Windows_client/`)**: Dedicated decoupled directory, built-in multi-path Python smart parsing engine, console window suppression (`CREATE_NO_WINDOW`), Microsoft YaHei font rendering optimization, slim scrollbars, Windows 11 snap layout support, and lightweight NSIS single-user no-elevation-required installer.
-- **Native Android Mobile (`android_client/`)**: Built purely in Kotlin + Jetpack Compose + Room, seamlessly aligned with the desktop data schema — ideal for on-the-go offline browsing, tagging, and collection management anywhere.
+### 10. Universal User Data Backup & Seamless Update (Cross-Platform Backup & Seamless Update)
+- **Universal User Data & Configuration Seamless Backup/Migration (`GPDb_Backup.json`)**:
+  - Provides a standardized universal JSON backup architecture to export and import all personal bookmarks, viewing history, tags, ratings, LLM API configurations, and system preferences with a single click.
+  - Completely bridges cross-platform data silos across macOS, Windows, and Android. Migrating between devices, reinstalling systems, or syncing across platforms requires only a single backup file for instantaneous, seamless migration.
+- **One-Click In-App Update Check & Resumable Incremental Upgrades**:
+  - Built-in automatic and manual version detection modules across desktop and mobile compare against latest releases in real time, displaying detailed release notes.
+  - Deeply integrated high-speed resumable download engine smoothly guides upgrades and installation upon completion, keeping your client always up to date.
+
+### 11. Cross-Platform Deep Customization & Multi-Client Data Harmony (macOS / Windows / Android)
+- **macOS Universal Desktop (`desktop_client/`)**: Built on Tauri v2 + Rust, natively supporting Apple Silicon and Intel architectures with native glassmorphism and keyboard shortcut interactions.
+- **Windows Native Desktop Deep Integration (`Windows_client/`)**:
+  - **Native Mica / Acrylic Window Materials & Fluent Design**: Semi-transparent window blending with desktop wallpaper, 4 selectable material tiers, and dark-mode isolation to prevent muddy contrast in light themes;
+  - **System Tray Residence & Jump List Quick Navigation**: Supports minimizing to system tray on close, right-click tray menu for quick privacy toggling, and instant jumping to frequent sections;
+  - **Taskbar Progress Indicator (Taskbar Progress)**: Displays native green progress bars and percentage indicators directly on the taskbar icon during full or incremental network scraping;
+  - **WebView2 Hardware Acceleration Tuning**: Configured with high-refresh GPU rasterization flags for silky-smooth 120Hz/144Hz displays.
+- **Native Android Mobile Client (`android_client/`)**: Built natively with Kotlin + Jetpack Compose + Room, seamlessly harmonized with desktop data schemas for on-the-go offline browsing, tagging, and collection management anywhere.
 
 ---
 
@@ -178,7 +192,7 @@ In adult media, an individual's viewing history, curated collections, and person
 
 ### For General Users (Recommended)
 
-Head directly to the repository's [Releases page](https://github.com/GeavenMax/GPDb/releases) to download the latest **`v2.15.0`** official installer:
+Head directly to the repository's [Releases page](https://github.com/GeavenMax/GPDb/releases) to download the latest **`v2.17.0`** official installer:
 
 | Platform | Installer Filename | Installation Notes |
 | :--- | :--- | :--- |

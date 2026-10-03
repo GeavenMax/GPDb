@@ -26,7 +26,7 @@
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
 
-> 📢 **Canal Oficial de Telegram**: ¡Suscríbete al [Canal Oficial de Telegram de GPDb (https://t.me/gpdbnews)](https://t.me/gpdbnews) para recibir las últimas actualizaciones de versiones, noticias de la base de datos y consejos de uso!
+> 📢 **Canal Oficial de Telegram**: ¡Suscríbete al [Canal Oficial de Telegram de GPDb (https://t.me/gpdbnews)](https://t.me/gpdbnews) para recibir las últimas actualizaciones de versiones, notificaciones de incrementos de la base de datos y consejos de uso!
 
 ---
 
@@ -37,8 +37,8 @@
 En el ámbito del contenido para adultos, el historial de visualización, las listas de favoritos y las preferencias personales constituyen **la información privada más sensible**. Las plataformas comerciales en la nube conllevan riesgos de rastreo de perfiles, fugas de datos y eliminaciones imprevistas por caducidad de licencias.
 
 **GPDb se rige por una filosofía estricta de «100% Offline-First y privacidad absoluta sin huella»**:
-- **Cero dependencia de la nube**: Todos los metadatos, fichas de actores, atributos físicos, miniaturas/pósteres en caché, etiquetas personales, valoraciones y colecciones residen única y exclusivamente en el disco físico de su dispositivo.
-- **Arquitectura local pura**: Sin cuentas de usuario, sin telemetría, sin análisis de uso y sin conexión a servidores externos.
+- **Cero dependencia de la nube**: Todos los metadatos, fichas de actores, atributos físicos, miniaturas/pósteres en caché, etiquetas personales, valoraciones y colecciones residen única y exclusivamente en el disco físico de su dispositivo;
+- **Arquitectura local pura**: Sin cuentas de usuario, sin telemetría, sin análisis de uso y sin conexión a servidores externos;
 - **Rendimiento excepcional**: Impulsado por el motor nativo en **Rust (`gpdb-core`)** y la arquitectura moderna **Tauri v2 + Vue 3** (escritorio macOS/Windows) y **Kotlin + Jetpack Compose + Room** (Android nativo), gestiona sin esfuerzo **más de 60.000 películas completas, 100.000 escenas individuales, 6.000 perfiles de actores y 1.300 estudios clásicos y modernos**, con renderizado fluido a 60 fps y búsquedas en milisegundos.
 
 ---
@@ -60,74 +60,80 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
   - Granularidad temporal diferenciada: largometrajes por año, escenas por fecha exacta.
   - Las entradas recién incorporadas muestran una etiqueta dinámica `NEW` con degradado animado.
 - **Integración con la enciclopedia wiki PBC**:
-  Los perfiles de actores se enriquecen automáticamente con los datos de Porn Base Central Wiki: **nombre real, año de debut, distintivo activo / retirado, signo astrológico y etnia, etiquetas de estilo de interpretación, biografía completa estilo wiki** y **perfiles vinculados** a IAFD, IMDb, X, OnlyFans e Instagram para una investigación profunda y verificación cruzada.
+  Los perfiles de actores se enriquecen automáticamente con los datos de Porn Base Central Wiki: **nombre real, año de debut, distintivo activo / retirado, signo zodiacal y etnia, etiquetas de estilo de interpretación, biografía completa estilo wiki** y **perfiles vinculados** a IAFD, IMDb, X, OnlyFans e Instagram para una investigación profunda y verificación cruzada.
 
-### 2. Portada inmersiva con calidad de streaming y tarjetas 3D de colección
+### 2. Portada inmersiva con calidad de streaming y galería de carátulas múltiples horizontales
 - **Cinco flujos de descubrimiento y recomendación**:
   - **Carrusel gigante de pósteres (Hero Carousel)**: Transición automática y fluida de imágenes en alta definición en la parte superior, con efecto de paralaje interactivo.
   - **Tal día como hoy · Estrenos clásicos (On This Day)**: Contrasta la fecha actual con el calendario histórico para recuperar obras estrenadas el mismo día en la época dorada (años 80, 90 y 2000).
   - **Estrellas del día · Rostros icónicos (Star Spotlight)**: Valida la presencia de archivos de póster en el disco local, recomendando con inteligencia figuras icónicas con retratos en alta definición, sin marcadores de texto.
-  - **Sagas cinematográficas icónicas (Iconic Series)**: Detecta y destaca automáticamente franquicias longevas con más de diez entregas.
-  - **Ruleta de descubrimiento · Caja sorpresa (Lucky Discovery)**: Lance los dados para descubrir joyas ocultas entre más de 60.000 títulos.
-- **Doble modo de póster y lightbox de zoom a pantalla completa**:
-  - Compatible con **galería HD adaptativa (`adaptive_pager`)** y **tarjetas 3D con física real (`flip_3d`)**: perspectiva CSS 3D a 60 fps, botones de cápsula con giro físico e iluminación ambiental de colección.
-  - **Lightbox de zoom a pantalla completa (`ImageLightbox.vue` / Zoom en Compose)**: zoom suave con rueda del ratón (1.0x–5.0x), arrastre con clic sostenido, doble clic para zoom inteligente/restablecer, atajos de teclado (+/-/0/Esc) y pellizco con dos dedos en móvil.
+  - **Sagas cinematográficas icónicas (Iconic Series)**: Detecta y rescata automáticamente sagas emblemáticas de gran extensión con más de diez entregas, compatible con selección aleatoria y actualización instantánea con un clic.
+  - **Ruleta de descubrimiento · Caja sorpresa (Lucky Discovery)**: Lance los dados para descubrir joyas ocultas entre más de 60.000 títulos de la videoteca.
+- **Galería adaptativa de múltiples carátulas horizontales y lightbox de zoom a pantalla completa**:
+  - **Exhibición adaptativa de múltiples pósteres en paralelo**: Para títulos que disponen de carátula frontal, contraportada o versiones alternativas, se despliegan horizontalmente de forma simultánea, equipadas con distintivos Front/Back y apertura directa del visor en alta definición con un clic.
+  - **Lightbox de zoom a pantalla completa (`ImageLightbox.vue` / Zoom en Compose)**: Permite zoom suave con la rueda del ratón (1.0x ~ 5.0x), arrastre y desplazamiento al mantener pulsado, doble clic para zoom inteligente o restablecimiento, atajos de teclado (+/-/0/Esc) y gestos táctiles de pellizco con dos dedos en dispositivos móviles.
 
 ### 3. Agrupación inteligente de series y carátulas en mosaico (Smart Series & Collage Covers)
 - **Algoritmo de clustering automático**: Identifica números romanos y subtítulos para unir automáticamente entregas dispersas (*Part I, Part II, Part III*) en una colección cohesionada.
 - **Carátulas adaptativas en mosaico**: Genera automáticamente composiciones de 1 póster único, 2 mitades simétricas, 3 en cascada o cuadrícula de 4 cuadrantes, con viñeta de luz y renderizado offline instantáneo.
 - **Colecciones exclusivas de series**: Añada con un clic sus sagas favoritas a un marcador independiente de «Series favoritas» para seguir su evolución.
 
-### 4. Fichas de directores y enciclopedia de estudios
+### 4. Fichas de directores y enciclopedia de 180+ estudios
 - **Historial exclusivo del director**: Desde el detalle de una película, acceda con un clic a la ficha del director con su filmografía completa y filtrado directo en la biblioteca.
-- **Catálogo histórico de estudios**: Desde los grandes clásicos del celuloide (Falcon, Colt, Catalina, etc.) hasta los líderes contemporáneos (Men.com, BelAmi, Lucas Entertainment, Corbin Fisher, etc.), con cronología de obras y etiquetas de estilo.
+- **Catálogo histórico y enciclopedia de 180+ estudios**:
+  - **Archivos históricos detallados y panorámica de 181 productoras clave**: Cobertura exhaustiva del año de fundación, trayectoria de los fundadores, corrientes estéticas y evolución cultural de estudios clásicos y modernos;
+  - **Captura y visualización automática de logotipos y banners oficiales**: Cobertura de logotipos y banners oficiales en alta definición para 74 estudios principales, presentados con nitidez en gran formato, con degradación elegante a monograma con degradado multidimensional cuando no hay logotipo disponible;
+  - **Rediseño de la vista de detalle de películas**: La sinopsis argumental se traslada a ancho completo debajo del póster para una lectura clara y fluida, acompañada de una matriz compacta de botones de acción.
 
-### 5. 📸 Modo antiespionaje y tarjetas de compartición luminosas (Nueva actualización v2.15.0)
+### 5. 📸 Modo antiespionaje y tarjetas de compartición luminosas (v2.17.0 Actualizado)
 - **Modo antiespionaje global con un solo clic**:
   - La barra de navegación superior ofrece un interruptor de «ojo» antiespionaje; compatible con atajos de teclado y cambio de estado instantáneo (Protegido / Navegación normal).
-  - **Botón de acceso rápido de privacidad en Android**: La pantalla de exploración cuenta con un botón permanente de acceso rápido con icono de ojo en la barra superior para activar el modo de privacidad al instante con un solo toque.
+  - **Botón de acceso rápido de privacidad en la barra superior de Android**: En la pantalla de «Explorar» de Android se ubica de forma permanente un conmutador rápido de privacidad, permitiendo desensibilizar la vista al instante con un solo toque.
   - **Control granular de privacidad**:
     - `Desenfoque de pósteres e imágenes`: Desenfoque gaussiano global (`blur(24px)`) sobre todas las portadas, fotogramas, avatares de actores y demás imágenes sensibles, evitando su exposición en capturas de pantalla o publicaciones en redes sociales;
     - `Desenfoque de sinopsis y texto sensible`: Desenfoque gaussiano (`blur(7px)`) sobre sinopsis de películas, resúmenes de escenas y texto sensible, con selección de texto deshabilitada para prevenir filtraciones y spoilers.
   - En Android, el estado de privacidad se gestiona mediante el flujo reactivo `LocalPrivacyBlur`, con efecto instantáneo en toda la pantalla.
 - **Generador de tarjetas de compartición luminosas y adaptativas**:
   - Genera tarjetas de compartición al estilo Apple Music / Spotify desde el detalle de películas y escenas con un solo clic.
-  - **Exhibición paralela de carátula frontal y posterior**: Muestra lado a lado la carátula frontal y la posterior (si está disponible) en largometrajes, combinando plenitud visual y valor estético de colección.
-  - **Código QR del canal oficial de Telegram**: Código QR de matriz de puntos vectoriales integrado con precisión en la esquina inferior de la tarjeta junto a la marca oficial, facilitando la difusión en comunidades y la consulta de la fuente original.
-  - **Desenfoque bilineal fuera de pantalla y preservación de proporción 16:9 para escenas**: Renderizado de halo desenfocado mediante algoritmo puro fuera de pantalla (offscreen); las capturas de escenas y episodios aplican recorte centrado inteligente 16:9 sin distorsión, evitando por completo cualquier deformación por estiramiento.
-  - El halo de fondo extrae adaptativamente el tono de la portada y aplica un desenfoque gaussiano de alta precisión y gran radio (`blur(45px–60px)`), con tres presets de halo exclusivos: «Vibrante (Vibrant)», «Negro profundo (Dark)» y «Medianoche (Midnight)».
-  - **Privacidad segura antes de compartir**: Marque de forma independiente «Desenfocar póster» y «Desenfocar texto» para compartir con total seguridad en grupos y redes sociales.
+  - **Carátula frontal y posterior en paralelo**: Los largometrajes admiten extracción y visualización simultánea de las carátulas Front y Back lado a lado, uniendo plenitud visual y valor estético de colección.
+  - **Experiencia de difusión pura y acceso directo al canal oficial**: En la esquina inferior derecha se integra de forma limpia el código QR del canal oficial de Telegram (`t.me/gpdbnews`), eliminando la fecha redundante de generación para mantener únicamente el código identificador de la obra.
+  - **Desenfoque bilineal fuera de pantalla y recorte centrado 16:9 sin distorsión**: Renderizado de halo desenfocado mediante algoritmo puro fuera de pantalla (offscreen); las capturas de escenas y episodios aplican recorte centrado inteligente 16:9 sin distorsión, evitando por completo cualquier deformación por estiramiento.
+  - El halo de fondo extrae adaptativamente el tono de la portada y aplica un desenfoque gaussiano de alta precisión y gran radio (`blur(45px~60px)`), con tres presets de halo exclusivos: «Vibrante (Vibrant)», «Negro profundo (Dark)» y «Medianoche (Midnight)».
+  - **Privacidad segura antes de compartir**: Casillas independientes para «Desenfocar póster» y «Desenfocar texto», garantizando un intercambio seguro en grupos y redes sociales.
   - **Exportación sin pérdidas en ambas plataformas**:
     - **Escritorio**: Motor HTML5 Canvas 2D offline con rasterización Retina 2x de ultra alta definición, copia PNG con un clic al portapapeles del sistema (compatible con Telegram, Discord, X, WeChat, QQ) o guardado local.
     - **Móvil**: Motor de captura de bitmap acelerado por hardware Compose 1.8, guardado sin pérdidas en la galería del sistema (`MediaStore`) y panel nativo de compartición de Android mediante `FileProvider`.
 
 ### 6. 🛡️ Suite completa de privacidad y seguridad (Enterprise-Grade Privacy & Security)
-- **Diseño simplificado en escritorio centrado en la catalogación**:
-  - El cliente de escritorio ha simplificado su arquitectura eliminando la antigua calculadora camuflada de emergencia, volviendo a una gestión de activos audiovisuales offline pura, eficiente y minimalista.
+- **Diseño de escritorio simplificado y enfocado en la catalogación**:
+  - El cliente de escritorio ha simplificado su arquitectura eliminando por completo la antigua calculadora camuflada de emergencia, volviendo a una gestión de activos audiovisuales offline pura, eficiente y minimalista.
 - **Bloqueo por PIN y protección biométrica en móviles**:
   - En Android, permite configurar un bloqueo numérico por PIN de 4–6 dígitos y desbloqueo biométrico por huella o reconocimiento facial; al perder el foco o tras el tiempo de espera configurado (1/5/15/30 minutos), se activa automáticamente la pantalla de bloqueo de seguridad.
   - Al perder el foco la ventana o cambiar a otra aplicación, se superpone instantáneamente una capa de vidrio esmerilado gaussiano antiespionaje.
 - **Aislamiento físico a nivel de sistema en Android**:
   - Integración con `FLAG_SECURE` del sistema Android para bloquear grabación de pantalla, capturas y vistas previas en la tarjeta de multitarea del sistema.
-  - Almacenamiento en sandbox físico aislado, con inyección recursiva de `.nomedia` en directorios para bloquear completamente el escaneo de galerías de terceros.
+  - Almacenamiento en sandbox físico aislado, con inyección recursiva de `.nomedia` en directorios para aislar completamente el contenido del escaneo de galerías de terceros.
 
-### 7. Análisis de gustos por IA y traducción multilingüe con modelos de lenguaje
-- **Análisis de preferencias y perfil estético por IA (AI Persona Insights)**:
-  - **Arquitectura totalmente asíncrona y transparente**: Tareas en hilo independiente en segundo plano con modelos de lenguaje local o remoto (DeepSeek, OpenAI, Claude, etc.), sin bloquear la interfaz.
-  - **Informe de ADN estético en profundidad**: Analiza las colecciones privadas reales y el historial de etiquetas del usuario, disecciona su ADN estético y genera un ensayo de crítica artística de 2.000 palabras que incluye un «arquetipo estético» (p. ej., *«Explorador nostálgico de la nueva ola»*) y un «espectro audiovisual de época».
-  - **Ventana de progreso emergente premium**: Panel flotante de vidrio esmerilado de alta gama que muestra paso a paso el protocolo de cifrado del modelo, la extracción de características del historial y el progreso de generación del perfil.
-- **Traducción multilingüe con LLM y persistencia de datos multiplataforma**:
-  - Integración nativa con OpenAI, DeepSeek, Claude, Gemini y Doubao (ByteDance), entre otros proveedores.
-  - Compatible con «Detectar modelos disponibles» para verificar en línea la lista de modelos accesibles por API con un solo clic.
-  - Los datos de traducción se pueden importar y exportar bidireccionalmente en JSON estándar entre plataformas (macOS / Windows / Android) sin pérdida alguna.
+### 7. Motor de traducción nativo por LLM en proceso y bilingüismo en escenas y largometrajes
+- **Motor multimodelos nativo en proceso con Rust puro**:
+  - Prescinde totalmente de servicios HTTP externos en Python, implementando de forma nativa en el núcleo de escritorio canales de solicitud TLS concurrentes y asíncronos para una respuesta ultrarrápida en traducciones de prueba y por lotes.
+  - Soporte nativo para Google Gemini, el ecosistema de protocolos OpenAI (DeepSeek, Moonshot, Qwen, Zhipu GLM, SiliconFlow, Ollama local) y Anthropic Claude.
+- **Rotación inteligente de claves API de Google Gemini y protección de cuota**:
+  - Grupo de rotación atómica de claves API incorporado; cambia de forma automática en milisegundos a una clave de respaldo si se alcanza el límite de cuota (HTTP 429), transfiriendo la tarea a un proveedor alternativo si se agotan todas las claves.
+- **Visualización bilingüe completa y tolerancia a texto plano**:
+  - Traducción con un clic tanto para sinopsis de largometrajes como para resúmenes de escenas individuales, guardando en la base de datos local y permitiendo alternar al instante entre el texto original y la traducción.
+  - Optimizado para claves API propias: tolera e interpreta directamente respuestas en texto plano sin forzar JSON ni provocar errores de análisis; normalización y autocompletado inteligente de prefijos `/v1`.
+- **Persistencia de traducciones sin pérdidas entre plataformas**:
+  - Los datos de traducción se pueden importar y exportar bidireccionalmente en formato JSON estándar entre plataformas (macOS / Windows / Android) sin pérdida de información.
 
 ### 8. Búsqueda de recursos y sistema de extensiones externas (v2.0)
-- **Acceso directo con 1 clic a múltiples sitios**: Desde las páginas de películas y actores, salte directamente a BoyfriendTV, Google y otras bases de datos cinematográficas de referencia usando el título original en inglés, sin necesidad de escribir de nuevo.
+- **Acceso directo matricial compacto**:
+  - Distribución matricial compacta de botones externos en las fichas de películas y actores para acceder con un clic a BoyfriendTV, Google y bases de datos especializadas de referencia, sin necesidad de escribir de nuevo.
 - **Integración de búsqueda BT Magnet**: Combina automáticamente el título original de la película y el nombre del estudio en una búsqueda estándar dirigida a motores de recursos externos.
 - **Interruptores independientes**: El centro de extensiones permite activar o desactivar de forma individual cada fuente de búsqueda externa con configuración detallada.
 - **Motor de scraping incremental y sincronización**: Compatible con scraping de actualización por red bajo demanda y caché offline local de pósteres y fotogramas.
 - **Motor de raspado wiki PBC (Porn Base Central)** (`scrape_pbc_actors.py`):
-  - Indexa más de **1.200 perfiles de actores** con rastreo en profundidad basado en la API de MediaWiki;
+  - Indexa más de **1.200 actores** con rastreo en profundidad basado en la API de MediaWiki;
   - Detección automática de revisiones incrementales para sincronizar únicamente los artículos modificados desde la última ejecución, reduciendo drásticamente el consumo de ancho de banda;
   - Comparación detallada de más de **25 campos de atributos** (nombre real, año de debut, etnia, signo zodiacal, estado de actividad, enlaces a plataformas externas, etc.);
   - Tasa de coincidencia comprobada de nombres de actores del **97,3 %**.
@@ -138,21 +144,27 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
 
 ### 9. Internacionalización completa y experiencia ligera depurada (Internationalization & Streamlined UX)
 - **7 idiomas de interfaz disponibles**: Chino simplificado (`zh-CN`), Chino tradicional (`zh-TW`), Inglés (`en`), Italiano (`it`), Japonés (`ja`), Español (`es`) y Alemán (`de`).
-- **Eliminación completa del sistema de logros y trofeos**:
-  - Para preservar la ligereza, pureza y máxima eficiencia de la herramienta de gestión de bases de datos, se ha eliminado de forma limpia en todas las plataformas (macOS / Windows / Android) el antiguo sistema de trofeos estilo PlayStation y sus consultas de sondeo en segundo plano, suprimiendo la sobrecarga de procesamiento innecesaria y el código redundante.
+- **Arquitectura minimalista y ligera**:
+  - Eliminación total del sistema de trofeos de PlayStation y sus consultas en segundo plano, suprimiendo la sobrecarga de procesamiento innecesaria y el código redundante;
+  - Retirada del plugin experimental de «Perfil estético por IA», concentrando el gestor de extensiones en los tres pilares esenciales: búsqueda magnet, scraping de metadatos y traducción por LLM;
+  - Supresión del sistema de valoración por estrellas y de las complejas tarjetas giratorias 3D, reduciendo drásticamente el consumo de memoria RAM y la carga en GPU.
 
 ### 10. Copia de seguridad universal entre dispositivos y actualización fluida (Cross-Platform Backup & Seamless Update)
-- **Copia de seguridad y restauración universal entre dispositivos (`GPDb_Backup.json`)**:
+- **Copia de seguridad y migración universal entre dispositivos (`GPDb_Backup.json`)**:
   - Arquitectura de respaldo en formato JSON estándar y unificado para exportar e importar con un solo clic todas las colecciones personales, historial de visualización, puntuaciones y etiquetas, configuración de API de modelos de lenguaje y preferencias del sistema.
   - Elimina por completo los silos de datos entre macOS, Windows y Android: cambiar de dispositivo, reinstalar el sistema o sincronizar datos solo requiere un único archivo de respaldo, con migración fluida e instantánea.
 - **Botón «Buscar actualizaciones» directo y actualización incremental con reanudación de descargas**:
   - Tanto la versión de escritorio como la versión móvil integran detección de versiones automática y manual directamente en Configuración («Buscar actualizaciones»), comparando en tiempo real con las últimas Releases de GitHub y mostrando el registro de cambios detallado.
   - Motor de descarga de alta velocidad con soporte para reanudación de descargas interrumpidas, guiando al usuario tras la descarga para completar la actualización de forma fluida y mantener la aplicación siempre en su versión más estable.
 
-### 11. Cobertura multiplataforma y sincronización de datos en tres dispositivos (macOS / Windows / Android)
+### 11. Personalización profunda por plataforma y sincronización en tres dispositivos (macOS / Windows / Android)
 - **Cliente de escritorio macOS nativo (`desktop_client/`)**: Mediante la arquitectura Tauri v2 + Rust, compatible perfectamente con Apple Silicon e Intel, con efecto de vidrio esmerilado nativo y atajos de teclado.
-- **Cliente de escritorio Windows nativo (`Windows_client/`)**: Directorio independiente desacoplado, motor de análisis Python inteligente con múltiples rutas, supresión de consola (`CREATE_NO_WINDOW`), optimización de fuente Microsoft YaHei, barra de desplazamiento delgada, ajuste de ventana Win11 y proceso de instalación ligero de usuario único sin privilegios de administrador mediante NSIS.
-- **Cliente móvil Android nativo (`android_client/`)**: Desarrollado nativamente con la pila moderna Kotlin + Jetpack Compose + Room, integrado a la perfección con el esquema de datos del escritorio para consultas, etiquetado y colección offline en cualquier momento y lugar.
+- **Integración profunda del cliente de escritorio Windows (`Windows_client/`)**:
+  - **Materiales de ventana Mica / Acrylic nativos y Fluent Design**: Fusión translúcida de la ventana con el fondo de pantalla, selección libre entre 4 materiales y aislamiento de temas claros para garantizar un contraste óptimo sin oscurecimientos anómalos;
+  - **Bandeja del sistema (System Tray) y accesos directos Jump List**: Minimización en segundo plano al cerrar, alternancia instantánea del modo antiespionaje desde el menú contextual y acceso directo a secciones frecuentes;
+  - **Indicador de progreso en la barra de tareas (Taskbar Progress)**: Durante el scraping de red completo o incremental, el icono de la barra de tareas muestra nativamente una barra verde de progreso con porcentaje;
+  - **Aceleración por hardware en WebView2**: Parámetros de rasterización por GPU optimizados para pantallas de alta frecuencia de refresco (120 Hz / 144 Hz) con máxima fluidez.
+- **Cliente móvil Android nativo (`android_client/`)**: Desarrollado con la pila moderna Kotlin + Jetpack Compose + Room de forma 100% nativa, integrado a la perfección con el esquema de datos del escritorio para consultas, etiquetado y colección offline en cualquier momento y lugar.
 
 ---
 
@@ -169,7 +181,7 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
                    └──────────────────────────────────────────┴──────────────────────────────────────────┘
                                                               │
                                    ┌──────────────────────────▼──────────────────────────┐
-                                   │          Almacenamiento Persistente (Storage)        │
+                                   │          Almacenamiento persistente (Storage)       │
                                    │      GPDb.db (SQLite 3 WAL) + image_cache/          │
                                    └─────────────────────────────────────────────────────┘
 ```
@@ -180,7 +192,7 @@ En el ámbito del contenido para adultos, el historial de visualización, las li
 
 ### Para usuarios finales (Recomendado)
 
-Descargue el instalador precompilado de la versión **`v2.15.0`** desde la sección de [Releases](https://github.com/GeavenMax/GPDb/releases):
+Descargue el instalador precompilado de la versión **`v2.17.0`** desde la sección de [Releases](https://github.com/GeavenMax/GPDb/releases):
 
 | Plataforma | Archivo de instalación | Instrucciones |
 | :--- | :--- | :--- |
