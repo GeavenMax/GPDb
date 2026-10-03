@@ -6,6 +6,11 @@
 ## [v2.17.0] - 2026-10-03
 
 ### Changed
+- **片商官方横幅 (Banner) 与品牌 Logo 影视级自适应画幅系统 (`StudioDetailModal.vue`, `App.vue`)**：
+  - **流光画幅顶部 Hero Banner (Blurred Backdrop Hero)**：片商档案页最上方引入现代流光画幅架构。底层采用高斯模糊环境光（`blur-2xl opacity-40 scale-125`），中央自适应容纳任意比例官方 Banner 并配合水平两端微光渐变羽化（`[mask-image:linear-gradient(...)]`）自然过渡至内容区；无横幅时自动降级为品牌微光背景；
+  - **Logo 悬浮徽章半嵌画幅（位置 A）**：片商 Logo 采用悬浮半嵌入设计（跨越 Hero 底部与信息区缝隙），采用柔和毛玻璃底衬（`bg-surface-2/95 backdrop-blur-md shadow-xl`）与边框投影，彻底解决非正方形、非透明背景与长条形 Logo 变形或对比度不足的问题；无 Logo 时优雅降级为品牌首字母徽章；
+  - **片商库网格展示台升级**：将原片商网格中固定 64x64 正方形容器重构为统一样式的自适应宽幅展台（`w-full h-20 rounded-2xl`），`object-contain` 容纳非正方形与宽幅 Logo，保持网格整齐划一，图片加载异常时自动切换至精致单字徽标；
+  - **双端严格对齐**：完全覆盖并同步至 `desktop_client` 与 `Windows_client`。
 - **片商档案详情弹窗（Studio Modal）性能大幅调优与设计轻量化 (`StudioDetailModal.vue`, `MovieCard.vue`)**：
   - **精简“厂牌介绍”渲染开销**：移除过度繁琐的高消耗微光渐变层、专属书籍典籍标识（`BookOpen`）、深度解析徽标（`Sparkles`）以及底纹大水印设计，改为清爽扁平、自适应高对比度的卡片布局，降低 GPU 绘制负载；
   - **消除重复 IPC 查询导致的打开卡顿**：重构片商数据监听器与缓存机制，移除 `StudioDetailModal.vue` 中在父组件已拉取数据时的冗余 `getStudioWorks` 触发点，彻底避免重复进行全量 SQLite 连表查询与大 JSON 序列化，弹窗秒开无延迟；
@@ -74,6 +79,11 @@
 - **分集档案页 (Episode) 全新上线「AI 翻译剧情」与双语对照切换 (`EpisodeDetailModal.vue`, `App.vue`, `api.ts`, `commands/translate.rs`)**：
   - 分集详情弹窗现已支持一键调用 AI 大模型翻译英文剧情并写入本地数据库 `episodes.description_zh`，同时提供中文译文与英文原文一键切换；
   - 翻译完成实时触发 `@episode-translated` 事件，自动同步更新分集列表、影片内分集及全局翻译统计状态。
+- **iOS 客户端全面同步升级至 v2.17.0 并实现全端体验对齐 (`iOS_client/`)**：
+  - **181 家核心厂牌全息中文历史档案**：打通 SQLite `studios` 表 `name_zh` 与 `description_zh` 字段，并在片商档案页新增「厂牌介绍」专属卡片与双语标头，探索页支持中英双向模糊检索；
+  - **画报级无黑边物理画幅展台 (`AdaptivePosterCard.swift`)**：自适应图像真实物理纵横比，消除上下/左右黑边，纯化海报呈现并支持封底损坏/缺失自动降级自愈；
+  - **独立核心操作矩阵芯片组**：横向滚动收拢 BT 磁链、BFTV 检索、Google 搜索、分享海报与快捷收藏，释放剧情简介通栏大卡片排版空间；
+  - **多导演关联精准识别与流光分享卡片规范微调**：修复多导演识别缺陷，移除分享卡片底部临时日期，统一永恒经典私有档案标识。
 
 ### Optimized
 - **片商档案页 Logo 重构：移至右侧操作按钮上方并自适应大画幅呈现 (`StudioDetailModal.vue`)**：

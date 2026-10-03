@@ -2282,17 +2282,19 @@ onUnmounted(() => {
               @click="openStudioDetail(s)"
               class="p-4 rounded-2xl bg-surface/60 border border-line hover:border-accent-fill/40 hover:bg-surface transition-all cursor-pointer flex flex-col items-center text-center group"
             >
-              <div class="w-16 h-16 rounded-2xl overflow-hidden shrink-0 shadow ring-1 ring-line-strong/60 group-hover:ring-accent-fill/50 transition bg-surface-2/80 flex items-center justify-center p-1.5 relative">
+              <!-- Studio Logo Stand: Uniform wide adaptive display shelf -->
+              <div class="w-full h-20 rounded-2xl overflow-hidden shrink-0 shadow-sm border border-line-strong/60 group-hover:border-accent-fill/50 group-hover:bg-surface-2/80 transition-all bg-surface-2/60 flex items-center justify-center p-2.5 relative">
                 <img
                   v-if="s.logo_url"
                   :src="getImageUrl(s.logo_url)"
                   :alt="s.name"
-                  class="max-w-full max-h-full object-contain filter drop-shadow group-hover:scale-105 transition"
+                  class="max-w-[88%] max-h-full w-auto h-auto object-contain filter drop-shadow group-hover:scale-105 transition duration-300"
                   loading="lazy"
+                  @error="s.logo_url = null"
                 />
                 <div
                   v-else
-                  class="w-full h-full bg-gradient-to-tr from-accent-deep to-accent-2 flex items-center justify-center text-2xl font-black text-on-fill/70 rounded-xl"
+                  class="w-12 h-12 rounded-xl bg-gradient-to-tr from-accent-deep/90 to-accent-2/90 flex items-center justify-center text-lg font-black text-on-fill/90 shadow-md group-hover:scale-105 transition"
                 >
                   {{ (studioPrimary(s, descLang) || s.name).charAt(0).toUpperCase() }}
                 </div>
