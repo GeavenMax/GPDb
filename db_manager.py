@@ -166,6 +166,33 @@ class DatabaseManager:
                     if col_name not in existing:
                         self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}")
 
+            # Backfill performer avatars from PBC / SJ profiles if missing in performers
+            tables = {
+                row[0]
+                for row in self.conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+            }
+            if "performers" in tables:
+                if "performer_pbc_profiles" in tables:
+                    self.conn.execute("""
+                        UPDATE performers
+                        SET image_url = (SELECT image_url FROM performer_pbc_profiles WHERE performer_id = performers.id)
+                        WHERE id IN (
+                            SELECT performer_id FROM performer_pbc_profiles
+                            WHERE image_url IS NOT NULL AND trim(image_url) != ''
+                        )
+                        AND (image_url IS NULL OR trim(image_url) = '');
+                    """)
+                if "performer_sj_profiles" in tables:
+                    self.conn.execute("""
+                        UPDATE performers
+                        SET image_url = (SELECT image_url FROM performer_sj_profiles WHERE performer_id = performers.id)
+                        WHERE id IN (
+                            SELECT performer_id FROM performer_sj_profiles
+                            WHERE image_url IS NOT NULL AND trim(image_url) != ''
+                        )
+                        AND (image_url IS NULL OR trim(image_url) = '');
+                    """)
+
     def get_completed_ids(self, item_type: str) -> set[int]:
         """Fetch all IDs that are already completed (status 200 or 404)."""
         cur = self.conn.cursor()

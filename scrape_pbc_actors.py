@@ -596,11 +596,16 @@ def save_actor_to_db(
       action: "insert" | "update" | "unchanged"
       diffs: [变更项描述列表]
     """
-    # 1. 确保主表 pbc_url 处于最新关联
+    # 1. 确保主表 pbc_url 与 image_url (当主表缺头像时) 处于最新关联
     conn.execute(
         "UPDATE performers SET pbc_url = ? WHERE id = ? AND (pbc_url IS NULL OR pbc_url != ?)",
         (data["pbc_url"], performer_id, data["pbc_url"])
     )
+    if data.get("image_url") and data["image_url"].strip():
+        conn.execute(
+            "UPDATE performers SET image_url = ? WHERE id = ? AND (image_url IS NULL OR trim(image_url) = '')",
+            (data["image_url"].strip(), performer_id)
+        )
 
     is_existing, diffs = compare_actor_with_db(conn, performer_id, data)
 
@@ -686,6 +691,7 @@ def save_actor_to_db(
             ("height", data.get("height")),
             ("weight", data.get("weight")),
             ("dick_size", data.get("penis_size")),
+            ("image_url", data.get("image_url")),
         ]
         for col, val in field_mappings:
             if val:

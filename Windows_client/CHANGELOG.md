@@ -17,6 +17,11 @@
   - 在国际化字典中为所有支持语言添加 `'studio.officialWebsite'` 词条：中文简体（官方网站）、中文繁体（官方網站）、英语（Official Website）、日语（公式サイト）、意大利语（Sito ufficiale）、西班牙语（Sitio oficial）、德语（Offizielle Website）。
 
 ### Fixed
+- **修复演员库网格界面部分演员不显示头像（如 Pavel Matous、Eric Tomfor），但打开个人档案页却有头像的问题 (`migrate.rs`, `db_manager.py`, `scrape_pbc_actors.py`, `scrape_smutjunkies_actors.py`, `GPDb.db`)**：
+  - **根本原因排查与定位**：GEVI 原始数据源部分演员无照片，主表 `performers.image_url` 为空；后续通过 Porn Base Central (PBC) 与 SmutJunkies (SJ) 扩展爬虫录入时，高清头像仅写入扩展表 `performer_pbc_profiles.image_url` 与 `performer_sj_profiles.image_url`；演员档案弹窗 (`PerformerDetailModal.vue`) 具备读取扩展表头像的降级逻辑，而演员库列表 (`get_performers`)、首页今日星光 (`get_home_feed`) 与影片演职员表 (`CAST_SQL`) 仅直读主表 `performers.image_url`，导致全库 624 名演员在档案页显示头像但在演员库与筛选中判定为“无头像”；
+  - **数据库极速持久化回填**：利用主键索引针对全库 624 名处于该状态的演员执行定向回填，优先关联 PBC 高清写真，次选关联 SJ 头像，填补 `performers.image_url`，同时使“仅看有照片”筛选能正确命中这些演员；
+  - **跨端架构自愈与平滑迁移 (`ensure_schema`)**：在 `gpdb-core/src/migrate.rs`（双端 100% 对齐）与 `db_manager.py` 的迁移生命周期中新增自愈回填逻辑，连接任何数据库实例时自动检测并毫秒级修复，确保无须外部介入即可始终保持主表与扩展表头像一致；
+  - **增量刮削链路闭环**：同步更新 `scrape_pbc_actors.py` 与 `scrape_smutjunkies_actors.py`，在增量录入或巡检更新扩展表时，若检测到主表头像为空则同步回填主表，防止未来产生孤立头像数据。
 - **修复 macOS 客户端在全屏显示时按 Esc 键直接退出全屏而非退回上层界面的缺陷 (`escape.ts`, `App.vue`, `SeriesModal.vue`, `FilterDrawer.vue`, `SyncModal.vue`, `Navbar.vue`)**：
   - **根本原因定位**：此前各模态组件在响应 `Escape` 键关闭时未对 `KeyboardEvent` 执行 `e.preventDefault()` / `e.stopPropagation()`，导致 WebKit 将按键标记为未消费，进而向上冒泡触发 macOS AppKit 对全屏窗口的系统级默认动作 `cancelOperation:`（即直接执行退出全屏）；
   - **核心退出拦截器增强 (`claimEscape`)**：在 `escape.ts` 认领 Escape 键的处理管道中统一注入 `e.preventDefault()` 与 `e.stopPropagation()`，保证任一层级模态窗消费 Esc 键时 100% 告知宿主系统事件已处理；

@@ -506,9 +506,10 @@ def sync_performer_to_db(conn: sqlite3.Connection, performer_id: int, sj_data: d
         # 新增记录
         cols = ["performer_id"] + list(new_record.keys())
         placeholders = ", ".join(["?"] * len(cols))
-        vals = [performer_id] + list(new_record.values())
         c.execute(f"INSERT INTO performer_sj_profiles ({', '.join(cols)}) VALUES ({placeholders})", vals)
         c.execute("UPDATE performers SET sj_url = ? WHERE id = ? AND (sj_url IS NULL OR sj_url = '')", (sj_data["sj_url"], performer_id))
+        if sj_data.get("image_url") and sj_data["image_url"].strip():
+            c.execute("UPDATE performers SET image_url = ? WHERE id = ? AND (image_url IS NULL OR trim(image_url) = '')", (sj_data["image_url"].strip(), performer_id))
         conn.commit()
         return "inserted", list(new_record.keys())
 
@@ -535,8 +536,14 @@ def sync_performer_to_db(conn: sqlite3.Connection, performer_id: int, sj_data: d
         sql = f"UPDATE performer_sj_profiles SET {', '.join(update_pairs)} WHERE performer_id = ?"
         c.execute(sql, update_vals)
         c.execute("UPDATE performers SET sj_url = ? WHERE id = ? AND (sj_url IS NULL OR sj_url = '')", (sj_data["sj_url"], performer_id))
+        if sj_data.get("image_url") and sj_data["image_url"].strip():
+            c.execute("UPDATE performers SET image_url = ? WHERE id = ? AND (image_url IS NULL OR trim(image_url) = '')", (sj_data["image_url"].strip(), performer_id))
         conn.commit()
         return "updated", changed
+
+    if sj_data.get("image_url") and sj_data["image_url"].strip():
+        c.execute("UPDATE performers SET image_url = ? WHERE id = ? AND (image_url IS NULL OR trim(image_url) = '')", (sj_data["image_url"].strip(), performer_id))
+        conn.commit()
 
     return "unchanged", []
 

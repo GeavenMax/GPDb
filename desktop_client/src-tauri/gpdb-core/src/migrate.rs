@@ -255,7 +255,8 @@ pub fn ensure_schema(conn: &Connection) -> Result<()> {
     conn.execute_batch("BEGIN IMMEDIATE")?;
     let outcome = add_missing_movie_columns(conn)
         .and_then(|()| add_missing_performer_columns(conn))
-        .and_then(|()| add_missing_studio_columns(conn));
+        .and_then(|()| add_missing_studio_columns(conn))
+        .and_then(|()| backfill_performer_images_from_profiles(conn));
     match outcome {
         Ok(()) => {
             conn.execute_batch("COMMIT")?;
@@ -361,6 +362,67 @@ fn add_missing_studio_columns(conn: &Connection) -> Result<()> {
         }
         add_column_to_table_tolerating_race(conn, "studios", name, ty)?;
     }
+    Ok(())
+}
+
+fn backfill_performer_images_from_profiles(conn: &Connection) -> Result<()> {
+    let performers_exist: bool = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='performers'",
+            [],
+            |r| r.get::<_, i64>(0),
+        )
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+    if !performers_exist {
+        return Ok(());
+    }
+
+    let pbc_exist: bool = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='performer_pbc_profiles'",
+            [],
+            |r| r.get::<_, i64>(0),
+        )
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+    if pbc_exist {
+        conn.execute(
+            "UPDATE performers \
+             SET image_url = (SELECT image_url FROM performer_pbc_profiles WHERE performer_id = performers.id) \
+             WHERE id IN ( \
+                 SELECT performer_id FROM performer_pbc_profiles \
+                 WHERE image_url IS NOT NULL AND trim(image_url) != '' \
+             ) \
+             AND (image_url IS NULL OR trim(image_url) = '')",
+            [],
+        )?;
+    }
+
+    let sj_exist: bool = conn
+        .query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='performer_sj_profiles'",
+            [],
+            |r| r.get::<_, i64>(0),
+        )
+        .map(|c| c > 0)
+        .unwrap_or(false);
+
+    if sj_exist {
+        conn.execute(
+            "UPDATE performers \
+             SET image_url = (SELECT image_url FROM performer_sj_profiles WHERE performer_id = performers.id) \
+             WHERE id IN ( \
+                 SELECT performer_id FROM performer_sj_profiles \
+                 WHERE image_url IS NOT NULL AND trim(image_url) != '' \
+             ) \
+             AND (image_url IS NULL OR trim(image_url) = '')",
+            [],
+        )?;
+    }
+
     Ok(())
 }
 
@@ -518,4 +580,32 @@ mod tests {
         assert_eq!(get("title_zh"), "TEXT");
         assert_eq!(get("title_attempts"), "INTEGER");
     }
+
+    #[test]
+    fn backfills_performer_image_from_profiles_when_empty() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE performers (id INTEGER PRIMARY KEY, name TEXT, image_url TEXT);
+             CREATE TABLE performer_pbc_profiles (performer_id INTEGER PRIMARY KEY, image_url TEXT);
+             CREATE TABLE performer_sj_profiles (performer_id INTEGER PRIMARY KEY, image_url TEXT);
+             INSERT INTO performers (id, name, image_url) VALUES (1, 'Pavel Matous', NULL);
+             INSERT INTO performers (id, name, image_url) VALUES (2, 'Eric Tomfor', '');
+             INSERT INTO performers (id, name, image_url) VALUES (3, 'Existing Avatar', 'https://example.com/existing.jpg');
+             INSERT INTO performer_pbc_profiles (performer_id, image_url) VALUES (1, 'https://cdn.pbc/pavel.jpg');
+             INSERT INTO performer_sj_profiles (performer_id, image_url) VALUES (2, 'https://cdn.sj/eric.jpg');
+             INSERT INTO performer_pbc_profiles (performer_id, image_url) VALUES (3, 'https://cdn.pbc/new_pic.jpg');"
+        ).unwrap();
+
+        ensure_schema(&conn).unwrap();
+
+        let img1: Option<String> = conn.query_row("SELECT image_url FROM performers WHERE id = 1", [], |r| r.get(0)).unwrap();
+        assert_eq!(img1.as_deref(), Some("https://cdn.pbc/pavel.jpg"));
+
+        let img2: Option<String> = conn.query_row("SELECT image_url FROM performers WHERE id = 2", [], |r| r.get(0)).unwrap();
+        assert_eq!(img2.as_deref(), Some("https://cdn.sj/eric.jpg"));
+
+        let img3: Option<String> = conn.query_row("SELECT image_url FROM performers WHERE id = 3", [], |r| r.get(0)).unwrap();
+        assert_eq!(img3.as_deref(), Some("https://example.com/existing.jpg"), "existing avatar must not be overwritten");
+    }
 }
+
