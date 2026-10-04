@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS movies (
 
 CREATE INDEX IF NOT EXISTS idx_movies_year ON movies(release_year);
 CREATE INDEX IF NOT EXISTS idx_movies_studio ON movies(studio_name);
+CREATE INDEX IF NOT EXISTS idx_movies_studio_id ON movies(studio_id);
 CREATE INDEX IF NOT EXISTS idx_movies_category ON movies(category);
 CREATE INDEX IF NOT EXISTS idx_movies_director ON movies(director_name);
 
