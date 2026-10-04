@@ -17,5 +17,7 @@ export function claimEscape(e: KeyboardEvent): boolean {
   const claimed = e as KeyboardEvent & { [CLAIMED]?: boolean };
   if (claimed[CLAIMED]) return false;
   claimed[CLAIMED] = true;
+  e.preventDefault();
+  e.stopPropagation();
   return true;
 }

@@ -19,10 +19,13 @@ const emit = defineEmits<{
   (e: 'toggle-favorite', rootTitle: string): void;
 }>();
 
+import { claimEscape } from '../utils/escape';
+
 const brokenCovers = ref<Set<number>>(new Set());
 
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
+    if (!claimEscape(e)) return;
     emit('close');
   }
 }

@@ -16,6 +16,13 @@
 - **全球 7 种语言完整国际化覆盖 (`i18n/index.ts`)**：
   - 在国际化字典中为所有支持语言添加 `'studio.officialWebsite'` 词条：中文简体（官方网站）、中文繁体（官方網站）、英语（Official Website）、日语（公式サイト）、意大利语（Sito ufficiale）、西班牙语（Sitio oficial）、德语（Offizielle Website）。
 
+### Fixed
+- **修复 macOS 客户端在全屏显示时按 Esc 键直接退出全屏而非退回上层界面的缺陷 (`escape.ts`, `App.vue`, `SeriesModal.vue`, `FilterDrawer.vue`, `SyncModal.vue`, `Navbar.vue`)**：
+  - **根本原因定位**：此前各模态组件在响应 `Escape` 键关闭时未对 `KeyboardEvent` 执行 `e.preventDefault()` / `e.stopPropagation()`，导致 WebKit 将按键标记为未消费，进而向上冒泡触发 macOS AppKit 对全屏窗口的系统级默认动作 `cancelOperation:`（即直接执行退出全屏）；
+  - **核心退出拦截器增强 (`claimEscape`)**：在 `escape.ts` 认领 Escape 键的处理管道中统一注入 `e.preventDefault()` 与 `e.stopPropagation()`，保证任一层级模态窗消费 Esc 键时 100% 告知宿主系统事件已处理；
+  - **顶层全局捕获守卫 (`onGlobalEscapeGuard`)**：在 `App.vue` 顶层注册捕获阶段（Capture phase）按键守卫，当检测到存在任何展开中的详情模态（影片/演员/片商/导演/分集）、系列大放送、筛选抽屉、同步中心或图片灯箱等上层界面时，第一时间阻止事件被操作系统默认全屏行为劫持，确保优先依序退出最上层界面，保持客户端沉浸式全屏状态；
+  - **全面覆盖所有弹出层**：为 `SeriesModal`、`FilterDrawer`、`SyncModal` 及搜索框/历史记录快捷面板补全 Escape 键联动关闭与默认行为拦截。
+
 ### Changed
 - **主页 (HomeView) 视觉排版与文案全面优化与瘦身 (`HomeView.vue`, `i18n/index.ts`)**：
   - **焦点巨幕海报轮播 (Hero Carousel) 面积缩减与纯净化**：海报尺寸由 `w-44 md:w-56` 精简缩小为 `w-28 sm:w-32 md:w-36`，容器内边距收敛为 `p-4 sm:p-5`，移除顶部“镇馆之选”徽章，彻底移除底部“立即品鉴”和“换一个演员”等冗余操作按钮，聚焦于封面与标题直接点击直达，大幅压缩首屏垂直空间占用；

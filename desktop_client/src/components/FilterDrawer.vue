@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { X, RotateCcw, Camera, Film, Clapperboard, Languages, Users } from '@lucide/vue';
+import { claimEscape } from '../utils/escape';
 import type {
   FilterState,
   PerformerFilterState,
@@ -186,6 +187,21 @@ function resetAll() {
   };
   emit('reset');
 }
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && props.open) {
+    if (!claimEscape(e)) return;
+    emit('close');
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown);
+});
 </script>
 
 <template>

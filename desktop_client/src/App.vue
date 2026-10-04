@@ -1769,6 +1769,19 @@ function onGlobalDblClick(e: MouseEvent) {
   openLightbox(img.currentSrc || img.src, img.alt);
 }
 
+function onGlobalEscapeGuard(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    const hasActiveLayer = modalStack.value.length > 0
+      || showAppSeriesModal.value
+      || isFilterOpen.value
+      || isSyncOpen.value
+      || Boolean(lightboxImage.value);
+    if (hasActiveLayer) {
+      e.preventDefault();
+    }
+  }
+}
+
 onMounted(async () => {
   startFocusTracker();
   initAppIcon();
@@ -1792,6 +1805,8 @@ onMounted(async () => {
 
   window.addEventListener('click', onGlobalClick, true);
   window.addEventListener('dblclick', onGlobalDblClick);
+  // 确保在全屏显示时，若有弹窗/抽屉/层级界面展开，按 Esc 键捕获期阻止默认退出全屏，优先退回上层界面
+  window.addEventListener('keydown', onGlobalEscapeGuard, true);
 
   loadStats();
   await fetchMovies(true);
@@ -1841,6 +1856,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('click', onGlobalClick, true);
   window.removeEventListener('dblclick', onGlobalDblClick);
+  window.removeEventListener('keydown', onGlobalEscapeGuard, true);
 });
 </script>
 

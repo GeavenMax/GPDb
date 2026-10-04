@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { claimEscape } from '../../utils/escape';
 import {
   X, RefreshCw, CheckCircle2, Film, Users, Sparkles, AlertCircle,
   Square, ArrowDownToLine, Zap, Terminal, Layers, Clock, Globe
@@ -78,6 +79,21 @@ function formatElapsed(seconds: number): string {
   const s = seconds % 60;
   return `${m}m ${s.toString().padStart(2, '0')}s`;
 }
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && props.open) {
+    if (!claimEscape(e)) return;
+    emit('close');
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown);
+});
 </script>
 
 <template>

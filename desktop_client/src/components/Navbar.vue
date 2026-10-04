@@ -63,7 +63,13 @@ function clearSearch() {
 
 function handleKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
-    isHistoryOpen.value = false;
+    if (isHistoryOpen.value || searchQuery.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      isHistoryOpen.value = false;
+      searchQuery.value = '';
+      emit('update:modelValue', '');
+    }
   } else if (e.key === 'Enter') {
     if (searchQuery.value.trim()) {
       recordSearch(searchQuery.value.trim());
