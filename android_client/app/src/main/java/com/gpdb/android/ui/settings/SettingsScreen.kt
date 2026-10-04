@@ -657,7 +657,7 @@ fun SettingsScreen(
 
                     SettingItemRow(
                         title = "导出通用配置备份 (JSON)",
-                        subtitle = "导出“我的收藏”、统计时长与用户个人数据，四端通用",
+                        subtitle = "导出“收藏”、统计时长与用户个人数据，四端通用",
                         icon = Icons.Default.FileDownload,
                         onClick = {
                             val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault())

@@ -21,6 +21,8 @@ data class StudioDetailUiState(
     val descriptionZh: String? = null,
     val logoUrl: String? = null,
     val bannerUrl: String? = null,
+    val websiteUrl: String? = null,
+    val siteId: Long? = null,
     val movies: List<MovieEntity> = emptyList(),
     val episodes: List<EpisodeEntity> = emptyList(),
     val isFavorite: Boolean = false,
@@ -54,6 +56,8 @@ class StudioDetailViewModel : ViewModel() {
                         descriptionZh = studioEntity?.descriptionZh,
                         logoUrl = studioEntity?.logoUrl,
                         bannerUrl = studioEntity?.bannerUrl,
+                        websiteUrl = studioEntity?.websiteUrl,
+                        siteId = studioEntity?.siteId,
                         movies = list,
                         episodes = epList,
                         isFavorite = isFav

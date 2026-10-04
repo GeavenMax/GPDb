@@ -50,7 +50,7 @@ object I18n {
             "nav.performers" to "演员",
             "nav.studios" to "片商",
             "nav.directors" to "导演",
-            "nav.library" to "我的收藏",
+            "nav.library" to "收藏",
             "nav.settings" to "设置",
             "nav.analytics" to "使用统计",
 
@@ -120,7 +120,9 @@ object I18n {
             "analytics.activeDays" to "累计活跃天数",
             "analytics.translationsCount" to "AI 翻译累计量",
             "analytics.clear" to "清空统计数据",
-            "analytics.clearConfirm" to "确认清空所有累计使用统计数据吗？此操作不可撤销。"
+            "analytics.clearConfirm" to "确认清空所有累计使用统计数据吗？此操作不可撤销。",
+            "studio.officialWebsite" to "官方网站",
+            "studio.copiedWebsite" to "已复制官网链接"
         ),
 
         AppLanguage.ZH_TW to mapOf(
@@ -132,7 +134,7 @@ object I18n {
             "nav.performers" to "演員",
             "nav.studios" to "片商",
             "nav.directors" to "導演",
-            "nav.library" to "我的收藏",
+            "nav.library" to "收藏",
             "nav.settings" to "設定",
             "nav.analytics" to "使用統計",
 
@@ -202,7 +204,9 @@ object I18n {
             "analytics.activeDays" to "累計活躍天數",
             "analytics.translationsCount" to "AI 翻譯累計量",
             "analytics.clear" to "清空統計數據",
-            "analytics.clearConfirm" to "確認清空所有累計使用統計數據嗎？此操作不可撤銷。"
+            "analytics.clearConfirm" to "確認清空所有累計使用統計數據嗎？此操作不可撤銷。",
+            "studio.officialWebsite" to "官方網站",
+            "studio.copiedWebsite" to "已複製官網鏈接"
         ),
 
         AppLanguage.EN to mapOf(
@@ -284,7 +288,9 @@ object I18n {
             "analytics.activeDays" to "Active Days",
             "analytics.translationsCount" to "AI Translations",
             "analytics.clear" to "Clear Analytics",
-            "analytics.clearConfirm" to "Are you sure you want to clear all analytics data? This action cannot be undone."
+            "analytics.clearConfirm" to "Are you sure you want to clear all analytics data? This action cannot be undone.",
+            "studio.officialWebsite" to "Official Website",
+            "studio.copiedWebsite" to "Website link copied"
         ),
 
         AppLanguage.JA to mapOf(
@@ -312,7 +318,9 @@ object I18n {
             "settings.appearance" to "外観と表示",
             "settings.language" to "言語設定",
             "settings.privacy" to "プライバシーとセキュリティ",
-            "analytics.title" to "ローカル使用状況統計"
+            "analytics.title" to "ローカル使用状況統計",
+            "studio.officialWebsite" to "公式サイト",
+            "studio.copiedWebsite" to "公式サイトのリンクをコピーしました"
         ),
 
         AppLanguage.IT to mapOf(
@@ -338,7 +346,9 @@ object I18n {
             "settings.appearance" to "Aspetto e Tema",
             "settings.language" to "Lingua",
             "settings.privacy" to "Privacy e Sicurezza",
-            "analytics.title" to "Statistiche di Utilizzo"
+            "analytics.title" to "Statistiche di Utilizzo",
+            "studio.officialWebsite" to "Sito ufficiale",
+            "studio.copiedWebsite" to "Link del sito ufficiale copiato"
         ),
 
         AppLanguage.ES to mapOf(
@@ -364,7 +374,9 @@ object I18n {
             "settings.appearance" to "Apariencia",
             "settings.language" to "Idioma",
             "settings.privacy" to "Privacidad y Seguridad",
-            "analytics.title" to "Estadísticas de Uso"
+            "analytics.title" to "Estadísticas de Uso",
+            "studio.officialWebsite" to "Sitio oficial",
+            "studio.copiedWebsite" to "Enlace del sitio web copiado"
         ),
 
         AppLanguage.DE to mapOf(
@@ -390,7 +402,9 @@ object I18n {
             "settings.appearance" to "Design & Anzeige",
             "settings.language" to "Sprache",
             "settings.privacy" to "Datenschutz & Sicherheit",
-            "analytics.title" to "Nutzungsstatistiken"
+            "analytics.title" to "Nutzungsstatistiken",
+            "studio.officialWebsite" to "Offizielle Website",
+            "studio.copiedWebsite" to "Webseiten-Link kopiert"
         )
     )
 

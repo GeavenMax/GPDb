@@ -15,6 +15,7 @@ public struct MovieDetailView: View {
     @State private var isLoading: Bool = true
     @State private var showShareCardSheet: Bool = false
     @State private var lightboxImage: String? = nil
+    @State private var failedCoverUrls: Set<String> = []
 
     public init(movieId: Int64) {
         self.movieId = movieId
@@ -27,16 +28,19 @@ public struct MovieDetailView: View {
                     .padding(.top, 60)
             } else if let data = detailData {
                 VStack(alignment: .leading, spacing: 20) {
-                    // 1. 顶部海报展台 (正反双封面或单面，点击呼出全屏灯箱)
+                    // 1. 顶部海报展台 (自适应物理画幅零黑边展台，点击呼出全屏灯箱)
                     postersGallery(movie: data.movie)
 
                     VStack(alignment: .leading, spacing: 14) {
                         // 2. 标题与核心元数据
                         titlesAndBadges(movie: data.movie, directors: data.directors)
 
+                        // 3. 核心操作矩阵芯片组 (BT磁链、BFTV、Google搜索、分享海报、快捷收藏)
+                        actionMatrixSection(movie: data.movie)
+
                         Divider()
 
-                        // 3. 剧情简介 (中英双语自适应)
+                        // 4. 剧情简介 (中英双语自适应)
                         synopsisSection(movie: data.movie)
 
                         // 5. 参演阵容
@@ -120,56 +124,81 @@ public struct MovieDetailView: View {
 
     @ViewBuilder
     private func postersGallery(movie: MovieRecord) -> some View {
-        if let back = movie.coverBack, !back.isEmpty {
-            // 双封面排布 (等宽对半分隔约束，防止撑破屏幕)
-            HStack(spacing: 12) {
-                GpdbImageView(rawPath: movie.coverFull ?? movie.coverIcon, contentMode: .fill, cornerRadius: 14)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 250)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    )
-                    .onTapGesture { lightboxImage = movie.coverFull ?? movie.coverIcon }
+        let candidateCovers: [String] = [
+            movie.coverFull ?? movie.coverIcon,
+            movie.coverBack
+        ].compactMap { $0 }.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
-                GpdbImageView(rawPath: back, contentMode: .fill, cornerRadius: 14)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 250)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        let effectiveCovers = candidateCovers.filter { !failedCoverUrls.contains($0) }
+
+        if effectiveCovers.count > 1 {
+            // 双封面并排自适应画幅 (消除上下黑边与裁剪，等比贴合)
+            HStack(spacing: 12) {
+                Spacer(minLength: 0)
+                ForEach(effectiveCovers, id: \.self) { coverUrl in
+                    AdaptivePosterCard(
+                        imagePath: coverUrl,
+                        maxHeight: 270,
+                        maxWidth: (UIScreen.main.bounds.width - 56) / 2,
+                        cornerRadius: 14,
+                        onError: {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                _ = failedCoverUrls.insert(coverUrl)
+                            }
+                        },
+                        onTap: {
+                            lightboxImage = coverUrl
+                        }
                     )
-                    .onTapGesture { lightboxImage = back }
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal)
+            .padding(.top, 8)
+        } else if let singleCover = effectiveCovers.first {
+            // 单封面居中艺术展台 (自适应物理比例，最大高度限制，零黑边)
+            HStack {
+                Spacer()
+                AdaptivePosterCard(
+                    imagePath: singleCover,
+                    maxHeight: 380,
+                    maxWidth: UIScreen.main.bounds.width - 48,
+                    cornerRadius: 16,
+                    onError: {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            _ = failedCoverUrls.insert(singleCover)
+                        }
+                    },
+                    onTap: {
+                        lightboxImage = singleCover
+                    }
+                )
+                Spacer()
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal)
             .padding(.top, 8)
         } else {
-            // 单封面居中 (严格约束屏幕内)
-            ZStack(alignment: .bottomTrailing) {
-                GpdbImageView(rawPath: movie.coverFull ?? movie.coverIcon, contentMode: .fill, cornerRadius: 16)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 380)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-                    )
-                    .onTapGesture { lightboxImage = movie.coverFull ?? movie.coverIcon }
-
-                Label("轻触查看大图", systemImage: "arrow.up.left.and.arrow.down.right")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.white)
-                    .padding(6)
-                    .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 8))
-                    .padding(12)
+            // 全封面缺失或损坏时的优雅占位展台
+            HStack {
+                Spacer()
+                VStack(spacing: 12) {
+                    Image(systemName: "film")
+                        .font(.system(size: 38))
+                        .foregroundStyle(.secondary.opacity(0.5))
+                    Text("暂无海报")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: 200, height: 280)
+                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+                Spacer()
             }
-            .frame(maxWidth: .infinity)
             .padding(.horizontal)
             .padding(.top, 8)
         }
@@ -194,7 +223,7 @@ public struct MovieDetailView: View {
                 )
             }
 
-            // 自适应信息胶囊流式折行排布 (年份、时长、片商、导演、BT4G 等)
+            // 自适应信息胶囊流式折行排布 (年份、时长、片商、导演)
             FlowLayout(horizontalSpacing: 8, verticalSpacing: 8) {
                 if let y = movie.releaseYear {
                     BadgePill(text: "\(y) 年", icon: "calendar")
@@ -223,25 +252,80 @@ public struct MovieDetailView: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
+            .padding(.top, 4)
+        }
+    }
 
-                if let encoded = movie.title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-                   let url = URL(string: "https://bt4gprx.com/search?q=\(encoded)") {
-                    Link(destination: url) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.system(size: 10))
-                            Text("BT4G")
-                                .font(.caption2.bold())
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.red.opacity(0.18), in: Capsule())
-                        .foregroundStyle(.red)
+    /// 核心操作矩阵芯片组 (对标 Android v2.17.0 独立操作芯片矩阵)
+    private func actionMatrixSection(movie: MovieRecord) -> some View {
+        let queryTitle = movie.title
+        let encoded = queryTitle.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                // 1. 快捷收藏
+                Button {
+                    Task { await toggleFavorite() }
+                } label: {
+                    ActionChip(
+                        title: isFavorite ? "已收藏" : "收藏电影",
+                        icon: isFavorite ? "heart.fill" : "heart",
+                        color: isFavorite ? .red : .primary,
+                        isFilled: isFavorite
+                    )
+                }
+                .buttonStyle(.plain)
+
+                // 2. 流光分享卡片
+                Button {
+                    showShareCardSheet = true
+                } label: {
+                    ActionChip(
+                        title: "分享海报",
+                        icon: "square.and.arrow.up",
+                        color: .green
+                    )
+                }
+                .buttonStyle(.plain)
+
+                // 3. BT 磁链检索
+                if !encoded.isEmpty, let btUrl = URL(string: "https://bt4gprx.com/search?q=\(encoded)") {
+                    Link(destination: btUrl) {
+                        ActionChip(
+                            title: "BT 磁链",
+                            icon: "arrow.down.circle",
+                            color: .red
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // 4. BFTV 视频检索
+                if !encoded.isEmpty, let bftvUrl = URL(string: "https://www.boyfriendtv.com/search/videos/\(encoded)/") {
+                    Link(destination: bftvUrl) {
+                        ActionChip(
+                            title: "BFTV 检索",
+                            icon: "play.tv",
+                            color: Color(red: 0.88, green: 0.25, blue: 0.6)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // 5. Google 深度搜索
+                if !encoded.isEmpty, let googleUrl = URL(string: "https://www.google.com/search?q=\(encoded)") {
+                    Link(destination: googleUrl) {
+                        ActionChip(
+                            title: "Google 搜索",
+                            icon: "magnifyingglass",
+                            color: .blue
+                        )
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.top, 4)
+            .padding(.vertical, 2)
         }
     }
 
@@ -386,6 +470,33 @@ private struct BadgePill: View {
         .padding(.vertical, 4)
         .background(Color.secondary.opacity(0.12), in: Capsule())
         .foregroundStyle(isInteractive ? Color.accentColor : Color.primary)
+    }
+}
+
+private struct ActionChip: View {
+    let title: String
+    let icon: String
+    let color: Color
+    var isFilled: Bool = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+            Text(title)
+                .font(.caption2.bold())
+        }
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
+        .background(
+            isFilled ? color.opacity(0.18) : Color.secondary.opacity(0.12),
+            in: Capsule()
+        )
+        .overlay(
+            Capsule()
+                .stroke(color.opacity(isFilled ? 0.45 : 0.2), lineWidth: 1)
+        )
+        .foregroundStyle(isFilled ? color : .primary)
     }
 }
 

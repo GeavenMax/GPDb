@@ -913,7 +913,16 @@ class DatabaseManager:
         """
         rows = rows or []
         with self._write_lock, self.conn:
+            studio_cache: dict[int, str | None] = {}
             for ep in rows:
+                sid = ep.get("studio_id")
+                sname = ep.get("studio_name")
+                if not sname and sid:
+                    if sid not in studio_cache:
+                        r = self.conn.execute("SELECT name FROM studios WHERE site_id = ? LIMIT 1", (sid,)).fetchone()
+                        studio_cache[sid] = r[0] if r else None
+                    sname = studio_cache.get(sid)
+
                 self.conn.execute("""
                     INSERT INTO episodes
                         (id, movie_id, title, thumbnail_url, description, action_notes,
@@ -932,11 +941,11 @@ class DatabaseManager:
                         -- these three have no NULLIF, so '' would overwrite a real value.
                         release_date = COALESCE(excluded.release_date, episodes.release_date),
                         studio_id = COALESCE(excluded.studio_id, episodes.studio_id),
-                        studio_name = COALESCE(excluded.studio_name, episodes.studio_name)
+                        studio_name = COALESCE(NULLIF(excluded.studio_name, ''), episodes.studio_name)
                 """, (
                     ep["id"], ep.get("title") or None, ep.get("thumbnail_url") or None,
                     ep.get("description") or None, ep.get("release_date") or None,
-                    ep.get("studio_id"), ep.get("studio_name") or None,
+                    ep.get("studio_id"), sname or None,
                 ))
                 # Same rule as a film's cast: an empty list means the parse found none,
                 # not that the scene has none, so the existing links are left alone.

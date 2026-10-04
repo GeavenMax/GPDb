@@ -40,6 +40,7 @@
 		7FF9A8B522AE04E49646B93F /* GpdbImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A3934AB1E02C5BC2FE3CDF /* GpdbImageView.swift */; };
 		8D86F5CBF8CCCAF752DE8165 /* DatabaseLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6DEADB4012AD9884D3E9DA3 /* DatabaseLoadingView.swift */; };
 		95FA74CE8F3AFCCBB83DDE82 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88B3CDCA158C0CA7CCD70D92 /* AppTheme.swift */; };
+		9AB7704EABF8018FD5D45867 /* AdaptivePosterCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B349D6D83DB5807F0148369 /* AdaptivePosterCard.swift */; };
 		A474B0D43119FD73382BC29D /* FilteredMovieListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C8190C7C44ADE96A474C04F /* FilteredMovieListView.swift */; };
 		A65297A4654BD716F0AE6B8E /* DatabaseHolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7495D8B3867250F15C741B9 /* DatabaseHolder.swift */; };
 		B33FF8A3AADED253D64801CD /* WaterfallScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 077E4B1C45F274A3A6B43E60 /* WaterfallScrollView.swift */; };
@@ -81,6 +82,7 @@
 		56D6AE26D5BA58C4E7CAE13D /* GlossaryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlossaryHelper.swift; sourceTree = "<group>"; };
 		5DDE4B98CE57E016C2823C79 /* ZoomableImageViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomableImageViewer.swift; sourceTree = "<group>"; };
 		66409A50C88DB51BC06F77FC /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6B349D6D83DB5807F0148369 /* AdaptivePosterCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptivePosterCard.swift; sourceTree = "<group>"; };
 		6B492731DA1A47C87B036307 /* ShareCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCardView.swift; sourceTree = "<group>"; };
 		6C8CAFFE277F5B603109F924 /* UserAnalyticsRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAnalyticsRepository.swift; sourceTree = "<group>"; };
 		731C4344646F96FBE039058C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -248,6 +250,7 @@
 		72187E55A6094B247FE606E2 /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				6B349D6D83DB5807F0148369 /* AdaptivePosterCard.swift */,
 				73D79AFFEB70CFADB3E6BD96 /* ColumnSwitchButton.swift */,
 				D6DEADB4012AD9884D3E9DA3 /* DatabaseLoadingView.swift */,
 				54C21C6D92A7815DB3AEB659 /* DynamicAmbientBackground.swift */,
@@ -417,6 +420,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9AB7704EABF8018FD5D45867 /* AdaptivePosterCard.swift in Sources */,
 				0CDE5C5420F150C84041C06B /* AppEnvironment.swift in Sources */,
 				C4F0BE9CC2D1685F1A8803E6 /* AppNavigation.swift in Sources */,
 				95FA74CE8F3AFCCBB83DDE82 /* AppTheme.swift in Sources */,
@@ -524,7 +528,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -538,7 +542,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 2.16.1;
+				MARKETING_VERSION = 2.17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -602,7 +606,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -622,7 +626,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 2.16.1;
+				MARKETING_VERSION = 2.17.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

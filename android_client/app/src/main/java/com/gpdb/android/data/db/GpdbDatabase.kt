@@ -42,7 +42,7 @@ import androidx.room.migration.Migration
         EpisodePerformerEntity::class,
         StudioEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class GpdbDatabase : RoomDatabase() {
@@ -57,6 +57,143 @@ abstract class GpdbDatabase : RoomDatabase() {
 
     companion object {
         private const val TAG = "GpdbDatabase"
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "执行 5->6 平滑迁移: 补齐 studios.website_url 与 site_id 字段及索引")
+                try { database.execSQL("ALTER TABLE studios ADD COLUMN website_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE studios ADD COLUMN site_id INTEGER;") } catch (_: Exception) {}
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);") } catch (_: Exception) {}
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_4_6 = object : Migration(4, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            website_url TEXT,
+                            site_id INTEGER,
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_3_6 = object : Migration(3, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            website_url TEXT,
+                            site_id INTEGER,
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_2_6 = object : Migration(2, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            website_url TEXT,
+                            site_id INTEGER,
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_1_6 = object : Migration(1, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            website_url TEXT,
+                            site_id INTEGER,
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_0_6 = object : Migration(0, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN pbc_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE performers ADD COLUMN sj_url TEXT;") } catch (_: Exception) {}
+                try {
+                    database.execSQL("""
+                        CREATE TABLE IF NOT EXISTS studios (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            name_zh TEXT,
+                            description_zh TEXT,
+                            logo_url TEXT,
+                            banner_url TEXT,
+                            website_url TEXT,
+                            site_id INTEGER,
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """.trimIndent())
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);")
+                    database.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                } catch (_: Exception) {}
+            }
+        }
 
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -381,10 +518,18 @@ abstract class GpdbDatabase : RoomDatabase() {
                         description_zh TEXT,
                         logo_url TEXT,
                         banner_url TEXT,
+                        website_url TEXT,
+                        site_id INTEGER,
                         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                     );
                 """.trimIndent())
                 rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                try {
+                    rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);")
+                } catch (_: Exception) {}
+                try {
+                    rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);")
+                } catch (_: Exception) {}
                 try {
                     rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
                 } catch (_: Exception) {}
@@ -413,6 +558,18 @@ abstract class GpdbDatabase : RoomDatabase() {
                 if (!studioCols.containsKey("banner_url")) {
                     try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN banner_url TEXT;") } catch (_: Exception) {}
                 }
+                if (!studioCols.containsKey("website_url")) {
+                    try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN website_url TEXT;") } catch (_: Exception) {}
+                }
+                if (!studioCols.containsKey("site_id")) {
+                    try { rawDb.execSQL("ALTER TABLE studios ADD COLUMN site_id INTEGER;") } catch (_: Exception) {}
+                }
+                try {
+                    rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);")
+                } catch (_: Exception) {}
+                try {
+                    rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);")
+                } catch (_: Exception) {}
 
                 // 核心关键修复：检查 updated_at 的类型亲和性。
                 // 若为 TIMESTAMP (如旧版本 DDL 或外部工具创建)，SQLite 亲和性为 NUMERIC(1)，
@@ -430,16 +587,20 @@ abstract class GpdbDatabase : RoomDatabase() {
                                 description_zh TEXT,
                                 logo_url TEXT,
                                 banner_url TEXT,
+                                website_url TEXT,
+                                site_id INTEGER,
                                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                             );
                         """.trimIndent())
                         rawDb.execSQL("""
-                            INSERT OR IGNORE INTO studios_schema_fix (id, name, name_zh, description_zh, logo_url, banner_url, updated_at)
-                            SELECT id, name, name_zh, description_zh, logo_url, banner_url, updated_at FROM studios;
+                            INSERT OR IGNORE INTO studios_schema_fix (id, name, name_zh, description_zh, logo_url, banner_url, website_url, site_id, updated_at)
+                            SELECT id, name, name_zh, description_zh, logo_url, banner_url, website_url, site_id, updated_at FROM studios;
                         """.trimIndent())
                         rawDb.execSQL("DROP TABLE studios;")
                         rawDb.execSQL("ALTER TABLE studios_schema_fix RENAME TO studios;")
                         rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                        rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);")
+                        rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);")
                         Log.i(TAG, "studios 表无损重建升级为 TEXT 完成")
                     } catch (e: Exception) {
                         Log.e(TAG, "studios 表无损重建失败: ${e.message}", e)
@@ -472,6 +633,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                 try {
                     rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_movie_id ON episodes(movie_id);")
                     rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
+                    rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio_id ON episodes(studio_id);")
                 } catch (_: Exception) {}
 
                 Log.i(TAG, "前置架构自愈检查完成，数据库物理列已就绪")
@@ -507,7 +669,8 @@ abstract class GpdbDatabase : RoomDatabase() {
                     MIGRATION_0_1, MIGRATION_0_2, MIGRATION_1_2,
                     MIGRATION_0_3, MIGRATION_1_3, MIGRATION_2_3,
                     MIGRATION_0_4, MIGRATION_1_4, MIGRATION_2_4, MIGRATION_3_4,
-                    MIGRATION_0_5, MIGRATION_1_5, MIGRATION_2_5, MIGRATION_3_5, MIGRATION_4_5
+                    MIGRATION_0_5, MIGRATION_1_5, MIGRATION_2_5, MIGRATION_3_5, MIGRATION_4_5,
+                    MIGRATION_0_6, MIGRATION_1_6, MIGRATION_2_6, MIGRATION_3_6, MIGRATION_4_6, MIGRATION_5_6
                 )
                 // ★ 关键修复：强制使用 TRUNCATE 日志模式，彻底消除 FUSE 下 WAL 模式的 -shm / -wal ioctl 权限冲突
                 .setJournalMode(JournalMode.TRUNCATE)
@@ -570,10 +733,18 @@ abstract class GpdbDatabase : RoomDatabase() {
                                     description_zh TEXT,
                                     logo_url TEXT,
                                     banner_url TEXT,
+                                    website_url TEXT,
+                                    site_id INTEGER,
                                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
                                 );
                             """.trimIndent())
                             db.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name ON studios(name);")
+                            try {
+                                db.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);")
+                            } catch (_: Exception) {}
+                            try {
+                                db.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);")
+                            } catch (_: Exception) {}
                             try {
                                 db.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
                             } catch (_: Exception) {}

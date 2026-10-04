@@ -9,6 +9,7 @@ public struct MarqueeText: View {
     public var font: Font
     public var weight: Font.Weight
     public var foregroundColor: Color
+    public var alignment: Alignment
     public var spacing: CGFloat
     public var speed: Double // 移动速度 (点/秒)
 
@@ -23,6 +24,7 @@ public struct MarqueeText: View {
         font: Font = .title2,
         weight: Font.Weight = .bold,
         foregroundColor: Color = .primary,
+        alignment: Alignment = .leading,
         spacing: CGFloat = 40,
         speed: Double = 35
     ) {
@@ -30,6 +32,7 @@ public struct MarqueeText: View {
         self.font = font
         self.weight = weight
         self.foregroundColor = foregroundColor
+        self.alignment = alignment
         self.spacing = spacing
         self.speed = speed
     }
@@ -42,7 +45,7 @@ public struct MarqueeText: View {
         GeometryReader { geo in
             let cWidth = max(geo.size.width, 0)
 
-            ZStack(alignment: .leading) {
+            ZStack(alignment: alignment == .center ? .center : .leading) {
                 if shouldAnimate {
                     HStack(spacing: spacing) {
                         singleTextItem
@@ -56,10 +59,10 @@ public struct MarqueeText: View {
                     }
                 } else {
                     singleTextItem
-                        .frame(width: cWidth, alignment: .leading)
+                        .frame(width: cWidth, alignment: alignment)
                 }
             }
-            .frame(width: cWidth, height: geo.size.height, alignment: .leading)
+            .frame(width: cWidth, height: geo.size.height, alignment: alignment == .center && !shouldAnimate ? .center : .leading)
             .clipped()
             .onAppear {
                 containerWidth = cWidth
@@ -77,6 +80,7 @@ public struct MarqueeText: View {
             }
         }
         .frame(height: max(textHeight, 18))
+        .frame(minWidth: 0, idealWidth: textWidth > 0 ? textWidth : nil)
         .background(
             // 隐藏的测量视图，获取文字自然单行宽度与高度
             singleTextItem

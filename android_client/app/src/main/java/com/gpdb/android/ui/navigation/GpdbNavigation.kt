@@ -242,6 +242,7 @@ fun GpdbNavGraph(
             composable(Screen.Studios.route) {
                 val viewModel: StudioListViewModel = viewModel()
                 StudioListScreen(
+                    physicalRootPath = physicalRootPath,
                     viewModel = viewModel,
                     onStudioClick = { studioName ->
                         navController.navigate(Screen.StudioDetail.createRoute(studioName))

@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.0] - 2026-10-04
+
+### Added
+- **片商库现代化展示台 (Studio Shelf Grid) 重构 (`StudioListScreen.kt`, `StudioListViewModel.kt`, `GpdbNavigation.kt`)**：
+  - **自适应展示台网格**：废弃单调的纯文字列表，重构为对齐 macOS 设计语言的自适应网格展示台（`GridCells.Adaptive(minSize = 150.dp)`）；
+  - **宽画幅 Logo 展台**：每个片商卡片顶部配备独立画幅的 Logo 展台容器，通过 `GpdbAsyncImage` 居中完整缩放展示（`ContentScale.Fit`）；当未配置 Logo 或离线图片缺失时，自动优雅降级为品牌首字母渐变彩色微标；
+  - **双语智能呈现**：优先展现中文译名，副标展现浅灰英文原名，结合既有的拼音/字母排序与中英文双向即时模糊检索。
+- **片商档案详情沉浸式全景 Banner 与 Logo 徽章 (`StudioDetailScreen.kt`, `StudioDetailViewModel.kt`)**：
+  - **全景沉浸 Banner 背景**：当片商档案存在 `bannerUrl` 时，在详情头部铺设全景 Banner，底层叠加 14dp 环境光模糊层与双向羽化渐变遮罩（左侧水平遮罩与底部垂直遮罩），消除突兀边缘，赋予前景文字与徽章通透高对比度；无 Banner 时自动适配典雅纯色渐变背景；
+  - **大画幅 Logo 徽章卡片**：72dp 浮动圆角卡片，搭载精致边框与阴影，居中呈现厂牌 Logo，无 Logo 时展现首字母渐变徽章；
+  - **发行统计胶囊**：动态呈现该厂牌发行作品数与分集数统计胶囊。
+- **自适应取色沉浸式 Logo 展台容器 (`AdaptiveLogoContainer.kt`, `StudioListScreen.kt`, `StudioDetailScreen.kt`)**：
+  - **智能留白吸色填充**：针对不同厂牌 Logo 比例、背景格式各异（纯黑底、纯白底、透明底、彩色底）在容器中产生的留白与黑边缝隙问题，引入边缘 12 点采样与极速调色板分析算法；容器背景色动态与 Logo 边缘色 100% 融合，消除「框中框」接缝；
+  - **品牌强调色微光边框**：从 Logo 内部网格智能提取最高饱和度品牌强调色，为容器赋予高贵轻奢的微光边框（如 RFC 艳红、NextDoor 铭黄、Eurocreme 青蓝、CorbinFisher 金黄）；
+  - **硬件位图兼容与内存 LRU 缓存**：全面兼容 Android 8.0+ `Hardware Bitmap`，后台协程异步解耦采样运算并接入 300 容量全局 LRU 缓存，配合 280ms 柔和色彩插值动效，确保 120Hz 高刷新率滑动零掉帧。
+- **片商官方网站直链入库与系统浏览器外跳联动 (`StudioDetailScreen.kt`, `StudioEntity.kt`, `GpdbDatabase.kt`, `I18n.kt`)**：
+  - **官方网站直跳按钮**：在片商档案页头部呈现「官方网站」操作芯片（配以地球图标 `Icons.Default.Language`）；
+  - **智能协议自适应与外部唤起**：自动感知协议前缀并自适应补齐 `https://`，轻触调用系统默认外部浏览器打开；长按支持一键复制网址至剪贴板并弹出 Toast 提示；
+  - **全球 7 种语言完整国际化**：在 `I18n.kt` 中补齐中文简繁、英语、日语、意大利语、西班牙语、德语的 `'studio.officialWebsite'` 与 `'studio.copiedWebsite'` 国际化词条。
+
+### Changed
+- **Room 架构升级至 Schema v6 与底层物理兼容自愈 (`GpdbDatabase.kt`, `StudioEntity.kt`)**：
+  - `StudioEntity` 新增 `websiteUrl: String?` 与 `siteId: Long?` 字段映射，声明 `idx_studios_site_id` 索引；
+  - Room 升级至 Schema v6，实现并注册 `MIGRATION_5_6` 及全量历史版本至 6 的迁移链路；
+  - 加固 `ensureSchemaCompatibility`：在 Room 连接前通过底层原生 SQLite 自动检测并动态补齐 `website_url`、`site_id` 列及索引，并同步适配 `studios_schema_fix` 热重建逻辑，确保外部数据库挂载 100% 稳定兼容。
+- **离线图片路径映射统一归一化 (`MovieEntity.kt`)**：
+  - 优化 `toImageCachePath()` 正则解析：将 `images/logos/` 与 `images/banners/` 统一路由至本地物理目录 `image_cache/Logos/`，无缝支持离线直读。
+- **底部导航栏及相关文案精简 (`I18n.kt`, `LibraryScreen.kt`, `SettingsScreen.kt`)**：
+  - 将底部导航栏「我的收藏」统一精简为「收藏」，使底栏各 Tab（主页、影片、演员、片商、导演、收藏）字数整齐对称，视觉更加干练精简；搜索框与设置提示文案同步对齐。
+- **版本号统一升级**：
+  - `build.gradle.kts` 版本升级至 `v2.18.0` (versionCode 318)。
+
+### Fixed
+- **修复挂载新版 GPDb.db 时 Room 架构校验崩溃 (`StudioEntity.kt`, `GpdbDatabase.kt`)**：
+  - 针对桌面端 `c24f9fd` / `02c073f` 提交中在 `studios` 表新增的 `idx_studios_name_nocase` (name COLLATE NOCASE) 索引，补齐 `StudioEntity` 中的 Room 索引声明；
+  - 在 `GpdbDatabase.kt` 的全量迁移脚本 (`MIGRATION_x_6`)、启动前热自愈探测 (`ensureSchemaCompatibility`) 及 `studios_schema_fix` 重建流程中补齐 `idx_studios_name_nocase` 索引创建，彻底解决 `IllegalStateException: Pre-packaged database has an invalid schema: studios` 挂载失败异常。
+
 ## [2.17.0] - 2026-10-03
 
 ### Changed

@@ -5,6 +5,43 @@ All notable changes to the GPDb iOS Client will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.17.0] - 2026-10-03
+
+### Added
+- **181 家核心厂牌深度中文历史档案与双语卡片 (`BrowseRepository.swift`, `StudioDetailView.swift`, `BrowseView.swift`)**：
+  - **核心厂牌全息中文历史档案**：打通 SQLite `studios` 表扩充的 181 家核心片商 `name_zh` 与 `description_zh` 字段，实现与 Android、Windows、macOS 全端对齐；
+  - **厂牌详情页专属「厂牌介绍」卡片**：在片商档案页顶部显式新增「厂牌介绍」（Studio Intro Card）专属卡片，基于半透明毛玻璃材质与精致排版（`lineSpacing: 5`），支持超长文本智能折叠与平滑展开动效，呈现详实的创办背景、艺术风格与发展史；
+  - **双语标头与中英对照**：厂牌列表与详情页全面采用双语标头呈现（中文主名粗体高亮，英文原名小字清晰对照，兼顾辨识度与官方原汁原味）；
+  - **双向中英模糊搜索**：探索片商列表支持中英文双向模糊检索（输入中文译名或英文原名均能秒级过滤匹配）。
+- **影片档案画报级自适应无黑边物理画幅与纯化展台 (`AdaptivePosterCard.swift`, `MovieDetailView.swift`)**：
+  - **物理画幅自适应贴合 (`AdaptivePosterCard`)**：彻底移除此前 250pt/380pt 强制裁剪拉伸与上下/左右黑边框架，引入基于图像真实物理分辨率宽高比的边缘自适应技术，不同比例的海报均能完美贴合卡片边缘；
+  - **多封面与单封面响应式流转**：双封面并排等比自适应布局，单封面居中大画幅艺术展台，圆角与柔和微光描边兼备；
+  - **画报视觉纯化**：彻底移除覆盖在海报画面上的序号、突兀文字角标与常驻黑底放大镜图标，回归纯粹的画报级海报艺术观感；轻触封面直接无缝呼出全屏高保真缩放画廊；
+  - **封底损坏或缺失自动降级自愈**：封底图片若路径为空、损坏或加载失败，自动以淡入淡出动画降级为单封面展台，全封面缺失时展示典雅的“暂无海报”艺术卡片，杜绝破损灰色方块。
+- **独立核心操作矩阵芯片组 (`MovieDetailView.swift`)**：
+  - **多源检索与交互芯片组收拢**：将散落在元数据中的外部链接收拢为独立的横向滚动「核心操作矩阵」（Action Matrix Panel），配备微光渐变胶囊、精美触感与专属图标：
+    1. **快捷收藏**：红心即时触感切换与本地状态同步；
+    2. **分享海报**：一键呼出流光分享卡片生成器；
+    3. **BT 磁链检索**：红色微光芯片直达 `bt4gprx.com`；
+    4. **BFTV 视频检索**：粉紫微光芯片直达 `boyfriendtv.com` 视频匹配；
+    5. **Google 深度搜索**：天蓝微光芯片一键针对片名与番号进行全网搜索；
+  - **剧情简介卡片排版纯化**：剥离操作按钮后，剧情简介独占通栏卡片，中英译文更具阅读呼吸感。
+- **全平台版本标识对齐至 v2.17.0 (`project.yml`, `SettingsView.swift`, `ShareCardView.swift`)**：
+  - 版本号正式提升至 `v2.17.0`（Build 2），设置页版本号动态读取；
+  - 流光分享卡片规范对齐：移除底部的临时日期时间戳，统一为永恒经典“本地私有数字档案”标识。
+
+### Fixed
+- **厂牌详情页信息冗余纯化与顶部双语跑马灯 (`StudioDetailView.swift`, `MarqueeText.swift`)**：
+  - **移除内容区冗余标头**：彻底移除此前在页面内容区下方重复展示的片商原名、中文译名与长片/分集数量条，杜绝与顶部及分类选择器的重复信息冲突；
+  - **顶部双语跑马灯呈现与极窄压缩根治**：统一改由顶部导航栏 `MarqueeText` 集中展示片商原名与中文译名（如 `片商原名 · 译名`）；彻底修复因 `ToolbarItem(placement: .principal)` 在未约束宽度时被 `UINavigationBar` 自适应测量机制压缩为单字符窄条的缺陷，为顶栏跑马灯引入屏幕自适应宽度约束（`principalTitleWidth`：190pt~260pt，预留两侧返回与操作按钮安全边界），并支持居中对齐与 `idealWidth` 探测，短文本高雅居中、长文本全宽丝滑循环滚动。
+- **厂牌详情页「厂牌介绍」原生平滑滚动与抽搐抖动根治 (`StudioDetailView.swift`)**：
+  - **高度根据文本自适应并完整展现全文**：彻底移除此前固定高度与折叠截断限制，卡片高度完全交由文本长度自适应撑开（`lineLimit(nil)` 与 `fixedSize(horizontal: false, vertical: true)`），确保 181 家核心厂牌详实的创办背景、历史沿革与美学风格介绍能够完整呈现；
+  - **单流式滚动与彻底根除滑动抽搐**：彻底废除此前在滚动容器外部依赖 `isTabBarHidden` 动效显隐卡片而导致外层视图高度剧烈跳变、引起滚动偏移量抖动死循环的缺陷，同时移除卡片上的冲突手势；将「厂牌介绍」卡片统一置入外层 `WaterfallScrollView` 的顶部内容流中，上下滑动时卡片随内容自然丝滑进出屏幕；
+  - **作品分类分段选择器吸顶效果**：通过 `LazyVStack(pinnedViews: [.sectionHeaders])` 实现作品分类选择栏在滚动超过介绍卡片时以 `.ultraThinMaterial` 毛玻璃质感优雅吸顶，操作流畅自然。
+- **多导演精确关联与展示修复 (`MovieRepository.swift`, `MovieDetailView.swift`, `MovieRecord.swift`, `BrowseRepository.swift`)**：
+  - 修复此前联合执导影片中多位导演被错误识别为一个单体名字的缺陷；
+  - 建立 `movie_directors` 与 `directors` 关联表优先查询机制，自动回退到 `fallbackDirectorNames` 智能斜杠拆分，确保所有导演均可独立跳转、过滤与查看。
+
 ## [2.16.1] - 2026-10-02
 
 ### Added

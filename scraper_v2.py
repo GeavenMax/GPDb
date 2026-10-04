@@ -971,8 +971,32 @@ class ScraperV2:
                 self.progress.tick(failed=1)
             return
 
-        rows = parse_coep_rows(payload, company_id, item.get("title"))
         total = int(payload.get("recordsTotal") or 0)
+        company_name = item.get("title")
+        if not company_name and total > 0:
+            # 优先从本地 studios 表或 movies 表解析片商名
+            r = self.db.conn.execute("SELECT name FROM studios WHERE site_id = ? LIMIT 1", (company_id,)).fetchone()
+            if not r:
+                r = self.db.conn.execute("SELECT studio_name FROM movies WHERE studio_id = ? AND studio_name IS NOT NULL LIMIT 1", (company_id,)).fetchone()
+            if r and r[0]:
+                company_name = r[0]
+            else:
+                # 探针请求公司详情页获取厂牌名
+                c_res = self.fetch(f"{BASE_URL}/company/{company_id}")
+                if c_res.status == 200:
+                    m = re.search(r"<title>(.*?)</title>", c_res.body, re.I)
+                    if m:
+                        c_title = m.group(1).replace(": Gay Erotic Video Index", "").strip()
+                        if c_title:
+                            company_name = c_title
+                            with self.db._write_lock, self.db.conn:
+                                self.db.conn.execute(
+                                    "INSERT OR IGNORE INTO studios (name, site_id) VALUES (?, ?)",
+                                    (company_name, company_id)
+                                )
+            item["title"] = company_name
+
+        rows = parse_coep_rows(payload, company_id, company_name)
         pages = (total + COEP_PAGE_SIZE - 1) // COEP_PAGE_SIZE
 
         for page in range(1, pages):
@@ -986,7 +1010,7 @@ class ScraperV2:
                 self._abort_company(item, res, f"第 {page + 1}/{pages} 页失败")
                 return
             try:
-                rows += parse_coep_rows(json.loads(res.body), company_id, item.get("title"))
+                rows += parse_coep_rows(json.loads(res.body), company_id, company_name)
             except ValueError as e:
                 self.results.put({"kind": "rejected", "item": item,
                                   "reason": f"第 {page + 1} 页不是 JSON: {e}"})

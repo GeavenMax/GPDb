@@ -48,7 +48,7 @@ fun LibraryScreen(
                     title = com.gpdb.android.util.I18n.string("nav.library"),
                     searchQuery = uiState.searchQuery,
                     onSearchQueryChange = { viewModel.updateSearch(it) },
-                    placeholder = "在我的收藏中搜索...",
+                    placeholder = "在收藏中搜索...",
                     actions = {
                         IconButton(onClick = onSettingsClick) {
                             Icon(Icons.Default.Settings, contentDescription = "设置")

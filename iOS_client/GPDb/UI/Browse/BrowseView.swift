@@ -331,7 +331,15 @@ public struct BrowseView: View {
                                 .foregroundStyle(.tint)
                                 .frame(width: 34, height: 34)
                         }
-                        MarqueeText(text: studio.name, font: .body, weight: .bold, speed: 25)
+                        VStack(alignment: .leading, spacing: 2) {
+                            MarqueeText(text: studio.displayTitle, font: .body, weight: .bold, speed: 25)
+                            if let sub = studio.displaySubtitle {
+                                Text(sub)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
                         Spacer()
                         Text("\(studio.count) 部作品")
                             .font(.caption)
@@ -410,7 +418,7 @@ public struct BrowseView: View {
                 self.seriesList = try await repository.getSeries(query: searchText)
 
             case .studios:
-                self.studiosList = try await repository.getStudios()
+                self.studiosList = try await repository.getStudios(query: searchText)
 
             case .directors:
                 self.directorsList = try await repository.getDirectors(query: searchText)

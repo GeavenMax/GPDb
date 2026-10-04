@@ -3,6 +3,30 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.18.0] - 2026-10-05
+
+### Fixed
+- **全库分集索引断层与网络片商历史分集不可见问题彻底修复 (`db_manager.py`, `scraper_v2.py`, `schema.sql`, `gpdb-core/src/queries/studios.rs`, `EpisodeEntity.kt`, `GpdbDatabase.kt`)**：
+  - **根本原因深度排查与定位**：查明为何 Say Uncle 仅能检索到最近一个月的 13 部分集、Freshmen.net 仅有 6 部分集。GEVI 远端与本地数据库实际上完整抓取了分集数据（Say Uncle 全量 3,425 部，Freshmen.net 全量 1,420 部），但在早期 `--sweep-companies` 探针抓取阶段，脚本以 `title=None` 入库，导致全库多达 15,556 部独立分集的 `studio_name` 物理字段为 `NULL`；而在各端（macOS/Android/iOS）作品集检索中均使用 `WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?` 严格字符串匹配，导致历史 10+ 年的巨量独立分集完全脱节隐形；
+  - **数据库数据全量自愈与厂牌归档**：
+    - 针对 `studios` 表补齐收录了 33 家此前未建档但存在大量分集的网络厂牌（如 Str8Hell.com 1,551 部、French Dudes 747 部、Raw and Rough 303 部、Sweet and Raw 296 部等）；
+    - 通过 `e.studio_id = studios.site_id` 精准映射修复回填了全部 15,554 部孤儿分集的真实片商名称，实现全库独立分集 `studio_name` 100% 完整归属；
+    - 修复后，Say Uncle 专属分集恢复至 1,461 部（网络总库 3,425 部）、Freshmen.net 恢复至全量 1,420 部、GayRoom 恢复至 1,693 部、GayHoopla 恢复至 1,036 部，历史时间跨度（2001~2026）完整呈现；
+  - **核心索引补齐与架构升级**：
+    - 在 SQLite 物理架构与 `schema.sql` 中新增 `idx_episodes_studio_id` 与 `idx_studios_site_id` 物理索引，极大加速按厂牌 ID 聚合分集与检索；
+    - 同步更新 Android 端 Room 实体 `EpisodeEntity` 与 `GpdbDatabase` 启动期自动索引修复逻辑；
+  - **抓取与存储逻辑闭环防回归 (`scraper_v2.py`, `db_manager.py`)**：
+    - `scraper_v2.py`：在 `_process_company` 抓取时引入三级片商名称防丢机制（优先读 `studios.site_id` -> 读 `movies.studio_id` -> 抓取公司页 `<title>` 解析厂牌名），杜绝再以 `None` 写入分集；
+    - `db_manager.py`：在 `save_standalone_episodes` 增加内部片商缓存字典与 SQL `NULLIF(excluded.studio_name, '')` 保护，防止空名称覆盖已有片商；
+  - **跨平台查询引擎双模增强 (`gpdb-core/src/queries/studios.rs`)**：
+    - `get_studio_works` 升级为片商名称与 `site_id` 双重联合查询（`e.studio_name = ?1 OR e.studio_id = ?2`），使 Say Uncle 这类拥有多家子品牌（Missionary Boys、Family Dick 等）的伞状母公司网络能够完整展示全网 3,425 部作品，同时子厂牌独立档案页亦能精准聚合各自作品。
+
+### Changed
+- **片商档案详情与探索板块体验优化**：
+  - 片商档案页的分集片段页适配与长片页对齐的高品质网格展示与密集列表视图切换；
+  - 影片档案页点击片商按钮直达片商专属档案页；
+  - 探索页精简与视觉焦点聚焦（缩小巨幕轮播与明星板块占比，突出核心内容）。
+
 ## [v2.17.0] - 2026-10-03
 
 ### Changed

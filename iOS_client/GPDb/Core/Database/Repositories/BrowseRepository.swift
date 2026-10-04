@@ -7,10 +7,59 @@ public struct StudioItem: Identifiable {
     public let count: Int
     public let logoUrl: String?
     public let bannerUrl: String?
+    public let nameZh: String?
+    public let descriptionZh: String?
 
-    public init(name: String, count: Int, logoUrl: String? = nil, bannerUrl: String? = nil) {
+    public init(
+        name: String,
+        count: Int,
+        logoUrl: String? = nil,
+        bannerUrl: String? = nil,
+        nameZh: String? = nil,
+        descriptionZh: String? = nil
+    ) {
         self.name = name
         self.count = count
+        self.logoUrl = logoUrl
+        self.bannerUrl = bannerUrl
+        self.nameZh = nameZh
+        self.descriptionZh = descriptionZh
+    }
+
+    /// 便捷双语展示主标题 (优先中文)
+    public var displayTitle: String {
+        if let zh = nameZh, !zh.isEmpty {
+            return zh
+        }
+        return name
+    }
+
+    /// 便捷双语展示副标题 (英文原名)
+    public var displaySubtitle: String? {
+        if let zh = nameZh, !zh.isEmpty, zh != name {
+            return name
+        }
+        return nil
+    }
+}
+
+public struct StudioDetailInfo {
+    public let name: String
+    public let nameZh: String?
+    public let descriptionZh: String?
+    public let logoUrl: String?
+    public let bannerUrl: String?
+
+    public init(
+        name: String,
+        nameZh: String? = nil,
+        descriptionZh: String? = nil,
+        logoUrl: String? = nil,
+        bannerUrl: String? = nil
+    ) {
+        self.name = name
+        self.nameZh = nameZh
+        self.descriptionZh = descriptionZh
         self.logoUrl = logoUrl
         self.bannerUrl = bannerUrl
     }
@@ -165,11 +214,20 @@ public final class BrowseRepository {
         }
     }
 
-    /// 获取片商聚合列表 (影片与分集作品数量之和)
-    public func getStudios() async throws -> [StudioItem] {
+    /// 获取片商聚合列表 (影片与分集作品数量之和，支持双语模糊检索)
+    public func getStudios(query: String? = nil) async throws -> [StudioItem] {
         guard let db = holder.database else { return [] }
 
         return try await db.read { db in
+            var whereClause = ""
+            var args: [DatabaseValueConvertible] = []
+
+            if let q = query?.trimmingCharacters(in: .whitespacesAndNewlines), !q.isEmpty {
+                whereClause = "WHERE s.name LIKE ? OR (st.name_zh IS NOT NULL AND st.name_zh LIKE ?)"
+                let match = "%\(q)%"
+                args = [match, match]
+            }
+
             let sql = """
             WITH m_counts AS (
                 SELECT studio_name, COUNT(*) as m_cnt 
@@ -186,7 +244,9 @@ public final class BrowseRepository {
             SELECT s.name, 
                    COALESCE(m.m_cnt, 0) + COALESCE(e.ep_cnt, 0) as total_count,
                    st.logo_url,
-                   st.banner_url
+                   st.banner_url,
+                   st.name_zh,
+                   st.description_zh
             FROM (
                 SELECT studio_name as name FROM m_counts
                 UNION
@@ -195,31 +255,50 @@ public final class BrowseRepository {
             LEFT JOIN m_counts m ON s.name = m.studio_name
             LEFT JOIN e_counts e ON s.name = e.eff_studio
             LEFT JOIN studios st ON st.name = s.name
+            \(whereClause)
             ORDER BY total_count DESC, s.name ASC
             """
-            let rows = try Row.fetchAll(db, sql: sql)
+            let rows = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(args))
             return rows.compactMap { row in
                 guard let name = row["name"] as? String else { return nil }
                 let count = (row["total_count"] as? Int64).map(Int.init) ?? (row["total_count"] as? Int ?? 0)
                 let logoUrl = row["logo_url"] as? String
                 let bannerUrl = row["banner_url"] as? String
-                return StudioItem(name: name, count: count, logoUrl: logoUrl, bannerUrl: bannerUrl)
+                let nameZh = row["name_zh"] as? String
+                let descriptionZh = row["description_zh"] as? String
+                return StudioItem(
+                    name: name,
+                    count: count,
+                    logoUrl: logoUrl,
+                    bannerUrl: bannerUrl,
+                    nameZh: nameZh,
+                    descriptionZh: descriptionZh
+                )
             }
         }
     }
 
-    /// 获取片商元数据信息 (Logo 与 Banner)
-    public func getStudioInfo(studio: String) async throws -> (logoUrl: String?, bannerUrl: String?) {
-        guard let db = holder.database else { return (nil, nil) }
+    /// 获取片商元数据信息 (中文名、中文简介、Logo 与 Banner)
+    public func getStudioInfo(studio: String) async throws -> StudioDetailInfo {
+        guard let db = holder.database else { return StudioDetailInfo(name: studio) }
 
         return try await db.read { db in
-            let sql = "SELECT logo_url, banner_url FROM studios WHERE name = ? LIMIT 1"
+            let sql = "SELECT name, name_zh, description_zh, logo_url, banner_url FROM studios WHERE name = ? LIMIT 1"
             if let row = try Row.fetchOne(db, sql: sql, arguments: [studio]) {
+                let name = (row["name"] as? String) ?? studio
+                let nameZh = row["name_zh"] as? String
+                let descriptionZh = row["description_zh"] as? String
                 let logo: String? = row["logo_url"]
                 let banner: String? = row["banner_url"]
-                return (logo, banner)
+                return StudioDetailInfo(
+                    name: name,
+                    nameZh: nameZh,
+                    descriptionZh: descriptionZh,
+                    logoUrl: logo,
+                    bannerUrl: banner
+                )
             }
-            return (nil, nil)
+            return StudioDetailInfo(name: studio)
         }
     }
 

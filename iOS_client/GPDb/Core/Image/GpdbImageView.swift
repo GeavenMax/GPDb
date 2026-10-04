@@ -11,6 +11,8 @@ public struct GpdbImageView: View {
     public var placeholderIcon: String = "photo"
     public var targetSize: CGSize? = CGSize(width: 400, height: 600)
     public var cropAlignment: Alignment = .center
+    public var onSuccess: ((RetrieveImageResult) -> Void)? = nil
+    public var onFailure: ((KingfisherError) -> Void)? = nil
 
     public init(
         rawPath: String?,
@@ -18,13 +20,17 @@ public struct GpdbImageView: View {
         cornerRadius: CGFloat = 8,
         placeholderIcon: String = "photo",
         targetSize: CGSize? = CGSize(width: 400, height: 600),
-        cropAlignment: Alignment? = nil
+        cropAlignment: Alignment? = nil,
+        onSuccess: ((RetrieveImageResult) -> Void)? = nil,
+        onFailure: ((KingfisherError) -> Void)? = nil
     ) {
         self.rawPath = rawPath
         self.contentMode = contentMode
         self.cornerRadius = cornerRadius
         self.placeholderIcon = placeholderIcon
         self.targetSize = targetSize
+        self.onSuccess = onSuccess
+        self.onFailure = onFailure
         // 人物头像默认使用头部构图对齐 (.top)，电影海报等默认居中 (.center)
         if let alignment = cropAlignment {
             self.cropAlignment = alignment
@@ -85,6 +91,10 @@ public struct GpdbImageView: View {
                     PaletteExtractor.shared.register(image: result.image, for: path)
                 }
                 #endif
+                onSuccess?(result)
+            }
+            .onFailure { error in
+                onFailure?(error)
             }
             .resizable()
             .aspectRatio(contentMode: contentMode)

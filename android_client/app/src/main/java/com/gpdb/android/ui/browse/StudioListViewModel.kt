@@ -13,7 +13,9 @@ import kotlinx.coroutines.launch
 
 data class StudioItem(
     val name: String,
-    val nameZh: String? = null
+    val nameZh: String? = null,
+    val logoUrl: String? = null,
+    val bannerUrl: String? = null
 )
 
 data class StudioListUiState(
@@ -46,9 +48,15 @@ class StudioListViewModel : ViewModel() {
                 val repo = BrowseRepository(db.browseDao())
                 val list = repo.getAllStudios(newSortBy, _uiState.value.searchQuery)
                 val allEntities = try { db.studioDao().getAllStudios() } catch (_: Exception) { emptyList() }
-                val zhMap = allEntities.associate { it.name to it.nameZh }
+                val entityMap = allEntities.associateBy { it.name }
                 val items = list.map { name ->
-                    StudioItem(name = name, nameZh = zhMap[name]?.takeIf { it.isNotBlank() })
+                    val ent = entityMap[name]
+                    StudioItem(
+                        name = name,
+                        nameZh = ent?.nameZh?.takeIf { it.isNotBlank() },
+                        logoUrl = ent?.logoUrl?.takeIf { it.isNotBlank() },
+                        bannerUrl = ent?.bannerUrl?.takeIf { it.isNotBlank() }
+                    )
                 }
                 _uiState.update { it.copy(isLoading = false, studios = items) }
             } catch (e: Exception) {

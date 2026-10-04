@@ -23,6 +23,8 @@ public struct StudioDetailView: View {
     @State private var episodes: [EpisodeRecord] = []
     @State private var totalMoviesCount: Int = 0
     @State private var totalEpisodesCount: Int = 0
+    @State private var nameZh: String? = nil
+    @State private var descriptionZh: String? = nil
     @State private var logoUrl: String? = nil
     @State private var bannerUrl: String? = nil
     @State private var isFavorite: Bool = false
@@ -33,38 +35,43 @@ public struct StudioDetailView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            // 片商头部档案 (Logo 与统计摘要)
-            studioHeaderView
-                .padding(.horizontal)
-                .padding(.top, 12)
-                .padding(.bottom, 6)
-
-            // 分类标签栏
-            Picker("分类", selection: $selectedTab) {
-                Text("发行作品 (\(max(totalMoviesCount, movies.count)))").tag(StudioTab.movies)
-                Text("发行分集 (\(max(totalEpisodesCount, episodes.count)))").tag(StudioTab.episodes)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-
+        WaterfallScrollView {
             if isLoading {
-                Spacer()
                 ProgressView()
-                Spacer()
+                    .padding(.top, 60)
             } else {
-                tabContent
+                LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
+                    // 厂牌介绍卡片 (181 家核心厂牌深度中文历史与创办背景档案，高度自适应，随滚动平滑移动)
+                    if let desc = descriptionZh, !desc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        studioIntroCard(description: desc)
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+                    }
+
+                    // 分类标签栏 (吸顶 Section Header)
+                    Section {
+                        tabContent
+                    } header: {
+                        tabPickerHeader
+                    }
+                }
+                .padding(.bottom, 24)
             }
         }
         .dynamicAmbientBackground(imagePath: logoUrl ?? movies.first?.coverFull ?? movies.first?.coverIcon ?? episodes.first?.thumbnailUrl)
-        .navigationTitle(cleanTitle(studioName))
+        .navigationTitle(bilingualMarqueeTitle)
         .inlineNavigationTitle()
         .toolbar(environment.isTabBarHidden ? .hidden : .visible, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                MarqueeText(text: cleanTitle(studioName), font: .headline, weight: .bold, speed: 25)
-                    .frame(maxWidth: 220)
+                MarqueeText(
+                    text: bilingualMarqueeTitle,
+                    font: .headline,
+                    weight: .bold,
+                    alignment: .center,
+                    speed: 25
+                )
+                .frame(width: principalTitleWidth)
             }
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 12) {
@@ -81,11 +88,27 @@ public struct StudioDetailView: View {
                 }
             }
         }
+        .onAppear {
+            environment.setTabBarHidden(false, animated: false)
+        }
         .task {
             if movies.isEmpty && episodes.isEmpty {
                 await loadStudioData()
             }
         }
+    }
+
+    private var tabPickerHeader: some View {
+        VStack(spacing: 0) {
+            Picker("分类", selection: $selectedTab) {
+                Text("发行作品 (\(max(totalMoviesCount, movies.count)))").tag(StudioTab.movies)
+                Text("发行分集 (\(max(totalEpisodesCount, episodes.count)))").tag(StudioTab.episodes)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+        .background(.ultraThinMaterial)
     }
 
     @ViewBuilder
@@ -94,12 +117,14 @@ public struct StudioDetailView: View {
         case .movies:
             if movies.isEmpty {
                 ContentUnavailableView("暂无发行作品", systemImage: "film.stack", description: Text("该片商名下暂无长片电影记录。"))
+                    .padding(.vertical, 40)
             } else {
                 moviesGrid
             }
         case .episodes:
             if episodes.isEmpty {
                 ContentUnavailableView("暂无发行分集", systemImage: "play.rectangle.on.rectangle", description: Text("该片商名下暂无分集场景片段记录。"))
+                    .padding(.vertical, 40)
             } else {
                 episodesList
             }
@@ -107,148 +132,133 @@ public struct StudioDetailView: View {
     }
 
     private var moviesGrid: some View {
-        WaterfallScrollView {
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: environment.layoutColumns),
-                spacing: 14
-            ) {
-                ForEach(movies) { movie in
-                    NavigationLink(destination: MovieDetailView(movieId: movie.id)) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            GpdbImageView(
-                                rawPath: movie.coverFull ?? movie.coverIcon,
-                                contentMode: .fill,
-                                cornerRadius: 10
-                            )
-                            .aspectRatio(0.68, contentMode: .fit)
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: environment.layoutColumns),
+            spacing: 14
+        ) {
+            ForEach(movies) { movie in
+                NavigationLink(destination: MovieDetailView(movieId: movie.id)) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        GpdbImageView(
+                            rawPath: movie.coverFull ?? movie.coverIcon,
+                            contentMode: .fill,
+                            cornerRadius: 10
+                        )
+                        .aspectRatio(0.68, contentMode: .fit)
 
-                            MarqueeText(text: movie.displayTitle, font: .caption, weight: .bold, speed: 25)
+                        MarqueeText(text: movie.displayTitle, font: .caption, weight: .bold, speed: 25)
 
-                            HStack {
-                                if let y = movie.releaseYear {
-                                    Text("\(y)年")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                if let dur = movie.formattedDuration {
-                                    Text(dur)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
+                        HStack {
+                            if let y = movie.releaseYear {
+                                Text("\(y)年")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if let dur = movie.formattedDuration {
+                                Text(dur)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
-                    .buttonStyle(.plain)
                 }
+                .buttonStyle(.plain)
             }
-            .padding()
         }
+        .padding(.horizontal)
     }
 
     private var episodesList: some View {
-        WaterfallScrollView {
-            LazyVStack(spacing: 14) {
-                ForEach(episodes) { ep in
-                    NavigationLink(destination: EpisodeDetailView(episodeId: ep.id)) {
-                        HStack(spacing: 12) {
-                            GpdbImageView(
-                                rawPath: ep.thumbnailUrl,
-                                contentMode: .fill,
-                                cornerRadius: 8,
-                                placeholderIcon: "play.rectangle.fill"
-                            )
-                            .frame(width: 120, height: 75)
-                            .clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+        LazyVStack(spacing: 14) {
+            ForEach(episodes) { ep in
+                NavigationLink(destination: EpisodeDetailView(episodeId: ep.id)) {
+                    HStack(spacing: 12) {
+                        GpdbImageView(
+                            rawPath: ep.thumbnailUrl,
+                            contentMode: .fill,
+                            cornerRadius: 8,
+                            placeholderIcon: "play.rectangle.fill"
+                        )
+                        .frame(width: 120, height: 75)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                MarqueeText(text: ep.displayTitle, font: .subheadline, weight: .bold, speed: 25)
+                        VStack(alignment: .leading, spacing: 4) {
+                            MarqueeText(text: ep.displayTitle, font: .subheadline, weight: .bold, speed: 25)
 
-                                if let date = ep.releaseDate {
-                                    Text("发行: \(date)")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                if let desc = ep.displayDescription {
-                                    Text(desc)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
+                            if let date = ep.releaseDate {
+                                Text("发行: \(date)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
-                            Spacer()
+
+                            if let desc = ep.displayDescription {
+                                Text(desc)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
                         }
-                        .padding(.horizontal)
+                        Spacer()
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal)
                 }
+                .buttonStyle(.plain)
             }
-            .padding(.vertical, 8)
         }
+        .padding(.vertical, 4)
     }
 
-    private var studioHeaderView: some View {
-        HStack(spacing: 16) {
-            // Logo 容器 (带微弱半透明底色与首字母降级兜底)
-            ZStack {
-                if let logo = logoUrl, !logo.isEmpty {
-                    GpdbImageView(
-                        rawPath: logo,
-                        contentMode: .fit,
-                        cornerRadius: 12,
-                        placeholderIcon: "building.2.crop.circle"
-                    )
-                    .padding(6)
-                } else {
-                    LinearGradient(
-                        colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    Text(studioInitials)
-                        .font(.system(size: 24, weight: .black))
-                        .foregroundStyle(.white)
-                }
+    @ViewBuilder
+    private func studioIntroCard(description: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("厂牌介绍", systemImage: "books.vertical.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(.tint)
+
+                Spacer()
+
+                Text("中文历史档案")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.secondary.opacity(0.12), in: Capsule())
             }
-            .frame(width: 68, height: 68)
-            .background(Color.secondary.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-            )
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(cleanTitle(studioName))
-                    .font(.title3.bold())
-                    .lineLimit(2)
-
-                HStack(spacing: 8) {
-                    Label("\(totalMoviesCount) 部长片", systemImage: "film")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Text("·")
-                        .foregroundStyle(.secondary)
-
-                    Label("\(totalEpisodesCount) 个分集", systemImage: "play.rectangle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
+            Text(description)
+                .font(.subheadline)
+                .foregroundStyle(.primary.opacity(0.9))
+                .lineSpacing(5)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(14)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
     }
 
-    private var studioInitials: String {
+    private var bilingualMarqueeTitle: String {
         let clean = cleanTitle(studioName)
-        let words = clean.split(separator: " ").filter { !$0.isEmpty }
-        if words.count >= 2 {
-            return "\(words[0].prefix(1))\(words[1].prefix(1))".uppercased()
+        if let zh = nameZh, !zh.isEmpty, zh != clean {
+            return "\(clean) · \(zh)"
         }
-        return String(clean.prefix(2)).uppercased()
+        return clean
+    }
+
+    private var principalTitleWidth: CGFloat {
+        #if canImport(UIKit)
+        let screenWidth = UIScreen.main.bounds.width
+        // 预留两侧返回按钮 (~70pt) 与操作按钮 (~80pt) 空间，确保在 SE(375pt) 到 Pro Max(440pt) 均饱满且不与左右按钮挤压
+        return max(min(screenWidth - 170, 260), 190)
+        #else
+        return 220
+        #endif
     }
 
     private func cleanTitle(_ t: String) -> String {
@@ -268,6 +278,8 @@ public struct StudioDetailView: View {
 
             self.totalMoviesCount = counts.moviesCount
             self.totalEpisodesCount = counts.episodesCount
+            self.nameZh = info.nameZh
+            self.descriptionZh = info.descriptionZh
             self.logoUrl = info.logoUrl
             self.bannerUrl = info.bannerUrl
             self.movies = mList

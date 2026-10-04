@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS episodes (
 
 CREATE INDEX IF NOT EXISTS idx_episodes_movie_id ON episodes(movie_id);
 CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);
+CREATE INDEX IF NOT EXISTS idx_episodes_studio_id ON episodes(studio_id);
 
 -- 5. 爬取断点与进度跟踪表 (Checkpoint & Progress Tracking)
 CREATE TABLE IF NOT EXISTS scrape_progress (

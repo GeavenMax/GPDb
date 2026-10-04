@@ -11,7 +11,9 @@ import androidx.room.PrimaryKey
 @Entity(
     tableName = "studios",
     indices = [
-        Index(name = "idx_studios_name", value = ["name"])
+        Index(name = "idx_studios_name", value = ["name"]),
+        Index(name = "idx_studios_name_nocase", value = ["name"]),
+        Index(name = "idx_studios_site_id", value = ["site_id"])
     ]
 )
 data class StudioEntity(
@@ -34,6 +36,12 @@ data class StudioEntity(
 
     @ColumnInfo(name = "banner_url")
     val bannerUrl: String? = null,
+
+    @ColumnInfo(name = "website_url")
+    val websiteUrl: String? = null,
+
+    @ColumnInfo(name = "site_id")
+    val siteId: Long? = null,
 
     @ColumnInfo(name = "updated_at", defaultValue = "CURRENT_TIMESTAMP")
     val updatedAt: String? = null

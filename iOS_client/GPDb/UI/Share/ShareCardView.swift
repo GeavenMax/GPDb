@@ -237,7 +237,7 @@ public struct ShareCardView: View {
                     Text("GPDb · 个人离线数字影库")
                         .font(.caption2.bold())
                         .foregroundStyle(.white.opacity(0.85))
-                    Text(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .none) + " · 本地私有档案")
+                    Text("本地私有数字档案")
                         .font(.system(size: 9))
                         .foregroundStyle(.white.opacity(0.5))
                     Text("📢 官方频道: t.me/gpdbnews")
