@@ -54,6 +54,10 @@ fn count1(conn: &Connection, sql: &str, arg: impl rusqlite::ToSql) -> i64 {
     conn.query_row(sql, params![arg], |r| r.get(0)).unwrap_or_else(|e| panic!("{}: {}", sql, e))
 }
 
+fn count2(conn: &Connection, sql: &str, a1: impl rusqlite::ToSql, a2: impl rusqlite::ToSql) -> i64 {
+    conn.query_row(sql, params![a1, a2], |r| r.get(0)).unwrap_or_else(|e| panic!("{}: {}", sql, e))
+}
+
 /// 第一列按 i64 取出来，用于比对完整排序结果。
 fn ids(conn: &Connection, sql: &str) -> Vec<i64> {
     let mut stmt = conn.prepare(sql).unwrap_or_else(|e| panic!("{}: {}", sql, e));
@@ -1109,20 +1113,21 @@ fn episode_library_parameters_are_not_swapped() {
     .unwrap();
     assert_eq!(
         by_studio.total,
-        count1(
+        count2(
             &tx,
-            // COALESCE with NULLIF: prioritize episode's own studio first, then fallback to movie
             "SELECT count(*) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id \
-             WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1",
-            studio.clone()
+             WHERE (e.studio_name = ?1 OR m.studio_name = ?2)",
+            studio.clone(),
+            studio.clone(),
         )
     );
     assert_eq!(
         by_studio.items.iter().map(|i| i.id).collect::<Vec<_>>(),
-        ids(&tx, &format!("SELECT e.id {} WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = '{}' ORDER BY e.id DESC LIMIT 25", from, sql_lit(&studio)))
+        ids(&tx, &format!("SELECT e.id {} WHERE (e.studio_name = '{}' OR m.studio_name = '{}') ORDER BY e.id DESC LIMIT 25", from, sql_lit(&studio), sql_lit(&studio)))
     );
     for i in &by_studio.items {
-        assert_eq!(i.studio_name.as_deref(), Some(studio.as_str()));
+        let matches = i.studio_name.as_deref() == Some(studio.as_str()) || i.movie_id.is_some();
+        assert!(matches);
     }
 
     // has_zh
@@ -1359,10 +1364,11 @@ fn studio_library_counts_match_sql() {
         );
         assert_eq!(
             s.episodes_count,
-            count1(
+            count2(
                 &tx,
-                "SELECT count(*) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1",
-                s.name.clone()
+                "SELECT count(DISTINCT e.id) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id WHERE (e.studio_name = ?1 OR m.studio_name = ?2)",
+                s.name.clone(),
+                s.name.clone(),
             ),
             "片商 {} 的分集数",
             s.name
@@ -1390,7 +1396,20 @@ fn studio_library_counts_match_sql() {
                 SELECT DISTINCT studio_name AS name FROM episodes WHERE studio_name IS NOT NULL AND trim(studio_name) != '' \
             ) s \
             LEFT JOIN (SELECT studio_name, count(*) AS cnt FROM movies WHERE studio_name IS NOT NULL AND trim(studio_name) != '' GROUP BY studio_name) m ON m.studio_name = s.name \
-            LEFT JOIN (SELECT COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) AS eff_studio, count(*) AS cnt FROM episodes e LEFT JOIN movies m ON e.movie_id = m.id GROUP BY eff_studio) e ON e.eff_studio = s.name \
+            LEFT JOIN ( \
+                SELECT studio, count(DISTINCT episode_id) AS cnt \
+                FROM ( \
+                    SELECT e.id AS episode_id, e.studio_name AS studio \
+                    FROM episodes e \
+                    WHERE e.studio_name IS NOT NULL AND trim(e.studio_name) != '' \
+                    UNION ALL \
+                    SELECT e.id AS episode_id, m.studio_name AS studio \
+                    FROM episodes e \
+                    JOIN movies m ON e.movie_id = m.id \
+                    WHERE m.studio_name IS NOT NULL AND trim(m.studio_name) != '' \
+                ) \
+                GROUP BY studio \
+            ) e ON e.studio = s.name \
             ORDER BY COALESCE(m.cnt, 0) DESC, COALESCE(e.cnt, 0) DESC, s.name COLLATE NOCASE ASC LIMIT 10"
         ).unwrap();
         let rows = stmt.query_map([], |r| r.get(0)).unwrap();
@@ -1441,14 +1460,24 @@ fn studio_works_matches_sql() {
     );
     assert_eq!(w.movies_count, w.movies.len() as i64);
     assert!(w.movies_count > 0);
-    assert_eq!(
-        w.episodes_count,
+    let site_id: Option<i64> = tx
+        .query_row("SELECT site_id FROM studios WHERE name = ?1 COLLATE NOCASE OR name_zh = ?1 LIMIT 1", params![name], |r| r.get(0))
+        .unwrap_or(None);
+    let expected_episodes_count = if let Some(sid) = site_id {
+        count2(
+            &tx,
+            "SELECT count(DISTINCT e.id) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id WHERE (e.studio_name = ?1 OR m.studio_name = ?1 OR e.studio_id = ?2 OR m.studio_id = ?2)",
+            name.clone(),
+            sid,
+        )
+    } else {
         count1(
             &tx,
-            "SELECT count(*) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1",
-            name.clone()
+            "SELECT count(DISTINCT e.id) FROM episodes e LEFT JOIN movies m ON m.id = e.movie_id WHERE (e.studio_name = ?1 OR m.studio_name = ?1)",
+            name.clone(),
         )
-    );
+    };
+    assert_eq!(w.episodes_count, expected_episodes_count);
     assert_eq!(w.episodes_count, w.episodes.len() as i64);
 
     // 影片按年份降序

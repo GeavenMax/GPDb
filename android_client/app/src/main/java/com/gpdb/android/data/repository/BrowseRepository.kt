@@ -32,7 +32,7 @@ class BrowseRepository(private val browseDao: BrowseDao) {
         val queryStr = if (sortBy == "name") {
             "SELECT studio_name FROM movies m WHERE studio_name IS NOT NULL AND studio_name != '' $searchCondition GROUP BY studio_name ORDER BY studio_name ASC"
         } else {
-            "SELECT m.studio_name FROM movies m LEFT JOIN (SELECT IFNULL(NULLIF(e.studio_name, ''), m2.studio_name) as eff_studio, COUNT(e.id) as ep_count FROM episodes e LEFT JOIN movies m2 ON e.movie_id = m2.id GROUP BY eff_studio) e_counts ON m.studio_name = e_counts.eff_studio WHERE m.studio_name IS NOT NULL AND m.studio_name != '' $searchCondition GROUP BY m.studio_name ORDER BY (COUNT(m.id) + IFNULL(MAX(e_counts.ep_count), 0)) DESC, m.studio_name ASC"
+            "SELECT m.studio_name FROM movies m LEFT JOIN (SELECT studio, COUNT(DISTINCT episode_id) as ep_count FROM (SELECT e.id as episode_id, e.studio_name as studio FROM episodes e WHERE e.studio_name IS NOT NULL AND TRIM(e.studio_name) != '' UNION ALL SELECT e.id as episode_id, m2.studio_name as studio FROM episodes e JOIN movies m2 ON e.movie_id = m2.id WHERE m2.studio_name IS NOT NULL AND TRIM(m2.studio_name) != '') GROUP BY studio) e_counts ON m.studio_name = e_counts.studio WHERE m.studio_name IS NOT NULL AND m.studio_name != '' $searchCondition GROUP BY m.studio_name ORDER BY (COUNT(m.id) + IFNULL(MAX(e_counts.ep_count), 0)) DESC, m.studio_name ASC"
         }
         val query = SimpleSQLiteQuery(queryStr, args)
         return browseDao.getAllStudios(query)
@@ -54,7 +54,7 @@ class BrowseRepository(private val browseDao: BrowseDao) {
     }
 
     suspend fun getEpisodesByStudio(studio: String, limit: Int = 50, offset: Int = 0): List<com.gpdb.android.data.db.entities.EpisodeEntity> {
-        val query = SimpleSQLiteQuery("SELECT e.* FROM episodes e LEFT JOIN movies m ON e.movie_id = m.id WHERE IFNULL(NULLIF(e.studio_name, ''), m.studio_name) = ? ORDER BY e.release_date DESC, e.id DESC LIMIT ? OFFSET ?", arrayOf(studio, limit, offset))
+        val query = SimpleSQLiteQuery("SELECT e.* FROM episodes e LEFT JOIN movies m ON e.movie_id = m.id WHERE (e.studio_name = ? OR m.studio_name = ?) ORDER BY e.release_date DESC, e.id DESC LIMIT ? OFFSET ?", arrayOf(studio, studio, limit, offset))
         return browseDao.getEpisodesByStudio(query)
     }
 

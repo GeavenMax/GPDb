@@ -236,10 +236,18 @@ public final class BrowseRepository {
                 GROUP BY studio_name
             ),
             e_counts AS (
-                SELECT IFNULL(NULLIF(e.studio_name, ''), m.studio_name) as eff_studio, COUNT(*) as ep_cnt 
-                FROM episodes e 
-                LEFT JOIN movies m ON e.movie_id = m.id 
-                GROUP BY eff_studio
+                SELECT studio, COUNT(DISTINCT episode_id) as ep_cnt 
+                FROM (
+                    SELECT e.id as episode_id, e.studio_name as studio 
+                    FROM episodes e 
+                    WHERE e.studio_name IS NOT NULL AND TRIM(e.studio_name) != '' 
+                    UNION ALL 
+                    SELECT e.id as episode_id, m.studio_name as studio 
+                    FROM episodes e 
+                    JOIN movies m ON e.movie_id = m.id 
+                    WHERE m.studio_name IS NOT NULL AND TRIM(m.studio_name) != ''
+                ) 
+                GROUP BY studio
             )
             SELECT s.name, 
                    COALESCE(m.m_cnt, 0) + COALESCE(e.ep_cnt, 0) as total_count,
@@ -250,10 +258,10 @@ public final class BrowseRepository {
             FROM (
                 SELECT studio_name as name FROM m_counts
                 UNION
-                SELECT eff_studio as name FROM e_counts WHERE eff_studio IS NOT NULL AND TRIM(eff_studio) != ''
+                SELECT studio as name FROM e_counts WHERE studio IS NOT NULL AND TRIM(studio) != ''
             ) s
             LEFT JOIN m_counts m ON s.name = m.studio_name
-            LEFT JOIN e_counts e ON s.name = e.eff_studio
+            LEFT JOIN e_counts e ON s.name = e.studio
             LEFT JOIN studios st ON st.name = s.name
             \(whereClause)
             ORDER BY total_count DESC, s.name ASC
@@ -308,9 +316,9 @@ public final class BrowseRepository {
 
         return try await db.read { db in
             let movieSql = "SELECT COUNT(*) FROM movies WHERE studio_name = ?"
-            let epSql = "SELECT COUNT(*) FROM episodes e LEFT JOIN movies m ON e.movie_id = m.id WHERE IFNULL(NULLIF(e.studio_name, ''), m.studio_name) = ?"
+            let epSql = "SELECT COUNT(*) FROM episodes e LEFT JOIN movies m ON e.movie_id = m.id WHERE (e.studio_name = ? OR m.studio_name = ?)"
             let mCount = try Int.fetchOne(db, sql: movieSql, arguments: [studio]) ?? 0
-            let eCount = try Int.fetchOne(db, sql: epSql, arguments: [studio]) ?? 0
+            let eCount = try Int.fetchOne(db, sql: epSql, arguments: [studio, studio]) ?? 0
             return (mCount, eCount)
         }
     }
@@ -358,8 +366,8 @@ public final class BrowseRepository {
             }
 
             if let s = studio, !s.isEmpty {
-                conditions.append("IFNULL(NULLIF(e.studio_name, ''), m.studio_name) = ?")
-                arguments.append(s)
+                conditions.append("(e.studio_name = ? OR m.studio_name = ?)")
+                arguments.append(contentsOf: [s, s])
             }
 
             let whereClause = conditions.isEmpty ? "" : "WHERE " + conditions.joined(separator: " AND ")

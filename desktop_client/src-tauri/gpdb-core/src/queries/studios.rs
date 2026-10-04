@@ -106,11 +106,19 @@ pub fn get_studio_library(
              GROUP BY studio_name \
          ) m ON m.studio_name = s.name \
          LEFT JOIN ( \
-             SELECT COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) AS eff_studio, count(*) AS cnt \
-             FROM episodes e \
-             LEFT JOIN movies m ON e.movie_id = m.id \
-             GROUP BY eff_studio \
-         ) e ON e.eff_studio = s.name \
+             SELECT studio, count(DISTINCT episode_id) AS cnt \
+             FROM ( \
+                 SELECT e.id AS episode_id, e.studio_name AS studio \
+                 FROM episodes e \
+                 WHERE e.studio_name IS NOT NULL AND trim(e.studio_name) != '' \
+                 UNION ALL \
+                 SELECT e.id AS episode_id, m.studio_name AS studio \
+                 FROM episodes e \
+                 JOIN movies m ON e.movie_id = m.id \
+                 WHERE m.studio_name IS NOT NULL AND trim(m.studio_name) != '' \
+             ) \
+             GROUP BY studio \
+         ) e ON e.studio = s.name \
          {} ORDER BY {} LIMIT ? OFFSET ?",
         where_clause, sort_clause
     );
@@ -188,7 +196,7 @@ pub fn get_studio_works(conn: &Connection, studio_name: String) -> Result<Studio
     let (e_sql, e_params): (String, Vec<Box<dyn rusqlite::ToSql>>) = if let Some(sid) = site_id {
         (
             format!(
-                "{} WHERE (COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1 OR e.studio_id = ?2) \
+                "{} WHERE (e.studio_name = ?1 OR m.studio_name = ?1 OR e.studio_id = ?2 OR m.studio_id = ?2) \
                  ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC, e.id DESC",
                 EPISODE_SQL
             ),
@@ -197,7 +205,7 @@ pub fn get_studio_works(conn: &Connection, studio_name: String) -> Result<Studio
     } else {
         (
             format!(
-                "{} WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1 \
+                "{} WHERE (e.studio_name = ?1 OR m.studio_name = ?1) \
                  ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC, e.id DESC",
                 EPISODE_SQL
             ),

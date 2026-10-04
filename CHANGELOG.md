@@ -6,6 +6,13 @@
 ## [v2.18.0] - 2026-10-05
 
 ### Fixed
+- **片商档案页长片分集归属断层与全库 350 家厂牌分集数为 0 问题彻底修复 (`gpdb-core/src/queries/studios.rs`, `gpdb-core/src/queries/episodes.rs`, `db_manager.py`, `BrowseRepository.kt`, `BrowseRepository.swift`)**：
+  - **根本原因深度排查与定位**：查明为何 Masqulin 的长片《The Cops Want In》内有 4 个分集，但在 Masqulin 片商主页分集片段数显示为 0。在 GEVI 数据库体系中，Masqulin 属于母公司网络 The Bro Network 的子厂牌。该片长片物理记录了 `m.studio_name = 'Masqulin'`，但长片内的分集在入库时被标记为母网/线上点播品牌 `e.studio_name = 'The Bro Network'`。此前三端查询引擎采用 `COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?` 单向优先策略，导致分集自身的母网厂牌名将长片所属的子厂牌名完全遮蔽，从而在片商主页统计与检索时子厂牌名下分集全被归零；
+  - **全库影响范围全面量化**：经 SQL 脚本深度扫描，全库共有 **350 组**母子厂牌/长片与分集不一致的关联关系，共波及 **6,757 部**分集。包括 Driveshaft（574 部分集沦为 0）、Bareback Network（490 部分集沦为 0）、Man Royale（432 部分集沦为 0）、8teenBoy（408 部分集沦为 0）、Sarava Productions（313 部分集沦为 0）、Staxus Films（307 部分集沦为 0）、Buckshot Productions（223 部分集沦为 0）、Masqulin（144 部分集沦为 0）等知名厂牌，其长片收录分集此前均被母网“吸干”，自身分集数皆显示为 0；
+  - **三端双向归属聚合算法重构 (Bidirectional Studio Resolution)**：
+    - **作品集检索升级**：将片商分集匹配条件从单向优先重构为双向联合匹配 `(e.studio_name = ? OR m.studio_name = ?)`，片商专属分集与长片收录分集均能无缝呈现，互不挤占；
+    - **片商库统计聚合重构**：将片商库分集统计从单表 GROUP BY 改为 `UNION ALL` + `COUNT(DISTINCT episode_id)` 去重聚合，既保留母网（如 The Bro Network 504 部、GayRoom 1,693 部、Helix Studios 3,558 部）的全局视野，又让子厂牌（Masqulin 144 部、Driveshaft 574 部、8teenBoy 408 部）名下的分集数完美自愈回正；
+    - **全端同步覆盖**：同时完成桌面端 Rust 核心 (`gpdb-core`)、Python 后端 (`db_manager.py`)、Android 端 (`BrowseRepository.kt`) 与 iOS 端 (`BrowseRepository.swift`) 的逻辑重构，并通过 gpdb-core 35 项 parity 测试与全量单元测试。
 - **全库分集索引断层与网络片商历史分集不可见问题彻底修复 (`db_manager.py`, `scraper_v2.py`, `schema.sql`, `gpdb-core/src/queries/studios.rs`, `EpisodeEntity.kt`, `GpdbDatabase.kt`)**：
   - **根本原因深度排查与定位**：查明为何 Say Uncle 仅能检索到最近一个月的 13 部分集、Freshmen.net 仅有 6 部分集。GEVI 远端与本地数据库实际上完整抓取了分集数据（Say Uncle 全量 3,425 部，Freshmen.net 全量 1,420 部），但在早期 `--sweep-companies` 探针抓取阶段，脚本以 `title=None` 入库，导致全库多达 15,556 部独立分集的 `studio_name` 物理字段为 `NULL`；而在各端（macOS/Android/iOS）作品集检索中均使用 `WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?` 严格字符串匹配，导致历史 10+ 年的巨量独立分集完全脱节隐形；
   - **数据库数据全量自愈与厂牌归档**：

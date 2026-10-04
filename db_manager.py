@@ -1353,10 +1353,10 @@ class DatabaseManager:
                    m.title_zh
             FROM episodes e
             LEFT JOIN movies m ON e.movie_id = m.id
-            WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?
+            WHERE (e.studio_name = ? OR m.studio_name = ?)
             ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC,
                      e.id DESC
-        """, (studio_name,))
+        """, (studio_name, studio_name))
         eps = []
         for r in cur.fetchall():
             eps.append({
@@ -1423,11 +1423,19 @@ class DatabaseManager:
                 GROUP BY studio_name
             ) m ON m.studio_name = s.name
             LEFT JOIN (
-                SELECT COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) AS eff_studio, count(*) AS cnt
-                FROM episodes e
-                LEFT JOIN movies m ON e.movie_id = m.id
-                GROUP BY eff_studio
-            ) e ON e.eff_studio = s.name
+                SELECT studio, count(DISTINCT episode_id) AS cnt
+                FROM (
+                    SELECT e.id AS episode_id, e.studio_name AS studio
+                    FROM episodes e
+                    WHERE e.studio_name IS NOT NULL AND trim(e.studio_name) != ''
+                    UNION ALL
+                    SELECT e.id AS episode_id, m.studio_name AS studio
+                    FROM episodes e
+                    JOIN movies m ON e.movie_id = m.id
+                    WHERE m.studio_name IS NOT NULL AND trim(m.studio_name) != ''
+                )
+                GROUP BY studio
+            ) e ON e.studio = s.name
             {where}
             ORDER BY {order}
             LIMIT ? OFFSET ?
