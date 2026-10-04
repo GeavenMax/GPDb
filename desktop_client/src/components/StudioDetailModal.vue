@@ -171,7 +171,7 @@ function onModalLogoLoad(e: Event) {
 }
 
 const logoBadgeStyle = computed(() => {
-  if (logoSampledResult.value?.bgColor) {
+  if (logoSampledResult.value?.bgColor || logoSampledResult.value?.borderColor) {
     return logoSampledResult.value.containerStyle;
   }
   return {};
@@ -335,7 +335,14 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
           <div class="absolute inset-0 bg-gradient-to-r from-sunken/95 via-sunken/80 to-sunken/40"></div>
           <div class="absolute inset-0 bg-gradient-to-t from-sunken/90 via-transparent to-sunken/20"></div>
         </div>
-        <div v-else class="absolute inset-0 pointer-events-none select-none bg-gradient-to-br from-accent-fill/10 via-surface-2/40 to-sunken"></div>
+        <div
+          v-else
+          class="absolute inset-0 pointer-events-none select-none transition-all duration-500"
+          :style="logoSampledResult?.accentColor ? {
+            background: `radial-gradient(circle at 18% 50%, ${logoSampledResult.accentColor.replace('rgb', 'rgba').replace(')', ', 0.16)')} 0%, transparent 70%), linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent)`
+          } : undefined"
+          :class="logoSampledResult?.accentColor ? '' : 'bg-gradient-to-br from-accent-fill/10 via-surface-2/40 to-sunken'"
+        ></div>
 
         <!-- 2. Foreground Content: Floating directly on top of the banner background -->
         <div class="relative z-10 w-full flex flex-col md:flex-row md:items-center justify-between gap-6 pr-8">

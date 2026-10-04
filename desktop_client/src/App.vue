@@ -239,13 +239,14 @@ function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
   const img = e.target as HTMLImageElement;
   if (!img) return;
   const result = sampleImageEdgeColor(img);
-  if (result.bgColor) {
+  if (result.bgColor || result.borderColor) {
     studioLogoColorMap.set(logoUrl, result);
-    // Directly apply background and border styling to the shelf element without triggering Vue reactive re-renders
+    // Directly apply background, border, and glow styling to the shelf element without triggering Vue reactive re-renders
     const shelf = img.parentElement as HTMLElement | null;
     if (shelf) {
-      shelf.style.backgroundColor = result.bgColor;
-      shelf.style.borderColor = result.isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)';
+      if (result.bgColor) shelf.style.backgroundColor = result.bgColor;
+      if (result.borderColor) shelf.style.borderColor = result.borderColor;
+      if (result.containerStyle.boxShadow) shelf.style.boxShadow = result.containerStyle.boxShadow;
     }
   }
 }
@@ -259,11 +260,12 @@ function onStudioGridLogoError(logoUrl?: string | null) {
 function getStudioShelfStyle(logoUrl?: string | null): Record<string, string> {
   if (!logoUrl) return {};
   const sampled = studioLogoColorMap.get(logoUrl);
-  if (sampled?.bgColor) {
-    return {
-      backgroundColor: sampled.bgColor,
-      borderColor: sampled.isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)',
-    };
+  if (sampled) {
+    const style: Record<string, string> = {};
+    if (sampled.bgColor) style.backgroundColor = sampled.bgColor;
+    if (sampled.borderColor) style.borderColor = sampled.borderColor;
+    if (sampled.containerStyle?.boxShadow) style.boxShadow = sampled.containerStyle.boxShadow;
+    return style;
   }
   return {};
 }
