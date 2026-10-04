@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import {
   Sparkles, Calendar, Users, Film, Clapperboard, Building2,
-  Star, RefreshCw, ChevronRight, ChevronLeft, ArrowRight, Layers
+  Star, RefreshCw, ChevronRight, ChevronLeft, Layers
 } from '@lucide/vue';
 import { api } from '../api';
 import { getImageUrl } from '../utils/image';
@@ -118,7 +118,7 @@ const isSeriesRefreshing = ref(false);
 async function loadSeriesList() {
   isSeriesRefreshing.value = true;
   try {
-    const res = await api.getSeriesCollections(undefined, undefined, 'random', 1, 6);
+    const res = await api.getSeriesCollections(undefined, undefined, 'random', 1, 8);
     seriesList.value = res.items || [];
   } catch (err) {
     console.error('Failed to load series collections for home', err);
@@ -175,12 +175,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="space-y-10 max-w-6xl mx-auto pb-20 animate-fade-in text-fg">
-    <!-- 1. Hero Spotlight Banner (镇馆之选 / 焦点自动轮播) -->
+    <!-- 1. Hero Spotlight Banner (焦点巨幕海报轮播) -->
     <section
       v-if="currentSpotlight"
       @mouseenter="pauseAutoplay"
       @mouseleave="resumeAutoplay"
-      class="relative rounded-3xl overflow-hidden border border-line/80 shadow-2xl bg-surface group"
+      class="relative rounded-2xl overflow-hidden border border-line/80 shadow-xl bg-surface group"
     >
       <!-- Immersive Backdrop Blur -->
       <div
@@ -191,11 +191,11 @@ onBeforeUnmount(() => {
       <div class="absolute inset-0 bg-gradient-to-r from-bg via-bg/60 to-transparent pointer-events-none"></div>
 
       <!-- Main Spotlight Content -->
-      <div class="relative z-10 p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 md:gap-8">
+      <div class="relative z-10 p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
         <!-- Cover Art with 3D Float Effect -->
         <div
           @click="emit('open-movie', currentSpotlight.id)"
-          class="relative w-44 md:w-56 aspect-[2/3] shrink-0 rounded-2xl overflow-hidden shadow-2xl border border-white/10 cursor-pointer transition-transform duration-300 hover:scale-[1.03] group/poster"
+          class="relative w-28 sm:w-32 md:w-36 aspect-[2/3] shrink-0 rounded-xl overflow-hidden shadow-xl border border-white/10 cursor-pointer transition-transform duration-300 hover:scale-[1.03] group/poster"
         >
           <img
             :src="getImageUrl(currentSpotlight.cover_full)"
@@ -204,20 +204,16 @@ onBeforeUnmount(() => {
             loading="eager"
           />
           <div class="absolute inset-0 bg-black/20 opacity-0 group-hover/poster:opacity-100 transition flex items-center justify-center">
-            <span class="px-3 py-1.5 rounded-xl bg-black/70 backdrop-blur-md text-xs font-bold text-white border border-white/20">
+            <span class="px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md text-[11px] font-bold text-white border border-white/20">
               {{ t('home.viewDetail') }}
             </span>
           </div>
         </div>
 
         <!-- Film Metadata & Synopsis -->
-        <div class="flex-1 space-y-3.5 text-center md:text-left">
+        <div class="flex-1 space-y-2.5 text-center sm:text-left">
           <!-- Top Badges -->
-          <div class="flex items-center justify-center md:justify-start gap-2 flex-wrap">
-            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-accent-fill/15 text-accent border border-accent/20">
-              <Sparkles class="w-3.5 h-3.5" />
-              <span>{{ t('home.spotlight') }}</span>
-            </span>
+          <div class="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
             <span v-if="currentSpotlight.release_year" class="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-surface-2 text-fg-3 border border-line">
               {{ currentSpotlight.release_year }}
             </span>
@@ -234,42 +230,22 @@ onBeforeUnmount(() => {
           </div>
 
           <!-- Titles -->
-          <div class="space-y-1">
+          <div class="space-y-0.5">
             <h2
               @click="emit('open-movie', currentSpotlight.id)"
-              class="text-2xl md:text-3xl font-black text-fg tracking-tight cursor-pointer hover:text-accent transition"
+              class="text-lg sm:text-xl md:text-2xl font-black text-fg tracking-tight cursor-pointer hover:text-accent transition"
             >
               {{ currentSpotlight.title_zh || currentSpotlight.title }}
             </h2>
-            <p v-if="currentSpotlight.title_zh && currentSpotlight.title !== currentSpotlight.title_zh" class="text-sm text-fg-4 font-serif italic">
+            <p v-if="currentSpotlight.title_zh && currentSpotlight.title !== currentSpotlight.title_zh" class="text-xs sm:text-sm text-fg-4 font-serif italic">
               {{ currentSpotlight.title }}
             </p>
           </div>
 
           <!-- Synopsis Excerpt -->
-          <p class="text-xs md:text-sm text-fg-3 leading-relaxed line-clamp-3 md:line-clamp-4 max-w-2xl">
+          <p class="text-xs sm:text-sm text-fg-3 leading-relaxed line-clamp-2 md:line-clamp-3 max-w-2xl">
             {{ (currentLocale.startsWith('zh') ? currentSpotlight.description_zh : null) || currentSpotlight.description || t('movie.noSynopsis') }}
           </p>
-
-          <!-- Buttons & Switcher -->
-          <div class="flex items-center justify-center md:justify-start gap-3 pt-2">
-            <button
-              @click="emit('open-movie', currentSpotlight.id)"
-              class="px-5 py-2.5 rounded-xl bg-accent-fill hover:bg-accent-fill/90 text-on-fill font-bold text-xs flex items-center gap-2 shadow-lg shadow-accent/20 transition cursor-pointer"
-            >
-              <span>{{ t('home.exploreNow') }}</span>
-              <ArrowRight class="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              @click="handleManualNext"
-              class="px-4 py-2.5 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 border border-line text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-              :title="t('home.switchOne')"
-            >
-              <RefreshCw class="w-3.5 h-3.5" />
-              <span>{{ t('home.switchOne') }}</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -356,7 +332,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <!-- 4. 今日星光 / 演员焦点 (Performer Spotlight) -->
+    <!-- 4. 今日星光 (Today's Stars) -->
     <section v-if="starSpotlightWithAvatars.length > 0" class="space-y-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -367,7 +343,6 @@ onBeforeUnmount(() => {
             <h3 class="text-base font-extrabold text-fg tracking-tight">
               {{ t('home.todayStars') }}
             </h3>
-            <p class="text-xs text-fg-4 mt-0.5">{{ t('home.todayStarsDesc') }}</p>
           </div>
         </div>
 
@@ -380,16 +355,16 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <!-- Performers Avatars Grid: enlarged avatars, 2-line name -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <!-- Performers Avatars Grid: compact avatars -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
         <div
           v-for="perf in starSpotlightWithAvatars"
           :key="perf.id"
           @click="emit('open-performer', perf.id)"
-          class="group p-4 rounded-2xl bg-surface border border-line hover:border-accent/40 text-center space-y-3 transition duration-200 hover:-translate-y-1 shadow-sm hover:shadow-md cursor-pointer flex flex-col items-center justify-between"
+          class="group p-3 rounded-2xl bg-surface border border-line hover:border-accent/40 text-center space-y-2 transition duration-200 hover:-translate-y-1 shadow-sm hover:shadow-md cursor-pointer flex flex-col items-center justify-between"
         >
           <!-- Performer Avatar -->
-          <div class="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto rounded-full overflow-hidden border-2 border-line group-hover:border-accent transition duration-200 shadow-md bg-surface-2 shrink-0">
+          <div class="relative w-16 h-16 sm:w-18 sm:h-18 mx-auto rounded-full overflow-hidden border-2 border-line group-hover:border-accent transition duration-200 shadow-sm bg-surface-2 shrink-0">
             <img
               :src="getImageUrl(perf.image_url)"
               :alt="perf.name"
@@ -399,14 +374,14 @@ onBeforeUnmount(() => {
             />
           </div>
 
-          <div class="space-y-1 w-full">
+          <div class="space-y-0.5 w-full">
             <h4
-              class="text-sm font-bold text-fg line-clamp-2 min-h-[2.5rem] leading-snug group-hover:text-accent transition px-1"
+              class="text-xs sm:text-sm font-bold text-fg line-clamp-2 min-h-[2.25rem] leading-snug group-hover:text-accent transition px-1"
               :title="perf.name"
             >
               {{ perf.name }}
             </h4>
-            <p class="text-xs text-fg-4 font-mono font-medium">
+            <p class="text-[11px] text-fg-4 font-mono font-medium">
               {{ perf.works_count }} {{ t('common.works') }}
             </p>
           </div>
@@ -450,12 +425,12 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
         <div
           v-for="s in seriesList"
           :key="s.id"
           @click="emit('open-series', s.root_title, s.studio_name)"
-          class="group rounded-2xl bg-surface border border-line hover:border-accent/40 p-2.5 space-y-2.5 transition duration-200 hover:-translate-y-1 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between"
+          class="group rounded-2xl bg-surface border border-line hover:border-accent/40 p-3 space-y-3 transition duration-200 hover:-translate-y-1 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between"
         >
           <div class="aspect-[2/3] w-full rounded-xl overflow-hidden bg-surface-2 relative border border-line/40">
             <SeriesCollageCover
@@ -464,21 +439,21 @@ onBeforeUnmount(() => {
               aspect-ratio="h-full w-full"
               class="w-full h-full group-hover:scale-105 transition-transform duration-300"
             />
-            <div class="absolute bottom-2 left-2 px-2 py-0.5 rounded-lg bg-black/75 backdrop-blur-md text-[10px] font-bold text-accent border border-accent/30 font-mono">
+            <div class="absolute bottom-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md text-xs font-bold text-accent border border-accent/30 font-mono">
               {{ s.movie_count }} {{ t('common.works') }}
             </div>
           </div>
 
           <div class="space-y-1 px-1">
             <h4
-              class="text-xs font-bold text-fg line-clamp-1 group-hover:text-accent transition"
+              class="text-sm font-bold text-fg line-clamp-1 group-hover:text-accent transition"
               :title="s.root_title"
             >
               {{ s.root_title }}
             </h4>
-            <div class="flex items-center justify-between text-[11px] text-fg-4">
-              <span class="truncate max-w-[90px]">{{ s.studio_name || t('home.featuredStudio') }}</span>
-              <span v-if="s.year_start && s.year_end" class="font-mono text-[10px]">
+            <div class="flex items-center justify-between text-xs text-fg-4">
+              <span class="truncate max-w-[120px]">{{ s.studio_name || t('home.featuredStudio') }}</span>
+              <span v-if="s.year_start && s.year_end" class="font-mono text-[11px]">
                 {{ s.year_start === s.year_end ? s.year_start : `${s.year_start}-${s.year_end}` }}
               </span>
             </div>
@@ -487,7 +462,7 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <!-- 4.6. 随心探索 · 盲盒发现 (Lucky Discovery) -->
+    <!-- 4.6. 随机抽选 (Lucky Discovery) -->
     <section v-if="luckyMovies.length > 0" class="space-y-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -498,7 +473,6 @@ onBeforeUnmount(() => {
             <h3 class="text-base font-extrabold text-fg tracking-tight">
               {{ t('home.luckyDiscovery') }}
             </h3>
-            <p class="text-xs text-fg-4 mt-0.5">{{ t('home.luckyDiscoveryDesc') }}</p>
           </div>
         </div>
 
