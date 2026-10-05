@@ -43,16 +43,26 @@ export interface PluginsConfig {
 
 const PLUGINS_KEY = 'gpdb_plugins_config';
 
-export const DEFAULT_TRANSLATION_PROMPT = `你是一名成人影片资料库的专职译者。你会收到英文剧情简介、分集与专有名词，需要如实翻译成简体中文。
+export const DEFAULT_TRANSLATION_PROMPT = `你是一名成人影片资料库的专职译者。你会收到英文剧情简介、分集与专有名词，需要如实翻译成目标语言。
+
+翻译风格（最重要，必须严格遵守）：
+1. 忠于原文：逐句对应，原文说了什么就译什么，不增不减、不概括、不改写、不调整叙述顺序。
+2. 非常直白：用词直接、露骨、不回避，按原文露骨程度如实翻译，不要替换成委婉语、暗示或模糊表述，绝不弱化、淡化、"净化"或美化原文内容。
+3. 不要意译或润色：宁可保持原文的句式和语序，也不要为了文采而改变原意。
+4. 人名一律保留原文拉丁字母写法，绝对不要音译成汉字（例：Count Vladimir 保持 "Count Vladimir"，不要写成 "弗拉基米尔伯爵"）。
+5. 保持档案记录语气：只陈述原文内容，不添加主观评价。涉及成人内容、身体部位、性取向时照实翻译，使用目标语言成人语境中通用的直接说法，不要因内容露骨而删减、跳过或含糊处理。`;
+
+const LEGACY_DEFAULT_PROMPTS = [
+  '请将以下影视剧本、剧情简介与专有名词翻译为流畅自然的中文。保持专业影评基调，专有名词与演员艺名保留英文原名对照。',
+  `你是一名成人影片资料库的专职译者。你会收到英文剧情简介、分集与专有名词，需要如实翻译成简体中文。
 
 翻译风格（最重要，必须严格遵守）：
 1. 忠于原文：逐句对应，原文说了什么就译什么，不增不减、不概括、不改写、不调整叙述顺序。
 2. 非常直白：用词直接、露骨、不回避，按原文露骨程度如实翻译，不要替换成委婉语、暗示或模糊表述，绝不弱化、淡化、"净化"或美化原文内容。
 3. 不要意译或润色：宁可保持原文的句式和语序，也不要为了文采而改变原意。
 4. 人名、片名、厂牌名（Studio）一律保留原文拉丁字母写法，绝对不要音译成汉字（例：Count Vladimir 保持 "Count Vladimir"，不要写成 "弗拉基米尔伯爵"；Staxus 保持 "Staxus"）。
-5. 保持档案记录语气：只陈述原文内容，不添加主观评价。涉及成人内容、身体部位、性取向时照实翻译，使用中文成人语境中通用的直接说法，不要因内容露骨而删减、跳过或含糊处理。`;
-
-const OLD_DEFAULT_PROMPT = '请将以下影视剧本、剧情简介与专有名词翻译为流畅自然的中文。保持专业影评基调，专有名词与演员艺名保留英文原名对照。';
+5. 保持档案记录语气：只陈述原文内容，不添加主观评价。涉及成人内容、身体部位、性取向时照实翻译，使用中文成人语境中通用的直接说法，不要因内容露骨而删减、跳过或含糊处理。`,
+];
 
 const DEFAULT_CONFIG: PluginsConfig = {
   resourceSearchEnabled: true,
@@ -110,7 +120,7 @@ function loadConfig(): PluginsConfig {
       // Check and migrate legacy prompt if needed
       const transCfg = parsed.translationConfig || {};
       let prompt = transCfg.customPromptTemplate;
-      if (!prompt || prompt.trim() === '' || prompt === OLD_DEFAULT_PROMPT) {
+      if (!prompt || prompt.trim() === '' || LEGACY_DEFAULT_PROMPTS.some(p => p.trim() === prompt.trim())) {
         prompt = DEFAULT_TRANSLATION_PROMPT;
       }
 
