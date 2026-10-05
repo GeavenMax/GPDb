@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
+    "echarts": "^6.1.0",
     "vue": "^3.5.42"
   },
   "devDependencies": {

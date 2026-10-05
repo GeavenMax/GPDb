@@ -4239,7 +4239,10 @@ onUnmounted(() => {
 
         <!-- 7. Local Analytics Tab -->
         <div v-else-if="currentTab === 'analytics'" class="space-y-6">
-          <AnalyticsView />
+          <AnalyticsView
+            @change-tab="(tab) => currentTab = tab as any"
+            @select-studio="(name) => openStudioDetail({ name })"
+          />
         </div>
 
         <div v-else-if="currentTab === 'plugins'" class="space-y-6">

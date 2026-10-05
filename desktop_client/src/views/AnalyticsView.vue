@@ -5,17 +5,23 @@ import {
   deepInsights, loadDeepInsights, exportUserDataBundle, isInsightsLoading
 } from '../services/userAnalytics';
 import { t, currentLocale } from '../i18n';
+import IndustryPanoramaView from './IndustryPanoramaView.vue';
+import StudioGenealogyView from './StudioGenealogyView.vue';
 import {
   Clock, Film, Users, Layers, Search, Bookmark,
   Star, Flame, Moon, Trash2, AlertTriangle,
   Tag, Languages,
   BarChart3, Activity, Heart, ShieldCheck, Download, PieChart,
-  Building2, Calendar
+  Building2, Calendar, Compass, Network
 } from '@lucide/vue';
 
 const emit = defineEmits<{
   (e: 'change-tab', tab: string): void;
+  (e: 'select-studio', name: string): void;
 }>();
+
+type AnalyticsScope = 'industry' | 'genealogy' | 'user';
+const currentScope = ref<AnalyticsScope>('industry');
 
 type AnalyticsSubTab = 'overview' | 'footprint' | 'interaction' | 'insights';
 const activeSubTab = ref<AnalyticsSubTab>('overview');
@@ -63,20 +69,51 @@ function formatHistoryTime(ts: number): string {
 </script>
 
 <template>
-  <div class="space-y-8 max-w-5xl mx-auto pb-16 animate-fade-in text-fg">
-    <!-- Header -->
-    <div class="flex items-center justify-between border-b border-line pb-6 flex-wrap gap-4">
-      <div>
-        <h1 class="text-2xl md:text-3xl font-extrabold text-fg tracking-tight flex items-center gap-3">
-          <Activity class="w-7 h-7 text-accent" />
-          <span>{{ t('analytics.title') }}</span>
-        </h1>
-        <p class="text-xs text-fg-4 mt-1">
-          {{ t('analytics.subtitle') }}
-        </p>
+  <div class="space-y-6 max-w-7xl mx-auto pb-16 animate-fade-in text-fg">
+    <!-- Top-level Scope Switcher -->
+    <div class="flex items-center justify-between border-b border-line pb-4 flex-wrap gap-4">
+      <div class="flex items-center p-1 rounded-2xl bg-surface-2 border border-line shadow-xs">
+        <button
+          @click="currentScope = 'industry'"
+          :class="[
+            'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer',
+            currentScope === 'industry'
+              ? 'bg-accent-fill text-on-fill shadow-sm font-extrabold'
+              : 'text-fg-4 hover:text-fg'
+          ]"
+        >
+          <Compass class="w-4 h-4" />
+          <span>🏛️ 行业全景编年史</span>
+        </button>
+
+        <button
+          @click="currentScope = 'genealogy'"
+          :class="[
+            'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer',
+            currentScope === 'genealogy'
+              ? 'bg-accent-fill text-on-fill shadow-sm font-extrabold'
+              : 'text-fg-4 hover:text-fg'
+          ]"
+        >
+          <Network class="w-4 h-4" />
+          <span>🕸️ 厂牌谱系与归属 Wiki</span>
+        </button>
+
+        <button
+          @click="currentScope = 'user'"
+          :class="[
+            'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer',
+            currentScope === 'user'
+              ? 'bg-accent-fill text-on-fill shadow-sm font-extrabold'
+              : 'text-fg-4 hover:text-fg'
+          ]"
+        >
+          <Activity class="w-4 h-4" />
+          <span>👤 个人足迹与偏好</span>
+        </button>
       </div>
 
-      <div class="flex items-center gap-2.5">
+      <div v-if="currentScope === 'user'" class="flex items-center gap-2.5">
         <button
           @click="exportUserDataBundle"
           class="px-3.5 py-1.5 rounded-xl border border-accent/40 bg-accent-fill/10 hover:bg-accent-fill/20 text-accent-soft text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
@@ -96,23 +133,38 @@ function formatHistoryTime(ts: number): string {
       </div>
     </div>
 
-    <!-- Subcategory Capsule Switcher -->
-    <div class="flex items-center gap-2 flex-wrap">
-      <button
-        v-for="tab in availableTabs"
-        :key="tab.id"
-        @click="activeSubTab = (tab.id as AnalyticsSubTab)"
-        :class="[
-          'px-4 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-2 cursor-pointer shadow-xs',
-          activeSubTab === tab.id
-            ? 'bg-accent-fill text-on-fill border-accent shadow-sm'
-            : 'bg-surface-2/70 text-fg-3 border-line hover:text-fg hover:bg-surface-2'
-        ]"
-      >
-        <component :is="tab.icon" class="w-3.5 h-3.5" />
-        <span>{{ tab.label }}</span>
-      </button>
+    <!-- Mode 1: 行业全景编年史 -->
+    <div v-if="currentScope === 'industry'">
+      <IndustryPanoramaView
+        @change-tab="emit('change-tab', $event)"
+        @select-studio="emit('select-studio', $event)"
+      />
     </div>
+
+    <!-- Mode 2: 厂牌谱系与归属 Wiki -->
+    <div v-else-if="currentScope === 'genealogy'">
+      <StudioGenealogyView @select-studio="emit('select-studio', $event)" />
+    </div>
+
+    <!-- Mode 3: 个人足迹与偏好 -->
+    <div v-else class="space-y-8 max-w-5xl mx-auto">
+      <!-- Subcategory Capsule Switcher -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button
+          v-for="tab in availableTabs"
+          :key="tab.id"
+          @click="activeSubTab = (tab.id as AnalyticsSubTab)"
+          :class="[
+            'px-4 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-2 cursor-pointer shadow-xs',
+            activeSubTab === tab.id
+              ? 'bg-accent-fill text-on-fill border-accent shadow-sm'
+              : 'bg-surface-2/70 text-fg-3 border-line hover:text-fg hover:bg-surface-2'
+          ]"
+        >
+          <component :is="tab.icon" class="w-3.5 h-3.5" />
+          <span>{{ tab.label }}</span>
+        </button>
+      </div>
 
     <!-- 1. Overview Tab -->
     <div v-if="activeSubTab === 'overview'" class="space-y-6">
@@ -594,8 +646,7 @@ function formatHistoryTime(ts: number): string {
         </div>
       </div>
     </div>
-
-
+  </div>
 
     <!-- Confirm Modal -->
     <div
