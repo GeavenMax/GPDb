@@ -51,11 +51,17 @@ def seconds_until_utc_midnight() -> float:
     return max(diff + 60.0, 300.0)
 
 
+EXIT_ON_QUOTA = False
+
+
 def run_cmd(cmd):
     print(f"\n>>> Running: {' '.join(cmd)}")
     while True:
         res = subprocess.run(cmd, cwd=str(BASE_DIR))
         if res.returncode == 42:
+            if EXIT_ON_QUOTA:
+                print(f"\n[🛑 Quota Exhausted] 检测到 API 配额耗尽 (Exit code 42)，按照 --exit-on-quota 策略直接退出。")
+                sys.exit(42)
             wait_sec = seconds_until_utc_midnight()
             wake_dt = datetime.datetime.now() + datetime.timedelta(seconds=wait_sec)
             wake_str = wake_dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -97,10 +103,14 @@ def get_all_studios() -> list[str]:
 
 
 def main():
+    global EXIT_ON_QUOTA
+    if "--exit-on-quota" in sys.argv:
+        EXIT_ON_QUOTA = True
+
     studios = get_all_studios()
     print("=" * 75)
     print("🚀 启动 GPDb 全库多厂牌多阶段全自动翻译流水线")
-    print(f"   引擎: Google Gemini Flash-Lite (4 Keys 轮换) + DeepSeek V3 (露骨风控兜底)")
+    print(f"   引擎: Google Gemini Flash-Lite (3 Keys 轮换)")
     print(f"   覆盖片商总数: {len(studios)} 个 (优先队列 {len(PRIORITY_STUDIOS)} 个 + 全库片商)")
     print("=" * 75)
 
