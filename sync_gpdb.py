@@ -137,12 +137,22 @@ def parse_episode_details(ep_id: int) -> dict | None:
         if pname and (pid, pname) not in performers:
             performers.append((pid, pname))
 
+    # Description from wideCols-1 container
+    desc_m = re.search(r"class=[\'\"][^\'\"]*wideCols-1[^\'\"]*[\'\"][^>]*>(.*?)(?:</div>\s*</div>|<!--)", html_text, re.DOTALL)
+    if not desc_m:
+        desc_m = re.search(r"class=[\'\"][^\'\"]*text-justify[^\'\"]*[\'\"][^>]*>(.*?)</div>", html_text, re.DOTALL)
+    description = ""
+    if desc_m:
+        raw_desc = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", desc_m.group(1), flags=re.DOTALL)
+        clean_desc = re.sub(r"<[^>]+>", " ", raw_desc)
+        description = html.unescape(re.sub(r"\s+", " ", clean_desc)).strip()
+
     return {
         "id": ep_id,
         "movie_id": movie_id,
         "title": title or f"Episode #{ep_id}",
         "thumbnail_url": thumb_url,
-        "description": "",
+        "description": description,
         "action_notes": "",
         "studio_id": studio_id,
         "studio_name": studio_name,
