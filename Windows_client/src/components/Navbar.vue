@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
-import { Search, SlidersHorizontal, RefreshCw, X, LayoutGrid, List, Clock, Trash2, Eye, EyeOff } from '@lucide/vue';
+import { Search, SlidersHorizontal, RefreshCw, X, Clock, Trash2, Eye, EyeOff, Languages } from '@lucide/vue';
 import { privacySettings, toggleScreenshotPrivacy } from '../services/privacy';
 import { analytics, recordSearch, removeSearchHistoryItem, clearSearchHistory } from '../services/analytics';
 import { isScrapingRunning, newlyScrapedCount } from '../services/scraper';
@@ -11,15 +11,15 @@ import { currentIconScheme } from '../utils/appIcon';
 const props = defineProps<{
   modelValue: string;
   movieCount: number;
-  viewMode: 'grid' | 'list';
   filterActive: boolean;
+  descLang: 'zh' | 'en';
 }>();
 
 const emit = defineEmits<{
   (e: 'update:modelValue', val: string): void;
   (e: 'toggle-filter'): void;
   (e: 'toggle-sync'): void;
-  (e: 'change-view', mode: 'grid' | 'list'): void;
+  (e: 'change-desc-lang', lang: 'zh' | 'en'): void;
 }>();
 
 const searchQuery = ref(props.modelValue);
@@ -168,29 +168,30 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Actions & View Switch -->
+    <!-- Actions & Language Switch -->
     <div class="flex items-center gap-2">
-      <!-- View mode toggle -->
-      <div class="flex bg-surface border border-line rounded-lg p-0.5">
+      <!-- Language toggle -->
+      <div class="flex items-center bg-surface border border-line rounded-xl p-0.5 text-xs shadow-sm">
+        <Languages class="w-3.5 h-3.5 text-fg-4 ml-1.5 mr-0.5 shrink-0" />
         <button
-          @click="emit('change-view', 'grid')"
+          @click="emit('change-desc-lang', 'zh')"
           :class="[
-            'p-1.5 rounded-md transition cursor-pointer',
-            viewMode === 'grid' ? 'bg-surface-2 text-accent shadow' : 'text-fg-3 hover:text-fg-2'
+            'px-2 py-1 rounded-lg text-xs font-medium transition cursor-pointer',
+            descLang === 'zh' ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
           ]"
-          :title="t('navbar.viewGrid')"
+          :title="t('library.langZhTooltip')"
         >
-          <LayoutGrid class="w-4 h-4" />
+          {{ t('library.langZh') }}
         </button>
         <button
-          @click="emit('change-view', 'list')"
+          @click="emit('change-desc-lang', 'en')"
           :class="[
-            'p-1.5 rounded-md transition cursor-pointer',
-            viewMode === 'list' ? 'bg-surface-2 text-accent shadow' : 'text-fg-3 hover:text-fg-2'
+            'px-2 py-1 rounded-lg text-xs font-medium transition cursor-pointer',
+            descLang === 'en' ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
           ]"
-          :title="t('navbar.viewList')"
+          :title="t('library.langEnTooltip')"
         >
-          <List class="w-4 h-4" />
+          {{ t('library.langEn') }}
         </button>
       </div>
 

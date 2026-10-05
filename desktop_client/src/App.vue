@@ -71,7 +71,7 @@ import HomeView from './views/HomeView.vue';
 import { t, currentLocale, setLocale, SUPPORTED_LANGUAGES, type SupportedLocale } from './i18n';
 import AnalyticsView from './views/AnalyticsView.vue';
 import PluginsView from './views/PluginsView.vue';
-import { pluginsConfig, openUrlExternal } from './services/pluginManager';
+import { openUrlExternal } from './services/pluginManager';
 import {
   privacySettings, savePrivacySettings, isAppLocked,
   isWindowBlurred, initPrivacyListeners
@@ -145,7 +145,6 @@ const FAVORITE_LABELS = computed<Record<FavoriteType, string>>(() => ({
 
 // State
 const currentTab = ref<AppTab>('home');
-const viewMode = ref<'grid' | 'list'>('grid');
 const isFilterOpen = ref(false);
 const isSyncOpen = ref(false);
 
@@ -404,13 +403,6 @@ function setCloseToTrayChoice(enabled: boolean) {
   api.setCloseToTray(enabled);
 }
 
-const hasTranslationAvailable = computed(() => {
-  if (!pluginsConfig.value.translationEnabled && (!stats.value?.translation_done || stats.value.translation_done <= 0)) {
-    return false;
-  }
-  return Boolean((stats.value?.translation_done && stats.value.translation_done > 0) || pluginsConfig.value.translationEnabled);
-});
-
 // Dynamic Grid Columns state (persisted to localStorage)
 const gridCols = ref<number>(Number(localStorage.getItem(PREFS.gridCols)) || 5);
 // List view uses its own column count: the cards are horizontal and much wider,
@@ -424,14 +416,6 @@ function decreaseCols() {
     if (studioCols.value > 2) {
       studioCols.value--;
       localStorage.setItem(PREFS.studioCols, String(studioCols.value));
-      recordGridAdjust();
-    }
-    return;
-  }
-  if (viewMode.value === 'list') {
-    if (listCols.value > 2) {
-      listCols.value--;
-      localStorage.setItem(PREFS.listCols, String(listCols.value));
       recordGridAdjust();
     }
     return;
@@ -452,14 +436,6 @@ function increaseCols() {
     }
     return;
   }
-  if (viewMode.value === 'list') {
-    if (listCols.value < 4) {
-      listCols.value++;
-      localStorage.setItem(PREFS.listCols, String(listCols.value));
-      recordGridAdjust();
-    }
-    return;
-  }
   if (gridCols.value < 8) {
     gridCols.value++;
     localStorage.setItem(PREFS.gridCols, String(gridCols.value));
@@ -470,12 +446,9 @@ function increaseCols() {
 /** Column count driving whichever view is active. */
 const activeCols = computed(() => {
   if (currentTab.value === 'studios') return studioCols.value;
-  return viewMode.value === 'list' ? listCols.value : gridCols.value;
+  return gridCols.value;
 });
-const activeColsMax = computed(() => {
-  if (currentTab.value === 'studios') return 8;
-  return viewMode.value === 'list' ? 4 : 8;
-});
+const activeColsMax = computed(() => 8);
 
 // Performer filtering (issue #7)
 const performerFilters = reactive<PerformerFilterState>(createPerformerFilters());
@@ -1900,7 +1873,7 @@ onUnmounted(() => {
     <Navbar
       v-model="searchQuery"
       :movie-count="stats ? stats.movies : 0"
-      :view-mode="viewMode"
+      :desc-lang="descLang"
       :filter-active="
         currentTab === 'performers'
           ? activePerformerFilterCount > 0
@@ -1912,7 +1885,7 @@ onUnmounted(() => {
       "
       @toggle-filter="isFilterOpen = !isFilterOpen"
       @toggle-sync="isSyncOpen = true"
-      @change-view="(mode) => viewMode = mode"
+      @change-desc-lang="(lang) => setDescLang(lang)"
     />
 
     <!--
@@ -1993,34 +1966,6 @@ onUnmounted(() => {
             </div>
 
             <div class="flex items-center gap-3">
-              <!-- Synopsis language toggle (issue #4) -->
-              <div
-                v-if="hasTranslationAvailable"
-                class="flex items-center gap-1.5 bg-surface border border-line rounded-xl p-0.5 text-xs animate-fade-in"
-              >
-                <Languages class="w-3 h-3 text-fg-4 ml-1.5" />
-                <button
-                  v-for="l in [{ id: 'zh', label: t('library.langZh') }, { id: 'en', label: t('library.langEn') }]"
-                  :key="l.id"
-                  @click="setDescLang(l.id as 'zh' | 'en')"
-                  :class="[
-                    'px-2 py-1 rounded-lg text-[11px] font-medium transition cursor-pointer',
-                    descLang === l.id ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-3 hover:text-fg-2'
-                  ]"
-                  :title="l.id === 'zh' ? t('library.langZhTooltip') : t('library.langEnTooltip')"
-                >
-                  {{ l.label }}
-                </button>
-
-                <!-- Info icon with tooltip -->
-                <div
-                  class="flex items-center pr-1.5 text-fg-5 hover:text-accent cursor-help transition"
-                  :title="t('library.synopsisLangNotice')"
-                >
-                  <Info class="w-3.5 h-3.5" />
-                </div>
-              </div>
-
               <!-- How the list pages in: auto-load on scroll, or explicit pages -->
               <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
@@ -2095,11 +2040,10 @@ onUnmounted(() => {
             @reset-movies="resetMovieFilters"
           />
 
-          <!-- Movie Grid / Multi-Column List -->
+          <!-- Movie Grid -->
           <div
             v-if="movies.length > 0"
-            class="grid transition-all duration-200"
-            :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
+            class="grid transition-all duration-200 gap-4 sm:gap-6"
             :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
           >
             <MovieCard
@@ -2107,7 +2051,6 @@ onUnmounted(() => {
               :key="m.id"
               :movie="m"
               :is-favorite="isFavorite('movie', m.id)"
-              :view="viewMode"
               :lang="descLang"
               @select="openMovieDetail"
               @toggle-favorite="toggleFavorite"
@@ -2948,8 +2891,7 @@ onUnmounted(() => {
               </div>
               <div
                 v-show="!favCollapsed.movie || favSubTab === 'movie'"
-                class="grid transition-all duration-200 pt-1"
-                :class="viewMode === 'grid' ? 'gap-4 sm:gap-6' : 'gap-3'"
+                class="grid transition-all duration-200 pt-1 gap-4 sm:gap-6"
                 :style="{ gridTemplateColumns: `repeat(${activeCols}, minmax(0, 1fr))` }"
               >
                 <MovieCard
@@ -2958,7 +2900,6 @@ onUnmounted(() => {
                   :movie="asMovie(f)"
                   :translated="Boolean(f.has_zh)"
                   :is-favorite="true"
-                  :view="viewMode"
                   :lang="descLang"
                   @select="openMovieDetail(asMovie(f))"
                   @toggle-favorite="toggleFavoriteEntity('movie', f.key)"
