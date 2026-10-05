@@ -1071,10 +1071,17 @@ class GPDbRequestHandler(BaseHTTPRequestHandler):
                 return self.send_json({"error": "Failed to download image", "url": url}, status=502)
 
         ct = "image/jpeg"
-        if url.lower().endswith(".png"):
+        u_lower = url.lower()
+        if u_lower.endswith(".png"):
             ct = "image/png"
-        elif url.lower().endswith(".webp"):
+        elif u_lower.endswith(".webp"):
             ct = "image/webp"
+        elif u_lower.endswith(".svg"):
+            ct = "image/svg+xml"
+        elif u_lower.endswith(".gif"):
+            ct = "image/gif"
+        elif u_lower.endswith(".avif"):
+            ct = "image/avif"
         self.send_file(local_path, ct)
 
     def handle_cache_stats(self):

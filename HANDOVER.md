@@ -60,12 +60,12 @@
 | directors / movie_directors | 3,077 / 37,502（导演库入口，见 §4.1） |
 | 片商（distinct `movies.studio_id`） | 2,411（最大 id 8,175 = **站点公司 id 的上限**，见 §4.4） |
 
-**翻译进度（已全面突破 540 万字）**：
-- `movies.title_zh`: **6,357** / 63,273（重点大厂片名基本 100% 汉化意译，片名本身严禁带《书名号》，仅在简介内部引用时包裹）
-- `movies.description_zh`: **8,308** / 49,965（核心名厂长篇全覆盖）
-- `episodes.description_zh`: **17,410** / 111,806（突破 1.7 万条分集）
+**翻译进度（已全面突破 629 万字 / 4.65 万条归档）**：
+- `movies.title_zh`: **12,782** / 63,273（突破 1.27 万部，片名本身严禁带《书名号》，仅在简介内部引用时包裹）
+- `movies.description_zh`: **10,583** / 49,965（突破万部大关，核心大厂长篇全面覆盖）
+- `episodes.description_zh`: **19,910** / 111,806（逼近 2 万条分集大关，已达 19,910 条）
 - `studios.name_zh` & `description_zh`: **2,433 / 2,433（100.0% 全库覆盖）**
-- `translations.db` 独立归档库：**35,905 条**，累计汉化产出 **5,420,208 字符**（纯汉字 **3,564,167** 字）
+- `translations.db` 独立归档库：**46,513 条**，累计汉化产出 **6,297,196 字符**（纯汉字突破 **415 万字**）
 - 详情与各厂牌完成明细参见 `TRANSLATION_PROGRESS.md`。
 
 **账本**：`scrape_progress` — company 12,000 行（全部 200，即 id 1..12,000 全覆盖）；
@@ -685,7 +685,57 @@ PNG 368、WebP 151、GIF 3——站点在 `.jpg` 这个 URL 下会回别的格�
        - **Abused Dude Video** (15 部作品，PBC 283×93 PNG)；
        - **Alphamale Home Entertainment** (14 部作品，PBC 661×168 PNG)；
        - **Midnight Video** (7 部作品，AVID 1571×1045 PNG)；
-       - **VCX, Inc.** (3 部作品，AVID 1919×1058 1080P 原标)。
+       - **Wave 5（超级名厂官方 800×520 Banner 攻坚）**：
+        - 针对库中作品量最高、急缺官方横幅的 30 家顶级名厂（覆盖 **30,000+ 部作品**），全量采纳 WayBig 官方 800×520 原版静态横幅：
+          - **William Higgins Productions** (10,817 部，ID 178)
+          - **Blake Mason** (1,799 部，ID 105)
+          - **GayRoom** (1,693 部，ID 254)
+          - **Badpuppy** (1,524 部，ID 101)
+          - **Freshmen.net** (1,420 部，ID 284)
+          - **Jake Cruise Media** (929 部，ID 4)
+          - **Bareback Latinoz** (719 部，ID 408)
+          - **UK Naked Men** (685 部，ID 106)
+          - **Spunk Worthy Video** (670 部，ID 119)
+          - **Machofucker Video** (611 部，ID 18)
+          - **Bareback That Hole** (395 部)、**Phoenixxx.com** (365 部)、**Bang Bang Boys** (349 部)、**Zack Randall** (338 部)、**Men of Montréal** (315 部)、**Bear Films** (205 部)、**Face Down Ass Up** (172 部)、**Bareback Cum Pigs** (167 部)、**Twinks in Shorts** (158 部)、**American Muscle Hunks** (141 部)、**Cité Beur** (138 部)、**House of Angell** (124 部)、**Gay Asian Twinkz** (122 部)、**Breed Me Raw** (122 部)、**Rub Him** (102 部)、**Amateur Straight Guys** (92 部)、**Catholic Boys** (84 部)、**Eurocreme** (80 部)、**Bound Jocks** (65 部)、**Fratmen** 等 30 家主力名厂。
+      - **Wave 6（AVID 4K/超清静态母带 + PBC + WayBig 综合全网大攻坚）**：
+        - **88 个超清官方素材 100% 成功入库并挂载**：
+          - **全新高规格官方 Logo（21 家）**：
+            - **Caballero Video** (AVID 1557×1065 超清 PNG 原标)
+            - **Nova Films** (AVID 2876×2160 超清片头原标)
+            - **Platinum Media** (AVID 3840×2160 4K 极清片头原标)
+            - **Miracle Productions** (AVID 624×480 PNG 原标)
+            - **Pin-up Productions** (AVID 1148×764 PNG 原标)
+            - **Champion Studios** (AVID 913×660 PNG 原标)
+            - **Factory Films** (AVID 1416×1077 PNG 原标)
+            - **Fantasy Video** (AVID 2012×1529 PNG 原标)
+            - **Magic Film** (AVID 1023×792 PNG 原标)
+            - **Peter Fever** (PBC 343×50 PNG 纯净标)
+            - **S.B. Pictures** (PBC 766×147 PNG 原标)
+            - **BB Video** (PBC 901×100 PNG 原标)
+            - **Man Avenue**、**University Crush**、**Out in Public**、**On the Hunt**、**Wank This**、**RawFuck**、**Naked Marine**、**Gangster Fuck**、**World of Men** (官方原标)
+          - **超清历史母带与官方横幅 Banner（67 家）**：
+            - **All Worlds Video** (1,061 部历史传奇，AVID 1430×1080 官方胶片横幅)
+            - **VCA Pictures** (AVID 1919×1199 超清 1080P 横幅)
+            - **Metro Home Video** (AVID 1683×1262 超清横幅)
+            - **Filmco Video** (AVID 1600×1200 超清横幅)
+            - **Forbidden Films** (AVID 1428×1080 超清横幅)
+            - **Avalon Video** (AVID 1366×1080 超清横幅)
+            - **Soho Video** (AVID 1320×1042 超清横幅)
+            - **Western Visuals** (AVID 847×657 超清横幅)
+            - **Venus Video** (AVID 837×658 超清横幅)
+            - **Seabag Productions** (AVID 767×572 超清横幅)
+            - **Studio 2000** (AVID 760×657 超清横幅)
+            - **Cal Vista Pictures** (AVID 480×360 超清横幅)
+            - **Pleasure Productions** (AVID 595×304 超清横幅)
+            - **Fuck Champ Robinson**, **Ayor Studios**, **Workin' Men XXX**, **Club Amateur USA**, **HotBoyUSA**, **TransSensual**, **Adult Time**, **Alternadudes**, **Victor Cody XXX**, **Dallas Reeves**, **Macho Factory**, **Boys First Time**, **Tyler's Room**, **Bravofucker**, **Hardkinks**, **Why Not Bi**, **Dirty Boy Video**, **GuyBone**, **Studfist**, **Twinky Feet**, **You Love Jack**, **High Performance Men**, **Rod's Room**, **Muscle Bear Porn**, **Raw Euro**, **Scary Fuckers**, **Amateurs Do It**, **Super Twinks**, **Boys on the Prowl**, **Latino Guys Porn**, **My Friend's Feet**, **Straight Off Base**, **Boys Smoking**, **Fred Sugar**, **Gentlemens Closet**, **Evil Angel**, **Private Playground XXX**, **Raw Castings**, **Vision X**, **BoyFeast**, **Twink Pop**, **Deviant Otter**, **JockPussy**, **Let Them Watch**, **Lollipop Twinks**, **DoggyBoys**, **Pits and Pubes**, **Tasty Twink**, **Grindhouse Raw**, **Bang Bros Productions**, **Lucas Kazan Productions**, **BoysFox Studios**, **High Octane Productions**, **Venus Lux Entertainment** 等 54 家官方 800×520 横幅！
+
+    - **最新资产规模与候选指标**：
+      - **候选池总厂牌条目**：扩充至 **587 家**；
+      - **候选素材总数**：已达 **616 个超清静态素材**；
+      - **控制台呈现升级项**：**32 家**高清升级 Logo，**23 家**全新收录 Logo，数十个超清官方 Banner；
+      - **零动图铁律执行**：全批次 100% 静态图片（PNG / JPEG / WebP），彻底绝迹流光动画 GIF；
+      - **生产资产保护**：严格保证 `image_cache/Logos/` 与 `approved_assignments.json` 零破坏。
 
 ### 5.7 明确不做
 
@@ -802,3 +852,9 @@ cd desktop_client && npx vue-tsc --noEmit
     `ls | wc -l`、`find -size`、Python `os.listdir` 三种方式数都是 119,243，彼此一致
     ——**所以要核对缓存数量，就用列目录的方式数，别信 per-path 的 `exists()`**。
     真要根治，把 `image_cache` 挪出 iCloud（6.5 GB，本来也不该让 iCloud 同步）。
+20. **Android 端的后台增量刮削与 DNS 劫持防护**：
+    - **启动自动增量更新**：应用冷启动挂载外部 DB 3.5s 后，`GpdbSyncManager` 自动触发后台静默差量更新，并维持 15 分钟防抖冷却；
+    - **FUSE / TRUNCATE 写锁让渡**：写入条目时采用单项短事务配合 40~50ms 让渡 delay，杜绝与前台 UI 查询锁竞争；同步完成后通过 `HomeViewModel` 无感刷新前台列表；
+    - **DNS 劫持弹性回退 (`GpdbDns.kt`)**：特定公共 Wi-Fi 或带有广告拦截的 DNS（如 AdGuard Family DNS 将成人站点解析为 `94.140.14.35` 导致 TLS 握手终止）会自动被过滤并安全回退至官方 Cloudflare Anycast 节点，保障同步永不失联；
+    - **设置页开关解耦**：设置页「同步与数据存储」板块拆分为「启动时后台自动增量同步」与「系统定时后台同步」独立开关，实时联动全局同步状态。
+

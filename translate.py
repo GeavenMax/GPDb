@@ -156,6 +156,53 @@ CATEGORY_SYSTEM_PROMPT = """你是一名成人影片资料库的术语译者。�
 其中 i 是输入的序号，必须与输入一一对应，不得遗漏或调换顺序。"""
 
 
+PERFORMER_BIO_SYSTEM_PROMPT = """你是一名男同性恋（Gay）成人影视文化与人物传记专职翻译员。你会收到一批男优/演员的维基生平档案与演艺经历（英文），需要如实翻译成规范、流畅、典雅的简体中文。
+
+翻译要求：
+1. 忠于原文：逐句翻译生平档案与演艺经历，不增不减、不概括、不随意删节。
+2. 保持文史传记风格：客观、平实、严谨，符合维基百科与人物志的专业语调。
+3. 人名处理：
+   - 知名艺名与曾用名、真实姓名如果原文有标注，保留原文拉丁拼写，或规范标注（例：Brad Jaw，本名 Matěj Sucháň；亦称 Anthony Lee 等）；
+   - 外国地理行政区划（如 České Budějovice、Missouri、Cognac 等）译为标准中文地名（如“捷克共和国捷克布杰约维采”、“美国密苏里州圣路易斯”、“法国夏朗德省干邑”）。
+4. 影视作品与奖项：涉及电影作品名时加上《书名号》（如《Saw VI》译为《电锯惊魂6》）；奖项名称标准翻译（如 Grabby Awards 译为“格拉比奖”）。
+5. 严格契合男同性恋（Gay）成人影视语境，用语客观文明，绝不出现针对女性的言情或生殖词汇。
+
+只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
+
+输出格式（必须严格遵守）：
+{"translations": [{"i": 1, "zh": "第一条生平档案译文"}, {"i": 2, "zh": "第二条生平档案译文"}]}
+其中 i 是输入的序号，必须与输入一一对应，不得遗漏或调换顺序。"""
+
+
+PERFORMER_ORIGIN_SYSTEM_PROMPT = """你是一名世界地理与人物档案专职术语翻译员。你会收到一批男优/演员的【国籍 (nationality)】、【国家 (country)】和【出生地 (birth_place)】英文或外文原名，需要将它们精准翻译成规范的简体中文。
+
+翻译要求：
+1. 规范地名与国籍：
+   - 国籍（如 American→美国，Czech→捷克，Brazilian→巴西，British→英国，Spanish→西班牙，Slovak→斯洛伐克，Italian→意大利，Canadian→加拿大，French→法国，Russian→俄罗斯，Ukrainian→乌克兰，German→德国等；若为复合国籍如 American, Italian 译为“美国、意大利”）；
+   - 国家（如 United States→美国，Czech Republic→捷克，Brazil→巴西，Spain→西班牙，Canada→加拿大，Germany→德国等）；
+   - 出生地（如 Prague→布拉格，St. Louis, Missouri→密苏里州圣路易斯，České Budějovice Jihočeský kraj→南捷克州捷克布杰约维采，Ostrava Moravskoslezský kraj→摩拉维亚-西里西亚州俄斯特拉发，Montreal, Quebec→魁北克省蒙特利尔，Barcelona Catalonia→加泰罗尼亚巴塞罗那，Rio de Janeiro→里约热内卢，Paris→巴黎等）；
+2. 剔除噪声标记：原文如果含有维基残留标记（如 [[Category: ]] 或维基内部链接括号），翻译时请自动清除干净。
+3. 如果输入字段为空或无内容，对应字段输出 null。
+4. 语言必须为纯正简体中文，简洁准确，不要添加任何额外解释。
+
+只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
+
+输出格式（必须严格遵守）：
+{
+  "translations": [
+    {
+      "i": 1,
+      "nationality_zh": "中文国籍",
+      "country_zh": "中文国家",
+      "birth_place_zh": "中文出生地"
+    }
+  ]
+}
+其中 i 是输入的序号，必须与输入一一对应。"""
+
+
+
+
 # --------------------------------------------------------------------------
 # Providers
 # --------------------------------------------------------------------------
@@ -1406,8 +1453,193 @@ def translate_categories(db: DatabaseManager, dry_run: bool = False,
 
 
 # --------------------------------------------------------------------------
+# Performer biographies (PBC wiki bio & career)
+# --------------------------------------------------------------------------
+
+def translate_performer_bios(
+    db: DatabaseManager,
+    provider: Provider,
+    limit: int | None = None,
+    batch_size: int = 6,
+    workers: int = 1,
+    dry_run: bool = False,
+) -> None:
+    """Translate performer biography / career history entries and save them to GPDb & translations.db."""
+    tasks = db.get_untranslated_performer_bios(limit=limit)
+    total = len(tasks)
+    if total == 0:
+        print("🎉 没有需要翻译的演员生平档案（全部已翻译或没有档案）。")
+        return
+
+    stats = db.get_performer_bio_translation_stats()
+    batches = [tasks[i:i + batch_size] for i in range(0, total, batch_size)]
+    print("=" * 70)
+    print(f"👤 GPDb 演员生平档案批量翻译 | 服务商: {provider.__class__.__name__} | 模型: {provider.model}")
+    print(f"   全库生平档案: {stats['translatable']:,} 篇 | 已译: {stats['translated']:,} 篇 | 本次待译: {total:,} 篇")
+    print(f"   批次大小: {batch_size} | 批次数: {len(batches)} | 并发: {workers}")
+    if dry_run:
+        print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
+    print("=" * 70)
+
+    def handle(batch: list[dict]) -> tuple[int, int]:
+        texts = [r["bio"] for r in batch]
+        results = translate_batch(provider, texts)
+
+        batch_saved = 0
+        batch_failed = 0
+        archive_items = []
+        for row, zh in zip(batch, results):
+            if not zh:
+                batch_failed += 1
+                continue
+            batch_saved += 1
+            if dry_run:
+                if batch_saved <= 2:
+                    print(f"\n  [演员 #{row['id']}] {row['name']}\n"
+                          f"    EN: {row['bio'][:120]}...\n    ZH: {zh[:120]}...")
+            else:
+                db.set_performer_bio_translation(row["id"], zh)
+                archive_items.append({
+                    "id": row["id"],
+                    "src": row["bio"],
+                    "trans": zh,
+                })
+        if not dry_run and archive_items:
+            save_translations(TRANS_DB_FILE, "performer", "bio", "zh-CN", archive_items)
+        return batch_saved, batch_failed
+
+    drive_batches(provider, batches, workers, dry_run, handle, time.time())
+
+
+def translate_performer_origins(
+    db: DatabaseManager,
+    provider: Provider,
+    limit: int | None = None,
+    batch_size: int = 20,
+    workers: int = 1,
+    dry_run: bool = False,
+) -> None:
+    """Translate performer origin fields (nationality, country, birth_place) and save to GPDb & translations.db."""
+    tasks = db.get_untranslated_performer_origins(limit=limit)
+    total = len(tasks)
+    if total == 0:
+        print("🎉 没有需要翻译的演员国籍/出生地（全部已翻译或没有数据）。")
+        return
+
+    stats = db.get_performer_origin_translation_stats()
+    batches = [tasks[i:i + batch_size] for i in range(0, total, batch_size)]
+    print("=" * 70)
+    print(f"🌍 GPDb 演员国籍 / 出生地批量翻译 | 服务商: {provider.__class__.__name__} | 模型: {provider.model}")
+    print(f"   全库有档案演员: {stats['translatable']:,} 人 | 已译: {stats['translated']:,} 人 | 本次待译: {total:,} 人")
+    print(f"   批次大小: {batch_size} | 批次数: {len(batches)} | 并发: {workers}")
+    if dry_run:
+        print("   ⚠️  试运行模式 (--dry-run)：只翻译不写库")
+    print("=" * 70)
+
+    # 针对地理/国籍专用结构化 prompt，构造并下发
+    base_url = provider.base_url or provider.DEFAULT_BASE_URL
+    model = provider.model or "gemini-3.5-flash-lite"
+    url = f"{base_url}/v1beta/models/{model}:generateContent"
+
+    for b_idx, batch in enumerate(batches, 1):
+        print(f"\n[{b_idx}/{len(batches)}] 正在翻译 {len(batch)} 位演员的国籍/出生地...", flush=True)
+        items_payload = []
+        for i, row in enumerate(batch, 1):
+            items_payload.append(
+                f"{i}. 演员ID: {row['id']}\n"
+                f"   姓名: {row['name']}\n"
+                f"   国籍(nationality): {row['nationality'] or '无'}\n"
+                f"   国家(country): {row['country'] or '无'}\n"
+                f"   出生地(birth_place): {row['birth_place'] or '无'}"
+            )
+        user_prompt = "请为以下演员的国籍、国家和出生地提供规范的中文翻译：\n\n" + "\n\n".join(items_payload)
+
+        try:
+            if isinstance(provider, GeminiProvider):
+                base_url = provider.base_url or provider.DEFAULT_BASE_URL
+                model = provider.model or "gemini-3.5-flash-lite"
+                url = f"{base_url}/v1beta/models/{model}:generateContent"
+                payload = {
+                    "systemInstruction": {"parts": [{"text": PERFORMER_ORIGIN_SYSTEM_PROMPT}]},
+                    "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                    "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1},
+                }
+                body = provider._post_with_rotation(url, payload)
+                resp_text = "".join(p.get("text", "") for p in body["candidates"][0]["content"]["parts"]).strip()
+            else:
+                # OpenAI / DeepSeek
+                base_url = provider.base_url or provider.DEFAULT_BASE_URL
+                payload = {
+                    "model": provider.model,
+                    "messages": [
+                        {"role": "system", "content": PERFORMER_ORIGIN_SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.1,
+                }
+                body = provider._post(
+                    f"{base_url}/chat/completions",
+                    payload,
+                    {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {provider.api_key}",
+                    },
+                )
+                resp_text = body["choices"][0]["message"]["content"].strip()
+
+            if resp_text.startswith("```"):
+                resp_text = re.sub(r"^```[a-zA-Z]*\s*", "", resp_text)
+                resp_text = re.sub(r"\s*```$", "", resp_text)
+
+            data = json.loads(resp_text)
+            trans_list = data.get("translations", [])
+            # Map index i (1-based) to row
+            i_map = {item["i"]: item for item in trans_list if "i" in item}
+
+            archive_items = []
+            for i, row in enumerate(batch, 1):
+                t_item = i_map.get(i)
+                if not t_item:
+                    continue
+                nat_zh = (t_item.get("nationality_zh") or "").strip() or None
+                ctry_zh = (t_item.get("country_zh") or "").strip() or None
+                bp_zh = (t_item.get("birth_place_zh") or "").strip() or None
+
+                if dry_run:
+                    print(f"  [#{row['id']} {row['name']}] 国籍: {row['nationality']} -> {nat_zh} | "
+                          f"国家: {row['country']} -> {ctry_zh} | 出生地: {row['birth_place']} -> {bp_zh}")
+                else:
+                    db.set_performer_origin_translation(
+                        row["id"],
+                        nationality_zh=nat_zh,
+                        country_zh=ctry_zh,
+                        birth_place_zh=bp_zh,
+                    )
+                    if nat_zh:
+                        archive_items.append({"id": row["id"], "src": row["nationality"], "trans": nat_zh, "field": "nationality"})
+                    if ctry_zh:
+                        archive_items.append({"id": row["id"], "src": row["country"], "trans": ctry_zh, "field": "country"})
+                    if bp_zh:
+                        archive_items.append({"id": row["id"], "src": row["birth_place"], "trans": bp_zh, "field": "birth_place"})
+
+            if not dry_run and archive_items:
+                for field in ("nationality", "country", "birth_place"):
+                    field_items = [it for it in archive_items if it["field"] == field]
+                    if field_items:
+                        save_translations(TRANS_DB_FILE, "performer", field, "zh-CN", field_items)
+            print(f"  ✅ 批次 {b_idx} 处理完成 ({len(batch)} 位演员)")
+        except Exception as e:
+            print(f"  ⚠️  批次 {b_idx} 翻译失败: {e}", file=sys.stderr)
+
+    print("\n🎉 演员国籍/出生地翻译任务处理完毕！")
+
+
+
+# --------------------------------------------------------------------------
 # Batch driver
 # --------------------------------------------------------------------------
+
 
 def collect_translation_tasks(db: DatabaseManager, limit: int | None, studio: str | None = None) -> list[dict]:
     """Every untranslated synopsis, as one flat list of {kind, id, title, text}.
@@ -1686,6 +1918,10 @@ def main():
                         help="只翻译影片分类术语表（一次调用，约 53 个词，之后永久复用）")
     parser.add_argument("--titles", action="store_true",
                         help="只翻译影片片名（按 title 去重，译文体现原标题的双关）")
+    parser.add_argument("--performer-bios", action="store_true",
+                        help="只翻译演员档案页的生平档案与演艺经历 (PBC wiki)")
+    parser.add_argument("--performer-origins", action="store_true",
+                        help="只翻译演员档案页的国籍、国家与出生地 (PBC wiki)")
     parser.add_argument("--no-context", action="store_true",
                         help="片名模式不带简介上下文。用于和默认模式对比双关译准不准")
     parser.add_argument("--list-profiles", action="store_true",
@@ -1714,6 +1950,8 @@ def main():
     if args.stats:
         s = db.get_translation_stats()
         t = db.get_title_translation_stats()
+        b = db.get_performer_bio_translation_stats()
+        o = db.get_performer_origin_translation_stats()
         print("\n📊 【剧情简介翻译进度】")
         print(f"  - 可翻译简介总数: {s['translatable']:,}")
         print(f"  - 已翻译 (中文):  {s['translated']:,}")
@@ -1726,6 +1964,16 @@ def main():
         print(f"  - 待翻译:         {t['pending']:,}")
         print(f"  - 翻译失败:       {t['failed']:,}")
         print(f"  - 完成度:         {(t['translated'] / t['translatable'] * 100) if t['translatable'] else 0:.1f}%\n")
+        print("👤 【演员生平档案翻译进度】")
+        print(f"  - 全库生平档案:   {b['translatable']:,}")
+        print(f"  - 已翻译:         {b['translated']:,}")
+        print(f"  - 待翻译:         {b['pending']:,}")
+        print(f"  - 完成度:         {(b['translated'] / b['translatable'] * 100) if b['translatable'] else 0:.1f}%\n")
+        print("🌍 【演员国籍 / 出生地翻译进度】")
+        print(f"  - 全库有档案演员: {o['translatable']:,}")
+        print(f"  - 已翻译:         {o['translated']:,}")
+        print(f"  - 待翻译:         {o['pending']:,}")
+        print(f"  - 完成度:         {(o['translated'] / o['translatable'] * 100) if o['translatable'] else 0:.1f}%\n")
         return
 
     try:
@@ -1748,6 +1996,31 @@ def main():
                 provider=build_provider(resolve_settings(args),
                                         system_prompt=CATEGORY_SYSTEM_PROMPT, noun="分类词",
                                         auto_wait=args.auto_wait),
+            )
+            return
+
+        if args.performer_origins:
+            translate_performer_origins(
+                db=db,
+                provider=build_provider(resolve_settings(args), auto_wait=args.auto_wait),
+                limit=args.limit,
+                batch_size=args.batch_size or 20,
+                workers=args.workers,
+                dry_run=args.dry_run,
+            )
+            return
+
+        if args.performer_bios:
+            translate_performer_bios(
+                db=db,
+                provider=build_provider(resolve_settings(args),
+                                        system_prompt=PERFORMER_BIO_SYSTEM_PROMPT,
+                                        noun="生平档案",
+                                        auto_wait=args.auto_wait),
+                limit=args.limit,
+                batch_size=args.batch_size or 6,
+                workers=args.workers,
+                dry_run=args.dry_run,
             )
             return
 
