@@ -116,7 +116,7 @@ const showShareModal = ref(false);
 
 const shareCardData = computed<ShareCardData | null>(() => {
   if (!props.episode) return null;
-  const isZh = currentLocale.value.startsWith('zh');
+  const isZh = (props.lang === 'zh' || currentLocale.value.startsWith('zh')) && !showOriginal.value;
   const rawPoster = props.episode.thumbnail_url || (props.episode as any).still_url || (props.episode as any).cover_url;
   const filmName = isZh
     ? (props.episode.movie_title_zh || props.episode.movie_title)
@@ -127,6 +127,7 @@ const shareCardData = computed<ShareCardData | null>(() => {
 
   return {
     type: 'episode',
+    lang: isZh ? 'zh' : 'en',
     title: episodeHeading(props.episode, filmName || null),
     titleAlt: altName,
     posterUrl: rawPoster ? getImageUrl(rawPoster) : '',
@@ -135,7 +136,7 @@ const shareCardData = computed<ShareCardData | null>(() => {
     studioName: props.episode.studio_name,
     performers: props.episode.performers?.map(p => p.name) || [],
     description: props.episode.description,
-    descriptionZh: props.episode.description_zh,
+    descriptionZh: props.episode.description_zh || null,
     episodeHeading: episodeLabel(props.episode),
     id: props.episode.id,
   };

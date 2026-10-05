@@ -96,9 +96,10 @@ const showShareModal = ref(false);
 
 const shareCardData = computed<ShareCardData | null>(() => {
   if (!props.movie) return null;
-  const isZh = currentLocale.value.startsWith('zh');
+  const isZh = (props.lang === 'zh' || currentLocale.value.startsWith('zh')) && !showOriginal.value;
   return {
     type: 'movie',
+    lang: isZh ? 'zh' : 'en',
     title: isZh ? (props.movie.title_zh || props.movie.title) : props.movie.title,
     titleAlt: isZh
       ? (props.movie.title_zh && props.movie.title !== props.movie.title_zh ? props.movie.title : null)
@@ -112,7 +113,7 @@ const shareCardData = computed<ShareCardData | null>(() => {
     directorName: props.movie.directors?.map(d => d.name).join(isZh ? '、' : ', '),
     performers: props.movie.performers?.map(p => p.name) || [],
     description: props.movie.description,
-    descriptionZh: props.movie.description_zh,
+    descriptionZh: zhDescription.value || props.movie.description_zh || null,
     id: props.movie.id,
   };
 });

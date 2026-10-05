@@ -24,6 +24,7 @@ export interface ShareCardData {
   descriptionZh?: string | null;
   episodeHeading?: string | null;
   id: number | string;
+  lang?: 'zh' | 'en';
 }
 
 const props = defineProps<{
@@ -47,12 +48,19 @@ const isCopied = ref(false);
 const isSaving = ref(false);
 const isSaved = ref(false);
 
+const isZh = computed(() => {
+  if (props.data?.lang) {
+    return props.data.lang === 'zh';
+  }
+  return currentLocale.value.startsWith('zh');
+});
+
 const displayDescription = computed(() => {
   if (!props.data) return '';
-  if (currentLocale.value.startsWith('zh')) {
+  if (isZh.value) {
     return props.data.descriptionZh?.trim() || props.data.description?.trim() || '';
   }
-  return props.data.description?.trim() || props.data.descriptionZh?.trim() || '';
+  return props.data.description?.trim() || '';
 });
 
 const CANVAS_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Microsoft YaHei UI", sans-serif';
@@ -263,8 +271,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   const titleBlockH = titleLines.length * 28;
 
   // Pre-calculate Alt Title (Only display bilingual subtitle in Chinese mode)
-  const isZh = currentLocale.value.startsWith('zh');
-  const hasAlt = Boolean(isZh && props.data.titleAlt && props.data.titleAlt !== props.data.title);
+  const hasAlt = Boolean(isZh.value && props.data.titleAlt && props.data.titleAlt !== props.data.title);
   const altH = hasAlt ? 24 : 0;
 
   // Pre-calculate Meta badges
@@ -284,7 +291,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   const performers = props.data.performers || [];
   const castLines: string[] = [];
   const castPrefix = `${t('share.castPrefix')}: `;
-  const castDelim = currentLocale.value.startsWith('zh') ? '、' : ', ';
+  const castDelim = isZh.value ? '、' : ', ';
   if (performers.length > 0) {
     let curCast = castPrefix;
     const maxCastW = width - padX * 2;
@@ -936,7 +943,7 @@ async function saveCardImage() {
                 <h3 class="text-lg font-extrabold text-white tracking-tight leading-snug">
                   {{ data.title }}
                 </h3>
-                <p v-if="currentLocale.startsWith('zh') && data.titleAlt && data.titleAlt !== data.title" class="text-xs text-white/60 font-normal">
+                <p v-if="isZh && data.titleAlt && data.titleAlt !== data.title" class="text-xs text-white/60 font-normal">
                   {{ data.titleAlt }}
                 </p>
 
@@ -955,7 +962,7 @@ async function saveCardImage() {
 
                 <!-- Complete Cast (No truncation) -->
                 <p v-if="data.performers && data.performers.length > 0" class="text-[11px] text-white/70 pt-0.5 leading-relaxed">
-                  {{ t('share.castPrefix') }}: {{ data.performers.join(currentLocale.startsWith('zh') ? '、' : ', ') }}
+                  {{ t('share.castPrefix') }}: {{ data.performers.join(isZh ? '、' : ', ') }}
                 </p>
               </div>
 

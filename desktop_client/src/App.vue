@@ -359,6 +359,12 @@ function setDescLang(lang: 'zh' | 'en') {
   // Explicitly choosing Chinese or Original in quick toggle sets concrete mode
   contentLangMode.value = lang === 'zh' ? 'bilingual' : 'original';
   localStorage.setItem(PREFS.contentLangMode, contentLangMode.value);
+  // Keep UI menu locale in sync
+  if (lang === 'zh' && !currentLocale.value.startsWith('zh')) {
+    setLocale('zh-CN');
+  } else if (lang === 'en' && currentLocale.value.startsWith('zh')) {
+    setLocale('en');
+  }
 }
 
 function setContentLangMode(mode: ContentLangMode) {
@@ -370,10 +376,11 @@ function setContentLangMode(mode: ContentLangMode) {
 
 function onSelectLocale(locale: SupportedLocale) {
   setLocale(locale);
-  if (contentLangMode.value === 'auto') {
-    descLang.value = resolveContentLang('auto', locale);
-    localStorage.setItem(PREFS.descLang, descLang.value);
-  }
+  const targetDescLang = resolveContentLang('auto', locale);
+  descLang.value = targetDescLang;
+  localStorage.setItem(PREFS.descLang, targetDescLang);
+  contentLangMode.value = 'auto';
+  localStorage.setItem(PREFS.contentLangMode, 'auto');
 }
 
 const isWindowsPlatform = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows');
