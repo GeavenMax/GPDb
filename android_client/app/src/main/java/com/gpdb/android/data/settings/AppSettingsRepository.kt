@@ -26,6 +26,7 @@ class AppSettingsRepository(private val context: Context) {
         val LLM_MODEL = stringPreferencesKey("llm_model")
 
         val PERIODIC_SYNC_ENABLED = booleanPreferencesKey("periodic_sync_enabled")
+        val AUTO_SYNC_ON_LAUNCH = booleanPreferencesKey("auto_sync_on_launch")
 
         val SAVE_IMAGES_TO_EXTERNAL = booleanPreferencesKey("save_images_to_external") // default = false (strictly sandboxed)
 
@@ -134,6 +135,14 @@ class AppSettingsRepository(private val context: Context) {
 
     suspend fun setPeriodicSyncEnabled(enabled: Boolean) {
         context.dataStore.edit { it[PERIODIC_SYNC_ENABLED] = enabled }
+    }
+
+    val autoSyncOnLaunchFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[AUTO_SYNC_ON_LAUNCH] ?: true
+    }
+
+    suspend fun setAutoSyncOnLaunch(enabled: Boolean) {
+        context.dataStore.edit { it[AUTO_SYNC_ON_LAUNCH] = enabled }
     }
 
     val saveImagesToExternalFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->

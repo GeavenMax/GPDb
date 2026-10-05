@@ -15,6 +15,7 @@ import androidx.room.PrimaryKey
         Index(name = "idx_movies_studio", value = ["studio_name"]),
         Index(name = "idx_movies_category", value = ["category"]),
         Index(name = "idx_movies_director", value = ["director_name"]),
+        Index(name = "idx_movies_studio_id", value = ["studio_id"]),
     ]
 )
 data class MovieEntity(

@@ -42,7 +42,7 @@ import androidx.room.migration.Migration
         EpisodePerformerEntity::class,
         StudioEntity::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = false
 )
 abstract class GpdbDatabase : RoomDatabase() {
@@ -57,6 +57,60 @@ abstract class GpdbDatabase : RoomDatabase() {
 
     companion object {
         private const val TAG = "GpdbDatabase"
+
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "执行 7->8 平滑迁移: 自动补齐 idx_movies_studio_id 索引")
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_movies_studio_id ON movies(studio_id);") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_6_8 = object : Migration(6, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "执行 6->8 平滑迁移")
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_movies_studio_id ON movies(studio_id);") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_5_8 = object : Migration(5, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "执行 5->8 平滑迁移")
+                try { database.execSQL("ALTER TABLE studios ADD COLUMN website_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE studios ADD COLUMN site_id INTEGER;") } catch (_: Exception) {}
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);") } catch (_: Exception) {}
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);") } catch (_: Exception) {}
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_movies_studio_id ON movies(studio_id);") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_0_8 = object : Migration(0, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "检测到外部 GPDb.db (version 0)，已执行 0->8 平滑挂载")
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_movies_studio_id ON movies(studio_id);") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "执行 6->7 平滑迁移: 自动刷新 Room 架构校验标识")
+            }
+        }
+
+        private val MIGRATION_5_7 = object : Migration(5, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "执行 5->7 平滑迁移")
+                try { database.execSQL("ALTER TABLE studios ADD COLUMN website_url TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE studios ADD COLUMN site_id INTEGER;") } catch (_: Exception) {}
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_name_nocase ON studios(name COLLATE NOCASE);") } catch (_: Exception) {}
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_studios_site_id ON studios(site_id);") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_0_7 = object : Migration(0, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "检测到外部 GPDb.db (version 0)，已执行 0->7 平滑挂载")
+            }
+        }
 
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -461,6 +515,7 @@ abstract class GpdbDatabase : RoomDatabase() {
                 if (!movieCols.contains("director_name")) {
                     try { rawDb.execSQL("ALTER TABLE movies ADD COLUMN director_name TEXT;") } catch (_: Exception) {}
                 }
+                try { rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_movies_studio_id ON movies(studio_id);") } catch (_: Exception) {}
 
                 // 3. 补齐扩展档案表结构
                 rawDb.execSQL("""
@@ -670,7 +725,9 @@ abstract class GpdbDatabase : RoomDatabase() {
                     MIGRATION_0_3, MIGRATION_1_3, MIGRATION_2_3,
                     MIGRATION_0_4, MIGRATION_1_4, MIGRATION_2_4, MIGRATION_3_4,
                     MIGRATION_0_5, MIGRATION_1_5, MIGRATION_2_5, MIGRATION_3_5, MIGRATION_4_5,
-                    MIGRATION_0_6, MIGRATION_1_6, MIGRATION_2_6, MIGRATION_3_6, MIGRATION_4_6, MIGRATION_5_6
+                    MIGRATION_0_6, MIGRATION_1_6, MIGRATION_2_6, MIGRATION_3_6, MIGRATION_4_6, MIGRATION_5_6,
+                    MIGRATION_0_7, MIGRATION_5_7, MIGRATION_6_7,
+                    MIGRATION_0_8, MIGRATION_5_8, MIGRATION_6_8, MIGRATION_7_8
                 )
                 // ★ 关键修复：强制使用 TRUNCATE 日志模式，彻底消除 FUSE 下 WAL 模式的 -shm / -wal ioctl 权限冲突
                 .setJournalMode(JournalMode.TRUNCATE)

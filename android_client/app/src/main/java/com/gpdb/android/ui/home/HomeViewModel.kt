@@ -130,6 +130,22 @@ class HomeViewModel : ViewModel() {
                         hasMore = initialList.size >= pageSize
                     )
                 }
+
+                // 启动无感增量自动同步（延迟 3.5 秒，让首页首屏 UI 彻底渲染完毕且处于空闲）
+                viewModelScope.launch(Dispatchers.IO) {
+                    kotlinx.coroutines.delay(3500)
+                    com.gpdb.android.data.scraper.GpdbSyncManager.triggerStartupSync(
+                        context = context.applicationContext,
+                        database = db,
+                        physicalRoot = mountRoot,
+                        onNewContentAdded = { totalNew ->
+                            if (totalNew > 0) {
+                                android.util.Log.i("HomeViewModel", "后台自动增量入库完成，发现 $totalNew 项新内容，刷新前台列表")
+                                refreshSilently()
+                            }
+                        }
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -139,6 +155,28 @@ class HomeViewModel : ViewModel() {
                         )
                     )
                 }
+            }
+        }
+    }
+
+    fun refreshSilently() {
+        val db = DatabaseHolder.db ?: return
+        val state = _uiState.value
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val totalCount = db.movieDao().getMovieCount()
+                currentOffset = 0
+                val list = queryMoviesByFilter(db, state.dateFilter, state.sortByYear, pageSize, 0)
+                currentOffset = list.size
+                _uiState.update {
+                    it.copy(
+                        totalCount = totalCount,
+                        movies = list,
+                        hasMore = list.size >= pageSize
+                    )
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("HomeViewModel", "静默刷新异常: ${e.message}")
             }
         }
     }

@@ -567,11 +567,20 @@ fun SettingsScreen(
             ) {
                 Column {
                     val syncStatus by viewModel.syncStatus.collectAsState()
+                    val autoSyncOnLaunchEnabled by viewModel.autoSyncOnLaunchEnabled.collectAsState()
                     val periodicSyncEnabled by viewModel.periodicSyncEnabled.collectAsState()
 
                     SettingSwitchRow(
-                        title = "后台静默自动同步",
-                        subtitle = "仅在 Wi-Fi 且充电时增量同步新条目并缓存海报",
+                        title = "启动时后台自动增量同步",
+                        subtitle = "打开应用后在后台静默拉取官网最新长片、分集、演员并缓存海报",
+                        icon = Icons.Default.CloudSync,
+                        checked = autoSyncOnLaunchEnabled,
+                        onCheckedChange = { viewModel.setAutoSyncOnLaunchEnabled(it) }
+                    )
+
+                    SettingSwitchRow(
+                        title = "系统定时后台同步",
+                        subtitle = "设备连接 Wi-Fi 网络时每日定时在后台静默增量同步",
                         icon = Icons.Default.Sync,
                         checked = periodicSyncEnabled,
                         onCheckedChange = { viewModel.setPeriodicSyncEnabled(it, context) }
@@ -581,7 +590,7 @@ fun SettingsScreen(
 
                     Column(modifier = Modifier.padding(14.dp)) {
                         when (val status = syncStatus) {
-                            is SettingsViewModel.SyncStatus.Idle -> {
+                            is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Idle -> {
                                 OutlinedButton(
                                     onClick = { viewModel.checkForUpdates(context) },
                                     modifier = Modifier.fillMaxWidth(),
@@ -592,7 +601,7 @@ fun SettingsScreen(
                                     Text("检查官方最新条目 (/newm, /newe, /newp)")
                                 }
                             }
-                            is SettingsViewModel.SyncStatus.Checking -> {
+                            is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Checking -> {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -601,7 +610,7 @@ fun SettingsScreen(
                                     Text("正在检查官网最新数据...", style = MaterialTheme.typography.bodySmall)
                                 }
                             }
-                            is SettingsViewModel.SyncStatus.Discovered -> {
+                            is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Discovered -> {
                                 val updates = status.updates
                                 if (updates.totalCount == 0) {
                                     Text("当前本地已是最新，暂无新内容发布。", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
@@ -617,7 +626,7 @@ fun SettingsScreen(
                                     }
                                 }
                             }
-                            is SettingsViewModel.SyncStatus.Syncing -> {
+                            is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Syncing -> {
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text("同步中: ${status.current}/${status.total} · ${status.currentItem}", style = MaterialTheme.typography.bodySmall)
                                     LinearProgressIndicator(
@@ -626,7 +635,7 @@ fun SettingsScreen(
                                     )
                                 }
                             }
-                            is SettingsViewModel.SyncStatus.Completed -> {
+                            is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Completed -> {
                                 val totalNew = status.result.newMoviesCount + status.result.newEpisodesCount + status.result.newPerformersCount
                                 Text("同步完成！新增 $totalNew 项 (长片: ${status.result.newMoviesCount}, 分集: ${status.result.newEpisodesCount}, 演员: ${status.result.newPerformersCount})，缓存图片: ${status.result.cachedImagesCount}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -634,7 +643,7 @@ fun SettingsScreen(
                                     Text("完成")
                                 }
                             }
-                            is SettingsViewModel.SyncStatus.Error -> {
+                            is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Error -> {
                                 Text("同步异常: ${status.message}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 TextButton(onClick = { viewModel.resetSyncStatus() }) {

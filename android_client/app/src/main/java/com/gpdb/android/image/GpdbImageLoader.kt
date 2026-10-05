@@ -42,6 +42,7 @@ object GpdbImageLoader {
         // ── 网络客户端超时配置与防盗链伪装头 ───────────────────────
         .okHttpClient {
             OkHttpClient.Builder()
+                .dns(com.gpdb.android.util.GpdbDns)
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .addInterceptor { chain ->

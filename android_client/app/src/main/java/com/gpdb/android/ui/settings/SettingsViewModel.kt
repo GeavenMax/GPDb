@@ -39,6 +39,7 @@ class SettingsViewModel(
     val llmSystemPrompt = appSettingsRepository.llmSystemPromptFlow.stateIn(viewModelScope, SharingStarted.Lazily, "")
     
     val appIcon = appPreferences.appIconFlow.stateIn(viewModelScope, SharingStarted.Lazily, "B")
+    val autoSyncOnLaunchEnabled = appSettingsRepository.autoSyncOnLaunchFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
     val periodicSyncEnabled = appSettingsRepository.periodicSyncEnabledFlow.stateIn(viewModelScope, SharingStarted.Lazily, true)
 
     val saveImagesToExternal = appSettingsRepository.saveImagesToExternalFlow.stateIn(viewModelScope, SharingStarted.Lazily, false)
@@ -120,17 +121,13 @@ class SettingsViewModel(
     }
     fun setAppIcon(icon: String) = viewModelScope.launch { appPreferences.setAppIcon(icon) }
 
-    sealed class SyncStatus {
-        object Idle : SyncStatus()
-        object Checking : SyncStatus()
-        data class Discovered(val updates: com.gpdb.android.data.scraper.DiscoveredUpdates) : SyncStatus()
-        data class Syncing(val current: Int, val total: Int, val currentItem: String) : SyncStatus()
-        data class Completed(val result: com.gpdb.android.data.scraper.SyncResult) : SyncStatus()
-        data class Error(val message: String) : SyncStatus()
-    }
+    val syncStatus: StateFlow<com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus> = com.gpdb.android.data.scraper.GpdbSyncManager.syncStatus
 
-    private val _syncStatus = MutableStateFlow<SyncStatus>(SyncStatus.Idle)
-    val syncStatus: StateFlow<SyncStatus> = _syncStatus
+    fun setAutoSyncOnLaunchEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setAutoSyncOnLaunch(enabled)
+        }
+    }
 
     fun setPeriodicSyncEnabled(enabled: Boolean, context: android.content.Context) {
         viewModelScope.launch {
@@ -141,47 +138,34 @@ class SettingsViewModel(
 
     fun checkForUpdates(context: android.content.Context) {
         viewModelScope.launch {
-            _syncStatus.value = SyncStatus.Checking
-            try {
-                val db = DatabaseHolder.db
-                if (db == null) {
-                    _syncStatus.value = SyncStatus.Error("数据库尚未挂载或连接不可用")
-                    return@launch
-                }
-                val physicalRoot = mountPreferences?.mountRootFlow?.first() ?: ""
-                val engine = com.gpdb.android.data.scraper.GpdbScraperEngine(context, db, physicalRoot)
-                val updates = engine.checkForUpdates()
-                _syncStatus.value = SyncStatus.Discovered(updates)
-            } catch (e: Exception) {
-                _syncStatus.value = SyncStatus.Error("检查官方更新失败: ${e.message}")
+            val db = DatabaseHolder.db
+            if (db == null) {
+                return@launch
             }
+            val physicalRoot = mountPreferences?.mountRootFlow?.first() ?: ""
+            try {
+                com.gpdb.android.data.scraper.GpdbSyncManager.checkForUpdates(context, db, physicalRoot)
+            } catch (_: Exception) {}
         }
     }
 
     fun startSync(context: android.content.Context, updates: com.gpdb.android.data.scraper.DiscoveredUpdates) {
         viewModelScope.launch {
-            try {
-                val db = DatabaseHolder.db
-                if (db == null) {
-                    _syncStatus.value = SyncStatus.Error("数据库未连接")
-                    return@launch
-                }
-                val physicalRoot = mountPreferences?.mountRootFlow?.first() ?: ""
-                val engine = com.gpdb.android.data.scraper.GpdbScraperEngine(context, db, physicalRoot)
-                _syncStatus.value = SyncStatus.Syncing(0, updates.totalCount, "准备中...")
-                val result = engine.syncUpdates(updates) { current, total, name ->
-                    _syncStatus.value = SyncStatus.Syncing(current, total, name)
-                }
-                _syncStatus.value = SyncStatus.Completed(result)
-                refreshStats()
-            } catch (e: Exception) {
-                _syncStatus.value = SyncStatus.Error("同步中断: ${e.message}")
+            val db = DatabaseHolder.db
+            if (db == null) {
+                return@launch
             }
+            val physicalRoot = mountPreferences?.mountRootFlow?.first() ?: ""
+            try {
+                com.gpdb.android.data.scraper.GpdbSyncManager.startManualSync(context, db, physicalRoot, updates) {
+                    refreshStats()
+                }
+            } catch (_: Exception) {}
         }
     }
 
     fun resetSyncStatus() {
-        _syncStatus.value = SyncStatus.Idle
+        com.gpdb.android.data.scraper.GpdbSyncManager.resetStatus()
     }
 
     fun setSaveImagesToExternal(enabled: Boolean) {

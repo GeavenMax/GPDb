@@ -128,6 +128,7 @@ object ZipHolder {
 object ImageHttpClient {
     val client: okhttp3.OkHttpClient by lazy {
         okhttp3.OkHttpClient.Builder()
+            .dns(com.gpdb.android.util.GpdbDns)
             .connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
             .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
             .followRedirects(true)
@@ -302,5 +303,6 @@ private fun String.guessMimeType(): String = when {
     endsWith(".webp", ignoreCase = true) -> "image/webp"
     endsWith(".gif", ignoreCase = true)  -> "image/gif"
     endsWith(".avif", ignoreCase = true) -> "image/avif"
+    endsWith(".svg", ignoreCase = true)  -> "image/svg+xml"
     else -> "image/jpeg"
 }

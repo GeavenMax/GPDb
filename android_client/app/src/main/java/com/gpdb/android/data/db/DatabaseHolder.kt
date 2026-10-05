@@ -3,18 +3,19 @@ package com.gpdb.android.data.db
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.util.concurrent.locks.ReentrantReadWriteLock
-import kotlin.concurrent.read
-import kotlin.concurrent.write
 
 // ============================================================
-//  DatabaseHolder — 数据库单例生命周期管理 (增强异常追踪版)
+//  DatabaseHolder — 数据库单例生命周期管理 (协程安全 Mutex 版)
 // ============================================================
 object DatabaseHolder {
 
     private const val TAG = "DatabaseHolder"
-    private val lock = ReentrantReadWriteLock()
+    private val mutex = Mutex()
 
     @Volatile
     private var database: GpdbDatabase? = null
@@ -22,15 +23,15 @@ object DatabaseHolder {
     @Volatile
     private var currentPath: String? = null
 
-    private val _isReadyFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
-    val isReadyFlow: kotlinx.coroutines.flow.StateFlow<Boolean> = _isReadyFlow
+    private val _isReadyFlow = MutableStateFlow(false)
+    val isReadyFlow: StateFlow<Boolean> = _isReadyFlow
 
     /**
      * 在后台协程池异步初始化/挂载数据库，并捕获完整的底层 SQLite 堆栈信息
      */
     suspend fun initDatabaseAsync(context: Context, absoluteDbPath: String): Result<GpdbDatabase> =
         withContext(Dispatchers.IO) {
-            lock.write {
+            mutex.withLock {
                 if (currentPath == absoluteDbPath && database != null) {
                     Log.d(TAG, "数据库路径未改变，复用已有连接: $absoluteDbPath")
                     _isReadyFlow.value = true
@@ -64,23 +65,21 @@ object DatabaseHolder {
         }
 
     val db: GpdbDatabase?
-        get() = lock.read { database }
+        get() = database
 
     val isReady: Boolean
-        get() = lock.read { database != null }
+        get() = database != null
 
     fun release() {
-        lock.write {
-            try {
-                database?.close()
-            } catch (e: Exception) {
-                Log.e(TAG, "关闭数据库异常", e)
-            } finally {
-                database = null
-                currentPath = null
-                _isReadyFlow.value = false
-                Log.i(TAG, "DatabaseHolder 已完全释放连接")
-            }
+        try {
+            database?.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "关闭数据库异常", e)
+        } finally {
+            database = null
+            currentPath = null
+            _isReadyFlow.value = false
+            Log.i(TAG, "DatabaseHolder 已完全释放连接")
         }
     }
 }

@@ -39,8 +39,7 @@ class GpdbSyncWorker(
             }
 
             val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.UNMETERED) // 仅 Wi-Fi
-                .setRequiresCharging(true)                    // 仅充电中
+                .setRequiredNetworkType(NetworkType.UNMETERED) // 仅 Wi-Fi 网络
                 .setRequiresBatteryNotLow(true)
                 .build()
 
@@ -59,7 +58,7 @@ class GpdbSyncWorker(
                 ExistingPeriodicWorkPolicy.KEEP,
                 syncRequest
             )
-            Log.i(TAG, "后台每日静默同步任务已成功排期 (Wi-Fi + 充电)")
+            Log.i(TAG, "后台每日静默同步任务已成功排期 (Wi-Fi 网络)")
         }
 
         /**
