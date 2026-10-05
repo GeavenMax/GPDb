@@ -288,6 +288,9 @@ pub struct PerformerPbcProfile {
     pub birth_place: Option<String>,
     pub country: Option<String>,
     pub nationality: Option<String>,
+    pub birth_place_zh: Option<String>,
+    pub country_zh: Option<String>,
+    pub nationality_zh: Option<String>,
     pub ethnicity: Option<String>,
     pub languages: Option<String>,
     pub career_start: Option<String>,
@@ -312,6 +315,7 @@ pub struct PerformerPbcProfile {
     pub external_ids_json: Option<String>,
     pub image_url: Option<String>,
     pub bio: Option<String>,
+    pub bio_zh: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

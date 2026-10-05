@@ -254,7 +254,7 @@ pub fn get_performer_detail(conn: &Connection,
                         career_status, height, weight, penis_size, foreskin, hair, eyes, build, \
                         skin, ass_type, butt, body_hair, facial_hair, tattoos, piercings, \
                         roles_json, performance_tags, social_links_json, external_ids_json, \
-                        image_url, bio \
+                        image_url, bio, bio_zh, nationality_zh, country_zh, birth_place_zh \
                  FROM performer_pbc_profiles WHERE performer_id = ?1"
             ) {
                 if let Ok(prof) = pbc_stmt.query_row(params![id], |r| {
@@ -269,6 +269,9 @@ pub fn get_performer_detail(conn: &Connection,
                         birth_place: r.get(7)?,
                         country: r.get(8)?,
                         nationality: r.get(9)?,
+                        birth_place_zh: r.get(37)?,
+                        country_zh: r.get(36)?,
+                        nationality_zh: r.get(35)?,
                         ethnicity: r.get(10)?,
                         languages: r.get(11)?,
                         career_start: r.get(12)?,
@@ -293,6 +296,7 @@ pub fn get_performer_detail(conn: &Connection,
                         external_ids_json: r.get(31)?,
                         image_url: r.get(32)?,
                         bio: r.get(33)?,
+                        bio_zh: r.get(34)?,
                     })
                 }) {
                     if p.pbc_url.is_none() {

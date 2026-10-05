@@ -135,6 +135,12 @@ class DatabaseManager:
             ("studio_id", "INTEGER"),
             ("studio_name", "TEXT"),
         ],
+        "performer_pbc_profiles": [
+            ("bio_zh", "TEXT"),
+            ("nationality_zh", "TEXT"),
+            ("country_zh", "TEXT"),
+            ("birth_place_zh", "TEXT"),
+        ],
     }
 
     def init_db(self):
@@ -624,6 +630,119 @@ class DatabaseManager:
                 [(en, zh) for en, zh in entries.items() if en and zh],
             )
         return len(entries)
+
+    def get_untranslated_performer_bios(self, limit: int | None = None) -> list[dict]:
+        """Performer profiles (PBC wiki) that have biography text still needing Chinese translation."""
+        sql = """
+            SELECT pbc.performer_id, p.name, pbc.bio
+            FROM performer_pbc_profiles pbc
+            JOIN performers p ON pbc.performer_id = p.id
+            WHERE pbc.bio IS NOT NULL AND trim(pbc.bio) != ''
+              AND (pbc.bio_zh IS NULL OR trim(pbc.bio_zh) = '')
+            ORDER BY pbc.performer_id ASC
+        """
+        if limit and limit > 0:
+            sql += f" LIMIT {int(limit)}"
+        rows = self.conn.execute(sql).fetchall()
+        return [{"id": r[0], "name": r[1], "bio": r[2]} for r in rows]
+
+    def set_performer_bio_translation(self, performer_id: int, bio_zh: str | None) -> None:
+        """Store translated bio for a performer in performer_pbc_profiles."""
+        if not bio_zh:
+            return
+        with self._write_lock, self.conn:
+            self.conn.execute(
+                "UPDATE performer_pbc_profiles SET bio_zh = ? WHERE performer_id = ?",
+                (bio_zh, performer_id)
+            )
+
+    def get_performer_bio_translation_stats(self) -> dict[str, int]:
+        """Stats for performer biography translation progress."""
+        cur = self.conn.cursor()
+        total = cur.execute(
+            "SELECT COUNT(*) FROM performer_pbc_profiles WHERE bio IS NOT NULL AND trim(bio) != ''"
+        ).fetchone()[0]
+        done = cur.execute(
+            "SELECT COUNT(*) FROM performer_pbc_profiles WHERE bio_zh IS NOT NULL AND trim(bio_zh) != ''"
+        ).fetchone()[0]
+        return {"translatable": total, "translated": done, "pending": total - done}
+
+    def get_untranslated_performer_origins(self, limit: int | None = None) -> list[dict]:
+        """Performer profiles (PBC wiki) that have nationality, country, or birthplace still needing Chinese translation."""
+        sql = """
+            SELECT pbc.performer_id, p.name, pbc.nationality, pbc.country, pbc.birth_place
+            FROM performer_pbc_profiles pbc
+            JOIN performers p ON pbc.performer_id = p.id
+            WHERE (
+                (pbc.nationality IS NOT NULL AND trim(pbc.nationality) != '' AND (pbc.nationality_zh IS NULL OR trim(pbc.nationality_zh) = ''))
+                OR (pbc.country IS NOT NULL AND trim(pbc.country) != '' AND (pbc.country_zh IS NULL OR trim(pbc.country_zh) = ''))
+                OR (pbc.birth_place IS NOT NULL AND trim(pbc.birth_place) != '' AND (pbc.birth_place_zh IS NULL OR trim(pbc.birth_place_zh) = ''))
+            )
+            ORDER BY pbc.performer_id ASC
+        """
+        if limit and limit > 0:
+            sql += f" LIMIT {int(limit)}"
+        rows = self.conn.execute(sql).fetchall()
+        return [
+            {
+                "id": r[0],
+                "name": r[1],
+                "nationality": r[2],
+                "country": r[3],
+                "birth_place": r[4],
+            }
+            for r in rows
+        ]
+
+    def set_performer_origin_translation(
+        self,
+        performer_id: int,
+        nationality_zh: str | None = None,
+        country_zh: str | None = None,
+        birth_place_zh: str | None = None,
+    ) -> None:
+        """Store translated nationality/country/birth_place for a performer."""
+        updates = []
+        args = []
+        if nationality_zh:
+            updates.append("nationality_zh = ?")
+            args.append(nationality_zh)
+        if country_zh:
+            updates.append("country_zh = ?")
+            args.append(country_zh)
+        if birth_place_zh:
+            updates.append("birth_place_zh = ?")
+            args.append(birth_place_zh)
+
+        if not updates:
+            return
+
+        args.append(performer_id)
+        with self._write_lock, self.conn:
+            self.conn.execute(
+                f"UPDATE performer_pbc_profiles SET {', '.join(updates)} WHERE performer_id = ?",
+                args,
+            )
+
+    def get_performer_origin_translation_stats(self) -> dict[str, int]:
+        """Stats for performer origin (nationality / country / birthplace) translation progress."""
+        cur = self.conn.cursor()
+        total = cur.execute("""
+            SELECT COUNT(*) FROM performer_pbc_profiles
+            WHERE (nationality IS NOT NULL AND trim(nationality) != '')
+               OR (country IS NOT NULL AND trim(country) != '')
+               OR (birth_place IS NOT NULL AND trim(birth_place) != '')
+        """).fetchone()[0]
+        done = cur.execute("""
+            SELECT COUNT(*) FROM performer_pbc_profiles
+            WHERE (nationality IS NULL OR trim(nationality) = '' OR nationality_zh IS NOT NULL)
+              AND (country IS NULL OR trim(country) = '' OR country_zh IS NOT NULL)
+              AND (birth_place IS NULL OR trim(birth_place) = '' OR birth_place_zh IS NOT NULL)
+              AND (nationality_zh IS NOT NULL OR country_zh IS NOT NULL OR birth_place_zh IS NOT NULL)
+        """).fetchone()[0]
+        return {"translatable": total, "translated": done, "pending": total - done}
+
+
 
     def get_translation_stats(self) -> dict[str, int]:
         cur = self.conn.cursor()

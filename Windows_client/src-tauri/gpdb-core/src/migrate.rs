@@ -52,6 +52,14 @@ const STUDIO_COLUMNS: &[(&str, &str)] = &[
     ("site_id", "INTEGER"),
 ];
 
+/// Columns on `performer_pbc_profiles` added after the initial release.
+const PBC_PROFILE_COLUMNS: &[(&str, &str)] = &[
+    ("bio_zh", "TEXT"),
+    ("nationality_zh", "TEXT"),
+    ("country_zh", "TEXT"),
+    ("birth_place_zh", "TEXT"),
+];
+
 /// Tables this crate reads. Verbatim from `schema.sql` §11 and §12.
 const TABLES: &str = "
 CREATE TABLE IF NOT EXISTS category_glossary (
@@ -256,6 +264,7 @@ pub fn ensure_schema(conn: &Connection) -> Result<()> {
     let outcome = add_missing_movie_columns(conn)
         .and_then(|()| add_missing_performer_columns(conn))
         .and_then(|()| add_missing_studio_columns(conn))
+        .and_then(|()| add_missing_pbc_columns(conn))
         .and_then(|()| backfill_performer_images_from_profiles(conn));
     match outcome {
         Ok(()) => {
@@ -361,6 +370,26 @@ fn add_missing_studio_columns(conn: &Connection) -> Result<()> {
             continue;
         }
         add_column_to_table_tolerating_race(conn, "studios", name, ty)?;
+    }
+    Ok(())
+}
+
+fn add_missing_pbc_columns(conn: &Connection) -> Result<()> {
+    let existing: Vec<String> = {
+        let mut stmt = conn.prepare("PRAGMA table_info(performer_pbc_profiles)")?;
+        let rows = stmt.query_map([], |r| r.get::<_, String>(1))?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()?
+    };
+
+    if existing.is_empty() {
+        return Ok(());
+    }
+
+    for (name, ty) in PBC_PROFILE_COLUMNS {
+        if existing.iter().any(|c| c == name) {
+            continue;
+        }
+        add_column_to_table_tolerating_race(conn, "performer_pbc_profiles", name, ty)?;
     }
     Ok(())
 }

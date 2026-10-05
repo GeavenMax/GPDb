@@ -98,6 +98,21 @@ function trEthnicity(eth?: string | null): string {
 
 const pbcProfile = computed(() => props.performer?.pbc_profile);
 
+const showOriginalBio = ref(false);
+const isZh = computed(() => currentLocale.value.startsWith('zh'));
+
+const displayedBio = computed(() => {
+  const zh = pbcProfile.value?.bio_zh?.trim();
+  const en = pbcProfile.value?.bio?.trim();
+  if (!zh) return en || '';
+  if (!en) return zh || '';
+  if (isZh.value) {
+    return showOriginalBio.value ? en : zh;
+  } else {
+    return showOriginalBio.value ? zh : en;
+  }
+});
+
 const pbcCareerStatus = computed(() => {
   const status = pbcProfile.value?.career_status?.trim();
   if (!status) return null;
@@ -150,9 +165,22 @@ const SPECS = computed<Spec[]>(() => {
   const p = props.performer;
   if (!p) return [];
   const prof = p.pbc_profile;
-
-  const originParts = [prof?.nationality, prof?.country || prof?.birth_place].filter(Boolean);
-  const originStr = originParts.length > 0 ? originParts.join(' · ') : null;
+  let originStr: string | null = null;
+  if (isZh.value) {
+    const parts: string[] = [];
+    const nat = prof?.nationality_zh?.trim() || prof?.nationality?.trim();
+    const country = prof?.country_zh?.trim() || prof?.country?.trim();
+    const place = prof?.birth_place_zh?.trim() || prof?.birth_place?.trim();
+    if (nat) parts.push(nat);
+    if (country && !parts.includes(country) && country !== nat) parts.push(country);
+    if (place && !parts.includes(place) && place !== country && place !== nat) parts.push(place);
+    originStr = parts.length > 0 ? parts.join(' · ') : null;
+  } else {
+    const nat = prof?.nationality;
+    const place = prof?.country || prof?.birth_place;
+    const originParts = [nat, place].filter(Boolean);
+    originStr = originParts.length > 0 ? originParts.join(' · ') : null;
+  }
 
   return [
     { key: 'birthDate', label: t('performer.birthDate'), accent: false, values: prof?.birth_date ? [prof.age ? `${prof.birth_date} (${t('performer.ageYears', { age: prof.age })})` : prof.birth_date] : [] },
@@ -285,6 +313,7 @@ watch(() => props.performer?.id, () => {
   studioFilter.value = '';
   studiosExpanded.value = false;
   isAliasesExpanded.value = false;
+  showOriginalBio.value = false;
 });
 
 const visibleMovies = computed(() => {
@@ -510,23 +539,38 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown));
         </div>
 
         <!-- Wikipedia Biography Card -->
-        <div v-if="pbcProfile?.bio" class="mt-2 p-3.5 rounded-2xl bg-surface/60 border border-line/70 text-xs text-fg-3 leading-relaxed">
+        <div v-if="pbcProfile?.bio || pbcProfile?.bio_zh" class="mt-2 p-3.5 rounded-2xl bg-surface/60 border border-line/70 text-xs text-fg-3 leading-relaxed">
           <div class="flex items-center justify-between gap-2 mb-1.5">
             <div class="flex items-center gap-1.5 text-xs font-semibold text-purple-400">
               <BookOpen class="w-3.5 h-3.5" />
               <span>{{ t('performer.pbcBio') }}</span>
+              <span v-if="pbcProfile?.bio_zh?.trim() && (isZh ? !showOriginalBio : showOriginalBio)" class="text-[9px] font-bold text-success-text px-1 py-0.2 rounded bg-success-fill/15 border border-success-fill/30 ml-1">
+                {{ t('common.translated') }}
+              </span>
             </div>
-            <button
-              v-if="performer.pbc_url || pbcProfile.pbc_url"
-              @click="openPbcPerformer(performer.pbc_url || pbcProfile.pbc_url)"
-              class="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 transition cursor-pointer"
-              :title="t('performer.viewWiki')"
-            >
-              <span>{{ t('performer.fullArticle') }}</span>
-              <ExternalLink class="w-2.5 h-2.5" />
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                v-if="pbcProfile?.bio && pbcProfile?.bio_zh"
+                @click="showOriginalBio = !showOriginalBio"
+                class="text-[10px] text-fg-4 hover:text-accent flex items-center gap-1 transition cursor-pointer"
+                :title="isZh ? (showOriginalBio ? t('movie.showChinese') : t('movie.showOriginal')) : (showOriginalBio ? t('movie.showOriginal') : t('movie.showChinese'))"
+              >
+                <span>{{ isZh ? (showOriginalBio ? t('movie.showChinese') : t('movie.showOriginal')) : (showOriginalBio ? t('movie.showOriginal') : t('movie.showChinese')) }}</span>
+              </button>
+              <button
+                v-if="performer.pbc_url || pbcProfile?.pbc_url"
+                @click="openPbcPerformer(performer.pbc_url || pbcProfile!.pbc_url)"
+                class="text-[10px] text-purple-400 hover:text-purple-300 flex items-center gap-1 transition cursor-pointer"
+                :title="t('performer.viewWiki')"
+              >
+                <span>{{ t('performer.fullArticle') }}</span>
+                <ExternalLink class="w-2.5 h-2.5" />
+              </button>
+            </div>
           </div>
-          <p class="text-fg-3/90 text-[11px] leading-relaxed">{{ pbcProfile.bio }}</p>
+          <p class="text-fg-3/90 text-[11px] leading-relaxed">
+            {{ displayedBio }}
+          </p>
         </div>
 
         <!-- Social and External Database Links -->

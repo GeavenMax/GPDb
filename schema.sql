@@ -108,6 +108,10 @@ CREATE TABLE IF NOT EXISTS performer_pbc_profiles (
     image_url TEXT,
     bio TEXT,
     pbc_last_edited TEXT,
+    bio_zh TEXT,
+    nationality_zh TEXT,
+    country_zh TEXT,
+    birth_place_zh TEXT,
     scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (performer_id) REFERENCES performers(id) ON DELETE CASCADE
 );
