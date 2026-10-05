@@ -118,6 +118,9 @@ export interface PerformerPbcProfile {
   birth_place?: string | null;
   country?: string | null;
   nationality?: string | null;
+  birth_place_zh?: string | null;
+  country_zh?: string | null;
+  nationality_zh?: string | null;
   ethnicity?: string | null;
   languages?: string | null;
   career_start?: string | null;
@@ -145,6 +148,7 @@ export interface PerformerPbcProfile {
   external_ids_json?: string | null;
   image_url?: string | null;
   bio?: string | null;
+  bio_zh?: string | null;
 }
 
 /** Sort keys accepted by the studio library, on both the HTTP and Tauri paths. */

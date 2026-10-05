@@ -173,10 +173,9 @@ export function sampleImageEdgeColor(img: HTMLImageElement | null | undefined): 
       return [imgData[idx], imgData[idx + 1], imgData[idx + 2], imgData[idx + 3]];
     };
 
-    // 12 edge probe points:
-    // 4 corners, 4 4%-insets (to bypass anti-aliasing / edge compression noise), 4 edge midpoints
-    const insetX = Math.max(1, Math.round(w * 0.04));
-    const insetY = Math.max(1, Math.round(h * 0.04));
+    // 16 edge probe points: 4 corners, 2 on each edge, 4 3%-insets
+    const insetX = Math.max(1, Math.round(w * 0.03));
+    const insetY = Math.max(1, Math.round(h * 0.03));
 
     const points: [number, number][] = [
       // 4 corners
@@ -184,16 +183,22 @@ export function sampleImageEdgeColor(img: HTMLImageElement | null | undefined): 
       [w - 1, 0],
       [0, h - 1],
       [w - 1, h - 1],
-      // 4 4%-inset points
+      // Edge distribution points
+      [Math.floor(w / 4), 0],
+      [Math.floor(w / 2), 0],
+      [Math.floor((3 * w) / 4), 0],
+      [Math.floor(w / 4), h - 1],
+      [Math.floor(w / 2), h - 1],
+      [Math.floor((3 * w) / 4), h - 1],
+      [0, Math.floor(h / 3)],
+      [0, Math.floor((2 * h) / 3)],
+      [w - 1, Math.floor(h / 3)],
+      [w - 1, Math.floor((2 * h) / 3)],
+      // 4 inset points
       [insetX, insetY],
       [w - 1 - insetX, insetY],
       [insetX, h - 1 - insetY],
       [w - 1 - insetX, h - 1 - insetY],
-      // 4 edge midpoints
-      [Math.floor(w / 2), 0],
-      [Math.floor(w / 2), h - 1],
-      [0, Math.floor(h / 2)],
-      [w - 1, Math.floor(h / 2)],
     ];
 
     let transparentCount = 0;
@@ -208,8 +213,8 @@ export function sampleImageEdgeColor(img: HTMLImageElement | null | undefined): 
       }
     }
 
-    // 1. Transparent PNG / SVG (6 or more probe points transparent, or no opaque edge points)
-    if (transparentCount >= 6 || colors.length === 0) {
+    // 1. Transparent PNG / SVG (8 or more probe points transparent, or fewer than 4 opaque points)
+    if (transparentCount >= 8 || colors.length < 4) {
       const accent = extractBrandAccentColor(imgData, w, h, null);
       let containerStyle: Record<string, string> = {};
       let bgColor: string | null = null;
@@ -238,38 +243,49 @@ export function sampleImageEdgeColor(img: HTMLImageElement | null | undefined): 
       return res;
     }
 
-    // 2. Solid/near-solid edge: compute average edge RGB
-    let sumR = 0, sumG = 0, sumB = 0;
-    for (const [r, g, b] of colors) {
-      sumR += r;
-      sumG += g;
-      sumB += b;
-    }
-    const avgR = Math.round(sumR / colors.length);
-    const avgG = Math.round(sumG / colors.length);
-    const avgB = Math.round(sumB / colors.length);
+    // 2. Robust Outlier-Filtered Edge Sampling (find median RGB and filter outliers like text touching borders)
+    const sortedR = colors.map(c => c[0]).sort((a, b) => a - b);
+    const sortedG = colors.map(c => c[1]).sort((a, b) => a - b);
+    const sortedB = colors.map(c => c[2]).sort((a, b) => a - b);
+    const medR = sortedR[Math.floor(sortedR.length / 2)];
+    const medG = sortedG[Math.floor(sortedG.length / 2)];
+    const medB = sortedB[Math.floor(sortedB.length / 2)];
 
-    // Check color consistency: ensure edge pixels are relatively uniform
-    let maxDiff = 0;
-    for (const [r, g, b] of colors) {
-      const diff = Math.abs(r - avgR) + Math.abs(g - avgG) + Math.abs(b - avgB);
-      if (diff > maxDiff) maxDiff = diff;
+    const inliers: [number, number, number][] = [];
+    for (const c of colors) {
+      const diff = Math.abs(c[0] - medR) + Math.abs(c[1] - medG) + Math.abs(c[2] - medB);
+      if (diff <= 75) {
+        inliers.push(c);
+      }
     }
 
-    if (maxDiff <= 95) {
+    const inlierRatio = inliers.length / colors.length;
+
+    // If 55% or more of edge points agree, it is a solid/near-solid background!
+    if (inlierRatio >= 0.55 && inliers.length > 0) {
+      let sumR = 0, sumG = 0, sumB = 0;
+      for (const [r, g, b] of inliers) {
+        sumR += r;
+        sumG += g;
+        sumB += b;
+      }
+      const avgR = Math.round(sumR / inliers.length);
+      const avgG = Math.round(sumG / inliers.length);
+      const avgB = Math.round(sumB / inliers.length);
+
       const luminance = 0.299 * avgR + 0.587 * avgG + 0.114 * avgB;
-      const isDark = luminance < 140; // < 0.55 * 255
+      const isDark = luminance < 140;
       const isLight = luminance > 180;
 
-      // Smart extremes clamping: clamp near-black (< 20) to pure OLED black,
-      // and near-white (> 240) to pure crisp white to eliminate muddy gray borders
+      // Smart extremes clamping: clamp near-black (< 35) to pure OLED black,
+      // and near-white (> 225) to pure crisp white to eliminate muddy gray borders
       let finalBgColor: string;
       let bgRgbForAccent: [number, number, number];
 
-      if (luminance < 20) {
+      if (luminance < 35) {
         finalBgColor = '#000000';
         bgRgbForAccent = [0, 0, 0];
-      } else if (luminance > 240) {
+      } else if (luminance > 225) {
         finalBgColor = '#ffffff';
         bgRgbForAccent = [255, 255, 255];
       } else {
@@ -313,28 +329,65 @@ export function sampleImageEdgeColor(img: HTMLImageElement | null | undefined): 
       return res;
     }
 
-    // 3. Edge colors vary significantly (e.g. photo edge / varied background)
-    // Extract accent color for border anyway if possible
-    const accent = extractBrandAccentColor(imgData, w, h, null);
-    let borderColor: string | null = null;
-    let containerStyle: Record<string, string> = {};
+    // 3. Varied / Photo edge: seamless dark or crisp white ambient blending instead of plain gray
+    let sumAllR = 0, sumAllG = 0, sumAllB = 0;
+    for (const [r, g, b] of colors) {
+      sumAllR += r;
+      sumAllG += g;
+      sumAllB += b;
+    }
+    const avgAllR = Math.round(sumAllR / colors.length);
+    const avgAllG = Math.round(sumAllG / colors.length);
+    const avgAllB = Math.round(sumAllB / colors.length);
+    const overallLum = 0.299 * avgAllR + 0.587 * avgAllG + 0.114 * avgAllB;
 
-    if (accent) {
-      const [ar, ag, ab] = accent.rgb;
-      borderColor = `rgba(${ar}, ${ag}, ${ab}, 0.35)`;
-      containerStyle = { borderColor };
+    const accent = extractBrandAccentColor(imgData, w, h, null);
+    let finalBgColor: string;
+    let borderColor: string;
+    let boxShadow: string;
+
+    if (overallLum < 75) {
+      finalBgColor = '#000000';
+      if (accent) {
+        const [ar, ag, ab] = accent.rgb;
+        borderColor = `rgba(${ar}, ${ag}, ${ab}, 0.4)`;
+        boxShadow = `0 6px 20px rgba(0, 0, 0, 0.45), 0 0 12px rgba(${ar}, ${ag}, ${ab}, 0.25)`;
+      } else {
+        borderColor = 'rgba(255, 255, 255, 0.18)';
+        boxShadow = '0 6px 20px rgba(0, 0, 0, 0.45)';
+      }
+    } else if (overallLum > 185) {
+      finalBgColor = '#ffffff';
+      if (accent) {
+        const [ar, ag, ab] = accent.rgb;
+        borderColor = `rgba(${ar}, ${ag}, ${ab}, 0.3)`;
+        boxShadow = `0 6px 20px rgba(0, 0, 0, 0.12), 0 0 10px rgba(${ar}, ${ag}, ${ab}, 0.15)`;
+      } else {
+        borderColor = 'rgba(0, 0, 0, 0.12)';
+        boxShadow = '0 6px 20px rgba(0, 0, 0, 0.12)';
+      }
+    } else {
+      finalBgColor = `rgba(${avgAllR}, ${avgAllG}, ${avgAllB}, 0.22)`;
+      borderColor = accent ? `rgba(${accent.rgb[0]}, ${accent.rgb[1]}, ${accent.rgb[2]}, 0.35)` : 'rgba(255, 255, 255, 0.15)';
+      boxShadow = '0 4px 16px rgba(0, 0, 0, 0.2)';
     }
 
-    const fallback: SampledColorResult = {
-      bgColor: null,
-      isDark: true,
+    const containerStyle: Record<string, string> = {
+      backgroundColor: finalBgColor,
+      borderColor,
+      boxShadow,
+    };
+
+    const res: SampledColorResult = {
+      bgColor: finalBgColor,
+      isDark: overallLum < 140,
       isTransparent: false,
       accentColor: accent?.css ?? null,
       borderColor,
       containerStyle,
     };
-    colorCache.set(src, fallback);
-    return fallback;
+    colorCache.set(src, res);
+    return res;
   } catch {
     // If canvas is tainted or throws
     const fallback: SampledColorResult = {

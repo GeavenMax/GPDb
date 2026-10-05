@@ -236,6 +236,8 @@ const studioLogoErrorSet = shallowReactive(new Set<string>());
 
 function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
   if (!logoUrl) return;
+  // If previously marked error by a transient network/abort glitch, unmark it
+  studioLogoErrorSet.delete(logoUrl);
   const img = e.target as HTMLImageElement;
   if (!img) return;
   const result = sampleImageEdgeColor(img);
@@ -252,6 +254,9 @@ function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
 }
 
 function onStudioGridLogoError(logoUrl?: string | null) {
+  // If navigating away or not on the studios tab, the error is an unmount-induced network abort.
+  // Ignore it completely so we never blacklist healthy cached logos!
+  if (currentTab.value !== 'studios') return;
   if (logoUrl) {
     studioLogoErrorSet.add(logoUrl);
   }
@@ -1271,6 +1276,9 @@ watch(currentTab, (newTab) => {
     if (performers.value.length === 0) reloadCurrentTab();
     loadPerformerFacets();
   } else if (newTab === 'studios') {
+    // Reset transient image errors whenever returning to studios tab
+    // so any transfers aborted during previous tab switches can re-fetch cleanly
+    studioLogoErrorSet.clear();
     if (studioRows.value.length === 0) reloadCurrentTab();
   } else if (newTab === 'directors') {
     if (directorRows.value.length === 0) reloadCurrentTab();

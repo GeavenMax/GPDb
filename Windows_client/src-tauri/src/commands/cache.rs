@@ -220,10 +220,17 @@ pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
             .trim_start_matches(|c| c == '/' || c == '\\');
 
         let path = cache_dir.join(folder).join(clean_rel);
-        let mime = if clean_rel.to_ascii_lowercase().ends_with(".png") {
+        let lower_clean = clean_rel.to_ascii_lowercase();
+        let mime = if lower_clean.ends_with(".png") {
             "image/png"
-        } else if clean_rel.to_ascii_lowercase().ends_with(".webp") {
+        } else if lower_clean.ends_with(".webp") {
             "image/webp"
+        } else if lower_clean.ends_with(".svg") {
+            "image/svg+xml"
+        } else if lower_clean.ends_with(".gif") {
+            "image/gif"
+        } else if lower_clean.ends_with(".avif") {
+            "image/avif"
         } else {
             "image/jpeg"
         };
@@ -242,12 +249,21 @@ pub fn resolve_cache_target_path(url: &str) -> Option<(PathBuf, &'static str)> {
             "png"
         } else if lower.contains(".webp") {
             "webp"
+        } else if lower.contains(".svg") {
+            "svg"
+        } else if lower.contains(".gif") {
+            "gif"
+        } else if lower.contains(".avif") {
+            "avif"
         } else {
             "jpg"
         };
         let mime = match ext {
             "png" => "image/png",
             "webp" => "image/webp",
+            "svg" => "image/svg+xml",
+            "gif" => "image/gif",
+            "avif" => "image/avif",
             _ => "image/jpeg",
         };
 
@@ -311,6 +327,10 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
                 .header("Content-Type", mime)
                 .header("Cache-Control", "public, max-age=31536000, immutable")
                 .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Cross-Origin-Resource-Policy", "cross-origin")
+                .header("Vary", "Origin")
                 .body(bytes)
                 .unwrap();
         }
@@ -434,6 +454,10 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
                 .header("Content-Type", final_mime)
                 .header("Cache-Control", "public, max-age=31536000, immutable")
                 .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Cross-Origin-Resource-Policy", "cross-origin")
+                .header("Vary", "Origin")
                 .body(bytes)
                 .unwrap();
         }
@@ -444,6 +468,9 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
         .status(404)
         .header("Content-Type", "text/plain")
         .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+        .header("Access-Control-Allow-Headers", "*")
+        .header("Cross-Origin-Resource-Policy", "cross-origin")
         .body(b"Image not found".to_vec())
         .unwrap()
 }
