@@ -27,8 +27,22 @@
     - `db_manager.py`：在 `save_standalone_episodes` 增加内部片商缓存字典与 SQL `NULLIF(excluded.studio_name, '')` 保护，防止空名称覆盖已有片商；
   - **跨平台查询引擎双模增强 (`gpdb-core/src/queries/studios.rs`)**：
     - `get_studio_works` 升级为片商名称与 `site_id` 双重联合查询（`e.studio_name = ?1 OR e.studio_id = ?2`），使 Say Uncle 这类拥有多家子品牌（Missionary Boys、Family Dick 等）的伞状母公司网络能够完整展示全网 3,425 部作品，同时子厂牌独立档案页亦能精准聚合各自作品。
+- **Android 端适配最新版 GPDb.db 架构校验与挂载自愈修复 (`MovieEntity.kt`, `GpdbDatabase.kt`, `DatabaseHolder.kt`)**：
+  - **补齐 `idx_movies_studio_id` 物理索引声明**：最新版数据库在 `movies` 表中新增了 `idx_movies_studio_id` 物理索引，补齐 `MovieEntity` 的 `@Index` 映射，消除 Room 启动时的 `Pre-packaged database has an invalid schema: movies` 校验异常；
+  - **Room 升级至版本 8 并完善全版本平滑迁移链**：提供从历史各版本（0..7）到版本 8 的平滑迁移路径，并在 `ensureSchemaCompatibility` 中自动确保物理索引自愈补全；
+  - **协程调度锁重构彻底根除 `IllegalMonitorStateException`**：将 `DatabaseHolder` 中的线程读写锁替换为协程安全原语 `Mutex`，杜绝挂载 probe 跨挂起点恢复导致的崩溃。
 
 ### Added
+- **Android 端启动后台无感增量同步与原生刮削引擎全面对齐 (`GpdbScraperEngine.kt`, `GpdbSyncManager.kt`, `HomeViewModel.kt`, `GpdbDns.kt`, `SettingsScreen.kt`, `SettingsViewModel.kt`, `AppSettingsRepository.kt`)**：
+  - **冷启动后台无感增量同步**：在应用启动并挂载数据库 3.5 秒后，由全局单例管理器 `GpdbSyncManager` 自动触发后台静默差量检查，增量拉取官方最新发布的长片、分集与演员数据；具备 15 分钟防抖冷却机制，避免频繁重启造成多余性能与网络消耗；
+  - **原生刮削引擎能力全面对齐桌面端**：完全复刻桌面端 `sync_gpdb.py` 与 `scraper_v2.py`：
+    - 严格对齐分集剧情简介解析（包含 commit `6a94a49` 的 `.wideCols-1` / `.text-justify` / `.text-content` 兼容规则）；
+    - 演员全部体征与属性字段（身高、体重、发色、瞳色、肤色、体型、纹身、穿孔等）完整提取入库；
+    - 新片商官方网站主页自动探测抓取与建档关联；
+    - 自动触发 SQLite FTS5 全文搜索增量索引维护；
+  - **FUSE / TRUNCATE 写锁让渡与无感刷新**：针对 Android SAF/FUSE 挂载外部存储与 TRUNCATE 模式，采用条目级原子短事务并配合 40~50ms 锁让渡延迟，彻底杜绝 UI 渲染阻塞与死锁；同步完成后通知 `HomeViewModel` 无感刷新前台列表；
+  - **设置页同步开关解耦与全局状态联动**：设置中心将「启动时后台自动增量同步」与「系统定时后台同步」解耦为两个独立开关，并无缝监听全局 `GpdbSyncManager.syncStatus`，实时展示同步进度百分比、当前条目与完成明细；
+  - **抗污染网络 DNS 弹性回退容灾 (`GpdbDns.kt`)**：针对特定网络环境、公共 Wi-Fi 或第三方 DNS（如 AdGuard Family DNS 将域名劫持解析为 `94.140.14.35` 导致 TLS 握手失败），自动侦测并静默回退至官方 Cloudflare Anycast CDN 节点，保障后台同步与图片加载高可用。
 - **「全景洞察」页面架构重构与独立厂牌谱系归属 Wiki / 交互拓扑图谱上线 (`StudioGenealogyView.vue`, `AnalyticsView.vue`, `App.vue`, `i18n/index.ts`, `build_studio_genealogy.py`, `studio_genealogy.json`)**：
   - **左侧导航栏定位升级**：将原「使用统计」全局更名为「全景洞察 / Panorama & Insights」，全面升格为涵盖行业编年史、厂牌图谱与用户足迹的宏观智库；
   - **顶部三段式顶格视窗**：在全景洞察页面最顶部并排陈列【🏛️ 行业全景编年史】、【🕸️ 厂牌谱系与归属 Wiki】与【👤 个人足迹与偏好】三大平级核心板块；
@@ -51,6 +65,7 @@
     - **【交互拓扑图谱模式】**：基于 ECharts 6 力导向图引擎，节点按作品量自适应缩放，支持鼠标滚轮平滑缩放漫游、悬停一度邻近关系点亮（focusNodeAdjacency）、点击锁定抽屉与一键直达媒体库。
 
 ### Changed
+- **主页“今日星光”演员头像裁剪定位优化 (`desktop_client/src/views/HomeView.vue`, `Windows_client/src/views/HomeView.vue`)**：将“今日星光”轮播卡片中演员圆形头像的图片定位从默认居中裁剪优化为中上靠顶对齐 (`object-cover object-top`)，完美解决因半身/全身竖版写真纵横比差异导致的人物头部与面部被圆形边框截断的问题，同时保持悬浮微放大动效。
 - **片商档案详情与探索板块体验优化**：
   - 片商档案页的分集片段页适配与长片页对齐的高品质网格展示与密集列表视图切换；
   - 影片档案页点击片商按钮直达片商专属档案页；

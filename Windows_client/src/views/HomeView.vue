@@ -368,7 +368,7 @@ onBeforeUnmount(() => {
             <img
               :src="getImageUrl(perf.image_url)"
               :alt="perf.name"
-              class="w-full h-full object-cover group-hover:scale-110 transition duration-300"
+              class="w-full h-full object-cover object-top group-hover:scale-110 transition duration-300"
               loading="lazy"
               @error="handleImgError(String(perf.id))"
             />
