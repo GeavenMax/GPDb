@@ -692,7 +692,7 @@ onMounted(() => {
                   v-model="providerForm.active"
                   class="rounded text-accent focus:ring-accent w-4 h-4 cursor-pointer"
                 />
-                <span>{{ t('plugins.setActiveOnSave') || '设为默认生效的翻译来源' }}</span>
+                <span>{{ t('plugins.setActiveOnSave') }}</span>
               </label>
 
               <div class="flex items-center gap-2 pt-1">

@@ -116,11 +116,19 @@ const showShareModal = ref(false);
 
 const shareCardData = computed<ShareCardData | null>(() => {
   if (!props.episode) return null;
+  const isZh = currentLocale.value.startsWith('zh');
   const rawPoster = props.episode.thumbnail_url || (props.episode as any).still_url || (props.episode as any).cover_url;
+  const filmName = isZh
+    ? (props.episode.movie_title_zh || props.episode.movie_title)
+    : props.episode.movie_title;
+  const altName = isZh
+    ? (props.episode.movie_title_zh && props.episode.movie_title !== props.episode.movie_title_zh ? props.episode.movie_title : null)
+    : null;
+
   return {
     type: 'episode',
-    title: heading.value,
-    titleAlt: filmAlt.value,
+    title: episodeHeading(props.episode, filmName || null),
+    titleAlt: altName,
     posterUrl: rawPoster ? getImageUrl(rawPoster) : '',
     category: t('share.badgeEpisode'),
     releaseDate: props.episode.release_date || (props.episode.release_year ? String(props.episode.release_year) : ''),

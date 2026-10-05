@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { t, currentLocale } from '../i18n';
 import * as echarts from 'echarts';
 import {
   Building2, Network, Search, Layers, Clapperboard,
@@ -124,7 +125,7 @@ async function loadData() {
     genealogyData.value = json;
   } catch (err: any) {
     console.error('加载厂牌谱系数据失败:', err);
-    error.value = err?.message || '加载厂牌谱系数据失败';
+    error.value = err?.message || t('genealogy.loadingGenealogy');
   } finally {
     loading.value = false;
     if (viewMode.value === 'graph') {
@@ -199,7 +200,7 @@ function initGraphChart() {
 
   // Build categories by group
   const groupMap = new Map<string, string>();
-  genealogyData.value.groups.forEach(g => groupMap.set(g.id, g.name_zh));
+  genealogyData.value.groups.forEach(g => groupMap.set(g.id, currentLocale.value.startsWith('zh') ? g.name_zh : g.name));
 
   const categories = Array.from(groupMap.entries()).map(([id, name]) => ({
     name,
@@ -270,23 +271,24 @@ function initGraphChart() {
       formatter: (params: any) => {
         if (params.dataType === 'node') {
           const n: StudioNode = params.data.rawNode;
-          const zh = n.name_zh ? `<span style="color:#38bdf8;font-weight:bold;">${n.name_zh}</span> ` : '';
+          const zh = (currentLocale.value.startsWith('zh') && n.name_zh) ? `<span style="color:#38bdf8;font-weight:bold;">${n.name_zh}</span> ` : '';
+          const groupName = currentLocale.value.startsWith('zh') ? n.group_name_zh : n.group_name;
           return `
             <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">${zh}${n.name}</div>
-            <div style="color:#94a3b8;font-size:11px;margin-bottom:6px;">所属集团: <span style="color:#f1f5f9;">${n.group_name_zh}</span></div>
+            <div style="color:#94a3b8;font-size:11px;margin-bottom:6px;">${t('genealogy.parentGroup')}: <span style="color:#f1f5f9;">${groupName}</span></div>
             <div style="display:flex;gap:12px;font-size:11px;margin-bottom:4px;">
-              <span>长片部数: <b>${n.works_count}</b></span>
-              <span>分集片段: <b>${n.episodes_count}</b></span>
+              <span>${t('genealogy.featureWorksShort', { count: n.works_count })}</span>
+              <span>${t('genealogy.episodesShort', { count: n.episodes_count })}</span>
             </div>
             ${n.badge ? `<div style="display:inline-block;padding:2px 6px;border-radius:4px;background:rgba(56,189,248,0.15);color:#38bdf8;font-size:10px;">${n.badge}</div>` : ''}
-            <div style="margin-top:6px;font-size:10px;color:#64748b;">点击锁定厂牌并联动媒体库 ↗</div>
+            <div style="margin-top:6px;font-size:10px;color:#64748b;">${t('genealogy.clickToInspect')}</div>
           `;
         } else if (params.dataType === 'edge') {
           const e = params.data.rawEdge;
           return `
             <div style="font-size:12px;font-weight:bold;margin-bottom:2px;">${e.source} ➔ ${e.target}</div>
-            <div style="color:#38bdf8;font-size:11px;">关系: ${e.relation_label}</div>
-            <div style="color:#94a3b8;font-size:10px;">关联作品数: <b>${e.weight}</b> 部</div>
+            <div style="color:#38bdf8;font-size:11px;">${t('genealogy.relation', { rel: e.relation_label })}</div>
+            <div style="color:#94a3b8;font-size:10px;">${t('genealogy.linkedWorks', { count: e.weight })}</div>
           `;
         }
         return '';
@@ -335,6 +337,12 @@ function handleResize() {
   }
 }
 
+watch(currentLocale, () => {
+  if (viewMode.value === 'graph') {
+    initGraphChart();
+  }
+});
+
 watch(viewMode, async (mode) => {
   if (mode === 'graph') {
     await nextTick();
@@ -364,15 +372,15 @@ onUnmounted(() => {
         <div>
           <div class="flex items-center gap-2.5 mb-2">
             <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-accent-fill/15 text-accent-text border border-accent-fill/25">
-              全球成人影视资本与母子归属图谱
+              {{ t('genealogy.title') }}
             </span>
             <span class="text-xs text-fg-4 font-mono">Decoupled Ecosystem Wiki</span>
           </div>
           <h2 class="text-2xl md:text-3xl font-black text-fg tracking-tight flex items-center gap-3">
-            <span>🕸️ 厂牌谱系与归属网络</span>
+            <span>🕸️ {{ t('genealogy.subtitle') }}</span>
           </h2>
           <p class="text-xs md:text-sm text-fg-3 mt-1.5 max-w-2xl leading-relaxed">
-            揭示各大影视传媒帝国、流媒体母网与长片制作厂牌之间的母子控股、垂直部门、点播收录与代工合作全景。数据独立离线解耦，与本地媒体库实时双向互通。
+            {{ t('genealogy.desc') }}
           </p>
         </div>
 
@@ -380,25 +388,25 @@ onUnmounted(() => {
         <div v-if="genealogyData" class="grid grid-cols-2 md:grid-cols-4 gap-2.5 shrink-0">
           <div class="px-3.5 py-2.5 rounded-2xl bg-surface-3/80 border border-line/60 backdrop-blur-xs text-center">
             <div class="text-[10px] text-fg-4 font-medium flex items-center justify-center gap-1">
-              <Building2 class="w-3 h-3 text-accent-text" /> 核心集团
+              <Building2 class="w-3 h-3 text-accent-text" /> {{ t('genealogy.statCoreGroups') }}
             </div>
             <div class="text-lg font-black text-fg mt-0.5">{{ genealogyData.stats.total_groups }}</div>
           </div>
           <div class="px-3.5 py-2.5 rounded-2xl bg-surface-3/80 border border-line/60 backdrop-blur-xs text-center">
             <div class="text-[10px] text-fg-4 font-medium flex items-center justify-center gap-1">
-              <Layers class="w-3 h-3 text-sky-400" /> 覆盖厂牌
+              <Layers class="w-3 h-3 text-sky-400" /> {{ t('genealogy.statCoveredStudios') }}
             </div>
             <div class="text-lg font-black text-fg mt-0.5">{{ genealogyData.stats.total_studios }}</div>
           </div>
           <div class="px-3.5 py-2.5 rounded-2xl bg-surface-3/80 border border-line/60 backdrop-blur-xs text-center">
             <div class="text-[10px] text-fg-4 font-medium flex items-center justify-center gap-1">
-              <Network class="w-3 h-3 text-emerald-400" /> 归属网络边
+              <Network class="w-3 h-3 text-emerald-400" /> {{ t('genealogy.statNetworkEdges') }}
             </div>
             <div class="text-lg font-black text-fg mt-0.5">{{ genealogyData.stats.total_links }}</div>
           </div>
           <div class="px-3.5 py-2.5 rounded-2xl bg-surface-3/80 border border-line/60 backdrop-blur-xs text-center">
             <div class="text-[10px] text-fg-4 font-medium flex items-center justify-center gap-1">
-              <Clapperboard class="w-3 h-3 text-amber-400" /> 关联作品部数
+              <Clapperboard class="w-3 h-3 text-amber-400" /> {{ t('genealogy.statRelatedWorks') }}
             </div>
             <div class="text-lg font-black text-fg mt-0.5">{{ genealogyData.stats.total_episodes_linked.toLocaleString() }}</div>
           </div>
@@ -414,7 +422,7 @@ onUnmounted(() => {
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="搜索厂牌英文名、中文名或归属集团 (如 Masqulin, 猎鹰, The Bro Network)..."
+          :placeholder="t('genealogy.searchPlaceholder')"
           class="w-full pl-10 pr-4 py-2 rounded-xl bg-surface border border-line/80 text-xs text-fg focus:outline-hidden focus:border-accent-fill transition placeholder:text-fg-4"
         />
       </div>
@@ -429,7 +437,7 @@ onUnmounted(() => {
               selectedGroupFilter === 'all' ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-4 hover:text-fg'
             ]"
           >
-            全部体系
+            {{ t('genealogy.filterAll') }}
           </button>
           <button
             @click="selectedGroupFilter = 'conglomerate'"
@@ -438,7 +446,7 @@ onUnmounted(() => {
               selectedGroupFilter === 'conglomerate' ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-4 hover:text-fg'
             ]"
           >
-            跨国传媒集团
+            {{ t('genealogy.filterConglomerate') }}
           </button>
           <button
             @click="selectedGroupFilter = 'network'"
@@ -447,7 +455,7 @@ onUnmounted(() => {
               selectedGroupFilter === 'network' ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-4 hover:text-fg'
             ]"
           >
-            线上点播母网
+            {{ t('genealogy.filterVodNetwork') }}
           </button>
           <button
             @click="selectedGroupFilter = 'indie_ecosystem'"
@@ -456,7 +464,7 @@ onUnmounted(() => {
               selectedGroupFilter === 'indie_ecosystem' ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-4 hover:text-fg'
             ]"
           >
-            独立顶流生态
+            {{ t('genealogy.filterIndieEcosystem') }}
           </button>
         </div>
 
@@ -468,10 +476,10 @@ onUnmounted(() => {
               'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer',
               viewMode === 'wiki' ? 'bg-accent-fill text-on-fill shadow-xs' : 'text-fg-4 hover:text-fg'
             ]"
-            title="结构化家谱目录与知识库查阅"
+            :title="t('genealogy.viewWiki')"
           >
             <LayoutGrid class="w-3.5 h-3.5" />
-            <span>家谱 Wiki</span>
+            <span>{{ t('genealogy.viewWiki') }}</span>
           </button>
           <button
             @click="viewMode = 'graph'"
@@ -479,10 +487,10 @@ onUnmounted(() => {
               'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer',
               viewMode === 'graph' ? 'bg-accent-fill text-on-fill shadow-xs' : 'text-fg-4 hover:text-fg'
             ]"
-            title="力导向拓扑关系网络探索"
+            :title="t('genealogy.viewGraph')"
           >
             <Network class="w-3.5 h-3.5" />
-            <span>拓扑图谱</span>
+            <span>{{ t('genealogy.viewGraph') }}</span>
           </button>
         </div>
       </div>
@@ -491,13 +499,13 @@ onUnmounted(() => {
     <!-- 3. Loading & Error States -->
     <div v-if="loading" class="py-20 text-center text-fg-4 animate-pulse">
       <Network class="w-10 h-10 mx-auto mb-3 text-accent-text animate-spin" />
-      <div class="text-sm font-medium">正在解析全球厂牌母子谱系与关系网络...</div>
+      <div class="text-sm font-medium">{{ t('genealogy.loadingGenealogy') }}</div>
     </div>
 
     <div v-else-if="error" class="py-12 text-center text-danger bg-danger/10 rounded-2xl border border-danger/20 p-6">
       <p class="font-bold mb-2">{{ error }}</p>
       <button @click="loadData" class="px-4 py-2 bg-accent-fill text-on-fill rounded-xl text-xs font-bold cursor-pointer">
-        重试加载
+        {{ t('genealogy.retry') }}
       </button>
     </div>
 
@@ -505,11 +513,11 @@ onUnmounted(() => {
     <div v-else-if="viewMode === 'wiki'" class="space-y-6">
       <!-- 快捷折叠工具条 -->
       <div class="flex items-center justify-between text-xs text-fg-4 px-1">
-        <div>共匹配到 <span class="font-bold text-fg">{{ filteredGroups.length }}</span> 个影视集团与合作网络</div>
+        <div>{{ t('genealogy.matchedGroups', { count: filteredGroups.length }) }}</div>
         <div class="flex items-center gap-3">
-          <button @click="expandAllGroups" class="hover:text-accent-text cursor-pointer transition">全部展开</button>
+          <button @click="expandAllGroups" class="hover:text-accent-text cursor-pointer transition">{{ t('genealogy.expandAll') }}</button>
           <span>·</span>
-          <button @click="collapseAllGroups" class="hover:text-accent-text cursor-pointer transition">全部折叠</button>
+          <button @click="collapseAllGroups" class="hover:text-accent-text cursor-pointer transition">{{ t('genealogy.collapseAll') }}</button>
         </div>
       </div>
 
@@ -535,24 +543,24 @@ onUnmounted(() => {
             <div>
               <div class="flex items-center gap-2 flex-wrap">
                 <h3 class="text-base md:text-lg font-black text-fg tracking-tight">
-                  {{ group.name_zh }}
+                  {{ currentLocale.startsWith('zh') ? group.name_zh : group.name }}
                 </h3>
-                <span class="text-xs text-fg-4 font-mono font-medium">({{ group.name }})</span>
+                <span class="text-xs text-fg-4 font-mono font-medium">({{ currentLocale.startsWith('zh') ? group.name : group.name_zh }})</span>
 
                 <span
                   class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
                   :class="group.type === 'conglomerate' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : (group.type === 'indie_ecosystem' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-purple-500/15 text-purple-400 border border-purple-500/30')"
                 >
-                  {{ group.type === 'conglomerate' ? '跨国传媒集团' : (group.type === 'indie_ecosystem' ? '独立顶流生态' : '线上点播母网') }}
+                  {{ group.type === 'conglomerate' ? t('genealogy.filterConglomerate') : (group.type === 'indie_ecosystem' ? t('genealogy.filterIndieEcosystem') : t('genealogy.filterVodNetwork')) }}
                 </span>
               </div>
 
               <div class="flex items-center gap-3 text-xs text-fg-4 mt-1 flex-wrap">
                 <span v-if="group.headquarters">📍 {{ group.headquarters }}</span>
-                <span v-if="group.founded_year">📅 {{ group.founded_year }}年创立</span>
-                <span>🎬 长片累计 {{ group.total_works }} 部</span>
-                <span>🎞️ 分集累计 {{ group.total_episodes }} 部</span>
-                <span class="font-bold text-accent-text">🏢 旗下收录 {{ group.studios.length }} 家厂牌</span>
+                <span v-if="group.founded_year">{{ t('genealogy.foundedYear', { year: group.founded_year }) }}</span>
+                <span>{{ t('genealogy.totalWorks', { count: group.total_works }) }}</span>
+                <span>{{ t('genealogy.totalEpisodes', { count: group.total_episodes }) }}</span>
+                <span class="font-bold text-accent-text">{{ t('genealogy.subStudiosCount', { count: group.studios.length }) }}</span>
               </div>
             </div>
           </div>
@@ -605,7 +613,7 @@ onUnmounted(() => {
 
                 <!-- Studio Names -->
                 <div class="font-bold text-sm text-fg group-hover:text-accent-text transition line-clamp-1">
-                  {{ studio.name_zh || studio.name }}
+                  {{ currentLocale.startsWith('zh') ? (studio.name_zh || studio.name) : studio.name }}
                 </div>
                 <div class="text-[11px] text-fg-4 font-mono truncate mb-2">
                   {{ studio.name }}
@@ -615,9 +623,9 @@ onUnmounted(() => {
               <!-- Bottom Row: Work Counts & Link Icon -->
               <div class="flex items-center justify-between text-[11px] text-fg-4 pt-2 border-t border-line/60 mt-1">
                 <div class="flex items-center gap-2">
-                  <span class="text-fg-3">长片 <b>{{ studio.works_count }}</b></span>
+                  <span class="text-fg-3">{{ t('genealogy.featureWorksShort', { count: studio.works_count }) }}</span>
                   <span>·</span>
-                  <span class="text-fg-3">分集 <b>{{ studio.episodes_count }}</b></span>
+                  <span class="text-fg-3">{{ t('genealogy.episodesShort', { count: studio.episodes_count }) }}</span>
                 </div>
                 <ExternalLink class="w-3.5 h-3.5 text-fg-4 group-hover:text-accent-text transition shrink-0" />
               </div>
@@ -635,11 +643,11 @@ onUnmounted(() => {
       <!-- 图例与操作浮条 (左上) -->
       <div class="absolute left-4 top-4 p-3 rounded-2xl bg-surface/90 border border-line backdrop-blur-md shadow-md text-xs space-y-1.5 pointer-events-auto">
         <div class="font-bold text-fg flex items-center gap-1.5 mb-1">
-          <Info class="w-3.5 h-3.5 text-accent-text" /> 拓扑交互指南
+          <Info class="w-3.5 h-3.5 text-accent-text" /> {{ t('genealogy.guideTitle') }}
         </div>
-        <div class="text-[11px] text-fg-3">· 鼠标滚轮缩放，左键按住拖动画布</div>
-        <div class="text-[11px] text-fg-3">· 鼠标悬停任意节点，自动点亮一度邻近关系</div>
-        <div class="text-[11px] text-fg-3">· 点击节点在右侧侧边栏锁定厂牌档案</div>
+        <div class="text-[11px] text-fg-3">{{ t('genealogy.guideWheel') }}</div>
+        <div class="text-[11px] text-fg-3">{{ t('genealogy.guideHover') }}</div>
+        <div class="text-[11px] text-fg-3">{{ t('genealogy.guideClick') }}</div>
       </div>
 
       <!-- 重置视角按钮 (右上) -->
@@ -648,7 +656,7 @@ onUnmounted(() => {
           @click="initGraphChart"
           class="px-3 py-1.5 rounded-xl bg-surface/90 border border-line backdrop-blur-md text-xs font-bold text-fg hover:text-accent-text shadow-sm transition flex items-center gap-1.5 cursor-pointer"
         >
-          <RotateCcw class="w-3.5 h-3.5" /> 重置视角
+          <RotateCcw class="w-3.5 h-3.5" /> {{ t('genealogy.resetView') }}
         </button>
       </div>
 
@@ -668,7 +676,7 @@ onUnmounted(() => {
               <span v-else class="text-xs font-black">{{ selectedGraphNode.name.slice(0, 2) }}</span>
             </div>
             <div>
-              <div class="font-black text-sm text-fg">{{ selectedGraphNode.name_zh || selectedGraphNode.name }}</div>
+              <div class="font-black text-sm text-fg">{{ currentLocale.startsWith('zh') ? (selectedGraphNode.name_zh || selectedGraphNode.name) : selectedGraphNode.name }}</div>
               <div class="text-[10px] text-fg-4 font-mono">{{ selectedGraphNode.name }}</div>
             </div>
           </div>
@@ -676,10 +684,10 @@ onUnmounted(() => {
         </div>
 
         <div class="space-y-1 text-fg-3 bg-surface-2/60 p-2.5 rounded-xl border border-line/60">
-          <div>归属集团: <span class="font-bold text-fg">{{ selectedGraphNode.group_name_zh }}</span></div>
-          <div>长片收录: <span class="font-bold text-fg">{{ selectedGraphNode.works_count }} 部</span></div>
-          <div>分集片段: <span class="font-bold text-fg">{{ selectedGraphNode.episodes_count }} 部</span></div>
-          <div v-if="selectedGraphNode.badge" class="text-accent-text font-bold">定位: {{ selectedGraphNode.badge }}</div>
+          <div>{{ t('genealogy.parentGroup') }}: <span class="font-bold text-fg">{{ currentLocale.startsWith('zh') ? selectedGraphNode.group_name_zh : selectedGraphNode.group_name }}</span></div>
+          <div>{{ t('genealogy.moviesCountDrawer', { count: selectedGraphNode.works_count }) }}</div>
+          <div>{{ t('genealogy.episodesCountDrawer', { count: selectedGraphNode.episodes_count }) }}</div>
+          <div v-if="selectedGraphNode.badge" class="text-accent-text font-bold">{{ t('genealogy.positioning', { role: selectedGraphNode.badge }) }}</div>
         </div>
 
         <p v-if="selectedGraphNode.description_zh" class="text-fg-4 line-clamp-3 text-[11px] leading-relaxed">
@@ -690,7 +698,7 @@ onUnmounted(() => {
           @click="emit('select-studio', selectedGraphNode.name)"
           class="w-full py-2 bg-accent-fill text-on-fill rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-sm hover:opacity-90 transition cursor-pointer"
         >
-          <span>查看该厂牌全部作品档案</span>
+          <span>{{ t('genealogy.viewStudioWorks') }}</span>
           <ExternalLink class="w-3.5 h-3.5" />
         </button>
       </div>

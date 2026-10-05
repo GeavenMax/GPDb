@@ -24,7 +24,7 @@ const SyncModal = defineAsyncComponent(() => import('./components/plugins/SyncMo
 import PaginationBar from './components/PaginationBar.vue';
 import {
   api, createMovieFilters, createPerformerFilters, countActivePerformerFilters,
-  createEpisodeFilters, countActiveEpisodeFilters, EPISODE_SORTS, IS_TAURI,
+  createEpisodeFilters, countActiveEpisodeFilters, IS_TAURI,
 } from './api';
 import { getImageUrl } from './utils/image';
 import { sampleImageEdgeColor, type SampledColorResult } from './utils/colorSampler';
@@ -195,6 +195,11 @@ const episodeRows = ref<EpisodeSummary[]>([]);
 const totalEpisodeRows = ref(0);
 const episodeQuery = ref('');
 const episodeSortBy = ref<EpisodeSortBy>('id_desc');
+const episodeSortOptions = computed<Array<{ id: EpisodeSortBy; label: string }>>(() => [
+  { id: 'id_desc', label: t('sort.idDesc') },
+  { id: 'year_desc', label: t('sort.yearDesc') },
+  { id: 'movie_asc', label: t('sort.movieAsc') },
+]);
 const episodeFilters = reactive<EpisodeFilterState>(createEpisodeFilters());
 const activeEpisodeFilterCount = computed(() =>
   countActiveEpisodeFilters(episodeFilters, episodeSortBy.value)
@@ -236,6 +241,8 @@ const studioLogoErrorSet = shallowReactive(new Set<string>());
 
 function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
   if (!logoUrl) return;
+  // If previously marked error by a transient network/abort glitch, unmark it
+  studioLogoErrorSet.delete(logoUrl);
   const img = e.target as HTMLImageElement;
   if (!img) return;
   const result = sampleImageEdgeColor(img);
@@ -252,6 +259,9 @@ function onStudioGridLogoLoad(e: Event, logoUrl?: string | null) {
 }
 
 function onStudioGridLogoError(logoUrl?: string | null) {
+  // If navigating away or not on the studios tab, the error is an unmount-induced network abort.
+  // Ignore it completely so we never blacklist healthy cached logos!
+  if (currentTab.value !== 'studios') return;
   if (logoUrl) {
     studioLogoErrorSet.add(logoUrl);
   }
@@ -1271,6 +1281,9 @@ watch(currentTab, (newTab) => {
     if (performers.value.length === 0) reloadCurrentTab();
     loadPerformerFacets();
   } else if (newTab === 'studios') {
+    // Reset transient image errors whenever returning to studios tab
+    // so any transfers aborted during previous tab switches can re-fetch cleanly
+    studioLogoErrorSet.clear();
     if (studioRows.value.length === 0) reloadCurrentTab();
   } else if (newTab === 'directors') {
     if (directorRows.value.length === 0) reloadCurrentTab();
@@ -2597,7 +2610,7 @@ onUnmounted(() => {
               <!-- Sort: the same three orderings the drawer offers -->
               <div class="flex items-center gap-0.5 bg-surface border border-line rounded-xl p-0.5 text-xs">
                 <button
-                  v-for="s in EPISODE_SORTS"
+                  v-for="s in episodeSortOptions"
                   :key="s.id"
                   @click="episodeSortBy = s.id"
                   :class="[

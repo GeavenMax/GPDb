@@ -11,7 +11,7 @@ import { openLightbox } from '../utils/lightbox';
 import { titlePrimary, titleSecondary } from '../utils/bilingual';
 import { trCategory } from '../utils/glossary';
 import { api, IS_TAURI } from '../api';
-import { t } from '../i18n';
+import { t, currentLocale } from '../i18n';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -96,17 +96,20 @@ const showShareModal = ref(false);
 
 const shareCardData = computed<ShareCardData | null>(() => {
   if (!props.movie) return null;
+  const isZh = currentLocale.value.startsWith('zh');
   return {
     type: 'movie',
-    title: titleMain.value,
-    titleAlt: titleAlt.value,
+    title: isZh ? (props.movie.title_zh || props.movie.title) : props.movie.title,
+    titleAlt: isZh
+      ? (props.movie.title_zh && props.movie.title !== props.movie.title_zh ? props.movie.title : null)
+      : null,
     posterUrl: frontCoverUrl.value,
     coverBackUrl: backCoverUrl.value,
     category: categoryLabel.value,
     releaseDate: displayReleaseDate.value || (props.movie.release_year ? String(props.movie.release_year) : ''),
     durationMins: props.movie.duration_mins,
     studioName: props.movie.studio_name,
-    directorName: props.movie.directors?.map(d => d.name).join('、'),
+    directorName: props.movie.directors?.map(d => d.name).join(isZh ? '、' : ', '),
     performers: props.movie.performers?.map(p => p.name) || [],
     description: props.movie.description,
     descriptionZh: props.movie.description_zh,

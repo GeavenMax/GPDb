@@ -8,7 +8,7 @@ import { getImageUrl } from '../utils/image';
 import { claimEscape } from '../utils/escape';
 import { tr, trTattoo, trMeasure } from '../utils/glossary';
 import { pluginsConfig, openPbcPerformer, openUrlExternal } from '../services/pluginManager';
-import { currentLocale, t, type SupportedLocale } from '../i18n';
+import { currentLocale, t } from '../i18n';
 
 const ResourceSearchWidget = defineAsyncComponent(() => import('./plugins/ResourceSearchWidget.vue'));
 
@@ -55,15 +55,6 @@ function attrValues(key: string, fallback: string | null | undefined): string[] 
 }
 
 // ── PBC 维基档案字典与转换器 ──────────────────────────────────────────────────
-const ASTRO_NAMES: Record<SupportedLocale, Record<string, string>> = {
-  'zh-CN': { Aries: '白羊座', Taurus: '金牛座', Gemini: '双子座', Cancer: '巨蟹座', Leo: '狮子座', Virgo: '处女座', Libra: '天秤座', Scorpio: '天蝎座', Sagittarius: '射手座', Capricorn: '摩羯座', Aquarius: '水瓶座', Pisces: '双鱼座' },
-  'zh-TW': { Aries: '牡羊座', Taurus: '金牛座', Gemini: '雙子座', Cancer: '巨蟹座', Leo: '獅子座', Virgo: '處女座', Libra: '天秤座', Scorpio: '天蠍座', Sagittarius: '射手座', Capricorn: '摩羯座', Aquarius: '水瓶座', Pisces: '雙魚座' },
-  'ja': { Aries: '牡羊座', Taurus: '牡牛座', Gemini: '双子座', Cancer: '蟹座', Leo: '獅子座', Virgo: '乙女座', Libra: '天秤座', Scorpio: '蠍座', Sagittarius: '射手座', Capricorn: '山羊座', Aquarius: '水瓶座', Pisces: '魚座' },
-  'it': { Aries: 'Ariete', Taurus: 'Toro', Gemini: 'Gemelli', Cancer: 'Cancro', Leo: 'Leone', Virgo: 'Vergine', Libra: 'Bilancia', Scorpio: 'Scorpione', Sagittarius: 'Sagittario', Capricorn: 'Capricorno', Aquarius: 'Acquario', Pisces: 'Pesci' },
-  'es': { Aries: 'Aries', Taurus: 'Tauro', Gemini: 'Géminis', Cancer: 'Cáncer', Leo: 'Leo', Virgo: 'Virgo', Libra: 'Libra', Scorpio: 'Escorpio', Sagittarius: 'Sagitario', Capricorn: 'Capricornio', Aquarius: 'Acuario', Pisces: 'Piscis' },
-  'de': { Aries: 'Widder', Taurus: 'Stier', Gemini: 'Zwillinge', Cancer: 'Krebs', Leo: 'Löwe', Virgo: 'Jungfrau', Libra: 'Waage', Scorpio: 'Skorpion', Sagittarius: 'Schütze', Capricorn: 'Steinbock', Aquarius: 'Wassermann', Pisces: 'Fische' },
-  'en': { Aries: 'Aries', Taurus: 'Taurus', Gemini: 'Gemini', Cancer: 'Cancer', Leo: 'Leo', Virgo: 'Virgo', Libra: 'Libra', Scorpio: 'Scorpio', Sagittarius: 'Sagittarius', Capricorn: 'Capricorn', Aquarius: 'Aquarius', Pisces: 'Pisces' },
-};
 const ASTRO_SYMBOLS: Record<string, string> = {
   Aries: '♈', Taurus: '♉', Gemini: '♊',
   Cancer: '♋', Leo: '♌', Virgo: '♍',
@@ -72,28 +63,20 @@ const ASTRO_SYMBOLS: Record<string, string> = {
 };
 function trAstrology(sign?: string | null): string {
   if (!sign) return '';
-  const loc = currentLocale.value;
   const sym = ASTRO_SYMBOLS[sign] || '';
-  const localizedName = ASTRO_NAMES[loc]?.[sign] || sign;
+  const key = `astro.${sign}`;
+  const translated = t(key);
+  const localizedName = (translated !== key) ? translated : sign;
   return `${localizedName} ${sym}`.trim();
 }
 
-
-const ETHNICITY_MAP: Record<string, string> = {
-  Caucasian: '白人',
-  Latin: '拉丁裔',
-  Latino: '拉丁裔',
-  Hispanic: '拉丁裔',
-  Black: '非裔',
-  'African American': '非裔',
-  Asian: '亚裔',
-  'Middle Eastern': '中东裔',
-  Mixed: '混血',
-};
 function trEthnicity(eth?: string | null): string {
   if (!eth) return '';
-  if (!currentLocale.value.startsWith('zh')) return eth;
-  return ETHNICITY_MAP[eth] || eth;
+  const cleanKey = eth.replace(/\s+/g, '');
+  const key = `ethnicity.${cleanKey}`;
+  const translated = t(key);
+  if (translated !== key) return translated;
+  return eth;
 }
 
 const pbcProfile = computed(() => props.performer?.pbc_profile);

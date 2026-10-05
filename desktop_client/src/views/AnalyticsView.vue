@@ -83,7 +83,7 @@ function formatHistoryTime(ts: number): string {
           ]"
         >
           <Compass class="w-4 h-4" />
-          <span>🏛️ 行业全景编年史</span>
+          <span>{{ t('analytics.tabPanorama') }}</span>
         </button>
 
         <button
@@ -96,7 +96,7 @@ function formatHistoryTime(ts: number): string {
           ]"
         >
           <Network class="w-4 h-4" />
-          <span>🕸️ 厂牌谱系与归属 Wiki</span>
+          <span>{{ t('analytics.tabGenealogy') }}</span>
         </button>
 
         <button
@@ -109,7 +109,7 @@ function formatHistoryTime(ts: number): string {
           ]"
         >
           <Activity class="w-4 h-4" />
-          <span>👤 个人足迹与偏好</span>
+          <span>{{ t('analytics.tabFootprint') }}</span>
         </button>
       </div>
 

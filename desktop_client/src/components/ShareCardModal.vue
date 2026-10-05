@@ -6,7 +6,7 @@ import {
 } from '@lucide/vue';
 import { claimEscape } from '../utils/escape';
 import { api, IS_TAURI } from '../api';
-import { t } from '../i18n';
+import { t, currentLocale } from '../i18n';
 
 export interface ShareCardData {
   type: 'movie' | 'episode';
@@ -49,8 +49,13 @@ const isSaved = ref(false);
 
 const displayDescription = computed(() => {
   if (!props.data) return '';
-  return props.data.descriptionZh?.trim() || props.data.description?.trim() || '';
+  if (currentLocale.value.startsWith('zh')) {
+    return props.data.descriptionZh?.trim() || props.data.description?.trim() || '';
+  }
+  return props.data.description?.trim() || props.data.descriptionZh?.trim() || '';
 });
+
+const CANVAS_FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Microsoft YaHei UI", sans-serif';
 
 const itemTag = computed(() => {
   if (!props.data) return '';
@@ -215,28 +220,51 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   const tempCanvas = document.createElement('canvas');
   const mCtx = tempCanvas.getContext('2d');
   if (!mCtx) return null;
+  const ctx2d = mCtx;
+
+  // Helper for mixed CJK & Latin text wrapping
+  function wrapCanvasText(text: string, maxWidth: number): string[] {
+    const lines: string[] = [];
+    if (text.includes(' ')) {
+      const words = text.split(' ');
+      let curLine = '';
+      for (const w of words) {
+        const test = curLine ? `${curLine} ${w}` : w;
+        if (ctx2d.measureText(test).width > maxWidth && curLine) {
+          lines.push(curLine);
+          curLine = w;
+        } else {
+          curLine = test;
+        }
+      }
+      if (curLine) lines.push(curLine);
+    } else {
+      let curLine = '';
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const test = curLine + ch;
+        if (ctx2d.measureText(test).width > maxWidth && curLine) {
+          lines.push(curLine);
+          curLine = ch;
+        } else {
+          curLine = test;
+        }
+      }
+      if (curLine) lines.push(curLine);
+    }
+    return lines;
+  }
 
   // Pre-calculate Title lines
-  mCtx.font = 'bold 22px "Microsoft YaHei UI", sans-serif';
+  mCtx.font = `bold 22px ${CANVAS_FONT}`;
   const rawTitle = props.data.title;
   const maxTitleW = width - padX * 2;
-  const titleLines: string[] = [];
-  let curTLine = '';
-  for (let i = 0; i < rawTitle.length; i++) {
-    const ch = rawTitle[i];
-    const test = curTLine + ch;
-    if (mCtx.measureText(test).width > maxTitleW && curTLine.length > 0) {
-      titleLines.push(curTLine);
-      curTLine = ch;
-    } else {
-      curTLine = test;
-    }
-  }
-  if (curTLine) titleLines.push(curTLine);
+  const titleLines = wrapCanvasText(rawTitle, maxTitleW);
   const titleBlockH = titleLines.length * 28;
 
-  // Pre-calculate Alt Title
-  const hasAlt = Boolean(props.data.titleAlt && props.data.titleAlt !== props.data.title);
+  // Pre-calculate Alt Title (Only display bilingual subtitle in Chinese mode)
+  const isZh = currentLocale.value.startsWith('zh');
+  const hasAlt = Boolean(isZh && props.data.titleAlt && props.data.titleAlt !== props.data.title);
   const altH = hasAlt ? 24 : 0;
 
   // Pre-calculate Meta badges
@@ -252,16 +280,17 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   const directorH = hasDirector ? 22 : 0;
 
   // Pre-calculate Full Cast wrapping lines
-  mCtx.font = '12px "Microsoft YaHei UI", sans-serif';
+  mCtx.font = `12px ${CANVAS_FONT}`;
   const performers = props.data.performers || [];
   const castLines: string[] = [];
   const castPrefix = `${t('share.castPrefix')}: `;
+  const castDelim = currentLocale.value.startsWith('zh') ? '、' : ', ';
   if (performers.length > 0) {
     let curCast = castPrefix;
     const maxCastW = width - padX * 2;
     for (let i = 0; i < performers.length; i++) {
       const name = performers[i];
-      const candidate = curCast === castPrefix ? `${castPrefix}${name}` : `${curCast}、${name}`;
+      const candidate = curCast === castPrefix ? `${castPrefix}${name}` : `${curCast}${castDelim}${name}`;
       if (mCtx.measureText(candidate).width > maxCastW && curCast !== castPrefix) {
         castLines.push(curCast);
         curCast = `     ${name}`;
@@ -277,23 +306,12 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   const hasDesc = includeDescription.value && Boolean(displayDescription.value);
   const descPad = 16;
   const descBoxW = width - padX * 2;
-  const descLines: string[] = [];
+  let descLines: string[] = [];
   if (hasDesc) {
-    mCtx.font = '12px "Microsoft YaHei UI", sans-serif';
+    mCtx.font = `12px ${CANVAS_FONT}`;
     const words = displayDescription.value;
     const maxDescLineW = descBoxW - descPad * 2;
-    let curDLine = '';
-    for (let i = 0; i < words.length; i++) {
-      const ch = words[i];
-      const test = curDLine + ch;
-      if (mCtx.measureText(test).width > maxDescLineW && curDLine.length > 0) {
-        descLines.push(curDLine);
-        curDLine = ch;
-      } else {
-        curDLine = test;
-      }
-    }
-    if (curDLine) descLines.push(curDLine);
+    descLines = wrapCanvasText(words, maxDescLineW);
   }
   const descBoxH = hasDesc ? descPad * 2 + descLines.length * 20 : 0;
 
@@ -377,7 +395,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   ctx.stroke();
 
   ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 12px "Microsoft YaHei UI", sans-serif';
+  ctx.font = `bold 12px ${CANVAS_FONT}`;
   ctx.fillText(isEpisode ? t('share.brandEpisode') : t('share.brandMovie'), padX + 14, curY + 18);
   ctx.restore();
 
@@ -392,7 +410,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.font = '500 11px "Microsoft YaHei UI", sans-serif';
+  ctx.font = `500 11px ${CANVAS_FONT}`;
   ctx.textAlign = 'center';
   ctx.fillText(rightTag, width - padX - 55, curY + 18);
   ctx.restore();
@@ -434,7 +452,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.52)';
         ctx.fillRect(cx, cy, cw, ch);
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px "Microsoft YaHei UI", sans-serif';
+        ctx.font = `bold 12px ${CANVAS_FONT}`;
         ctx.textAlign = 'center';
         ctx.fillText('🔒 ' + t('share.posterRedacted'), cx + cw / 2, cy + ch / 2);
       } else {
@@ -444,7 +462,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
       ctx.fillStyle = '#1c212c';
       ctx.fillRect(cx, cy, cw, ch);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.font = '12px "Microsoft YaHei UI", sans-serif';
+      ctx.font = `12px ${CANVAS_FONT}`;
       ctx.textAlign = 'center';
       ctx.fillText(tagLabel ? `${t('common.noData')} ${tagLabel}` : t('share.noCover'), cx + cw / 2, cy + ch / 2);
     }
@@ -455,7 +473,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
       ctx.roundRect(cx + 8, cy + 8, 38, 20, 6);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px "Microsoft YaHei UI", sans-serif';
+      ctx.font = `bold 10px ${CANVAS_FONT}`;
       ctx.textAlign = 'center';
       ctx.fillText(tagLabel, cx + 8 + 19, cy + 8 + 14);
     }
@@ -484,16 +502,16 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
 
   // Primary Title (Multi-line aware)
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 22px "Microsoft YaHei UI", sans-serif';
+  ctx.font = `bold 22px ${CANVAS_FONT}`;
   for (let t = 0; t < titleLines.length; t++) {
     ctx.fillText(titleLines[t], width / 2, curY);
     curY += 26;
   }
 
-  // Alt Title
+  // Alt Title (Only in Chinese mode if available)
   if (hasAlt && props.data.titleAlt) {
     ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-    ctx.font = '13px "Microsoft YaHei UI", sans-serif';
+    ctx.font = `13px ${CANVAS_FONT}`;
     ctx.fillText(props.data.titleAlt, width / 2, curY);
     curY += 22;
   }
@@ -502,7 +520,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   if (metaItems.length > 0) {
     curY += 4;
     ctx.fillStyle = 'rgba(245, 158, 11, 0.95)';
-    ctx.font = '500 12px "Microsoft YaHei UI", sans-serif';
+    ctx.font = `500 12px ${CANVAS_FONT}`;
     ctx.fillText(metaItems.join('  ·  '), width / 2, curY);
     curY += 20;
   }
@@ -511,7 +529,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   if (hasDirector) {
     curY += 2;
     ctx.fillStyle = 'rgba(252, 211, 77, 0.9)';
-    ctx.font = '500 12px "Microsoft YaHei UI", sans-serif';
+    ctx.font = `500 12px ${CANVAS_FONT}`;
     ctx.fillText(`🎬 ${t('filter.director')}: ${props.data.directorName}`, width / 2, curY);
     curY += 20;
   }
@@ -520,7 +538,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   if (castLines.length > 0) {
     curY += 4;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
-    ctx.font = '12px "Microsoft YaHei UI", sans-serif';
+    ctx.font = `12px ${CANVAS_FONT}`;
     for (let c = 0; c < castLines.length; c++) {
       ctx.fillText(castLines[c], width / 2, curY);
       curY += 20;
@@ -544,7 +562,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
     ctx.stroke();
 
     ctx.textAlign = 'left';
-    ctx.font = '12px "Microsoft YaHei UI", sans-serif';
+    ctx.font = `12px ${CANVAS_FONT}`;
 
     if (blurDescription.value) {
       // 100% Reliable frosted text redaction effect
@@ -567,7 +585,7 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
       ctx.stroke();
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 11px "Microsoft YaHei UI", sans-serif';
+      ctx.font = `bold 11px ${CANVAS_FONT}`;
       ctx.textAlign = 'center';
       ctx.fillText('🔒 ' + t('share.synopsisRedacted'), descX + descBoxW / 2, descY + descBoxH / 2 + 5);
     } else {
@@ -593,16 +611,16 @@ async function renderCardToCanvas(): Promise<HTMLCanvasElement | null> {
   // Left column: Typography
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px "Microsoft YaHei UI", sans-serif';
+  ctx.font = `bold 11px ${CANVAS_FONT}`;
   ctx.fillText(t('share.watermark'), padX, height - 48);
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.font = '10px "Microsoft YaHei UI", sans-serif';
+  ctx.font = `10px ${CANVAS_FONT}`;
   const itemTagStr = isEpisode ? `#EP-${props.data.id}` : `#MOV-${props.data.id}`;
   ctx.fillText(itemTagStr, padX, height - 32);
 
   ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
-  ctx.font = '500 10px "Microsoft YaHei UI", sans-serif';
+  ctx.font = `500 10px ${CANVAS_FONT}`;
   ctx.fillText('📢 ' + t('share.officialChannel'), padX, height - 16);
 
   // Right column: Telegram Channel QR Code in rounded white container
@@ -918,7 +936,7 @@ async function saveCardImage() {
                 <h3 class="text-lg font-extrabold text-white tracking-tight leading-snug">
                   {{ data.title }}
                 </h3>
-                <p v-if="data.titleAlt && data.titleAlt !== data.title" class="text-xs text-white/60 font-normal">
+                <p v-if="currentLocale.startsWith('zh') && data.titleAlt && data.titleAlt !== data.title" class="text-xs text-white/60 font-normal">
                   {{ data.titleAlt }}
                 </p>
 
@@ -937,7 +955,7 @@ async function saveCardImage() {
 
                 <!-- Complete Cast (No truncation) -->
                 <p v-if="data.performers && data.performers.length > 0" class="text-[11px] text-white/70 pt-0.5 leading-relaxed">
-                  {{ t('share.castPrefix') }}: {{ data.performers.join('、') }}
+                  {{ t('share.castPrefix') }}: {{ data.performers.join(currentLocale.startsWith('zh') ? '、' : ', ') }}
                 </p>
               </div>
 

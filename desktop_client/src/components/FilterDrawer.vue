@@ -78,8 +78,8 @@ const movieSorts = computed<Array<{ id: FilterState['sortBy']; label: string }>>
 
 function getEpisodeSortLabel(id: string): string {
   if (id === 'id_desc') return t('sort.idDesc');
-  if (id === 'date_desc') return t('sort.yearDesc');
-  if (id === 'title_asc') return t('sort.titleAsc');
+  if (id === 'year_desc' || id === 'date_desc') return t('sort.yearDesc');
+  if (id === 'movie_asc' || id === 'title_asc') return t('sort.movieAsc');
   return id;
 }
 
@@ -101,17 +101,10 @@ function getDateLabel(id: string, isEpisode: boolean = false): string {
 }
 
 function facetLabel(key: string): string {
-  const map: Record<string, string> = {
-    bodyType: 'performer.bodyType',
-    hair: 'performer.hair',
-    eyes: 'performer.eyes',
-    skin: 'performer.skin',
-    bodyHair: 'performer.bodyHair',
-    facialHair: 'performer.facialHair',
-    dickSize: 'performer.dickSize',
-    foreskin: 'performer.foreskin',
-  };
-  return map[key] ? t(map[key]) : (FACET_LABELS[key] || key);
+  const k = `facet.${key}`;
+  const translated = t(k);
+  if (translated !== k) return translated;
+  return FACET_LABELS[key] || key;
 }
 
 /** Facets the server actually has values for — an all-empty facet is not offered. */

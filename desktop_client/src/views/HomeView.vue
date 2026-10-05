@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import {
-  Sparkles, Calendar, Users, Film, Clapperboard, Building2,
+  Calendar, Users, Film, Clapperboard, Building2,
   Star, RefreshCw, ChevronRight, ChevronLeft, Layers
 } from '@lucide/vue';
 import { api } from '../api';
 import { getImageUrl } from '../utils/image';
 import SeriesCollageCover from '../components/SeriesCollageCover.vue';
-import type { HomeFeedData, HomeSpotlightMovie, AppTab, SeriesCollectionItem, Movie } from '../types';
+import type { HomeFeedData, HomeSpotlightMovie, AppTab, SeriesCollectionItem } from '../types';
 import { t, currentLocale } from '../i18n';
 
 const emit = defineEmits<{
@@ -110,9 +110,6 @@ const starSpotlightWithAvatars = computed(() => {
 });
 
 const seriesList = ref<SeriesCollectionItem[]>([]);
-const luckyMovies = ref<Movie[]>([]);
-const isLuckyLoading = ref(false);
-
 const isSeriesRefreshing = ref(false);
 
 async function loadSeriesList() {
@@ -124,23 +121,6 @@ async function loadSeriesList() {
     console.error('Failed to load series collections for home', err);
   } finally {
     isSeriesRefreshing.value = false;
-  }
-}
-
-async function fetchLuckyMovies() {
-  isLuckyLoading.value = true;
-  try {
-    const total = feed.value.total_movies || 60000;
-    const maxPage = Math.max(1, Math.min(Math.floor(total / 6), 500));
-    const randomPage = Math.floor(Math.random() * maxPage) + 1;
-    const res = await api.getMovies({ sortBy: 'id_desc' }, randomPage, 6);
-    if (res.items && res.items.length > 0) {
-      luckyMovies.value = res.items;
-    }
-  } catch (err) {
-    console.error('Failed to fetch lucky movies', err);
-  } finally {
-    isLuckyLoading.value = false;
   }
 }
 
@@ -165,7 +145,6 @@ onMounted(async () => {
     startAutoplay();
   }
   loadSeriesList();
-  fetchLuckyMovies();
 });
 
 onBeforeUnmount(() => {
@@ -199,7 +178,7 @@ onBeforeUnmount(() => {
         >
           <img
             :src="getImageUrl(currentSpotlight.cover_full)"
-            :alt="currentSpotlight.title"
+            :alt="currentLocale.startsWith('zh') ? (currentSpotlight.title_zh || currentSpotlight.title) : currentSpotlight.title"
             class="w-full h-full object-cover"
             loading="eager"
           />
@@ -235,9 +214,9 @@ onBeforeUnmount(() => {
               @click="emit('open-movie', currentSpotlight.id)"
               class="text-lg sm:text-xl md:text-2xl font-black text-fg tracking-tight cursor-pointer hover:text-accent transition"
             >
-              {{ currentSpotlight.title_zh || currentSpotlight.title }}
+              {{ currentLocale.startsWith('zh') ? (currentSpotlight.title_zh || currentSpotlight.title) : (currentSpotlight.title || currentSpotlight.title_zh) }}
             </h2>
-            <p v-if="currentSpotlight.title_zh && currentSpotlight.title !== currentSpotlight.title_zh" class="text-xs sm:text-sm text-fg-4 font-serif italic">
+            <p v-if="currentLocale.startsWith('zh') && currentSpotlight.title_zh && currentSpotlight.title !== currentSpotlight.title_zh" class="text-xs sm:text-sm text-fg-4 font-serif italic">
               {{ currentSpotlight.title }}
             </p>
           </div>
@@ -456,68 +435,6 @@ onBeforeUnmount(() => {
               <span v-if="s.year_start && s.year_end" class="font-mono text-[11px]">
                 {{ s.year_start === s.year_end ? s.year_start : `${s.year_start}-${s.year_end}` }}
               </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 4.6. 随机抽选 (Lucky Discovery) -->
-    <section v-if="luckyMovies.length > 0" class="space-y-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2.5">
-          <div class="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            <Sparkles class="w-4 h-4" />
-          </div>
-          <div>
-            <h3 class="text-base font-extrabold text-fg tracking-tight">
-              {{ t('home.luckyDiscovery') }}
-            </h3>
-          </div>
-        </div>
-
-        <button
-          @click="fetchLuckyMovies"
-          :disabled="isLuckyLoading"
-          class="px-3.5 py-1.5 rounded-xl bg-surface-2 hover:bg-surface-3 text-fg-2 border border-line text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw class="w-3.5 h-3.5" :class="{ 'animate-spin': isLuckyLoading }" />
-          <span>{{ t('home.switchBatch') }}</span>
-        </button>
-      </div>
-
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-        <div
-          v-for="m in luckyMovies"
-          :key="m.id"
-          @click="emit('open-movie', m.id)"
-          class="group rounded-2xl bg-surface border border-line hover:border-accent/40 p-2.5 space-y-2.5 transition duration-200 hover:-translate-y-1 shadow-sm hover:shadow-md cursor-pointer flex flex-col justify-between"
-        >
-          <div class="aspect-[2/3] w-full rounded-xl overflow-hidden bg-surface-2 relative border border-line/40">
-            <img
-              :src="getImageUrl(m.cover_full || m.cover_icon)"
-              :alt="m.title"
-              class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-              loading="lazy"
-            />
-            <div v-if="m.rating" class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-bold text-amber-400 flex items-center gap-0.5 border border-amber-400/20">
-              <Star class="w-2.5 h-2.5 fill-amber-400" />
-              <span>{{ m.rating }}</span>
-            </div>
-            <div v-if="m.release_year" class="absolute bottom-2 left-2 px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-mono font-bold text-fg-3 border border-white/10">
-              {{ m.release_year }}
-            </div>
-          </div>
-
-          <div class="space-y-1 px-1">
-            <h4
-              class="text-xs font-bold text-fg line-clamp-1 group-hover:text-accent transition"
-              :title="m.title_zh || m.title"
-            >
-              {{ m.title_zh || m.title }}
-            </h4>
-            <div class="flex items-center justify-between text-[11px] text-fg-4">
-              <span class="truncate max-w-[100px]">{{ m.studio_name || t('home.featuredStudio') }}</span>
             </div>
           </div>
         </div>
