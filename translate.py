@@ -116,6 +116,7 @@ TITLE_SYSTEM_PROMPT = """你是一名成人影片资料库的专职译者。你�
 5. 中文片名尽量不超过 20 个字，要像一个片名，不要写成一句解释。
 6. 严格契合男同性恋（Gay）语境：身体部位严禁出现任何针对女性的词汇（如严禁使用“逼”、“骚逼”、“屄”等）。涉及后庭器官或被插入部位时，使用“屁眼”、“菊花”、“菊门”、“肛门”等男性同性恋语境词汇；“操逼”一律译为“操屁股”、“干屁股”或“猛操”。
 7. 附带的简介只用来判断片名里的双关指向什么，**不要翻译简介本身**。
+8. **严禁加《书名号》**：中文片名本身绝对不要加《书名号》或尖括号，直接输出干净的片名正文（例：输出“大屌与躁动”，严禁输出“《大屌与躁动》”）。只有在剧情简介正文中提及并替换该片名时，后处理阶段才会为其添加书名号。
 
 只输出 JSON，不要输出任何解释、前言或 Markdown 代码块。
 
@@ -528,9 +529,10 @@ class GeminiProvider(Provider):
                         e.code == 429 and (
                             "per day" in detail.lower() or
                             "perday" in detail.lower() or
+                            "per_day" in detail.lower() or
                             "limit '500'" in detail or
                             "limit 500" in detail or
-                            "resource_exhausted" in detail.lower() or
+                            "rate:default-per-day" in detail.lower() or
                             bool(re.search(r"retry in \d+[hm]", detail))
                         )
                     )
@@ -1634,13 +1636,14 @@ def run_title_translation(
                 if not dry_run:
                     db.set_movie_title_translation(row["title"], None)
                 continue
+            zh_clean = zh.strip().strip("《》")
             batch_saved += 1
             if dry_run:
-                review[row["i"]] = zh
+                review[row["i"]] = zh_clean
             else:
-                db.set_movie_title_translation(row["title"], zh)
+                db.set_movie_title_translation(row["title"], zh_clean)
                 save_translations(TRANS_DB_FILE, "movie", "title", "zh-CN",
-                                  [{"id": None, "src": row["title"], "trans": zh}])
+                                  [{"id": None, "src": row["title"], "trans": zh_clean}])
         return batch_saved, batch_failed
 
     drive_batches(provider, batches, workers, dry_run, handle, time.time())

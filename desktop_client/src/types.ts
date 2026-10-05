@@ -638,5 +638,138 @@ export interface AutoSyncScheduleConfig {
   nextRunTime?: string | null; // ISO string
 }
 
+// -------------------------------------------------------------
+// Industry Panorama & Historical Analytics (行业全景数据编年史)
+// -------------------------------------------------------------
+export interface IndustryTimelinePoint {
+  year: number;
+  movies_count: number;
+  avg_duration: number;
+  active_studios: number;
+  active_directors: number;
+  active_performers: number;
+  episodes_count: number;
+  hhi: number;
+  cr5: number;
+}
+
+export interface IndustryTopStudio {
+  studio_name: string;
+  studio_id?: number | null;
+  name_zh?: string | null;
+  logo_url?: string | null;
+  total_movies: number;
+  year_start: number;
+  year_end: number;
+}
+
+export interface IndustryStudioLandscape {
+  top_studios: IndustryTopStudio[];
+  yearly_matrix: Array<{ year: number; [studio: string]: number }>;
+  tracked_studios: string[];
+}
+
+export interface IndustryAestheticsData {
+  build_by_decade: Record<string, Record<string, number>>;
+  hair_by_decade: Record<string, Record<string, number>>;
+  tattoo_by_decade: Array<{
+    decade: string;
+    has_tattoo_count: number;
+    total_count: number;
+    percentage: number;
+  }>;
+}
+
+export interface IndustryGenreMeta {
+  en: string;
+  zh: string;
+  total: number;
+}
+
+export interface IndustryTitologyDecade {
+  decade: string;
+  count: number;
+  avg_title_len: number;
+  avg_desc_len: number;
+  colon_pct: number;
+}
+
+export interface IndustryNarrativeTropeItem {
+  trope: string;
+  data: Record<string, number>;
+}
+
+export interface IndustryTropesData {
+  top_genres: IndustryGenreMeta[];
+  theme_river: Array<{ year: number; [genre: string]: number }>;
+  titology_by_decade: IndustryTitologyDecade[];
+  narrative_keywords_timeline: IndustryNarrativeTropeItem[];
+}
+
+export interface IndustryEvergreenPerformer {
+  id: number;
+  name: string;
+  image_url?: string | null;
+  debut_year: number;
+  last_year: number;
+  career_years: number;
+  works_count: number;
+  primary_studio?: string | null;
+}
+
+export interface IndustryDirectorItem {
+  id: number;
+  name: string;
+  works_count: number;
+  year_start: number;
+  year_end: number;
+}
+
+export interface IndustryGoldenDuo {
+  id1: number;
+  actor1: string;
+  id2: number;
+  actor2: string;
+  common_movies: number;
+}
+
+export interface IndustryActorDirector {
+  director_id: number;
+  name: string;
+  directed_count: number;
+  acted_count: number;
+  total: number;
+}
+
+export interface IndustryNetworkGraph {
+  nodes: Array<{ id: string; name: string; value: number; category: number }>;
+  links: Array<{ source: string; target: string; value: number }>;
+  categories: Array<{ name: string }>;
+}
+
+export interface IndustryCreatorsData {
+  total_analyzed_performers: number;
+  span_brackets: Record<string, number>;
+  survival_curve: Array<{ years: number; percentage: number }>;
+  top_evergreens: IndustryEvergreenPerformer[];
+  top_directors: IndustryDirectorItem[];
+  golden_duos: IndustryGoldenDuo[];
+  actor_directors: IndustryActorDirector[];
+  network_graph: IndustryNetworkGraph;
+}
+
+export interface IndustryAnalyticsData {
+  meta: {
+    generated_at: string;
+    total_movies_covered: number;
+    years_span: string;
+  };
+  timeline: IndustryTimelinePoint[];
+  studios: IndustryStudioLandscape;
+  aesthetics: IndustryAestheticsData;
+  tropes: IndustryTropesData;
+  creators: IndustryCreatorsData;
+}
+
 
 

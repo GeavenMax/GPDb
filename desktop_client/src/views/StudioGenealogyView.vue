@@ -94,6 +94,18 @@ const GROUP_COLORS: Record<string, string> = {
   kink_com_network: '#84cc16',
   str8hell_william_higgins: '#eab308',
   raw_fuck_club_network: '#ef4444',
+  gamma_entertainment: '#a855f7',
+  prowler_millivres_group: '#0284c7',
+  treasure_island_media_group: '#dc2626',
+  channel_1_releasing: '#ea580c',
+  golden_age_classics: '#ca8a04',
+  independent_giants: '#10b981',
+  gaylife_youth_network: '#06b6d4',
+  flava_works_group: '#8b5cf6',
+  amateur_straight_guys: '#64748b',
+  catalina_pacific: '#f59e0b',
+  cobra_studios_group: '#475569',
+  caballero_vca: '#b45309',
 };
 
 const DEFAULT_COLOR = '#64748b';
@@ -437,6 +449,15 @@ onUnmounted(() => {
           >
             线上点播母网
           </button>
+          <button
+            @click="selectedGroupFilter = 'indie_ecosystem'"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer',
+              selectedGroupFilter === 'indie_ecosystem' ? 'bg-accent-fill text-on-fill font-bold' : 'text-fg-4 hover:text-fg'
+            ]"
+          >
+            独立顶流生态
+          </button>
         </div>
 
         <!-- 视图模式切换器 (Wiki vs 拓扑图) -->
@@ -520,9 +541,9 @@ onUnmounted(() => {
 
                 <span
                   class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                  :class="group.type === 'conglomerate' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'"
+                  :class="group.type === 'conglomerate' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : (group.type === 'indie_ecosystem' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-purple-500/15 text-purple-400 border border-purple-500/30')"
                 >
-                  {{ group.type === 'conglomerate' ? '跨国传媒集团' : '线上点播母网' }}
+                  {{ group.type === 'conglomerate' ? '跨国传媒集团' : (group.type === 'indie_ecosystem' ? '独立顶流生态' : '线上点播母网') }}
                 </span>
               </div>
 

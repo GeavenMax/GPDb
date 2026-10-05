@@ -1,0 +1,6027 @@
+{
+  "meta": {
+    "generated_at": "2026-10-05 01:42:31",
+    "total_movies_covered": 56918,
+    "years_span": "1970 - 2026"
+  },
+  "timeline": [
+    {
+      "year": 1970,
+      "movies_count": 80,
+      "avg_duration": 65.2,
+      "active_studios": 37,
+      "active_directors": 38,
+      "active_performers": 374,
+      "episodes_count": 0,
+      "hhi": 756.2,
+      "cr5": 45.0
+    },
+    {
+      "year": 1971,
+      "movies_count": 50,
+      "avg_duration": 60.9,
+      "active_studios": 27,
+      "active_directors": 23,
+      "active_performers": 151,
+      "episodes_count": 0,
+      "hhi": 1056.0,
+      "cr5": 52.0
+    },
+    {
+      "year": 1972,
+      "movies_count": 48,
+      "avg_duration": 74.2,
+      "active_studios": 25,
+      "active_directors": 27,
+      "active_performers": 240,
+      "episodes_count": 0,
+      "hhi": 1232.6,
+      "cr5": 58.3
+    },
+    {
+      "year": 1973,
+      "movies_count": 38,
+      "avg_duration": 74.5,
+      "active_studios": 19,
+      "active_directors": 25,
+      "active_performers": 219,
+      "episodes_count": 0,
+      "hhi": 1509.7,
+      "cr5": 63.2
+    },
+    {
+      "year": 1974,
+      "movies_count": 45,
+      "avg_duration": 65.8,
+      "active_studios": 29,
+      "active_directors": 25,
+      "active_performers": 395,
+      "episodes_count": 0,
+      "hhi": 597.5,
+      "cr5": 42.2
+    },
+    {
+      "year": 1975,
+      "movies_count": 55,
+      "avg_duration": 62.7,
+      "active_studios": 28,
+      "active_directors": 33,
+      "active_performers": 380,
+      "episodes_count": 0,
+      "hhi": 1358.7,
+      "cr5": 56.4
+    },
+    {
+      "year": 1976,
+      "movies_count": 43,
+      "avg_duration": 62.0,
+      "active_studios": 20,
+      "active_directors": 28,
+      "active_performers": 267,
+      "episodes_count": 0,
+      "hhi": 1141.2,
+      "cr5": 62.8
+    },
+    {
+      "year": 1977,
+      "movies_count": 46,
+      "avg_duration": 67.0,
+      "active_studios": 25,
+      "active_directors": 31,
+      "active_performers": 299,
+      "episodes_count": 0,
+      "hhi": 1105.9,
+      "cr5": 56.5
+    },
+    {
+      "year": 1978,
+      "movies_count": 40,
+      "avg_duration": 72.0,
+      "active_studios": 20,
+      "active_directors": 25,
+      "active_performers": 302,
+      "episodes_count": 0,
+      "hhi": 737.5,
+      "cr5": 52.5
+    },
+    {
+      "year": 1979,
+      "movies_count": 54,
+      "avg_duration": 60.3,
+      "active_studios": 27,
+      "active_directors": 24,
+      "active_performers": 276,
+      "episodes_count": 0,
+      "hhi": 624.1,
+      "cr5": 46.3
+    },
+    {
+      "year": 1980,
+      "movies_count": 220,
+      "avg_duration": 71.4,
+      "active_studios": 40,
+      "active_directors": 45,
+      "active_performers": 1553,
+      "episodes_count": 0,
+      "hhi": 3473.6,
+      "cr5": 73.2
+    },
+    {
+      "year": 1981,
+      "movies_count": 154,
+      "avg_duration": 61.0,
+      "active_studios": 54,
+      "active_directors": 49,
+      "active_performers": 778,
+      "episodes_count": 0,
+      "hhi": 521.2,
+      "cr5": 37.7
+    },
+    {
+      "year": 1982,
+      "movies_count": 130,
+      "avg_duration": 64.3,
+      "active_studios": 59,
+      "active_directors": 43,
+      "active_performers": 679,
+      "episodes_count": 0,
+      "hhi": 325.4,
+      "cr5": 29.2
+    },
+    {
+      "year": 1983,
+      "movies_count": 133,
+      "avg_duration": 74.1,
+      "active_studios": 54,
+      "active_directors": 44,
+      "active_performers": 663,
+      "episodes_count": 0,
+      "hhi": 412.1,
+      "cr5": 37.6
+    },
+    {
+      "year": 1984,
+      "movies_count": 229,
+      "avg_duration": 77.9,
+      "active_studios": 81,
+      "active_directors": 71,
+      "active_performers": 889,
+      "episodes_count": 0,
+      "hhi": 461.7,
+      "cr5": 33.6
+    },
+    {
+      "year": 1985,
+      "movies_count": 240,
+      "avg_duration": 74.8,
+      "active_studios": 87,
+      "active_directors": 77,
+      "active_performers": 1007,
+      "episodes_count": 0,
+      "hhi": 279.2,
+      "cr5": 27.5
+    },
+    {
+      "year": 1986,
+      "movies_count": 281,
+      "avg_duration": 74.8,
+      "active_studios": 98,
+      "active_directors": 83,
+      "active_performers": 1135,
+      "episodes_count": 0,
+      "hhi": 254.7,
+      "cr5": 28.5
+    },
+    {
+      "year": 1987,
+      "movies_count": 236,
+      "avg_duration": 72.6,
+      "active_studios": 98,
+      "active_directors": 90,
+      "active_performers": 1011,
+      "episodes_count": 0,
+      "hhi": 176.0,
+      "cr5": 16.5
+    },
+    {
+      "year": 1988,
+      "movies_count": 394,
+      "avg_duration": 79.0,
+      "active_studios": 105,
+      "active_directors": 100,
+      "active_performers": 1373,
+      "episodes_count": 0,
+      "hhi": 405.2,
+      "cr5": 34.5
+    },
+    {
+      "year": 1989,
+      "movies_count": 424,
+      "avg_duration": 78.3,
+      "active_studios": 129,
+      "active_directors": 122,
+      "active_performers": 1423,
+      "episodes_count": 0,
+      "hhi": 180.7,
+      "cr5": 20.5
+    },
+    {
+      "year": 1990,
+      "movies_count": 549,
+      "avg_duration": 77.6,
+      "active_studios": 157,
+      "active_directors": 143,
+      "active_performers": 2043,
+      "episodes_count": 0,
+      "hhi": 209.3,
+      "cr5": 25.3
+    },
+    {
+      "year": 1991,
+      "movies_count": 607,
+      "avg_duration": 79.6,
+      "active_studios": 171,
+      "active_directors": 154,
+      "active_performers": 2303,
+      "episodes_count": 0,
+      "hhi": 207.6,
+      "cr5": 23.9
+    },
+    {
+      "year": 1992,
+      "movies_count": 640,
+      "avg_duration": 83.9,
+      "active_studios": 151,
+      "active_directors": 146,
+      "active_performers": 2014,
+      "episodes_count": 0,
+      "hhi": 212.9,
+      "cr5": 25.2
+    },
+    {
+      "year": 1993,
+      "movies_count": 710,
+      "avg_duration": 79.0,
+      "active_studios": 178,
+      "active_directors": 129,
+      "active_performers": 2123,
+      "episodes_count": 0,
+      "hhi": 156.8,
+      "cr5": 19.7
+    },
+    {
+      "year": 1994,
+      "movies_count": 721,
+      "avg_duration": 83.2,
+      "active_studios": 183,
+      "active_directors": 172,
+      "active_performers": 2591,
+      "episodes_count": 0,
+      "hhi": 175.3,
+      "cr5": 21.1
+    },
+    {
+      "year": 1995,
+      "movies_count": 888,
+      "avg_duration": 94.3,
+      "active_studios": 198,
+      "active_directors": 175,
+      "active_performers": 2730,
+      "episodes_count": 0,
+      "hhi": 160.6,
+      "cr5": 20.2
+    },
+    {
+      "year": 1996,
+      "movies_count": 771,
+      "avg_duration": 83.8,
+      "active_studios": 159,
+      "active_directors": 185,
+      "active_performers": 2538,
+      "episodes_count": 0,
+      "hhi": 222.3,
+      "cr5": 23.7
+    },
+    {
+      "year": 1997,
+      "movies_count": 1018,
+      "avg_duration": 100.4,
+      "active_studios": 206,
+      "active_directors": 210,
+      "active_performers": 3371,
+      "episodes_count": 0,
+      "hhi": 233.5,
+      "cr5": 26.4
+    },
+    {
+      "year": 1998,
+      "movies_count": 1073,
+      "avg_duration": 94.1,
+      "active_studios": 238,
+      "active_directors": 249,
+      "active_performers": 3538,
+      "episodes_count": 0,
+      "hhi": 139.7,
+      "cr5": 17.3
+    },
+    {
+      "year": 1999,
+      "movies_count": 1004,
+      "avg_duration": 91.3,
+      "active_studios": 232,
+      "active_directors": 261,
+      "active_performers": 3664,
+      "episodes_count": 0,
+      "hhi": 134.3,
+      "cr5": 17.6
+    },
+    {
+      "year": 2000,
+      "movies_count": 1190,
+      "avg_duration": 93.9,
+      "active_studios": 263,
+      "active_directors": 271,
+      "active_performers": 4590,
+      "episodes_count": 5,
+      "hhi": 117.3,
+      "cr5": 16.7
+    },
+    {
+      "year": 2001,
+      "movies_count": 1423,
+      "avg_duration": 91.8,
+      "active_studios": 291,
+      "active_directors": 291,
+      "active_performers": 4967,
+      "episodes_count": 88,
+      "hhi": 135.1,
+      "cr5": 19.7
+    },
+    {
+      "year": 2002,
+      "movies_count": 1401,
+      "avg_duration": 97.6,
+      "active_studios": 327,
+      "active_directors": 293,
+      "active_performers": 5439,
+      "episodes_count": 98,
+      "hhi": 105.5,
+      "cr5": 15.3
+    },
+    {
+      "year": 2003,
+      "movies_count": 1326,
+      "avg_duration": 94.4,
+      "active_studios": 301,
+      "active_directors": 287,
+      "active_performers": 5335,
+      "episodes_count": 526,
+      "hhi": 124.4,
+      "cr5": 18.2
+    },
+    {
+      "year": 2004,
+      "movies_count": 1408,
+      "avg_duration": 98.0,
+      "active_studios": 287,
+      "active_directors": 315,
+      "active_performers": 5847,
+      "episodes_count": 1048,
+      "hhi": 143.2,
+      "cr5": 18.7
+    },
+    {
+      "year": 2005,
+      "movies_count": 1689,
+      "avg_duration": 97.3,
+      "active_studios": 355,
+      "active_directors": 354,
+      "active_performers": 6876,
+      "episodes_count": 1414,
+      "hhi": 102.1,
+      "cr5": 15.0
+    },
+    {
+      "year": 2006,
+      "movies_count": 2416,
+      "avg_duration": 99.2,
+      "active_studios": 417,
+      "active_directors": 451,
+      "active_performers": 8633,
+      "episodes_count": 1950,
+      "hhi": 82.8,
+      "cr5": 13.3
+    },
+    {
+      "year": 2007,
+      "movies_count": 2107,
+      "avg_duration": 99.9,
+      "active_studios": 416,
+      "active_directors": 410,
+      "active_performers": 7774,
+      "episodes_count": 2662,
+      "hhi": 83.5,
+      "cr5": 12.6
+    },
+    {
+      "year": 2008,
+      "movies_count": 2324,
+      "avg_duration": 101.2,
+      "active_studios": 392,
+      "active_directors": 471,
+      "active_performers": 8858,
+      "episodes_count": 3247,
+      "hhi": 94.5,
+      "cr5": 13.9
+    },
+    {
+      "year": 2009,
+      "movies_count": 2227,
+      "avg_duration": 101.2,
+      "active_studios": 359,
+      "active_directors": 423,
+      "active_performers": 8407,
+      "episodes_count": 3701,
+      "hhi": 97.1,
+      "cr5": 13.6
+    },
+    {
+      "year": 2010,
+      "movies_count": 2195,
+      "avg_duration": 100.4,
+      "active_studios": 365,
+      "active_directors": 413,
+      "active_performers": 8447,
+      "episodes_count": 4319,
+      "hhi": 98.9,
+      "cr5": 13.6
+    },
+    {
+      "year": 2011,
+      "movies_count": 2240,
+      "avg_duration": 99.7,
+      "active_studios": 323,
+      "active_directors": 352,
+      "active_performers": 7979,
+      "episodes_count": 4864,
+      "hhi": 105.1,
+      "cr5": 14.0
+    },
+    {
+      "year": 2012,
+      "movies_count": 2125,
+      "avg_duration": 100.8,
+      "active_studios": 282,
+      "active_directors": 323,
+      "active_performers": 7136,
+      "episodes_count": 5979,
+      "hhi": 95.0,
+      "cr5": 11.3
+    },
+    {
+      "year": 2013,
+      "movies_count": 2187,
+      "avg_duration": 99.1,
+      "active_studios": 279,
+      "active_directors": 321,
+      "active_performers": 7187,
+      "episodes_count": 6319,
+      "hhi": 116.4,
+      "cr5": 14.9
+    },
+    {
+      "year": 2014,
+      "movies_count": 2241,
+      "avg_duration": 99.0,
+      "active_studios": 265,
+      "active_directors": 327,
+      "active_performers": 6727,
+      "episodes_count": 7607,
+      "hhi": 110.6,
+      "cr5": 13.7
+    },
+    {
+      "year": 2015,
+      "movies_count": 1848,
+      "avg_duration": 103.0,
+      "active_studios": 241,
+      "active_directors": 245,
+      "active_performers": 5550,
+      "episodes_count": 7942,
+      "hhi": 112.6,
+      "cr5": 13.7
+    },
+    {
+      "year": 2016,
+      "movies_count": 1932,
+      "avg_duration": 102.3,
+      "active_studios": 227,
+      "active_directors": 207,
+      "active_performers": 5655,
+      "episodes_count": 7599,
+      "hhi": 114.9,
+      "cr5": 13.7
+    },
+    {
+      "year": 2017,
+      "movies_count": 1924,
+      "avg_duration": 101.4,
+      "active_studios": 225,
+      "active_directors": 200,
+      "active_performers": 5532,
+      "episodes_count": 6978,
+      "hhi": 112.2,
+      "cr5": 13.3
+    },
+    {
+      "year": 2018,
+      "movies_count": 1709,
+      "avg_duration": 103.0,
+      "active_studios": 204,
+      "active_directors": 177,
+      "active_performers": 4932,
+      "episodes_count": 6389,
+      "hhi": 112.8,
+      "cr5": 12.9
+    },
+    {
+      "year": 2019,
+      "movies_count": 1544,
+      "avg_duration": 105.8,
+      "active_studios": 183,
+      "active_directors": 143,
+      "active_performers": 4580,
+      "episodes_count": 6527,
+      "hhi": 162.0,
+      "cr5": 19.1
+    },
+    {
+      "year": 2020,
+      "movies_count": 1285,
+      "avg_duration": 100.2,
+      "active_studios": 167,
+      "active_directors": 138,
+      "active_performers": 4009,
+      "episodes_count": 6126,
+      "hhi": 198.3,
+      "cr5": 21.6
+    },
+    {
+      "year": 2021,
+      "movies_count": 1315,
+      "avg_duration": 99.0,
+      "active_studios": 163,
+      "active_directors": 167,
+      "active_performers": 4374,
+      "episodes_count": 6944,
+      "hhi": 157.6,
+      "cr5": 17.9
+    },
+    {
+      "year": 2022,
+      "movies_count": 1404,
+      "avg_duration": 97.6,
+      "active_studios": 151,
+      "active_directors": 168,
+      "active_performers": 4248,
+      "episodes_count": 10798,
+      "hhi": 161.0,
+      "cr5": 18.0
+    },
+    {
+      "year": 2023,
+      "movies_count": 1449,
+      "avg_duration": 96.5,
+      "active_studios": 136,
+      "active_directors": 156,
+      "active_performers": 4328,
+      "episodes_count": 10280,
+      "hhi": 238.8,
+      "cr5": 24.9
+    },
+    {
+      "year": 2024,
+      "movies_count": 1235,
+      "avg_duration": 97.1,
+      "active_studios": 134,
+      "active_directors": 131,
+      "active_performers": 3814,
+      "episodes_count": 7522,
+      "hhi": 247.2,
+      "cr5": 26.2
+    },
+    {
+      "year": 2025,
+      "movies_count": 1193,
+      "avg_duration": 98.1,
+      "active_studios": 115,
+      "active_directors": 125,
+      "active_performers": 3951,
+      "episodes_count": 4710,
+      "hhi": 246.8,
+      "cr5": 24.7
+    },
+    {
+      "year": 2026,
+      "movies_count": 660,
+      "avg_duration": 106.7,
+      "active_studios": 88,
+      "active_directors": 76,
+      "active_performers": 2542,
+      "episodes_count": 3126,
+      "hhi": 311.3,
+      "cr5": 29.7
+    }
+  ],
+  "studios": {
+    "top_studios": [
+      {
+        "studio_name": "Bacchus Releasing",
+        "studio_id": 17,
+        "name_zh": "酒神狂欢影业",
+        "logo_url": "images/logos/bacchus_releasing_logo.png",
+        "total_movies": 1340,
+        "year_start": 1992,
+        "year_end": 2021
+      },
+      {
+        "studio_name": "William Higgins Productions",
+        "studio_id": 175,
+        "name_zh": "威廉希金斯影业",
+        "logo_url": "images/logos/william_higgins_productions_logo.png",
+        "total_movies": 1008,
+        "year_start": 1978,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "All Worlds Video",
+        "studio_id": 8,
+        "name_zh": "万象视界影业",
+        "logo_url": "images/logos/all_worlds_video_logo.jpg",
+        "total_movies": 963,
+        "year_start": 1987,
+        "year_end": 2022
+      },
+      {
+        "studio_name": "Next Door Studios",
+        "studio_id": 117,
+        "name_zh": "邻家男孩制片",
+        "logo_url": "images/logos/next_door_studios_logo.jpg",
+        "total_movies": 789,
+        "year_start": 2004,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Staxus",
+        "studio_id": 154,
+        "name_zh": "斯塔克影业",
+        "logo_url": "images/logos/staxus_logo.png",
+        "total_movies": 701,
+        "year_start": 2005,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Raging Stallion Studios",
+        "studio_id": 133,
+        "name_zh": "狂烈种马影业",
+        "logo_url": "images/logos/raging_stallion_studios_logo.png",
+        "total_movies": 696,
+        "year_start": 2000,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Falcon Studios",
+        "studio_id": 72,
+        "name_zh": "猎鹰影视",
+        "logo_url": "images/logos/falcon_studios_logo.jpeg",
+        "total_movies": 609,
+        "year_start": 1976,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Catalina Video",
+        "studio_id": 36,
+        "name_zh": "卡特琳娜影业",
+        "logo_url": "images/logos/catalina_video_logo.png",
+        "total_movies": 573,
+        "year_start": 1980,
+        "year_end": 2018
+      },
+      {
+        "studio_name": "Lucas Entertainment",
+        "studio_id": 102,
+        "name_zh": "卢卡斯娱乐",
+        "logo_url": "images/logos/lucas_entertainment_logo.png",
+        "total_movies": 555,
+        "year_start": 1998,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Helix Studios",
+        "studio_id": 84,
+        "name_zh": "螺旋影视",
+        "logo_url": "images/logos/helix_studios_logo.png",
+        "total_movies": 514,
+        "year_start": 2002,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Active Duty Productions",
+        "studio_id": 4,
+        "name_zh": "现役大兵影业",
+        "logo_url": "images/logos/active_duty_productions_logo.jpg",
+        "total_movies": 513,
+        "year_start": 2000,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Hammer Entertainment",
+        "studio_id": 83,
+        "name_zh": "铁锤娱乐",
+        "logo_url": "images/logos/hammer_entertainment_logo.png",
+        "total_movies": 490,
+        "year_start": 2005,
+        "year_end": 2025
+      },
+      {
+        "studio_name": "Corbin Fisher",
+        "studio_id": 49,
+        "name_zh": "科宾·费舍影业",
+        "logo_url": "images/logos/corbin_fisher_logo.gif",
+        "total_movies": 486,
+        "year_start": 2008,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Factory Video Productions",
+        "studio_id": 71,
+        "name_zh": "工厂影像",
+        "logo_url": "images/logos/factory_video_productions_logo.png",
+        "total_movies": 477,
+        "year_start": 1999,
+        "year_end": 2024
+      },
+      {
+        "studio_name": "Man's Best",
+        "studio_id": 108,
+        "name_zh": "挚男影像",
+        "logo_url": null,
+        "total_movies": 476,
+        "year_start": 1990,
+        "year_end": 2016
+      },
+      {
+        "studio_name": "BelAmi",
+        "studio_id": 23,
+        "name_zh": "漂亮朋友影业",
+        "logo_url": "images/logos/belami_logo.jpg",
+        "total_movies": 463,
+        "year_start": 1994,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Vimpex Gay Media",
+        "studio_id": 173,
+        "name_zh": "万普斯同志传媒",
+        "logo_url": null,
+        "total_movies": 415,
+        "year_start": 2003,
+        "year_end": 2022
+      },
+      {
+        "studio_name": "KinkMen",
+        "studio_id": 97,
+        "name_zh": "禁忌男界",
+        "logo_url": "images/logos/kinkmen_logo.png",
+        "total_movies": 414,
+        "year_start": 2002,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "MEN.com",
+        "studio_id": 103,
+        "name_zh": "男人网",
+        "logo_url": "images/logos/mencom_logo.jpg",
+        "total_movies": 394,
+        "year_start": 2012,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Mile High Media",
+        "studio_id": 113,
+        "name_zh": "万米高空影业",
+        "logo_url": "images/logos/mile_high_media_logo.png",
+        "total_movies": 389,
+        "year_start": 2005,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Staxus Films",
+        "studio_id": 155,
+        "name_zh": "斯塔克斯影业",
+        "logo_url": "images/logos/staxus_films_logo.png",
+        "total_movies": 387,
+        "year_start": 2011,
+        "year_end": 2023
+      },
+      {
+        "studio_name": "Hot House Entertainment",
+        "studio_id": 87,
+        "name_zh": "温室热浪影业",
+        "logo_url": "images/logos/hot_house_entertainment_logo.jpg",
+        "total_movies": 378,
+        "year_start": 1994,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "Pride Studios",
+        "studio_id": 131,
+        "name_zh": "骄傲影业",
+        "logo_url": "images/logos/pride_studios_logo.jpg",
+        "total_movies": 364,
+        "year_start": 2004,
+        "year_end": 2026
+      },
+      {
+        "studio_name": "HIS Video",
+        "studio_id": 82,
+        "name_zh": "纯男影像",
+        "logo_url": "images/logos/his_video_logo.png",
+        "total_movies": 362,
+        "year_start": 1980,
+        "year_end": 2012
+      },
+      {
+        "studio_name": "Titan Media",
+        "studio_id": 162,
+        "name_zh": "泰坦巨神影业",
+        "logo_url": "images/logos/titan_media_logo.png",
+        "total_movies": 349,
+        "year_start": 1995,
+        "year_end": 2018
+      }
+    ],
+    "yearly_matrix": [
+      {
+        "year": 1976,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 0,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 1,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1978,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 0,
+        "William Higgins Productions": 1,
+        "Falcon Studios": 2,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1979,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 0,
+        "William Higgins Productions": 2,
+        "Falcon Studios": 6,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1980,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 2,
+        "William Higgins Productions": 2,
+        "Falcon Studios": 10,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1981,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 0,
+        "William Higgins Productions": 1,
+        "Falcon Studios": 4,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1982,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 2,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 3,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1983,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 1,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 2,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1984,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 2,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 6,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1985,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 0,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 7,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1986,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 5,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 3,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1987,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 6,
+        "William Higgins Productions": 1,
+        "Falcon Studios": 2,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 1,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1988,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 16,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 8,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1989,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 16,
+        "William Higgins Productions": 1,
+        "Falcon Studios": 5,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 4,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1990,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 22,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 6,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 2,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 26
+      },
+      {
+        "year": 1991,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 30,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 4,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 26,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 0,
+        "Man's Best": 0
+      },
+      {
+        "year": 1992,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 35,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 6,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 23,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 2,
+        "Corbin Fisher": 0,
+        "Man's Best": 4
+      },
+      {
+        "year": 1993,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 28,
+        "William Higgins Productions": 1,
+        "Falcon Studios": 9,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 14,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 1,
+        "Corbin Fisher": 0,
+        "Man's Best": 12
+      },
+      {
+        "year": 1994,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 37,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 6,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 29,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 1,
+        "Corbin Fisher": 0,
+        "Man's Best": 11
+      },
+      {
+        "year": 1995,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 40,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 7,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 54,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 26,
+        "Corbin Fisher": 0,
+        "Man's Best": 10
+      },
+      {
+        "year": 1996,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 35,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 7,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 67,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 31,
+        "Corbin Fisher": 0,
+        "Man's Best": 3
+      },
+      {
+        "year": 1997,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 37,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 6,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 0,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 100,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 11,
+        "Corbin Fisher": 0,
+        "Man's Best": 11
+      },
+      {
+        "year": 1998,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 33,
+        "William Higgins Productions": 1,
+        "Falcon Studios": 10,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 2,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 73,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 25,
+        "Corbin Fisher": 0,
+        "Man's Best": 29
+      },
+      {
+        "year": 1999,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 30,
+        "William Higgins Productions": 0,
+        "Falcon Studios": 2,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 3,
+        "Raging Stallion Studios": 0,
+        "Active Duty Productions": 0,
+        "All Worlds Video": 61,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 1,
+        "Bacchus Releasing": 23,
+        "Corbin Fisher": 0,
+        "Man's Best": 23
+      },
+      {
+        "year": 2000,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 31,
+        "William Higgins Productions": 2,
+        "Falcon Studios": 8,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 3,
+        "Raging Stallion Studios": 8,
+        "Active Duty Productions": 5,
+        "All Worlds Video": 61,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 11,
+        "Bacchus Releasing": 39,
+        "Corbin Fisher": 0,
+        "Man's Best": 32
+      },
+      {
+        "year": 2001,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 36,
+        "William Higgins Productions": 6,
+        "Falcon Studios": 5,
+        "Helix Studios": 0,
+        "Lucas Entertainment": 7,
+        "Raging Stallion Studios": 7,
+        "Active Duty Productions": 9,
+        "All Worlds Video": 68,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 11,
+        "Bacchus Releasing": 43,
+        "Corbin Fisher": 0,
+        "Man's Best": 63
+      },
+      {
+        "year": 2002,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 30,
+        "William Higgins Productions": 11,
+        "Falcon Studios": 9,
+        "Helix Studios": 1,
+        "Lucas Entertainment": 4,
+        "Raging Stallion Studios": 8,
+        "Active Duty Productions": 18,
+        "All Worlds Video": 42,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 16,
+        "Bacchus Releasing": 70,
+        "Corbin Fisher": 0,
+        "Man's Best": 27
+      },
+      {
+        "year": 2003,
+        "Staxus": 0,
+        "Next Door Studios": 0,
+        "Catalina Video": 21,
+        "William Higgins Productions": 7,
+        "Falcon Studios": 7,
+        "Helix Studios": 14,
+        "Lucas Entertainment": 6,
+        "Raging Stallion Studios": 21,
+        "Active Duty Productions": 7,
+        "All Worlds Video": 60,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 17,
+        "Bacchus Releasing": 68,
+        "Corbin Fisher": 0,
+        "Man's Best": 20
+      },
+      {
+        "year": 2004,
+        "Staxus": 0,
+        "Next Door Studios": 3,
+        "Catalina Video": 14,
+        "William Higgins Productions": 10,
+        "Falcon Studios": 8,
+        "Helix Studios": 27,
+        "Lucas Entertainment": 6,
+        "Raging Stallion Studios": 12,
+        "Active Duty Productions": 16,
+        "All Worlds Video": 40,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 22,
+        "Bacchus Releasing": 107,
+        "Corbin Fisher": 0,
+        "Man's Best": 58
+      },
+      {
+        "year": 2005,
+        "Staxus": 1,
+        "Next Door Studios": 6,
+        "Catalina Video": 20,
+        "William Higgins Productions": 10,
+        "Falcon Studios": 7,
+        "Helix Studios": 26,
+        "Lucas Entertainment": 9,
+        "Raging Stallion Studios": 18,
+        "Active Duty Productions": 21,
+        "All Worlds Video": 43,
+        "Hammer Entertainment": 10,
+        "Factory Video Productions": 20,
+        "Bacchus Releasing": 91,
+        "Corbin Fisher": 0,
+        "Man's Best": 54
+      },
+      {
+        "year": 2006,
+        "Staxus": 2,
+        "Next Door Studios": 14,
+        "Catalina Video": 9,
+        "William Higgins Productions": 19,
+        "Falcon Studios": 32,
+        "Helix Studios": 32,
+        "Lucas Entertainment": 19,
+        "Raging Stallion Studios": 26,
+        "Active Duty Productions": 20,
+        "All Worlds Video": 48,
+        "Hammer Entertainment": 17,
+        "Factory Video Productions": 28,
+        "Bacchus Releasing": 97,
+        "Corbin Fisher": 0,
+        "Man's Best": 26
+      },
+      {
+        "year": 2007,
+        "Staxus": 1,
+        "Next Door Studios": 28,
+        "Catalina Video": 10,
+        "William Higgins Productions": 19,
+        "Falcon Studios": 13,
+        "Helix Studios": 24,
+        "Lucas Entertainment": 19,
+        "Raging Stallion Studios": 31,
+        "Active Duty Productions": 26,
+        "All Worlds Video": 16,
+        "Hammer Entertainment": 23,
+        "Factory Video Productions": 27,
+        "Bacchus Releasing": 103,
+        "Corbin Fisher": 0,
+        "Man's Best": 4
+      },
+      {
+        "year": 2008,
+        "Staxus": 1,
+        "Next Door Studios": 37,
+        "Catalina Video": 2,
+        "William Higgins Productions": 27,
+        "Falcon Studios": 44,
+        "Helix Studios": 16,
+        "Lucas Entertainment": 27,
+        "Raging Stallion Studios": 32,
+        "Active Duty Productions": 33,
+        "All Worlds Video": 19,
+        "Hammer Entertainment": 22,
+        "Factory Video Productions": 49,
+        "Bacchus Releasing": 98,
+        "Corbin Fisher": 1,
+        "Man's Best": 5
+      },
+      {
+        "year": 2009,
+        "Staxus": 9,
+        "Next Door Studios": 47,
+        "Catalina Video": 1,
+        "William Higgins Productions": 26,
+        "Falcon Studios": 35,
+        "Helix Studios": 27,
+        "Lucas Entertainment": 24,
+        "Raging Stallion Studios": 40,
+        "Active Duty Productions": 26,
+        "All Worlds Video": 30,
+        "Hammer Entertainment": 13,
+        "Factory Video Productions": 49,
+        "Bacchus Releasing": 96,
+        "Corbin Fisher": 4,
+        "Man's Best": 0
+      },
+      {
+        "year": 2010,
+        "Staxus": 23,
+        "Next Door Studios": 22,
+        "Catalina Video": 0,
+        "William Higgins Productions": 34,
+        "Falcon Studios": 32,
+        "Helix Studios": 21,
+        "Lucas Entertainment": 20,
+        "Raging Stallion Studios": 48,
+        "Active Duty Productions": 29,
+        "All Worlds Video": 28,
+        "Hammer Entertainment": 40,
+        "Factory Video Productions": 48,
+        "Bacchus Releasing": 114,
+        "Corbin Fisher": 2,
+        "Man's Best": 37
+      },
+      {
+        "year": 2011,
+        "Staxus": 33,
+        "Next Door Studios": 11,
+        "Catalina Video": 4,
+        "William Higgins Productions": 22,
+        "Falcon Studios": 31,
+        "Helix Studios": 35,
+        "Lucas Entertainment": 25,
+        "Raging Stallion Studios": 49,
+        "Active Duty Productions": 24,
+        "All Worlds Video": 20,
+        "Hammer Entertainment": 40,
+        "Factory Video Productions": 46,
+        "Bacchus Releasing": 120,
+        "Corbin Fisher": 0,
+        "Man's Best": 5
+      },
+      {
+        "year": 2012,
+        "Staxus": 31,
+        "Next Door Studios": 41,
+        "Catalina Video": 5,
+        "William Higgins Productions": 47,
+        "Falcon Studios": 26,
+        "Helix Studios": 21,
+        "Lucas Entertainment": 28,
+        "Raging Stallion Studios": 59,
+        "Active Duty Productions": 23,
+        "All Worlds Video": 14,
+        "Hammer Entertainment": 43,
+        "Factory Video Productions": 36,
+        "Bacchus Releasing": 40,
+        "Corbin Fisher": 2,
+        "Man's Best": 5
+      },
+      {
+        "year": 2013,
+        "Staxus": 49,
+        "Next Door Studios": 41,
+        "Catalina Video": 1,
+        "William Higgins Productions": 72,
+        "Falcon Studios": 37,
+        "Helix Studios": 27,
+        "Lucas Entertainment": 30,
+        "Raging Stallion Studios": 58,
+        "Active Duty Productions": 29,
+        "All Worlds Video": 5,
+        "Hammer Entertainment": 41,
+        "Factory Video Productions": 38,
+        "Bacchus Releasing": 50,
+        "Corbin Fisher": 16,
+        "Man's Best": 2
+      },
+      {
+        "year": 2014,
+        "Staxus": 40,
+        "Next Door Studios": 38,
+        "Catalina Video": 3,
+        "William Higgins Productions": 85,
+        "Falcon Studios": 34,
+        "Helix Studios": 19,
+        "Lucas Entertainment": 27,
+        "Raging Stallion Studios": 50,
+        "Active Duty Productions": 27,
+        "All Worlds Video": 1,
+        "Hammer Entertainment": 32,
+        "Factory Video Productions": 12,
+        "Bacchus Releasing": 42,
+        "Corbin Fisher": 14,
+        "Man's Best": 0
+      },
+      {
+        "year": 2015,
+        "Staxus": 41,
+        "Next Door Studios": 47,
+        "Catalina Video": 5,
+        "William Higgins Productions": 60,
+        "Falcon Studios": 26,
+        "Helix Studios": 17,
+        "Lucas Entertainment": 28,
+        "Raging Stallion Studios": 40,
+        "Active Duty Productions": 15,
+        "All Worlds Video": 5,
+        "Hammer Entertainment": 13,
+        "Factory Video Productions": 11,
+        "Bacchus Releasing": 21,
+        "Corbin Fisher": 25,
+        "Man's Best": 4
+      },
+      {
+        "year": 2016,
+        "Staxus": 50,
+        "Next Door Studios": 40,
+        "Catalina Video": 2,
+        "William Higgins Productions": 66,
+        "Falcon Studios": 24,
+        "Helix Studios": 18,
+        "Lucas Entertainment": 25,
+        "Raging Stallion Studios": 29,
+        "Active Duty Productions": 26,
+        "All Worlds Video": 3,
+        "Hammer Entertainment": 30,
+        "Factory Video Productions": 9,
+        "Bacchus Releasing": 16,
+        "Corbin Fisher": 38,
+        "Man's Best": 5
+      },
+      {
+        "year": 2017,
+        "Staxus": 58,
+        "Next Door Studios": 37,
+        "Catalina Video": 0,
+        "William Higgins Productions": 71,
+        "Falcon Studios": 22,
+        "Helix Studios": 10,
+        "Lucas Entertainment": 29,
+        "Raging Stallion Studios": 19,
+        "Active Duty Productions": 22,
+        "All Worlds Video": 2,
+        "Hammer Entertainment": 36,
+        "Factory Video Productions": 7,
+        "Bacchus Releasing": 4,
+        "Corbin Fisher": 41,
+        "Man's Best": 0
+      },
+      {
+        "year": 2018,
+        "Staxus": 39,
+        "Next Door Studios": 36,
+        "Catalina Video": 2,
+        "William Higgins Productions": 71,
+        "Falcon Studios": 13,
+        "Helix Studios": 15,
+        "Lucas Entertainment": 27,
+        "Raging Stallion Studios": 16,
+        "Active Duty Productions": 24,
+        "All Worlds Video": 1,
+        "Hammer Entertainment": 37,
+        "Factory Video Productions": 8,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 32,
+        "Man's Best": 0
+      },
+      {
+        "year": 2019,
+        "Staxus": 62,
+        "Next Door Studios": 41,
+        "Catalina Video": 0,
+        "William Higgins Productions": 44,
+        "Falcon Studios": 11,
+        "Helix Studios": 18,
+        "Lucas Entertainment": 28,
+        "Raging Stallion Studios": 19,
+        "Active Duty Productions": 25,
+        "All Worlds Video": 2,
+        "Hammer Entertainment": 15,
+        "Factory Video Productions": 4,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 8,
+        "Man's Best": 0
+      },
+      {
+        "year": 2020,
+        "Staxus": 36,
+        "Next Door Studios": 42,
+        "Catalina Video": 0,
+        "William Higgins Productions": 33,
+        "Falcon Studios": 8,
+        "Helix Studios": 16,
+        "Lucas Entertainment": 25,
+        "Raging Stallion Studios": 12,
+        "Active Duty Productions": 24,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 20,
+        "Factory Video Productions": 3,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 4,
+        "Man's Best": 0
+      },
+      {
+        "year": 2021,
+        "Staxus": 28,
+        "Next Door Studios": 37,
+        "Catalina Video": 0,
+        "William Higgins Productions": 61,
+        "Falcon Studios": 14,
+        "Helix Studios": 23,
+        "Lucas Entertainment": 25,
+        "Raging Stallion Studios": 15,
+        "Active Duty Productions": 23,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 10,
+        "Factory Video Productions": 1,
+        "Bacchus Releasing": 1,
+        "Corbin Fisher": 15,
+        "Man's Best": 0
+      },
+      {
+        "year": 2022,
+        "Staxus": 25,
+        "Next Door Studios": 59,
+        "Catalina Video": 0,
+        "William Higgins Productions": 38,
+        "Falcon Studios": 10,
+        "Helix Studios": 22,
+        "Lucas Entertainment": 29,
+        "Raging Stallion Studios": 17,
+        "Active Duty Productions": 12,
+        "All Worlds Video": 1,
+        "Hammer Entertainment": 16,
+        "Factory Video Productions": 2,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 36,
+        "Man's Best": 0
+      },
+      {
+        "year": 2023,
+        "Staxus": 35,
+        "Next Door Studios": 66,
+        "Catalina Video": 0,
+        "William Higgins Productions": 43,
+        "Falcon Studios": 10,
+        "Helix Studios": 23,
+        "Lucas Entertainment": 27,
+        "Raging Stallion Studios": 15,
+        "Active Duty Productions": 12,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 12,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 84,
+        "Man's Best": 0
+      },
+      {
+        "year": 2024,
+        "Staxus": 62,
+        "Next Door Studios": 38,
+        "Catalina Video": 0,
+        "William Higgins Productions": 41,
+        "Falcon Studios": 5,
+        "Helix Studios": 24,
+        "Lucas Entertainment": 24,
+        "Raging Stallion Studios": 20,
+        "Active Duty Productions": 9,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 14,
+        "Factory Video Productions": 1,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 78,
+        "Man's Best": 0
+      },
+      {
+        "year": 2025,
+        "Staxus": 41,
+        "Next Door Studios": 43,
+        "Catalina Video": 0,
+        "William Higgins Productions": 41,
+        "Falcon Studios": 9,
+        "Helix Studios": 22,
+        "Lucas Entertainment": 26,
+        "Raging Stallion Studios": 15,
+        "Active Duty Productions": 7,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 6,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 54,
+        "Man's Best": 0
+      },
+      {
+        "year": 2026,
+        "Staxus": 34,
+        "Next Door Studios": 15,
+        "Catalina Video": 0,
+        "William Higgins Productions": 32,
+        "Falcon Studios": 7,
+        "Helix Studios": 16,
+        "Lucas Entertainment": 3,
+        "Raging Stallion Studios": 12,
+        "Active Duty Productions": 1,
+        "All Worlds Video": 0,
+        "Hammer Entertainment": 0,
+        "Factory Video Productions": 0,
+        "Bacchus Releasing": 0,
+        "Corbin Fisher": 32,
+        "Man's Best": 0
+      }
+    ],
+    "tracked_studios": [
+      "Staxus",
+      "Next Door Studios",
+      "Catalina Video",
+      "William Higgins Productions",
+      "Falcon Studios",
+      "Helix Studios",
+      "Lucas Entertainment",
+      "Raging Stallion Studios",
+      "Active Duty Productions",
+      "All Worlds Video",
+      "Hammer Entertainment",
+      "Factory Video Productions",
+      "Bacchus Releasing",
+      "Corbin Fisher",
+      "Man's Best"
+    ]
+  },
+  "aesthetics": {
+    "build_by_decade": {
+      "1970s": {
+        "Other": 6,
+        "Body Builder": 9,
+        "Heavy": 2,
+        "Muscular": 56,
+        "Normal": 78,
+        "Swimmer": 186,
+        "Trim": 266
+      },
+      "1980s": {
+        "Bear": 2,
+        "Body Builder": 65,
+        "Other": 26,
+        "Heavy": 14,
+        "Muscular": 275,
+        "Normal": 274,
+        "Swimmer": 860,
+        "Trim": 945
+      },
+      "1990s": {
+        "Other": 88,
+        "Bear": 11,
+        "Body Builder": 171,
+        "Heavy": 39,
+        "Muscular": 816,
+        "Normal": 470,
+        "Swimmer": 1665,
+        "Trim": 1365
+      },
+      "2000s": {
+        "Other": 285,
+        "Bear": 21,
+        "Body Builder": 312,
+        "Heavy": 151,
+        "Muscular": 1606,
+        "Normal": 1433,
+        "Swimmer": 3060,
+        "Trim": 4710
+      },
+      "2010s": {
+        "Other": 329,
+        "Bear": 76,
+        "Body Builder": 167,
+        "Heavy": 111,
+        "Muscular": 1961,
+        "Normal": 1533,
+        "Swimmer": 3499,
+        "Trim": 5555
+      },
+      "2020s": {
+        "Other": 264,
+        "Bear": 129,
+        "Body Builder": 66,
+        "Heavy": 59,
+        "Muscular": 1127,
+        "Normal": 1059,
+        "Swimmer": 1749,
+        "Trim": 3925
+      }
+    },
+    "hair_by_decade": {
+      "1970s": {
+        "Hairy / 浓密毛发": 40,
+        "Light / 适度体毛": 189,
+        "Smooth / 无毛": 374
+      },
+      "1980s": {
+        "Other": 2,
+        "Hairy / 浓密毛发": 56,
+        "Smooth / 无毛": 1710,
+        "Light / 适度体毛": 620
+      },
+      "1990s": {
+        "Other": 5,
+        "Hairy / 浓密毛发": 99,
+        "Smooth / 无毛": 3411,
+        "Light / 适度体毛": 1057
+      },
+      "2000s": {
+        "Other": 5,
+        "Hairy / 浓密毛发": 251,
+        "Smooth / 无毛": 9168,
+        "Light / 适度体毛": 1948
+      },
+      "2010s": {
+        "Other": 9,
+        "Hairy / 浓密毛发": 550,
+        "Smooth / 无毛": 10121,
+        "Light / 适度体毛": 2309
+      },
+      "2020s": {
+        "Other": 25,
+        "Hairy / 浓密毛发": 572,
+        "Smooth / 无毛": 6121,
+        "Light / 适度体毛": 1545
+      }
+    },
+    "tattoo_by_decade": [
+      {
+        "decade": "1970s",
+        "has_tattoo_count": 92,
+        "total_count": 2302,
+        "percentage": 4.0
+      },
+      {
+        "decade": "1980s",
+        "has_tattoo_count": 493,
+        "total_count": 7255,
+        "percentage": 6.8
+      },
+      {
+        "decade": "1990s",
+        "has_tattoo_count": 1204,
+        "total_count": 16404,
+        "percentage": 7.3
+      },
+      {
+        "decade": "2000s",
+        "has_tattoo_count": 4306,
+        "total_count": 37814,
+        "percentage": 11.4
+      },
+      {
+        "decade": "2010s",
+        "has_tattoo_count": 6697,
+        "total_count": 31540,
+        "percentage": 21.2
+      },
+      {
+        "decade": "2020s",
+        "has_tattoo_count": 4990,
+        "total_count": 13844,
+        "percentage": 36.0
+      }
+    ]
+  },
+  "tropes": {
+    "top_genres": [
+      {
+        "en": "Solos",
+        "zh": "单人秀",
+        "total": 2299
+      },
+      {
+        "en": "Bisexual",
+        "zh": "双性恋",
+        "total": 1519
+      },
+      {
+        "en": "Spanking",
+        "zh": "打屁股",
+        "total": 752
+      },
+      {
+        "en": "Wrestling",
+        "zh": "摔角",
+        "total": 699
+      },
+      {
+        "en": "Transgendered",
+        "zh": "跨性别",
+        "total": 576
+      },
+      {
+        "en": "Bondage",
+        "zh": "绑缚",
+        "total": 435
+      },
+      {
+        "en": "Softcore",
+        "zh": "软核",
+        "total": 434
+      },
+      {
+        "en": "Straight",
+        "zh": "异性恋",
+        "total": 412
+      },
+      {
+        "en": "Interracial",
+        "zh": "跨种族",
+        "total": 301
+      },
+      {
+        "en": "J/O",
+        "zh": "自慰",
+        "total": 264
+      },
+      {
+        "en": "Fisting",
+        "zh": "拳交",
+        "total": 251
+      },
+      {
+        "en": "Fetish",
+        "zh": "恋物",
+        "total": 240
+      }
+    ],
+    "theme_river": [
+      {
+        "year": 1980,
+        "Solos": 73,
+        "Bisexual": 1,
+        "Spanking": 40,
+        "Wrestling": 17,
+        "Transgendered": 0,
+        "Bondage": 6,
+        "Softcore": 1,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 0,
+        "Fetish": 0
+      },
+      {
+        "year": 1981,
+        "Solos": 7,
+        "Bisexual": 1,
+        "Spanking": 0,
+        "Wrestling": 1,
+        "Transgendered": 2,
+        "Bondage": 0,
+        "Softcore": 1,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 0,
+        "Fetish": 0
+      },
+      {
+        "year": 1982,
+        "Solos": 23,
+        "Bisexual": 0,
+        "Spanking": 0,
+        "Wrestling": 0,
+        "Transgendered": 1,
+        "Bondage": 0,
+        "Softcore": 5,
+        "Straight": 0,
+        "Interracial": 1,
+        "J/O": 1,
+        "Fisting": 0,
+        "Fetish": 0
+      },
+      {
+        "year": 1983,
+        "Solos": 13,
+        "Bisexual": 2,
+        "Spanking": 0,
+        "Wrestling": 0,
+        "Transgendered": 2,
+        "Bondage": 2,
+        "Softcore": 2,
+        "Straight": 0,
+        "Interracial": 2,
+        "J/O": 2,
+        "Fisting": 2,
+        "Fetish": 0
+      },
+      {
+        "year": 1984,
+        "Solos": 17,
+        "Bisexual": 1,
+        "Spanking": 14,
+        "Wrestling": 36,
+        "Transgendered": 3,
+        "Bondage": 2,
+        "Softcore": 1,
+        "Straight": 2,
+        "Interracial": 2,
+        "J/O": 0,
+        "Fisting": 1,
+        "Fetish": 0
+      },
+      {
+        "year": 1985,
+        "Solos": 31,
+        "Bisexual": 5,
+        "Spanking": 3,
+        "Wrestling": 6,
+        "Transgendered": 0,
+        "Bondage": 3,
+        "Softcore": 6,
+        "Straight": 2,
+        "Interracial": 4,
+        "J/O": 2,
+        "Fisting": 2,
+        "Fetish": 0
+      },
+      {
+        "year": 1986,
+        "Solos": 29,
+        "Bisexual": 10,
+        "Spanking": 16,
+        "Wrestling": 17,
+        "Transgendered": 5,
+        "Bondage": 0,
+        "Softcore": 3,
+        "Straight": 1,
+        "Interracial": 6,
+        "J/O": 2,
+        "Fisting": 0,
+        "Fetish": 1
+      },
+      {
+        "year": 1987,
+        "Solos": 42,
+        "Bisexual": 16,
+        "Spanking": 4,
+        "Wrestling": 8,
+        "Transgendered": 4,
+        "Bondage": 2,
+        "Softcore": 1,
+        "Straight": 1,
+        "Interracial": 4,
+        "J/O": 6,
+        "Fisting": 2,
+        "Fetish": 2
+      },
+      {
+        "year": 1988,
+        "Solos": 89,
+        "Bisexual": 35,
+        "Spanking": 6,
+        "Wrestling": 22,
+        "Transgendered": 3,
+        "Bondage": 11,
+        "Softcore": 4,
+        "Straight": 0,
+        "Interracial": 8,
+        "J/O": 6,
+        "Fisting": 0,
+        "Fetish": 3
+      },
+      {
+        "year": 1989,
+        "Solos": 66,
+        "Bisexual": 20,
+        "Spanking": 3,
+        "Wrestling": 11,
+        "Transgendered": 8,
+        "Bondage": 15,
+        "Softcore": 4,
+        "Straight": 1,
+        "Interracial": 6,
+        "J/O": 3,
+        "Fisting": 0,
+        "Fetish": 0
+      },
+      {
+        "year": 1990,
+        "Solos": 80,
+        "Bisexual": 13,
+        "Spanking": 11,
+        "Wrestling": 25,
+        "Transgendered": 7,
+        "Bondage": 18,
+        "Softcore": 6,
+        "Straight": 3,
+        "Interracial": 15,
+        "J/O": 3,
+        "Fisting": 1,
+        "Fetish": 1
+      },
+      {
+        "year": 1991,
+        "Solos": 78,
+        "Bisexual": 18,
+        "Spanking": 7,
+        "Wrestling": 11,
+        "Transgendered": 4,
+        "Bondage": 23,
+        "Softcore": 5,
+        "Straight": 5,
+        "Interracial": 34,
+        "J/O": 3,
+        "Fisting": 0,
+        "Fetish": 5
+      },
+      {
+        "year": 1992,
+        "Solos": 60,
+        "Bisexual": 10,
+        "Spanking": 8,
+        "Wrestling": 36,
+        "Transgendered": 3,
+        "Bondage": 13,
+        "Softcore": 8,
+        "Straight": 4,
+        "Interracial": 13,
+        "J/O": 2,
+        "Fisting": 0,
+        "Fetish": 9
+      },
+      {
+        "year": 1993,
+        "Solos": 38,
+        "Bisexual": 11,
+        "Spanking": 8,
+        "Wrestling": 43,
+        "Transgendered": 11,
+        "Bondage": 14,
+        "Softcore": 12,
+        "Straight": 3,
+        "Interracial": 22,
+        "J/O": 1,
+        "Fisting": 0,
+        "Fetish": 0
+      },
+      {
+        "year": 1994,
+        "Solos": 55,
+        "Bisexual": 21,
+        "Spanking": 12,
+        "Wrestling": 46,
+        "Transgendered": 13,
+        "Bondage": 14,
+        "Softcore": 18,
+        "Straight": 1,
+        "Interracial": 6,
+        "J/O": 3,
+        "Fisting": 0,
+        "Fetish": 14
+      },
+      {
+        "year": 1995,
+        "Solos": 46,
+        "Bisexual": 12,
+        "Spanking": 10,
+        "Wrestling": 31,
+        "Transgendered": 11,
+        "Bondage": 22,
+        "Softcore": 19,
+        "Straight": 1,
+        "Interracial": 11,
+        "J/O": 1,
+        "Fisting": 0,
+        "Fetish": 10
+      },
+      {
+        "year": 1996,
+        "Solos": 64,
+        "Bisexual": 7,
+        "Spanking": 9,
+        "Wrestling": 28,
+        "Transgendered": 8,
+        "Bondage": 18,
+        "Softcore": 25,
+        "Straight": 0,
+        "Interracial": 5,
+        "J/O": 7,
+        "Fisting": 0,
+        "Fetish": 5
+      },
+      {
+        "year": 1997,
+        "Solos": 32,
+        "Bisexual": 22,
+        "Spanking": 13,
+        "Wrestling": 41,
+        "Transgendered": 16,
+        "Bondage": 21,
+        "Softcore": 25,
+        "Straight": 0,
+        "Interracial": 6,
+        "J/O": 5,
+        "Fisting": 4,
+        "Fetish": 6
+      },
+      {
+        "year": 1998,
+        "Solos": 61,
+        "Bisexual": 20,
+        "Spanking": 9,
+        "Wrestling": 57,
+        "Transgendered": 22,
+        "Bondage": 20,
+        "Softcore": 21,
+        "Straight": 3,
+        "Interracial": 12,
+        "J/O": 2,
+        "Fisting": 1,
+        "Fetish": 2
+      },
+      {
+        "year": 1999,
+        "Solos": 61,
+        "Bisexual": 40,
+        "Spanking": 18,
+        "Wrestling": 44,
+        "Transgendered": 48,
+        "Bondage": 16,
+        "Softcore": 21,
+        "Straight": 3,
+        "Interracial": 9,
+        "J/O": 1,
+        "Fisting": 2,
+        "Fetish": 3
+      },
+      {
+        "year": 2000,
+        "Solos": 84,
+        "Bisexual": 36,
+        "Spanking": 7,
+        "Wrestling": 34,
+        "Transgendered": 82,
+        "Bondage": 16,
+        "Softcore": 13,
+        "Straight": 11,
+        "Interracial": 19,
+        "J/O": 2,
+        "Fisting": 3,
+        "Fetish": 4
+      },
+      {
+        "year": 2001,
+        "Solos": 96,
+        "Bisexual": 43,
+        "Spanking": 8,
+        "Wrestling": 26,
+        "Transgendered": 79,
+        "Bondage": 21,
+        "Softcore": 10,
+        "Straight": 2,
+        "Interracial": 31,
+        "J/O": 5,
+        "Fisting": 1,
+        "Fetish": 4
+      },
+      {
+        "year": 2002,
+        "Solos": 124,
+        "Bisexual": 31,
+        "Spanking": 7,
+        "Wrestling": 21,
+        "Transgendered": 85,
+        "Bondage": 18,
+        "Softcore": 6,
+        "Straight": 4,
+        "Interracial": 11,
+        "J/O": 5,
+        "Fisting": 1,
+        "Fetish": 4
+      },
+      {
+        "year": 2003,
+        "Solos": 79,
+        "Bisexual": 47,
+        "Spanking": 16,
+        "Wrestling": 19,
+        "Transgendered": 2,
+        "Bondage": 12,
+        "Softcore": 11,
+        "Straight": 1,
+        "Interracial": 8,
+        "J/O": 11,
+        "Fisting": 9,
+        "Fetish": 2
+      },
+      {
+        "year": 2004,
+        "Solos": 69,
+        "Bisexual": 55,
+        "Spanking": 29,
+        "Wrestling": 9,
+        "Transgendered": 7,
+        "Bondage": 14,
+        "Softcore": 14,
+        "Straight": 1,
+        "Interracial": 15,
+        "J/O": 13,
+        "Fisting": 10,
+        "Fetish": 3
+      },
+      {
+        "year": 2005,
+        "Solos": 98,
+        "Bisexual": 50,
+        "Spanking": 19,
+        "Wrestling": 9,
+        "Transgendered": 7,
+        "Bondage": 13,
+        "Softcore": 22,
+        "Straight": 29,
+        "Interracial": 7,
+        "J/O": 36,
+        "Fisting": 9,
+        "Fetish": 1
+      },
+      {
+        "year": 2006,
+        "Solos": 144,
+        "Bisexual": 79,
+        "Spanking": 27,
+        "Wrestling": 11,
+        "Transgendered": 6,
+        "Bondage": 19,
+        "Softcore": 12,
+        "Straight": 59,
+        "Interracial": 13,
+        "J/O": 35,
+        "Fisting": 20,
+        "Fetish": 4
+      },
+      {
+        "year": 2007,
+        "Solos": 81,
+        "Bisexual": 76,
+        "Spanking": 12,
+        "Wrestling": 5,
+        "Transgendered": 7,
+        "Bondage": 17,
+        "Softcore": 25,
+        "Straight": 67,
+        "Interracial": 6,
+        "J/O": 16,
+        "Fisting": 13,
+        "Fetish": 3
+      },
+      {
+        "year": 2008,
+        "Solos": 87,
+        "Bisexual": 49,
+        "Spanking": 13,
+        "Wrestling": 10,
+        "Transgendered": 5,
+        "Bondage": 24,
+        "Softcore": 23,
+        "Straight": 45,
+        "Interracial": 2,
+        "J/O": 20,
+        "Fisting": 9,
+        "Fetish": 11
+      },
+      {
+        "year": 2009,
+        "Solos": 69,
+        "Bisexual": 61,
+        "Spanking": 5,
+        "Wrestling": 3,
+        "Transgendered": 5,
+        "Bondage": 7,
+        "Softcore": 27,
+        "Straight": 56,
+        "Interracial": 2,
+        "J/O": 11,
+        "Fisting": 19,
+        "Fetish": 5
+      },
+      {
+        "year": 2010,
+        "Solos": 58,
+        "Bisexual": 51,
+        "Spanking": 11,
+        "Wrestling": 20,
+        "Transgendered": 8,
+        "Bondage": 4,
+        "Softcore": 13,
+        "Straight": 36,
+        "Interracial": 5,
+        "J/O": 28,
+        "Fisting": 7,
+        "Fetish": 16
+      },
+      {
+        "year": 2011,
+        "Solos": 55,
+        "Bisexual": 53,
+        "Spanking": 8,
+        "Wrestling": 17,
+        "Transgendered": 8,
+        "Bondage": 13,
+        "Softcore": 19,
+        "Straight": 25,
+        "Interracial": 5,
+        "J/O": 8,
+        "Fisting": 21,
+        "Fetish": 6
+      },
+      {
+        "year": 2012,
+        "Solos": 32,
+        "Bisexual": 33,
+        "Spanking": 24,
+        "Wrestling": 12,
+        "Transgendered": 4,
+        "Bondage": 15,
+        "Softcore": 21,
+        "Straight": 8,
+        "Interracial": 6,
+        "J/O": 10,
+        "Fisting": 13,
+        "Fetish": 13
+      },
+      {
+        "year": 2013,
+        "Solos": 33,
+        "Bisexual": 48,
+        "Spanking": 20,
+        "Wrestling": 12,
+        "Transgendered": 2,
+        "Bondage": 10,
+        "Softcore": 9,
+        "Straight": 9,
+        "Interracial": 3,
+        "J/O": 10,
+        "Fisting": 12,
+        "Fetish": 20
+      },
+      {
+        "year": 2014,
+        "Solos": 25,
+        "Bisexual": 52,
+        "Spanking": 24,
+        "Wrestling": 9,
+        "Transgendered": 22,
+        "Bondage": 9,
+        "Softcore": 3,
+        "Straight": 12,
+        "Interracial": 2,
+        "J/O": 0,
+        "Fisting": 9,
+        "Fetish": 22
+      },
+      {
+        "year": 2015,
+        "Solos": 21,
+        "Bisexual": 38,
+        "Spanking": 23,
+        "Wrestling": 0,
+        "Transgendered": 12,
+        "Bondage": 2,
+        "Softcore": 5,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 7,
+        "Fetish": 21
+      },
+      {
+        "year": 2016,
+        "Solos": 30,
+        "Bisexual": 34,
+        "Spanking": 30,
+        "Wrestling": 0,
+        "Transgendered": 17,
+        "Bondage": 1,
+        "Softcore": 3,
+        "Straight": 7,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 4,
+        "Fetish": 7
+      },
+      {
+        "year": 2017,
+        "Solos": 36,
+        "Bisexual": 31,
+        "Spanking": 27,
+        "Wrestling": 0,
+        "Transgendered": 13,
+        "Bondage": 0,
+        "Softcore": 7,
+        "Straight": 9,
+        "Interracial": 0,
+        "J/O": 2,
+        "Fisting": 8,
+        "Fetish": 6
+      },
+      {
+        "year": 2018,
+        "Solos": 35,
+        "Bisexual": 23,
+        "Spanking": 29,
+        "Wrestling": 1,
+        "Transgendered": 12,
+        "Bondage": 0,
+        "Softcore": 1,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 4,
+        "Fetish": 1
+      },
+      {
+        "year": 2019,
+        "Solos": 40,
+        "Bisexual": 39,
+        "Spanking": 7,
+        "Wrestling": 0,
+        "Transgendered": 6,
+        "Bondage": 0,
+        "Softcore": 0,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 6,
+        "Fetish": 12
+      },
+      {
+        "year": 2020,
+        "Solos": 7,
+        "Bisexual": 38,
+        "Spanking": 8,
+        "Wrestling": 1,
+        "Transgendered": 3,
+        "Bondage": 0,
+        "Softcore": 1,
+        "Straight": 1,
+        "Interracial": 0,
+        "J/O": 2,
+        "Fisting": 7,
+        "Fetish": 3
+      },
+      {
+        "year": 2021,
+        "Solos": 5,
+        "Bisexual": 25,
+        "Spanking": 25,
+        "Wrestling": 0,
+        "Transgendered": 5,
+        "Bondage": 0,
+        "Softcore": 0,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 9,
+        "Fetish": 3
+      },
+      {
+        "year": 2022,
+        "Solos": 5,
+        "Bisexual": 44,
+        "Spanking": 28,
+        "Wrestling": 0,
+        "Transgendered": 2,
+        "Bondage": 0,
+        "Softcore": 1,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 8,
+        "Fetish": 1
+      },
+      {
+        "year": 2023,
+        "Solos": 8,
+        "Bisexual": 65,
+        "Spanking": 43,
+        "Wrestling": 0,
+        "Transgendered": 2,
+        "Bondage": 0,
+        "Softcore": 0,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 9,
+        "Fetish": 3
+      },
+      {
+        "year": 2024,
+        "Solos": 6,
+        "Bisexual": 70,
+        "Spanking": 36,
+        "Wrestling": 0,
+        "Transgendered": 2,
+        "Bondage": 0,
+        "Softcore": 0,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 8,
+        "Fetish": 3
+      },
+      {
+        "year": 2025,
+        "Solos": 6,
+        "Bisexual": 56,
+        "Spanking": 74,
+        "Wrestling": 0,
+        "Transgendered": 0,
+        "Bondage": 0,
+        "Softcore": 0,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 7,
+        "Fetish": 1
+      },
+      {
+        "year": 2026,
+        "Solos": 1,
+        "Bisexual": 27,
+        "Spanking": 1,
+        "Wrestling": 0,
+        "Transgendered": 2,
+        "Bondage": 0,
+        "Softcore": 0,
+        "Straight": 0,
+        "Interracial": 0,
+        "J/O": 0,
+        "Fisting": 3,
+        "Fetish": 0
+      }
+    ],
+    "titology_by_decade": [
+      {
+        "decade": "1970s",
+        "count": 499,
+        "avg_title_len": 17.6,
+        "avg_desc_len": 394.6,
+        "colon_pct": 4.4
+      },
+      {
+        "decade": "1980s",
+        "count": 2441,
+        "avg_title_len": 17.1,
+        "avg_desc_len": 235.3,
+        "colon_pct": 11.9
+      },
+      {
+        "decade": "1990s",
+        "count": 7981,
+        "avg_title_len": 17.6,
+        "avg_desc_len": 291.0,
+        "colon_pct": 8.9
+      },
+      {
+        "decade": "2000s",
+        "count": 17511,
+        "avg_title_len": 18.9,
+        "avg_desc_len": 397.7,
+        "colon_pct": 11.2
+      },
+      {
+        "decade": "2010s",
+        "count": 19945,
+        "avg_title_len": 18.5,
+        "avg_desc_len": 391.2,
+        "colon_pct": 8.4
+      },
+      {
+        "decade": "2020s",
+        "count": 8541,
+        "avg_title_len": 18.4,
+        "avg_desc_len": 346.2,
+        "colon_pct": 6.8
+      }
+    ],
+    "narrative_keywords_timeline": [
+      {
+        "trope": "Military / 军旅军装",
+        "data": {
+          "1970s": 10,
+          "1980s": 63,
+          "1990s": 327,
+          "2000s": 821,
+          "2010s": 495,
+          "2020s": 64
+        }
+      },
+      {
+        "trope": "Police / 警察制服",
+        "data": {
+          "1970s": 26,
+          "1980s": 35,
+          "1990s": 253,
+          "2000s": 387,
+          "2010s": 276,
+          "2020s": 96
+        }
+      },
+      {
+        "trope": "College / 校园宿舍",
+        "data": {
+          "1970s": 19,
+          "1980s": 68,
+          "1990s": 167,
+          "2000s": 683,
+          "2010s": 628,
+          "2020s": 438
+        }
+      },
+      {
+        "trope": "Roommate / 合租室友",
+        "data": {
+          "1970s": 2,
+          "1980s": 18,
+          "1990s": 45,
+          "2000s": 97,
+          "2010s": 103,
+          "2020s": 52
+        }
+      },
+      {
+        "trope": "Leather / 皮衣机车",
+        "data": {
+          "1970s": 26,
+          "1980s": 93,
+          "1990s": 336,
+          "2000s": 330,
+          "2010s": 232,
+          "2020s": 75
+        }
+      },
+      {
+        "trope": "Vintage / 复古情怀",
+        "data": {
+          "1970s": 6,
+          "1980s": 18,
+          "1990s": 23,
+          "2000s": 40,
+          "2010s": 42,
+          "2020s": 33
+        }
+      },
+      {
+        "trope": "Wrestling / 角力摔跤",
+        "data": {
+          "1970s": 1,
+          "1980s": 121,
+          "1990s": 275,
+          "2000s": 221,
+          "2010s": 259,
+          "2020s": 82
+        }
+      },
+      {
+        "trope": "Step / 伪家庭拟态",
+        "data": {
+          "1970s": 0,
+          "1980s": 1,
+          "1990s": 4,
+          "2000s": 1,
+          "2010s": 63,
+          "2020s": 165
+        }
+      },
+      {
+        "trope": "Gym / 健身运动",
+        "data": {
+          "1970s": 8,
+          "1980s": 58,
+          "1990s": 195,
+          "2000s": 482,
+          "2010s": 564,
+          "2020s": 169
+        }
+      },
+      {
+        "trope": "Office / 职场白领",
+        "data": {
+          "1970s": 11,
+          "1980s": 28,
+          "1990s": 179,
+          "2000s": 414,
+          "2010s": 540,
+          "2020s": 190
+        }
+      }
+    ]
+  },
+  "creators": {
+    "total_analyzed_performers": 83009,
+    "span_brackets": {
+      "1 年 (单年流星)": 49098,
+      "2-3 年 (短期活跃)": 9062,
+      "4-6 年 (稳定从业)": 7621,
+      "7-9 年 (资深创作者)": 5124,
+      "10+ 年 (行业常青树)": 12104
+    },
+    "survival_curve": [
+      {
+        "years": 1,
+        "percentage": 100.0
+      },
+      {
+        "years": 2,
+        "percentage": 40.9
+      },
+      {
+        "years": 3,
+        "percentage": 34.3
+      },
+      {
+        "years": 5,
+        "percentage": 26.4
+      },
+      {
+        "years": 10,
+        "percentage": 14.6
+      },
+      {
+        "years": 15,
+        "percentage": 7.7
+      },
+      {
+        "years": 20,
+        "percentage": 4.0
+      }
+    ],
+    "top_evergreens": [
+      {
+        "id": 32099,
+        "name": "Pavel Matous",
+        "image_url": "https://cdn2.pbc.wiki/w/images/thumb/0/06/Denis_Reed.jpg/256px-Denis_Reed.jpg",
+        "debut_year": 2004,
+        "last_year": 2026,
+        "career_years": 22,
+        "works_count": 487,
+        "primary_studio": "Mile High Media"
+      },
+      {
+        "id": 18558,
+        "name": "Paul Carrigan",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer675.jpg",
+        "debut_year": 1990,
+        "last_year": 2014,
+        "career_years": 24,
+        "works_count": 346,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 44012,
+        "name": "Eric Tomfor",
+        "image_url": "https://cdn2.pbc.wiki/w/images/thumb/8/82/Thomas_Friedl.jpg/256px-Thomas_Friedl.jpg",
+        "debut_year": 2007,
+        "last_year": 2026,
+        "career_years": 19,
+        "works_count": 333,
+        "primary_studio": "Mile High Media"
+      },
+      {
+        "id": 7120,
+        "name": "Drew Andrews",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer288.jpg",
+        "debut_year": 1990,
+        "last_year": 2021,
+        "career_years": 31,
+        "works_count": 312,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 75812,
+        "name": "Brian Bonds",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer15317.jpg",
+        "debut_year": 2011,
+        "last_year": 2026,
+        "career_years": 15,
+        "works_count": 289,
+        "primary_studio": "Raging Stallion Studios"
+      },
+      {
+        "id": 18479,
+        "name": "Patrick Ives",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer1809.jpg",
+        "debut_year": 1992,
+        "last_year": 2014,
+        "career_years": 22,
+        "works_count": 280,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 23558,
+        "name": "Tanner Reeves",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer1282.jpg",
+        "debut_year": 1993,
+        "last_year": 2022,
+        "career_years": 29,
+        "works_count": 272,
+        "primary_studio": "Vivid Man Video"
+      },
+      {
+        "id": 5254,
+        "name": "Dallas Taylor",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer209.jpg",
+        "debut_year": 1988,
+        "last_year": 2020,
+        "career_years": 32,
+        "works_count": 249,
+        "primary_studio": "HIS Video"
+      },
+      {
+        "id": 65246,
+        "name": "Roman Todd",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer15695.jpg",
+        "debut_year": 2007,
+        "last_year": 2026,
+        "career_years": 19,
+        "works_count": 246,
+        "primary_studio": "Next Door Studios"
+      },
+      {
+        "id": 18644,
+        "name": "Paul Morgan",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer677.jpg",
+        "debut_year": 1990,
+        "last_year": 2021,
+        "career_years": 31,
+        "works_count": 245,
+        "primary_studio": "All Worlds Video"
+      },
+      {
+        "id": 20613,
+        "name": "Rob Cryston",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer729.jpg",
+        "debut_year": 1990,
+        "last_year": 2021,
+        "career_years": 31,
+        "works_count": 243,
+        "primary_studio": "Vivid Man Video"
+      },
+      {
+        "id": 53147,
+        "name": "Ennio Guardi",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer11302.jpg",
+        "debut_year": 2008,
+        "last_year": 2026,
+        "career_years": 18,
+        "works_count": 232,
+        "primary_studio": "Mile High Media"
+      },
+      {
+        "id": 29412,
+        "name": "Sexcyone",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer6148.jpg",
+        "debut_year": 2001,
+        "last_year": 2021,
+        "career_years": 20,
+        "works_count": 225,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 36400,
+        "name": "Lucky Taylor",
+        "image_url": "https://cdn2.pbc.wiki/w/images/thumb/8/87/Lucky_Taylor.jpg/256px-Lucky_Taylor.jpg",
+        "debut_year": 2005,
+        "last_year": 2026,
+        "career_years": 21,
+        "works_count": 220,
+        "primary_studio": "Hammer Entertainment"
+      },
+      {
+        "id": 16413,
+        "name": "Max Grand",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer620.jpg",
+        "debut_year": 1990,
+        "last_year": 2021,
+        "career_years": 31,
+        "works_count": 220,
+        "primary_studio": "Forum Studios"
+      },
+      {
+        "id": 4036,
+        "name": "Chaz Carlton",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer152.jpg",
+        "debut_year": 1986,
+        "last_year": 2014,
+        "career_years": 28,
+        "works_count": 219,
+        "primary_studio": "Locker Room Productions"
+      },
+      {
+        "id": 16897,
+        "name": "Michel Lucas",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer635.jpg",
+        "debut_year": 1996,
+        "last_year": 2025,
+        "career_years": 29,
+        "works_count": 214,
+        "primary_studio": "Lucas Entertainment"
+      },
+      {
+        "id": 43433,
+        "name": "Antonio Biaggi",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer9159.jpg",
+        "debut_year": 2007,
+        "last_year": 2025,
+        "career_years": 18,
+        "works_count": 210,
+        "primary_studio": "Raging Stallion Studios"
+      },
+      {
+        "id": 13245,
+        "name": "Kamrun",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer1425.jpg",
+        "debut_year": 1999,
+        "last_year": 2025,
+        "career_years": 26,
+        "works_count": 210,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 34627,
+        "name": "Dominic Pacifico",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer8089.jpg",
+        "debut_year": 2002,
+        "last_year": 2026,
+        "career_years": 24,
+        "works_count": 209,
+        "primary_studio": "Raging Stallion Studios"
+      },
+      {
+        "id": 75899,
+        "name": "Michael Brandon (us)",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer624.jpg",
+        "debut_year": 1985,
+        "last_year": 2020,
+        "career_years": 35,
+        "works_count": 206,
+        "primary_studio": "Raging Stallion Studios"
+      },
+      {
+        "id": 21040,
+        "name": "Rod Garreto",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer738.jpg",
+        "debut_year": 1980,
+        "last_year": 2013,
+        "career_years": 33,
+        "works_count": 206,
+        "primary_studio": "Stallion Video"
+      },
+      {
+        "id": 7643,
+        "name": "Eric Evans",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer302.jpg",
+        "debut_year": 1991,
+        "last_year": 2016,
+        "career_years": 25,
+        "works_count": 206,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 79748,
+        "name": "Hans Berlin",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer16598.jpg",
+        "debut_year": 2011,
+        "last_year": 2026,
+        "career_years": 15,
+        "works_count": 204,
+        "primary_studio": "Pride Studios"
+      },
+      {
+        "id": 23380,
+        "name": "Sweet Williams",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer1109.jpg",
+        "debut_year": 1996,
+        "last_year": 2013,
+        "career_years": 17,
+        "works_count": 202,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 77396,
+        "name": "Aaron Aurora",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer16723.jpg",
+        "debut_year": 2012,
+        "last_year": 2025,
+        "career_years": 13,
+        "works_count": 201,
+        "primary_studio": "Millivres Prowler Ltd."
+      },
+      {
+        "id": 4348,
+        "name": "Chris Stone",
+        "image_url": null,
+        "debut_year": 1989,
+        "last_year": 2013,
+        "career_years": 24,
+        "works_count": 200,
+        "primary_studio": "Vivid Man Video"
+      },
+      {
+        "id": 31959,
+        "name": "Thomas Lee",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer6565.jpg",
+        "debut_year": 2004,
+        "last_year": 2025,
+        "career_years": 21,
+        "works_count": 199,
+        "primary_studio": "Eromaxx"
+      },
+      {
+        "id": 71146,
+        "name": "Trenton Ducati",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer15318.jpg",
+        "debut_year": 2011,
+        "last_year": 2026,
+        "career_years": 15,
+        "works_count": 198,
+        "primary_studio": "Raging Stallion Studios"
+      },
+      {
+        "id": 64108,
+        "name": "Champ Robinson",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer16196.jpg",
+        "debut_year": 2007,
+        "last_year": 2026,
+        "career_years": 19,
+        "works_count": 198,
+        "primary_studio": "Fuck Champ Robinson"
+      },
+      {
+        "id": 82812,
+        "name": "Sean Duran",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer19269.jpg",
+        "debut_year": 2005,
+        "last_year": 2025,
+        "career_years": 20,
+        "works_count": 197,
+        "primary_studio": "Pride Studios"
+      },
+      {
+        "id": 39641,
+        "name": "Tyler Reed",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer12218.jpg",
+        "debut_year": 2003,
+        "last_year": 2024,
+        "career_years": 21,
+        "works_count": 194,
+        "primary_studio": "USA Jock"
+      },
+      {
+        "id": 6753,
+        "name": "Dirk Adams",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer275.jpg",
+        "debut_year": 1997,
+        "last_year": 2013,
+        "career_years": 16,
+        "works_count": 194,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 59368,
+        "name": "Alessio Romero",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer12211.jpg",
+        "debut_year": 2009,
+        "last_year": 2026,
+        "career_years": 17,
+        "works_count": 193,
+        "primary_studio": "Titan Media"
+      },
+      {
+        "id": 35971,
+        "name": "Mike Green",
+        "image_url": "https://cdn2.pbc.wiki/w/images/thumb/f/fa/Leo_Cooper.jpg/256px-Leo_Cooper.jpg",
+        "debut_year": 2006,
+        "last_year": 2026,
+        "career_years": 20,
+        "works_count": 193,
+        "primary_studio": "Hammer Entertainment"
+      },
+      {
+        "id": 31165,
+        "name": "Jake Cruise",
+        "image_url": null,
+        "debut_year": 2004,
+        "last_year": 2018,
+        "career_years": 14,
+        "works_count": 193,
+        "primary_studio": "Jake Cruise Media"
+      },
+      {
+        "id": 17276,
+        "name": "Mike Vista",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer1343.jpg",
+        "debut_year": 1996,
+        "last_year": 2015,
+        "career_years": 19,
+        "works_count": 193,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 5643,
+        "name": "Danny Sommers",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer224.jpg",
+        "debut_year": 1991,
+        "last_year": 2021,
+        "career_years": 30,
+        "works_count": 191,
+        "primary_studio": "Vivid Man Video"
+      },
+      {
+        "id": 110713,
+        "name": "Dante Colle",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer25444.jpg",
+        "debut_year": 2016,
+        "last_year": 2026,
+        "career_years": 10,
+        "works_count": 189,
+        "primary_studio": "Next Door Studios"
+      },
+      {
+        "id": 73619,
+        "name": "Adam Russo (us)",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer14095.jpg",
+        "debut_year": 2010,
+        "last_year": 2026,
+        "career_years": 16,
+        "works_count": 189,
+        "primary_studio": "IconMale"
+      },
+      {
+        "id": 37686,
+        "name": "Alan Capier",
+        "image_url": "https://cdn2.pbc.wiki/w/images/thumb/5/5f/Alan_Capier.jpg/256px-Alan_Capier.jpg",
+        "debut_year": 2006,
+        "last_year": 2023,
+        "career_years": 17,
+        "works_count": 187,
+        "primary_studio": "Man's Art"
+      },
+      {
+        "id": 31646,
+        "name": "Thugzilla",
+        "image_url": null,
+        "debut_year": 2004,
+        "last_year": 2017,
+        "career_years": 13,
+        "works_count": 187,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 67142,
+        "name": "Thomas Fiaty",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer13123.jpg",
+        "debut_year": 2011,
+        "last_year": 2026,
+        "career_years": 15,
+        "works_count": 185,
+        "primary_studio": "Mile High Media"
+      },
+      {
+        "id": 64903,
+        "name": "Luke Desmond",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer12517.jpg",
+        "debut_year": 2010,
+        "last_year": 2025,
+        "career_years": 15,
+        "works_count": 184,
+        "primary_studio": "Blake Mason"
+      },
+      {
+        "id": 20485,
+        "name": "Ricky Parker",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer2119.jpg",
+        "debut_year": 1992,
+        "last_year": 2013,
+        "career_years": 21,
+        "works_count": 184,
+        "primary_studio": "Bacchus Releasing"
+      },
+      {
+        "id": 10086,
+        "name": "J.T. Sloan",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer475.jpg",
+        "debut_year": 1990,
+        "last_year": 2021,
+        "career_years": 31,
+        "works_count": 184,
+        "primary_studio": "Vivid Man Video"
+      },
+      {
+        "id": 41647,
+        "name": "George Basten",
+        "image_url": "https://cdn2.pbc.wiki/w/images/thumb/6/66/George_Basten.jpg/256px-George_Basten.jpg",
+        "debut_year": 2004,
+        "last_year": 2026,
+        "career_years": 22,
+        "works_count": 173,
+        "primary_studio": "Hammer Entertainment"
+      },
+      {
+        "id": 41598,
+        "name": "Tyler Saint",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer8701.jpg",
+        "debut_year": 2002,
+        "last_year": 2021,
+        "career_years": 19,
+        "works_count": 173,
+        "primary_studio": "Driveshaft"
+      },
+      {
+        "id": 7027,
+        "name": "Doug Jefferies",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer282.jpg",
+        "debut_year": 1996,
+        "last_year": 2018,
+        "career_years": 22,
+        "works_count": 172,
+        "primary_studio": "All Worlds Video"
+      },
+      {
+        "id": 1151,
+        "name": "Anthony Gallo",
+        "image_url": "https://gayeroticvideoindex.com/images/Stars/performer43.jpg",
+        "debut_year": 1994,
+        "last_year": 2015,
+        "career_years": 21,
+        "works_count": 172,
+        "primary_studio": "Catalina Video"
+      }
+    ],
+    "top_directors": [
+      {
+        "id": 114,
+        "name": "William Higgins",
+        "works_count": 806,
+        "year_start": 1978,
+        "year_end": 2026
+      },
+      {
+        "id": 1552,
+        "name": "Jake Cruise",
+        "works_count": 737,
+        "year_start": 2004,
+        "year_end": 2021
+      },
+      {
+        "id": 5,
+        "name": "Chi Chi LaRue",
+        "works_count": 610,
+        "year_start": 1989,
+        "year_end": 2023
+      },
+      {
+        "id": 525,
+        "name": "John Smith",
+        "works_count": 471,
+        "year_start": 2012,
+        "year_end": 2026
+      },
+      {
+        "id": 440,
+        "name": "Vlado Iresch",
+        "works_count": 430,
+        "year_start": 1999,
+        "year_end": 2025
+      },
+      {
+        "id": 61,
+        "name": "Edward James",
+        "works_count": 400,
+        "year_start": 1992,
+        "year_end": 2023
+      },
+      {
+        "id": 482,
+        "name": "Dirk Yates",
+        "works_count": 398,
+        "year_start": 1987,
+        "year_end": 2025
+      },
+      {
+        "id": 658,
+        "name": "Dink Flamingo",
+        "works_count": 353,
+        "year_start": 1997,
+        "year_end": 2024
+      },
+      {
+        "id": 395,
+        "name": "Michael Lucas",
+        "works_count": 330,
+        "year_start": 2000,
+        "year_end": 2024
+      },
+      {
+        "id": 351,
+        "name": "David Hurles",
+        "works_count": 322,
+        "year_start": 1982,
+        "year_end": 2001
+      },
+      {
+        "id": 1850,
+        "name": "Keith Miller",
+        "works_count": 313,
+        "year_start": 2002,
+        "year_end": 2019
+      },
+      {
+        "id": 1344,
+        "name": "Michael Burling",
+        "works_count": 292,
+        "year_start": 2011,
+        "year_end": 2024
+      },
+      {
+        "id": 402,
+        "name": "Steve Cruz",
+        "works_count": 292,
+        "year_start": 2005,
+        "year_end": 2026
+      },
+      {
+        "id": 508,
+        "name": "Gio Caruso",
+        "works_count": 285,
+        "year_start": 2005,
+        "year_end": 2026
+      },
+      {
+        "id": 204,
+        "name": "Rolf Hammerschmidt",
+        "works_count": 274,
+        "year_start": 1992,
+        "year_end": 2023
+      },
+      {
+        "id": 500,
+        "name": "Chris Ward",
+        "works_count": 273,
+        "year_start": 1997,
+        "year_end": 2021
+      },
+      {
+        "id": 1834,
+        "name": "K.K.",
+        "works_count": 261,
+        "year_start": 2009,
+        "year_end": 2024
+      },
+      {
+        "id": 127,
+        "name": "Marvin Jones",
+        "works_count": 229,
+        "year_start": 1988,
+        "year_end": 2016
+      },
+      {
+        "id": 1367,
+        "name": "Marty Stevens",
+        "works_count": 227,
+        "year_start": 1997,
+        "year_end": 2026
+      },
+      {
+        "id": 990,
+        "name": "Corbin Fisher",
+        "works_count": 225,
+        "year_start": 2008,
+        "year_end": 2025
+      },
+      {
+        "id": 825,
+        "name": "Rocco Fallon",
+        "works_count": 225,
+        "year_start": 2015,
+        "year_end": 2025
+      },
+      {
+        "id": 417,
+        "name": "Steven Scarborough",
+        "works_count": 213,
+        "year_start": 1988,
+        "year_end": 2021
+      },
+      {
+        "id": 998,
+        "name": "Csaba Borbely",
+        "works_count": 209,
+        "year_start": 2003,
+        "year_end": 2023
+      },
+      {
+        "id": 399,
+        "name": "Tony DiMarco",
+        "works_count": 205,
+        "year_start": 2005,
+        "year_end": 2025
+      },
+      {
+        "id": 1719,
+        "name": "Joe Serna",
+        "works_count": 191,
+        "year_start": 1999,
+        "year_end": 2015
+      },
+      {
+        "id": 654,
+        "name": "Walden Woods",
+        "works_count": 190,
+        "year_start": 2012,
+        "year_end": 2026
+      },
+      {
+        "id": 2882,
+        "name": "Tyler Reed",
+        "works_count": 185,
+        "year_start": 2004,
+        "year_end": 2023
+      },
+      {
+        "id": 2920,
+        "name": "Von Stillie",
+        "works_count": 184,
+        "year_start": 2012,
+        "year_end": 2022
+      },
+      {
+        "id": 62,
+        "name": "Paul Barresi",
+        "works_count": 183,
+        "year_start": 1995,
+        "year_end": 2015
+      },
+      {
+        "id": 1730,
+        "name": "Timmy Treasure",
+        "works_count": 181,
+        "year_start": 2016,
+        "year_end": 2026
+      }
+    ],
+    "golden_duos": [
+      {
+        "id1": 67917,
+        "actor1": "Cole Maverick",
+        "id2": 87832,
+        "actor2": "Hunter Maverick",
+        "common_movies": 95
+      },
+      {
+        "id1": 32097,
+        "actor1": "Orion Cross",
+        "id2": 44957,
+        "actor2": "Luke Cross",
+        "common_movies": 67
+      },
+      {
+        "id1": 29412,
+        "actor1": "Sexcyone",
+        "id2": 31646,
+        "actor2": "Thugzilla",
+        "common_movies": 66
+      },
+      {
+        "id1": 118641,
+        "actor1": "Joris (Leonard)",
+        "id2": 119939,
+        "actor2": "Ferdinand Rossi",
+        "common_movies": 63
+      },
+      {
+        "id1": 37388,
+        "actor1": "Fabrizio Mangiatti",
+        "id2": 37391,
+        "actor2": "Fernando Mangiatti",
+        "common_movies": 62
+      },
+      {
+        "id1": 33988,
+        "actor1": "Peanut Butta",
+        "id2": 75190,
+        "actor2": "Chaos (black)",
+        "common_movies": 61
+      },
+      {
+        "id1": 39733,
+        "actor1": "Allan Willian",
+        "id2": 46037,
+        "actor2": "Bruno Stigmata",
+        "common_movies": 58
+      },
+      {
+        "id1": 31646,
+        "actor1": "Thugzilla",
+        "id2": 40210,
+        "actor2": "Troy Penetrator",
+        "common_movies": 57
+      },
+      {
+        "id1": 31959,
+        "actor1": "Thomas Lee",
+        "id2": 32099,
+        "actor2": "Pavel Matous",
+        "common_movies": 56
+      },
+      {
+        "id1": 77426,
+        "actor1": "Ashton Bradley",
+        "id2": 82497,
+        "actor2": "Sebastian Kane",
+        "common_movies": 55
+      },
+      {
+        "id1": 7120,
+        "actor1": "Drew Andrews",
+        "id2": 18644,
+        "actor2": "Paul Morgan",
+        "common_movies": 53
+      },
+      {
+        "id1": 32099,
+        "actor1": "Pavel Matous",
+        "id2": 37686,
+        "actor2": "Alan Capier",
+        "common_movies": 53
+      },
+      {
+        "id1": 32099,
+        "actor1": "Pavel Matous",
+        "id2": 35971,
+        "actor2": "Mike Green",
+        "common_movies": 52
+      },
+      {
+        "id1": 6541,
+        "actor1": "Devyn Foster",
+        "id2": 23558,
+        "actor2": "Tanner Reeves",
+        "common_movies": 51
+      },
+      {
+        "id1": 29195,
+        "actor1": "Anaconda",
+        "id2": 29412,
+        "actor2": "Sexcyone",
+        "common_movies": 51
+      },
+      {
+        "id1": 20485,
+        "actor1": "Ricky Parker",
+        "id2": 28725,
+        "actor2": "Soloman Gregory",
+        "common_movies": 50
+      },
+      {
+        "id1": 32099,
+        "actor1": "Pavel Matous",
+        "id2": 53147,
+        "actor2": "Ennio Guardi",
+        "common_movies": 50
+      },
+      {
+        "id1": 45541,
+        "actor1": "Aaron Carpenter",
+        "id2": 46040,
+        "actor2": "Charles Hardy",
+        "common_movies": 50
+      },
+      {
+        "id1": 1138,
+        "actor1": "Anthony DeAngelo",
+        "id2": 3539,
+        "actor2": "Cameron Cruise",
+        "common_movies": 49
+      },
+      {
+        "id1": 20887,
+        "actor1": "Roberto Arias",
+        "id2": 24677,
+        "actor2": "Tony Davis",
+        "common_movies": 49
+      },
+      {
+        "id1": 32099,
+        "actor1": "Pavel Matous",
+        "id2": 39492,
+        "actor2": "Tommy Rogers",
+        "common_movies": 49
+      },
+      {
+        "id1": 44757,
+        "actor1": "Walter Domingo",
+        "id2": 46081,
+        "actor2": "Marty Richards",
+        "common_movies": 49
+      },
+      {
+        "id1": 28844,
+        "actor1": "Lucio Maverick",
+        "id2": 29108,
+        "actor2": "Julian Vincenzo",
+        "common_movies": 48
+      },
+      {
+        "id1": 44927,
+        "actor1": "John Youngcock",
+        "id2": 45541,
+        "actor2": "Aaron Carpenter",
+        "common_movies": 48
+      },
+      {
+        "id1": 5254,
+        "actor1": "Dallas Taylor",
+        "id2": 23558,
+        "actor2": "Tanner Reeves",
+        "common_movies": 47
+      }
+    ],
+    "actor_directors": [
+      {
+        "director_id": 1552,
+        "name": "Jake Cruise",
+        "directed_count": 752,
+        "acted_count": 195,
+        "total": 947
+      },
+      {
+        "director_id": 482,
+        "name": "Dirk Yates",
+        "directed_count": 449,
+        "acted_count": 6,
+        "total": 455
+      },
+      {
+        "director_id": 101,
+        "name": "Paul Carrigan",
+        "directed_count": 33,
+        "acted_count": 386,
+        "total": 419
+      },
+      {
+        "director_id": 2882,
+        "name": "Tyler Reed",
+        "directed_count": 192,
+        "acted_count": 208,
+        "total": 400
+      },
+      {
+        "director_id": 402,
+        "name": "Steve Cruz",
+        "directed_count": 293,
+        "acted_count": 76,
+        "total": 369
+      },
+      {
+        "director_id": 548,
+        "name": "Brian Bonds",
+        "directed_count": 14,
+        "acted_count": 295,
+        "total": 309
+      },
+      {
+        "director_id": 552,
+        "name": "Trenton Ducati",
+        "directed_count": 110,
+        "acted_count": 199,
+        "total": 309
+      },
+      {
+        "director_id": 10,
+        "name": "Gino Colbert",
+        "directed_count": 133,
+        "acted_count": 165,
+        "total": 298
+      },
+      {
+        "director_id": 2353,
+        "name": "Paul Morgan",
+        "directed_count": 7,
+        "acted_count": 283,
+        "total": 290
+      },
+      {
+        "director_id": 500,
+        "name": "Chris Ward",
+        "directed_count": 274,
+        "acted_count": 9,
+        "total": 283
+      },
+      {
+        "director_id": 52,
+        "name": "Casey O'Brian",
+        "directed_count": 116,
+        "acted_count": 161,
+        "total": 277
+      },
+      {
+        "director_id": 858,
+        "name": "Champ Robinson",
+        "directed_count": 58,
+        "acted_count": 201,
+        "total": 259
+      },
+      {
+        "director_id": 2911,
+        "name": "Vinnie Russo",
+        "directed_count": 129,
+        "acted_count": 129,
+        "total": 258
+      },
+      {
+        "director_id": 1730,
+        "name": "Timmy Treasure",
+        "directed_count": 181,
+        "acted_count": 62,
+        "total": 243
+      },
+      {
+        "director_id": 62,
+        "name": "Paul Barresi",
+        "directed_count": 186,
+        "acted_count": 54,
+        "total": 240
+      },
+      {
+        "director_id": 554,
+        "name": "Nick Moretti",
+        "directed_count": 127,
+        "acted_count": 106,
+        "total": 233
+      },
+      {
+        "director_id": 1179,
+        "name": "Dominic Pacifico",
+        "directed_count": 18,
+        "acted_count": 214,
+        "total": 232
+      },
+      {
+        "director_id": 2066,
+        "name": "Marco Paris",
+        "directed_count": 92,
+        "acted_count": 133,
+        "total": 225
+      },
+      {
+        "director_id": 2211,
+        "name": "Michel Lucas",
+        "directed_count": 6,
+        "acted_count": 215,
+        "total": 221
+      },
+      {
+        "director_id": 1474,
+        "name": "Owen Hawk",
+        "directed_count": 45,
+        "acted_count": 141,
+        "total": 186
+      },
+      {
+        "director_id": 1016,
+        "name": "Damien Crosse",
+        "directed_count": 25,
+        "acted_count": 160,
+        "total": 185
+      },
+      {
+        "director_id": 885,
+        "name": "Rod Barry",
+        "directed_count": 5,
+        "acted_count": 178,
+        "total": 183
+      },
+      {
+        "director_id": 388,
+        "name": "Adam Killian",
+        "directed_count": 27,
+        "acted_count": 150,
+        "total": 177
+      },
+      {
+        "director_id": 764,
+        "name": "Joe Gage",
+        "directed_count": 160,
+        "acted_count": 15,
+        "total": 175
+      },
+      {
+        "director_id": 637,
+        "name": "Devin Franco",
+        "directed_count": 10,
+        "acted_count": 159,
+        "total": 169
+      }
+    ],
+    "network_graph": {
+      "nodes": [
+        {
+          "id": "p_32099",
+          "name": "Pavel Matous",
+          "value": 497,
+          "category": 3,
+          "studio": "mile high media"
+        },
+        {
+          "id": "p_18558",
+          "name": "Paul Carrigan",
+          "value": 386,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_7120",
+          "name": "Drew Andrews",
+          "value": 347,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_23558",
+          "name": "Tanner Reeves",
+          "value": 340,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_44012",
+          "name": "Eric Tomfor",
+          "value": 337,
+          "category": 3,
+          "studio": "mile high media"
+        },
+        {
+          "id": "p_20613",
+          "name": "Rob Cryston",
+          "value": 324,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_18479",
+          "name": "Patrick Ives",
+          "value": 315,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_75812",
+          "name": "Brian Bonds",
+          "value": 295,
+          "category": 0,
+          "studio": "raging stallion studios"
+        },
+        {
+          "id": "p_18644",
+          "name": "Paul Morgan",
+          "value": 283,
+          "category": 0,
+          "studio": "all worlds video"
+        },
+        {
+          "id": "p_5254",
+          "name": "Dallas Taylor",
+          "value": 279,
+          "category": 3,
+          "studio": "his video"
+        },
+        {
+          "id": "p_4348",
+          "name": "Chris Stone",
+          "value": 261,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_65246",
+          "name": "Roman Todd",
+          "value": 246,
+          "category": 2,
+          "studio": "next door studios"
+        },
+        {
+          "id": "p_5643",
+          "name": "Danny Sommers",
+          "value": 245,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_21040",
+          "name": "Rod Garreto",
+          "value": 240,
+          "category": 0,
+          "studio": "stallion video"
+        },
+        {
+          "id": "p_4036",
+          "name": "Chaz Carlton",
+          "value": 239,
+          "category": 3,
+          "studio": "locker room productions"
+        },
+        {
+          "id": "p_16413",
+          "name": "Max Grand",
+          "value": 238,
+          "category": 3,
+          "studio": "forum studios"
+        },
+        {
+          "id": "p_53147",
+          "name": "Ennio Guardi",
+          "value": 234,
+          "category": 3,
+          "studio": "mile high media"
+        },
+        {
+          "id": "p_7643",
+          "name": "Eric Evans",
+          "value": 231,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_75107",
+          "name": "Mark Andrews (90s)",
+          "value": 231,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_29412",
+          "name": "Sexcyone",
+          "value": 227,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_36400",
+          "name": "Lucky Taylor",
+          "value": 222,
+          "category": 3,
+          "studio": "hammer entertainment"
+        },
+        {
+          "id": "p_75899",
+          "name": "Michael Brandon (us)",
+          "value": 221,
+          "category": 0,
+          "studio": "raging stallion studios"
+        },
+        {
+          "id": "p_24677",
+          "name": "Tony Davis",
+          "value": 219,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_13245",
+          "name": "Kamrun",
+          "value": 218,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_12049",
+          "name": "Joey Stefano",
+          "value": 215,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_16897",
+          "name": "Michel Lucas",
+          "value": 215,
+          "category": 2,
+          "studio": "lucas entertainment"
+        },
+        {
+          "id": "p_23380",
+          "name": "Sweet Williams",
+          "value": 214,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_34627",
+          "name": "Dominic Pacifico",
+          "value": 214,
+          "category": 0,
+          "studio": "raging stallion studios"
+        },
+        {
+          "id": "p_43433",
+          "name": "Antonio Biaggi",
+          "value": 212,
+          "category": 0,
+          "studio": "raging stallion studios"
+        },
+        {
+          "id": "p_39641",
+          "name": "Tyler Reed",
+          "value": 208,
+          "category": 3,
+          "studio": "usa jock"
+        },
+        {
+          "id": "p_79748",
+          "name": "Hans Berlin",
+          "value": 208,
+          "category": 3,
+          "studio": "pride studios"
+        },
+        {
+          "id": "p_10086",
+          "name": "J.T. Sloan",
+          "value": 207,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_6753",
+          "name": "Dirk Adams",
+          "value": 203,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_31959",
+          "name": "Thomas Lee",
+          "value": 203,
+          "category": 3,
+          "studio": "eromaxx"
+        },
+        {
+          "id": "p_77396",
+          "name": "Aaron Aurora",
+          "value": 203,
+          "category": 3,
+          "studio": "millivres prowler ltd."
+        },
+        {
+          "id": "p_3929",
+          "name": "Chance Caldwell",
+          "value": 201,
+          "category": 0,
+          "studio": "stallion video"
+        },
+        {
+          "id": "p_64108",
+          "name": "Champ Robinson",
+          "value": 201,
+          "category": 3,
+          "studio": "fuck champ robinson"
+        },
+        {
+          "id": "p_20485",
+          "name": "Ricky Parker",
+          "value": 199,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_22391",
+          "name": "Sharon Kane",
+          "value": 199,
+          "category": 0,
+          "studio": "catalina video"
+        },
+        {
+          "id": "p_71146",
+          "name": "Trenton Ducati",
+          "value": 199,
+          "category": 0,
+          "studio": "raging stallion studios"
+        },
+        {
+          "id": "p_17276",
+          "name": "Mike Vista",
+          "value": 198,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_59368",
+          "name": "Alessio Romero",
+          "value": 197,
+          "category": 0,
+          "studio": "titan media"
+        },
+        {
+          "id": "p_82812",
+          "name": "Sean Duran",
+          "value": 197,
+          "category": 3,
+          "studio": "pride studios"
+        },
+        {
+          "id": "p_31165",
+          "name": "Jake Cruise",
+          "value": 195,
+          "category": 3,
+          "studio": "jake cruise media"
+        },
+        {
+          "id": "p_35971",
+          "name": "Mike Green",
+          "value": 194,
+          "category": 3,
+          "studio": "hammer entertainment"
+        },
+        {
+          "id": "p_1151",
+          "name": "Anthony Gallo",
+          "value": 193,
+          "category": 0,
+          "studio": "catalina video"
+        },
+        {
+          "id": "p_10783",
+          "name": "Jason Nikas",
+          "value": 193,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_110713",
+          "name": "Dante Colle",
+          "value": 193,
+          "category": 2,
+          "studio": "next door studios"
+        },
+        {
+          "id": "p_16353",
+          "name": "Matthew Windsor",
+          "value": 190,
+          "category": 0,
+          "studio": "stallion video"
+        },
+        {
+          "id": "p_73619",
+          "name": "Adam Russo (us)",
+          "value": 190,
+          "category": 3,
+          "studio": "iconmale"
+        },
+        {
+          "id": "p_37686",
+          "name": "Alan Capier",
+          "value": 188,
+          "category": 3,
+          "studio": "man's art"
+        },
+        {
+          "id": "p_5863",
+          "name": "David",
+          "value": 187,
+          "category": 3,
+          "studio": "mile high media"
+        },
+        {
+          "id": "p_6733",
+          "name": "Dino Phillips",
+          "value": 187,
+          "category": 3,
+          "studio": "bg enterprise"
+        },
+        {
+          "id": "p_18899",
+          "name": "Peter",
+          "value": 187,
+          "category": 3,
+          "studio": "man's best"
+        },
+        {
+          "id": "p_31646",
+          "name": "Thugzilla",
+          "value": 187,
+          "category": 3,
+          "studio": "bacchus releasing"
+        },
+        {
+          "id": "p_19103",
+          "name": "Peter Wilder",
+          "value": 186,
+          "category": 3,
+          "studio": "vivid man video"
+        },
+        {
+          "id": "p_27121",
+          "name": "Eduardo (cuban)",
+          "value": 186,
+          "category": 0,
+          "studio": "catalina video"
+        },
+        {
+          "id": "p_7027",
+          "name": "Doug Jefferies",
+          "value": 185,
+          "category": 0,
+          "studio": "all worlds video"
+        },
+        {
+          "id": "p_24629",
+          "name": "Tony Belmonte",
+          "value": 185,
+          "category": 3,
+          "studio": "his video"
+        },
+        {
+          "id": "p_64903",
+          "name": "Luke Desmond",
+          "value": 185,
+          "category": 3,
+          "studio": "blake mason"
+        }
+      ],
+      "links": [
+        {
+          "source": "p_29412",
+          "target": "p_31646",
+          "value": 66
+        },
+        {
+          "source": "p_31959",
+          "target": "p_32099",
+          "value": 56
+        },
+        {
+          "source": "p_7120",
+          "target": "p_18644",
+          "value": 53
+        },
+        {
+          "source": "p_32099",
+          "target": "p_37686",
+          "value": 53
+        },
+        {
+          "source": "p_32099",
+          "target": "p_35971",
+          "value": 52
+        },
+        {
+          "source": "p_32099",
+          "target": "p_53147",
+          "value": 50
+        },
+        {
+          "source": "p_5254",
+          "target": "p_23558",
+          "value": 47
+        },
+        {
+          "source": "p_7120",
+          "target": "p_18558",
+          "value": 46
+        },
+        {
+          "source": "p_18558",
+          "target": "p_18644",
+          "value": 44
+        },
+        {
+          "source": "p_32099",
+          "target": "p_36400",
+          "value": 43
+        },
+        {
+          "source": "p_4036",
+          "target": "p_17276",
+          "value": 42
+        },
+        {
+          "source": "p_5254",
+          "target": "p_27121",
+          "value": 41
+        },
+        {
+          "source": "p_7120",
+          "target": "p_23380",
+          "value": 40
+        },
+        {
+          "source": "p_20613",
+          "target": "p_23558",
+          "value": 40
+        },
+        {
+          "source": "p_32099",
+          "target": "p_44012",
+          "value": 40
+        },
+        {
+          "source": "p_44012",
+          "target": "p_53147",
+          "value": 39
+        },
+        {
+          "source": "p_12049",
+          "target": "p_24677",
+          "value": 38
+        },
+        {
+          "source": "p_18479",
+          "target": "p_23380",
+          "value": 38
+        },
+        {
+          "source": "p_17276",
+          "target": "p_18479",
+          "value": 37
+        },
+        {
+          "source": "p_4036",
+          "target": "p_18479",
+          "value": 36
+        },
+        {
+          "source": "p_4036",
+          "target": "p_18558",
+          "value": 36
+        },
+        {
+          "source": "p_36400",
+          "target": "p_37686",
+          "value": 36
+        },
+        {
+          "source": "p_17276",
+          "target": "p_18558",
+          "value": 35
+        },
+        {
+          "source": "p_18558",
+          "target": "p_23380",
+          "value": 35
+        },
+        {
+          "source": "p_18479",
+          "target": "p_18558",
+          "value": 33
+        },
+        {
+          "source": "p_17276",
+          "target": "p_23380",
+          "value": 32
+        },
+        {
+          "source": "p_5643",
+          "target": "p_75107",
+          "value": 31
+        },
+        {
+          "source": "p_1151",
+          "target": "p_7120",
+          "value": 30
+        },
+        {
+          "source": "p_7120",
+          "target": "p_16413",
+          "value": 30
+        },
+        {
+          "source": "p_4036",
+          "target": "p_23558",
+          "value": 29
+        },
+        {
+          "source": "p_4348",
+          "target": "p_5643",
+          "value": 29
+        },
+        {
+          "source": "p_4036",
+          "target": "p_23380",
+          "value": 28
+        },
+        {
+          "source": "p_4348",
+          "target": "p_12049",
+          "value": 28
+        },
+        {
+          "source": "p_6753",
+          "target": "p_7120",
+          "value": 28
+        },
+        {
+          "source": "p_5643",
+          "target": "p_20613",
+          "value": 27
+        },
+        {
+          "source": "p_7120",
+          "target": "p_18479",
+          "value": 27
+        },
+        {
+          "source": "p_5643",
+          "target": "p_12049",
+          "value": 26
+        },
+        {
+          "source": "p_39641",
+          "target": "p_75812",
+          "value": 26
+        },
+        {
+          "source": "p_64903",
+          "target": "p_77396",
+          "value": 26
+        },
+        {
+          "source": "p_4036",
+          "target": "p_7120",
+          "value": 25
+        },
+        {
+          "source": "p_10086",
+          "target": "p_23558",
+          "value": 25
+        },
+        {
+          "source": "p_18644",
+          "target": "p_23380",
+          "value": 25
+        },
+        {
+          "source": "p_4348",
+          "target": "p_21040",
+          "value": 24
+        },
+        {
+          "source": "p_16413",
+          "target": "p_18558",
+          "value": 24
+        },
+        {
+          "source": "p_35971",
+          "target": "p_37686",
+          "value": 24
+        },
+        {
+          "source": "p_1151",
+          "target": "p_18644",
+          "value": 23
+        },
+        {
+          "source": "p_4348",
+          "target": "p_24677",
+          "value": 23
+        },
+        {
+          "source": "p_16353",
+          "target": "p_20613",
+          "value": 23
+        },
+        {
+          "source": "p_43433",
+          "target": "p_64108",
+          "value": 23
+        },
+        {
+          "source": "p_1151",
+          "target": "p_23380",
+          "value": 22
+        },
+        {
+          "source": "p_4036",
+          "target": "p_18644",
+          "value": 22
+        },
+        {
+          "source": "p_5254",
+          "target": "p_20613",
+          "value": 22
+        },
+        {
+          "source": "p_6753",
+          "target": "p_17276",
+          "value": 22
+        },
+        {
+          "source": "p_7120",
+          "target": "p_17276",
+          "value": 22
+        },
+        {
+          "source": "p_16353",
+          "target": "p_21040",
+          "value": 22
+        },
+        {
+          "source": "p_23380",
+          "target": "p_23558",
+          "value": 22
+        },
+        {
+          "source": "p_35971",
+          "target": "p_36400",
+          "value": 22
+        },
+        {
+          "source": "p_75812",
+          "target": "p_79748",
+          "value": 22
+        },
+        {
+          "source": "p_1151",
+          "target": "p_18558",
+          "value": 21
+        },
+        {
+          "source": "p_16353",
+          "target": "p_75107",
+          "value": 21
+        },
+        {
+          "source": "p_21040",
+          "target": "p_75107",
+          "value": 21
+        },
+        {
+          "source": "p_3929",
+          "target": "p_7120",
+          "value": 20
+        },
+        {
+          "source": "p_3929",
+          "target": "p_75107",
+          "value": 20
+        },
+        {
+          "source": "p_4348",
+          "target": "p_75107",
+          "value": 20
+        },
+        {
+          "source": "p_7027",
+          "target": "p_18558",
+          "value": 20
+        },
+        {
+          "source": "p_7120",
+          "target": "p_19103",
+          "value": 20
+        },
+        {
+          "source": "p_10086",
+          "target": "p_19103",
+          "value": 20
+        },
+        {
+          "source": "p_12049",
+          "target": "p_20613",
+          "value": 20
+        },
+        {
+          "source": "p_12049",
+          "target": "p_21040",
+          "value": 20
+        },
+        {
+          "source": "p_16353",
+          "target": "p_23558",
+          "value": 20
+        },
+        {
+          "source": "p_18644",
+          "target": "p_19103",
+          "value": 20
+        },
+        {
+          "source": "p_31959",
+          "target": "p_37686",
+          "value": 20
+        },
+        {
+          "source": "p_4348",
+          "target": "p_16353",
+          "value": 19
+        },
+        {
+          "source": "p_5254",
+          "target": "p_10783",
+          "value": 19
+        },
+        {
+          "source": "p_6753",
+          "target": "p_18558",
+          "value": 19
+        },
+        {
+          "source": "p_16353",
+          "target": "p_24677",
+          "value": 19
+        },
+        {
+          "source": "p_20613",
+          "target": "p_21040",
+          "value": 19
+        },
+        {
+          "source": "p_21040",
+          "target": "p_24677",
+          "value": 19
+        },
+        {
+          "source": "p_1151",
+          "target": "p_4036",
+          "value": 18
+        },
+        {
+          "source": "p_1151",
+          "target": "p_18479",
+          "value": 18
+        },
+        {
+          "source": "p_4036",
+          "target": "p_6753",
+          "value": 18
+        },
+        {
+          "source": "p_5254",
+          "target": "p_16353",
+          "value": 18
+        },
+        {
+          "source": "p_5643",
+          "target": "p_24677",
+          "value": 18
+        },
+        {
+          "source": "p_6733",
+          "target": "p_7027",
+          "value": 18
+        },
+        {
+          "source": "p_6733",
+          "target": "p_7120",
+          "value": 18
+        },
+        {
+          "source": "p_18558",
+          "target": "p_19103",
+          "value": 18
+        },
+        {
+          "source": "p_18558",
+          "target": "p_23558",
+          "value": 18
+        },
+        {
+          "source": "p_22391",
+          "target": "p_75107",
+          "value": 18
+        },
+        {
+          "source": "p_23558",
+          "target": "p_24629",
+          "value": 18
+        },
+        {
+          "source": "p_31959",
+          "target": "p_35971",
+          "value": 18
+        },
+        {
+          "source": "p_1151",
+          "target": "p_27121",
+          "value": 17
+        },
+        {
+          "source": "p_6733",
+          "target": "p_10086",
+          "value": 17
+        },
+        {
+          "source": "p_7027",
+          "target": "p_19103",
+          "value": 17
+        },
+        {
+          "source": "p_12049",
+          "target": "p_75107",
+          "value": 17
+        },
+        {
+          "source": "p_18479",
+          "target": "p_23558",
+          "value": 17
+        },
+        {
+          "source": "p_18558",
+          "target": "p_27121",
+          "value": 17
+        },
+        {
+          "source": "p_20485",
+          "target": "p_29412",
+          "value": 17
+        },
+        {
+          "source": "p_3929",
+          "target": "p_18558",
+          "value": 16
+        },
+        {
+          "source": "p_5863",
+          "target": "p_18899",
+          "value": 16
+        },
+        {
+          "source": "p_6753",
+          "target": "p_23380",
+          "value": 16
+        },
+        {
+          "source": "p_7027",
+          "target": "p_7120",
+          "value": 16
+        },
+        {
+          "source": "p_7120",
+          "target": "p_23558",
+          "value": 16
+        },
+        {
+          "source": "p_7120",
+          "target": "p_27121",
+          "value": 16
+        },
+        {
+          "source": "p_7643",
+          "target": "p_20613",
+          "value": 16
+        },
+        {
+          "source": "p_10086",
+          "target": "p_20613",
+          "value": 16
+        },
+        {
+          "source": "p_1151",
+          "target": "p_19103",
+          "value": 15
+        },
+        {
+          "source": "p_3929",
+          "target": "p_20613",
+          "value": 15
+        },
+        {
+          "source": "p_4036",
+          "target": "p_6733",
+          "value": 15
+        },
+        {
+          "source": "p_4348",
+          "target": "p_20613",
+          "value": 15
+        },
+        {
+          "source": "p_6753",
+          "target": "p_18479",
+          "value": 15
+        },
+        {
+          "source": "p_13245",
+          "target": "p_39641",
+          "value": 15
+        },
+        {
+          "source": "p_16413",
+          "target": "p_18644",
+          "value": 15
+        },
+        {
+          "source": "p_16413",
+          "target": "p_27121",
+          "value": 15
+        },
+        {
+          "source": "p_17276",
+          "target": "p_75899",
+          "value": 15
+        },
+        {
+          "source": "p_23558",
+          "target": "p_27121",
+          "value": 15
+        },
+        {
+          "source": "p_37686",
+          "target": "p_44012",
+          "value": 15
+        },
+        {
+          "source": "p_59368",
+          "target": "p_75812",
+          "value": 15
+        },
+        {
+          "source": "p_64108",
+          "target": "p_73619",
+          "value": 15
+        },
+        {
+          "source": "p_1151",
+          "target": "p_23558",
+          "value": 14
+        },
+        {
+          "source": "p_3929",
+          "target": "p_4348",
+          "value": 14
+        },
+        {
+          "source": "p_3929",
+          "target": "p_21040",
+          "value": 14
+        },
+        {
+          "source": "p_4036",
+          "target": "p_16413",
+          "value": 14
+        },
+        {
+          "source": "p_4348",
+          "target": "p_7643",
+          "value": 14
+        },
+        {
+          "source": "p_5643",
+          "target": "p_23558",
+          "value": 14
+        },
+        {
+          "source": "p_7643",
+          "target": "p_23558",
+          "value": 14
+        },
+        {
+          "source": "p_10783",
+          "target": "p_23558",
+          "value": 14
+        },
+        {
+          "source": "p_13245",
+          "target": "p_20485",
+          "value": 14
+        },
+        {
+          "source": "p_24677",
+          "target": "p_75107",
+          "value": 14
+        },
+        {
+          "source": "p_31959",
+          "target": "p_44012",
+          "value": 14
+        },
+        {
+          "source": "p_59368",
+          "target": "p_82812",
+          "value": 14
+        },
+        {
+          "source": "p_65246",
+          "target": "p_110713",
+          "value": 14
+        },
+        {
+          "source": "p_3929",
+          "target": "p_22391",
+          "value": 13
+        },
+        {
+          "source": "p_4036",
+          "target": "p_10783",
+          "value": 13
+        },
+        {
+          "source": "p_4348",
+          "target": "p_5254",
+          "value": 13
+        },
+        {
+          "source": "p_4348",
+          "target": "p_23558",
+          "value": 13
+        },
+        {
+          "source": "p_5254",
+          "target": "p_21040",
+          "value": 13
+        },
+        {
+          "source": "p_6733",
+          "target": "p_23558",
+          "value": 13
+        },
+        {
+          "source": "p_6753",
+          "target": "p_13245",
+          "value": 13
+        },
+        {
+          "source": "p_7643",
+          "target": "p_10086",
+          "value": 13
+        },
+        {
+          "source": "p_10783",
+          "target": "p_18558",
+          "value": 13
+        },
+        {
+          "source": "p_10783",
+          "target": "p_20613",
+          "value": 13
+        },
+        {
+          "source": "p_16353",
+          "target": "p_18558",
+          "value": 13
+        },
+        {
+          "source": "p_16413",
+          "target": "p_19103",
+          "value": 13
+        },
+        {
+          "source": "p_18644",
+          "target": "p_23558",
+          "value": 13
+        },
+        {
+          "source": "p_20613",
+          "target": "p_27121",
+          "value": 13
+        },
+        {
+          "source": "p_22391",
+          "target": "p_23558",
+          "value": 13
+        },
+        {
+          "source": "p_75812",
+          "target": "p_82812",
+          "value": 13
+        },
+        {
+          "source": "p_3929",
+          "target": "p_12049",
+          "value": 12
+        },
+        {
+          "source": "p_3929",
+          "target": "p_23558",
+          "value": 12
+        },
+        {
+          "source": "p_5254",
+          "target": "p_6733",
+          "value": 12
+        },
+        {
+          "source": "p_5254",
+          "target": "p_24629",
+          "value": 12
+        },
+        {
+          "source": "p_5254",
+          "target": "p_75107",
+          "value": 12
+        },
+        {
+          "source": "p_7120",
+          "target": "p_10783",
+          "value": 12
+        },
+        {
+          "source": "p_7643",
+          "target": "p_18479",
+          "value": 12
+        },
+        {
+          "source": "p_10783",
+          "target": "p_18479",
+          "value": 12
+        },
+        {
+          "source": "p_12049",
+          "target": "p_23558",
+          "value": 12
+        },
+        {
+          "source": "p_13245",
+          "target": "p_29412",
+          "value": 12
+        },
+        {
+          "source": "p_16413",
+          "target": "p_20613",
+          "value": 12
+        },
+        {
+          "source": "p_19103",
+          "target": "p_23380",
+          "value": 12
+        },
+        {
+          "source": "p_79748",
+          "target": "p_82812",
+          "value": 12
+        },
+        {
+          "source": "p_3929",
+          "target": "p_5643",
+          "value": 11
+        },
+        {
+          "source": "p_3929",
+          "target": "p_16353",
+          "value": 11
+        },
+        {
+          "source": "p_3929",
+          "target": "p_18479",
+          "value": 11
+        },
+        {
+          "source": "p_4036",
+          "target": "p_19103",
+          "value": 11
+        },
+        {
+          "source": "p_5254",
+          "target": "p_5643",
+          "value": 11
+        },
+        {
+          "source": "p_5643",
+          "target": "p_7643",
+          "value": 11
+        },
+        {
+          "source": "p_5643",
+          "target": "p_21040",
+          "value": 11
+        },
+        {
+          "source": "p_6733",
+          "target": "p_16413",
+          "value": 11
+        },
+        {
+          "source": "p_6733",
+          "target": "p_18644",
+          "value": 11
+        },
+        {
+          "source": "p_6733",
+          "target": "p_19103",
+          "value": 11
+        },
+        {
+          "source": "p_7027",
+          "target": "p_10086",
+          "value": 11
+        },
+        {
+          "source": "p_7643",
+          "target": "p_23380",
+          "value": 11
+        },
+        {
+          "source": "p_7643",
+          "target": "p_75899",
+          "value": 11
+        },
+        {
+          "source": "p_10086",
+          "target": "p_18558",
+          "value": 11
+        },
+        {
+          "source": "p_10783",
+          "target": "p_22391",
+          "value": 11
+        },
+        {
+          "source": "p_19103",
+          "target": "p_23558",
+          "value": 11
+        },
+        {
+          "source": "p_20613",
+          "target": "p_24677",
+          "value": 11
+        },
+        {
+          "source": "p_21040",
+          "target": "p_22391",
+          "value": 11
+        },
+        {
+          "source": "p_36400",
+          "target": "p_44012",
+          "value": 11
+        },
+        {
+          "source": "p_64108",
+          "target": "p_79748",
+          "value": 11
+        },
+        {
+          "source": "p_1151",
+          "target": "p_12049",
+          "value": 10
+        },
+        {
+          "source": "p_3929",
+          "target": "p_17276",
+          "value": 10
+        },
+        {
+          "source": "p_4036",
+          "target": "p_16353",
+          "value": 10
+        },
+        {
+          "source": "p_5254",
+          "target": "p_12049",
+          "value": 10
+        },
+        {
+          "source": "p_5254",
+          "target": "p_16413",
+          "value": 10
+        },
+        {
+          "source": "p_6733",
+          "target": "p_10783",
+          "value": 10
+        },
+        {
+          "source": "p_6733",
+          "target": "p_18479",
+          "value": 10
+        },
+        {
+          "source": "p_6733",
+          "target": "p_18558",
+          "value": 10
+        },
+        {
+          "source": "p_7120",
+          "target": "p_10086",
+          "value": 10
+        },
+        {
+          "source": "p_7120",
+          "target": "p_22391",
+          "value": 10
+        },
+        {
+          "source": "p_7120",
+          "target": "p_75899",
+          "value": 10
+        },
+        {
+          "source": "p_7643",
+          "target": "p_27121",
+          "value": 10
+        },
+        {
+          "source": "p_10783",
+          "target": "p_18644",
+          "value": 10
+        },
+        {
+          "source": "p_10783",
+          "target": "p_23380",
+          "value": 10
+        },
+        {
+          "source": "p_10783",
+          "target": "p_27121",
+          "value": 10
+        },
+        {
+          "source": "p_16353",
+          "target": "p_24629",
+          "value": 10
+        },
+        {
+          "source": "p_16897",
+          "target": "p_18644",
+          "value": 10
+        },
+        {
+          "source": "p_16897",
+          "target": "p_59368",
+          "value": 10
+        },
+        {
+          "source": "p_17276",
+          "target": "p_18644",
+          "value": 10
+        },
+        {
+          "source": "p_17276",
+          "target": "p_23558",
+          "value": 10
+        },
+        {
+          "source": "p_18479",
+          "target": "p_19103",
+          "value": 10
+        },
+        {
+          "source": "p_18558",
+          "target": "p_75899",
+          "value": 10
+        },
+        {
+          "source": "p_20485",
+          "target": "p_31646",
+          "value": 10
+        },
+        {
+          "source": "p_22391",
+          "target": "p_24629",
+          "value": 10
+        },
+        {
+          "source": "p_23558",
+          "target": "p_24677",
+          "value": 10
+        },
+        {
+          "source": "p_24677",
+          "target": "p_75899",
+          "value": 10
+        },
+        {
+          "source": "p_39641",
+          "target": "p_79748",
+          "value": 10
+        },
+        {
+          "source": "p_64108",
+          "target": "p_75812",
+          "value": 10
+        },
+        {
+          "source": "p_1151",
+          "target": "p_17276",
+          "value": 9
+        },
+        {
+          "source": "p_3929",
+          "target": "p_10783",
+          "value": 9
+        },
+        {
+          "source": "p_4036",
+          "target": "p_24629",
+          "value": 9
+        },
+        {
+          "source": "p_4348",
+          "target": "p_24629",
+          "value": 9
+        },
+        {
+          "source": "p_5254",
+          "target": "p_7643",
+          "value": 9
+        },
+        {
+          "source": "p_5254",
+          "target": "p_10086",
+          "value": 9
+        },
+        {
+          "source": "p_5643",
+          "target": "p_16353",
+          "value": 9
+        },
+        {
+          "source": "p_6733",
+          "target": "p_27121",
+          "value": 9
+        },
+        {
+          "source": "p_6753",
+          "target": "p_18644",
+          "value": 9
+        },
+        {
+          "source": "p_7027",
+          "target": "p_7643",
+          "value": 9
+        },
+        {
+          "source": "p_7027",
+          "target": "p_18479",
+          "value": 9
+        },
+        {
+          "source": "p_10086",
+          "target": "p_18644",
+          "value": 9
+        },
+        {
+          "source": "p_10086",
+          "target": "p_27121",
+          "value": 9
+        },
+        {
+          "source": "p_10783",
+          "target": "p_75107",
+          "value": 9
+        },
+        {
+          "source": "p_12049",
+          "target": "p_16353",
+          "value": 9
+        },
+        {
+          "source": "p_12049",
+          "target": "p_19103",
+          "value": 9
+        },
+        {
+          "source": "p_16353",
+          "target": "p_18479",
+          "value": 9
+        },
+        {
+          "source": "p_16413",
+          "target": "p_17276",
+          "value": 9
+        },
+        {
+          "source": "p_16413",
+          "target": "p_75899",
+          "value": 9
+        },
+        {
+          "source": "p_18558",
+          "target": "p_22391",
+          "value": 9
+        },
+        {
+          "source": "p_18558",
+          "target": "p_24629",
+          "value": 9
+        },
+        {
+          "source": "p_18644",
+          "target": "p_20613",
+          "value": 9
+        },
+        {
+          "source": "p_18644",
+          "target": "p_27121",
+          "value": 9
+        },
+        {
+          "source": "p_21040",
+          "target": "p_23558",
+          "value": 9
+        },
+        {
+          "source": "p_35971",
+          "target": "p_44012",
+          "value": 9
+        },
+        {
+          "source": "p_43433",
+          "target": "p_59368",
+          "value": 9
+        },
+        {
+          "source": "p_59368",
+          "target": "p_79748",
+          "value": 9
+        },
+        {
+          "source": "p_1151",
+          "target": "p_16413",
+          "value": 8
+        },
+        {
+          "source": "p_1151",
+          "target": "p_20613",
+          "value": 8
+        },
+        {
+          "source": "p_1151",
+          "target": "p_22391",
+          "value": 8
+        },
+        {
+          "source": "p_3929",
+          "target": "p_5254",
+          "value": 8
+        },
+        {
+          "source": "p_5254",
+          "target": "p_7120",
+          "value": 8
+        },
+        {
+          "source": "p_5254",
+          "target": "p_18479",
+          "value": 8
+        },
+        {
+          "source": "p_5254",
+          "target": "p_18558",
+          "value": 8
+        },
+        {
+          "source": "p_5643",
+          "target": "p_16413",
+          "value": 8
+        },
+        {
+          "source": "p_7027",
+          "target": "p_23558",
+          "value": 8
+        },
+        {
+          "source": "p_7643",
+          "target": "p_17276",
+          "value": 8
+        },
+        {
+          "source": "p_7643",
+          "target": "p_19103",
+          "value": 8
+        },
+        {
+          "source": "p_10086",
+          "target": "p_16413",
+          "value": 8
+        },
+        {
+          "source": "p_10783",
+          "target": "p_16353",
+          "value": 8
+        },
+        {
+          "source": "p_10783",
+          "target": "p_16413",
+          "value": 8
+        },
+        {
+          "source": "p_16353",
+          "target": "p_27121",
+          "value": 8
+        },
+        {
+          "source": "p_20613",
+          "target": "p_75107",
+          "value": 8
+        },
+        {
+          "source": "p_21040",
+          "target": "p_27121",
+          "value": 8
+        },
+        {
+          "source": "p_23380",
+          "target": "p_24629",
+          "value": 8
+        },
+        {
+          "source": "p_24629",
+          "target": "p_75107",
+          "value": 8
+        },
+        {
+          "source": "p_34627",
+          "target": "p_43433",
+          "value": 8
+        },
+        {
+          "source": "p_64108",
+          "target": "p_82812",
+          "value": 8
+        },
+        {
+          "source": "p_1151",
+          "target": "p_10086",
+          "value": 7
+        },
+        {
+          "source": "p_3929",
+          "target": "p_16413",
+          "value": 7
+        },
+        {
+          "source": "p_3929",
+          "target": "p_18644",
+          "value": 7
+        },
+        {
+          "source": "p_4036",
+          "target": "p_20613",
+          "value": 7
+        },
+        {
+          "source": "p_4348",
+          "target": "p_27121",
+          "value": 7
+        },
+        {
+          "source": "p_5254",
+          "target": "p_22391",
+          "value": 7
+        },
+        {
+          "source": "p_5643",
+          "target": "p_7120",
+          "value": 7
+        },
+        {
+          "source": "p_5643",
+          "target": "p_24629",
+          "value": 7
+        },
+        {
+          "source": "p_5863",
+          "target": "p_32099",
+          "value": 7
+        },
+        {
+          "source": "p_6733",
+          "target": "p_7643",
+          "value": 7
+        },
+        {
+          "source": "p_6733",
+          "target": "p_23380",
+          "value": 7
+        },
+        {
+          "source": "p_6753",
+          "target": "p_7027",
+          "value": 7
+        },
+        {
+          "source": "p_6753",
+          "target": "p_10783",
+          "value": 7
+        },
+        {
+          "source": "p_7027",
+          "target": "p_18644",
+          "value": 7
+        },
+        {
+          "source": "p_7027",
+          "target": "p_23380",
+          "value": 7
+        },
+        {
+          "source": "p_7120",
+          "target": "p_16353",
+          "value": 7
+        },
+        {
+          "source": "p_7120",
+          "target": "p_20613",
+          "value": 7
+        },
+        {
+          "source": "p_7643",
+          "target": "p_10783",
+          "value": 7
+        },
+        {
+          "source": "p_10783",
+          "target": "p_21040",
+          "value": 7
+        },
+        {
+          "source": "p_10783",
+          "target": "p_24629",
+          "value": 7
+        },
+        {
+          "source": "p_12049",
+          "target": "p_22391",
+          "value": 7
+        },
+        {
+          "source": "p_16353",
+          "target": "p_16413",
+          "value": 7
+        },
+        {
+          "source": "p_16413",
+          "target": "p_23558",
+          "value": 7
+        },
+        {
+          "source": "p_18479",
+          "target": "p_20613",
+          "value": 7
+        },
+        {
+          "source": "p_18644",
+          "target": "p_22391",
+          "value": 7
+        },
+        {
+          "source": "p_19103",
+          "target": "p_24629",
+          "value": 7
+        },
+        {
+          "source": "p_19103",
+          "target": "p_27121",
+          "value": 7
+        },
+        {
+          "source": "p_21040",
+          "target": "p_24629",
+          "value": 7
+        },
+        {
+          "source": "p_23558",
+          "target": "p_75107",
+          "value": 7
+        },
+        {
+          "source": "p_31959",
+          "target": "p_53147",
+          "value": 7
+        },
+        {
+          "source": "p_34627",
+          "target": "p_71146",
+          "value": 7
+        },
+        {
+          "source": "p_34627",
+          "target": "p_75812",
+          "value": 7
+        },
+        {
+          "source": "p_1151",
+          "target": "p_7643",
+          "value": 6
+        },
+        {
+          "source": "p_1151",
+          "target": "p_21040",
+          "value": 6
+        },
+        {
+          "source": "p_3929",
+          "target": "p_6753",
+          "value": 6
+        },
+        {
+          "source": "p_3929",
+          "target": "p_23380",
+          "value": 6
+        },
+        {
+          "source": "p_3929",
+          "target": "p_27121",
+          "value": 6
+        },
+        {
+          "source": "p_4036",
+          "target": "p_5254",
+          "value": 6
+        },
+        {
+          "source": "p_4036",
+          "target": "p_10086",
+          "value": 6
+        },
+        {
+          "source": "p_4036",
+          "target": "p_21040",
+          "value": 6
+        },
+        {
+          "source": "p_4036",
+          "target": "p_27121",
+          "value": 6
+        },
+        {
+          "source": "p_4348",
+          "target": "p_19103",
+          "value": 6
+        },
+        {
+          "source": "p_4348",
+          "target": "p_75899",
+          "value": 6
+        },
+        {
+          "source": "p_5643",
+          "target": "p_7027",
+          "value": 6
+        },
+        {
+          "source": "p_5643",
+          "target": "p_10086",
+          "value": 6
+        },
+        {
+          "source": "p_5643",
+          "target": "p_19103",
+          "value": 6
+        },
+        {
+          "source": "p_6733",
+          "target": "p_17276",
+          "value": 6
+        },
+        {
+          "source": "p_6733",
+          "target": "p_24629",
+          "value": 6
+        },
+        {
+          "source": "p_6753",
+          "target": "p_7643",
+          "value": 6
+        },
+        {
+          "source": "p_6753",
+          "target": "p_20485",
+          "value": 6
+        },
+        {
+          "source": "p_7027",
+          "target": "p_27121",
+          "value": 6
+        },
+        {
+          "source": "p_7027",
+          "target": "p_75899",
+          "value": 6
+        },
+        {
+          "source": "p_7643",
+          "target": "p_16353",
+          "value": 6
+        },
+        {
+          "source": "p_10086",
+          "target": "p_10783",
+          "value": 6
+        },
+        {
+          "source": "p_12049",
+          "target": "p_16413",
+          "value": 6
+        },
+        {
+          "source": "p_12049",
+          "target": "p_75899",
+          "value": 6
+        },
+        {
+          "source": "p_13245",
+          "target": "p_31646",
+          "value": 6
+        },
+        {
+          "source": "p_16353",
+          "target": "p_18644",
+          "value": 6
+        },
+        {
+          "source": "p_16413",
+          "target": "p_23380",
+          "value": 6
+        },
+        {
+          "source": "p_16897",
+          "target": "p_79748",
+          "value": 6
+        },
+        {
+          "source": "p_17276",
+          "target": "p_24629",
+          "value": 6
+        },
+        {
+          "source": "p_18479",
+          "target": "p_18644",
+          "value": 6
+        },
+        {
+          "source": "p_18479",
+          "target": "p_24629",
+          "value": 6
+        },
+        {
+          "source": "p_20613",
+          "target": "p_24629",
+          "value": 6
+        },
+        {
+          "source": "p_23380",
+          "target": "p_75899",
+          "value": 6
+        },
+        {
+          "source": "p_39641",
+          "target": "p_73619",
+          "value": 6
+        },
+        {
+          "source": "p_43433",
+          "target": "p_75899",
+          "value": 6
+        },
+        {
+          "source": "p_65246",
+          "target": "p_73619",
+          "value": 6
+        },
+        {
+          "source": "p_71146",
+          "target": "p_79748",
+          "value": 6
+        },
+        {
+          "source": "p_73619",
+          "target": "p_79748",
+          "value": 6
+        }
+      ],
+      "categories": [
+        {
+          "name": "美式经典大厂门派"
+        },
+        {
+          "name": "欧系唯美与布拉格"
+        },
+        {
+          "name": "现代流媒体新锐"
+        },
+        {
+          "name": "独立走穴与另类硬核"
+        }
+      ]
+    }
+  }
+}

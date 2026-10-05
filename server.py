@@ -361,6 +361,10 @@ class GPDbRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/categories":
                 return self.handle_categories()
 
+            # 10. /api/industry/analytics
+            if path == "/api/industry/analytics":
+                return self.handle_industry_analytics()
+
             # Not found
             self.send_json({"error": "Endpoint not found", "path": path}, status=404)
 
@@ -1575,6 +1579,31 @@ class GPDbRequestHandler(BaseHTTPRequestHandler):
             """).fetchall()
             categories = collapse_categories((r["category"], r["count"]) for r in rows)
             self.send_json(categories)
+
+    def handle_industry_analytics(self):
+        # 1. Try from database cached stats
+        try:
+            with get_db_connection() as conn:
+                row = conn.execute(
+                    "SELECT data_json FROM stats_industry_meta WHERE key = 'all'"
+                ).fetchone()
+                if row and row[0]:
+                    self.send_json(json.loads(row[0]))
+                    return
+        except Exception:
+            pass
+
+        # 2. Try from static json file
+        json_file = BASE_DIR / "desktop_client" / "public" / "data" / "industry_analytics.json"
+        if json_file.exists():
+            try:
+                with open(json_file, "r", encoding="utf-8") as f:
+                    self.send_json(json.load(f))
+                    return
+            except Exception:
+                pass
+
+        self.send_json({"error": "Industry analytics not generated yet"}, status=404)
 
     def handle_sync(self):
         # Trigger incremental sync

@@ -29,12 +29,25 @@
     - `get_studio_works` 升级为片商名称与 `site_id` 双重联合查询（`e.studio_name = ?1 OR e.studio_id = ?2`），使 Say Uncle 这类拥有多家子品牌（Missionary Boys、Family Dick 等）的伞状母公司网络能够完整展示全网 3,425 部作品，同时子厂牌独立档案页亦能精准聚合各自作品。
 
 ### Added
-- **「全景洞察」页面架构重构与独立厂牌谱系归属 Wiki / 交互拓扑图谱上线 (`StudioGenealogyView.vue`, `AnalyticsView.vue`, `App.vue`, `i18n/index.ts`, `studio_genealogy.json`)**：
+- **「全景洞察」页面架构重构与独立厂牌谱系归属 Wiki / 交互拓扑图谱上线 (`StudioGenealogyView.vue`, `AnalyticsView.vue`, `App.vue`, `i18n/index.ts`, `build_studio_genealogy.py`, `studio_genealogy.json`)**：
   - **左侧导航栏定位升级**：将原「使用统计」全局更名为「全景洞察 / Panorama & Insights」，全面升格为涵盖行业编年史、厂牌图谱与用户足迹的宏观智库；
   - **顶部三段式顶格视窗**：在全景洞察页面最顶部并排陈列【🏛️ 行业全景编年史】、【🕸️ 厂牌谱系与归属 Wiki】与【👤 个人足迹与偏好】三大平级核心板块；
-  - **独立解耦与零侵入数据建模**：基于全库真实长片分集映射（350+ 组跨表关联）、已翻译厂牌简介与权威产业资本知识库，生成独立的只读数据集（收录 34 个传媒集团/平台、161 个核心厂牌节点、167 条归属网络连线，覆盖 8,074 部流转作品），完全不修改主库现有表结构与索引；
-  - **双模交互 Wiki 体验**：
-    - **【家谱 Wiki 目录模式】**：集团阵营卡片折叠树、即时全词搜索、旗下子厂牌网格与角色标签（母网、长片制作、独家副线、点播代工），点击任意厂牌直接调起客户端原生片商档案弹窗；
+  - **全量补齐各大传媒集团旗下全部已知子厂牌与产品线（彻底消除漏列）**：
+    - **Aylo / MindGeek 全球男色帝国**：全量补齐 `Sean Cody`（190部长片、2,965部分集，总计 3,155 部）、`Next Door Studios`（793部长片、4,653部分集，总计 5,306 部）、`Next Door Taboo`（117 部）、`Stag Collective`（53 部）、`Reality Kings` 与 `MEN.com`（4,699 部）；
+    - **Falcon Studios Group 猎鹰影视集团**：全量补齐收购名厂 `Hot House Entertainment`（378部长片、462部分集，总计 830 部）、加州公路硬汉品牌 `Mustang Studios`（115 部）、古典罗马大厂 `Centaur Films`（34 部）、欧陆外景产品线 `Falcon International`（32 部）、竞技型男 Jocks 系列全量（`Jocks Video`、`UK Hot Jocks`、`Bound Jocks`、`Jocks in Socks Video Productions`、`Hairy Jocks Video`、`Jocks Home Video`、`Jocks`），联合旗舰 `Falcon Studios`、`Raging Stallion Studios` 与 `Cocksure Men`，总覆盖逾 5,500 部长篇与分集；
+    - **Titan Media 泰坦传媒集团**：收录母网 `Titan Media`（1,445 部）、传奇实体音像大厂 `MSR Videos`（35 部）及剧情分支 `Titan Productions`；
+    - **BelAmi 漂亮朋友美学帝国**：收录东欧主厂 `BelAmi`（5,451 部）、新星选拔网 `Freshmen.net`（1,420 部）、名作副牌 `be.me.fi`（203 部）、`Freshmen Features` 与 `Freshmen Productions`；
+    - **The Bro Network 兄弟联盟网络**：收录母网 `The Bro Network`（518 部）、`Broke Straight Boys`（2,291 部）、制服硬汉旗舰 `Masqulin`（42 部）与 `The Guy Site`（833 部）；
+    - **Say Uncle 求饶网络**：收录母网 `Say Uncle`（1,461 部）、核心无套线 `Bareback Network`（203 部）、`Missionary Boys`（896 部）、`Bromo`（656 部）、`Family Dick`（480 部）与 `Young Perps`（212 部）；
+    - **Eurocreme / Staxus 欧陆之光集团**：收录 `Staxus`（1,435 部）、`Staxus Films`（387 部）、`Eurocreme`（482 部）、`Bulldog XXX`（446 部）、`AVI Production`（212 部）、`AVI Films`（87 部）与 `Eurocreme Prague`；
+    - **Helix Studios 螺旋影视网络**：收录母网 `Helix Studios`（4,073 部）、初熟少年线 `8teenBoy`（114 部）、一哥专属 `Johnny Rapid`（115 部）、联合工坊 `Edward James Productions`（160 部）及 `Sean Storm Productions`；
+    - **Carnal+ 欲念加号媒体网**：收录母网 `Carnal+`（1,219 部）、`JockPack`（1,172 部）、`Stag Homme Studios`（229 部）、`Fun-Size Boys`、`Gaycest`、`Boy for Sale`、`Masonic Boys`、`Scout Boys`、`Twink Top` 等 9 家垂直子品牌；
+    - **Kink.com 军械库禁忌帝国**：收录 `KinkMen`（2,394 部）、`Kink Video`（176 部）、`Kinky Angels`（227 部）、`Hardkinks`、`Kinky Asian Boys`、`Kinky Twink Entertainment`、`Kinky Twink`；
+    - **Channel 1 Releasing 第一频道发行联合体**：由名导 Chi Chi LaRue 发起，统筹千部黄金长片片库 `All Worlds Video`（1,061 部）、核心名牌 `Rascal Video`（126 部）、`Channel 1 Releasing`（107 部）、`Massive Studio`（36 部）与 `Chi Chi La Raw`（7 部）；
+    - **新增各大主流集团与顶流独立名厂**：收录 Gamma 娱乐集团（`Pride Studios` 3,316 部、`Adult Time`、`Circle Jerk Boys`、`High Performance Men`）、英伦普罗勒传媒（`Blake Mason` 1,799 部、`Millivres Prowler Ltd.` 247 部、`Euroboy` 247 部、`Phoenixxx.com` 365 部、`Orrange Media Group` 149 部）、金银岛地下影视（`Treasure Island Media` 2,941 部、`ioMacho` 429 部、`Toxxxic Films`、`Grindhouse Raw`）、黄金时代典藏（`Bacchus Releasing` 1,365 部、`Jet Set Productions` 227 部、`Bijou Video` 135 部）、同志人生网络（`Gaylife Network` 1,032 部、`BoyCrush` 1,448 部、`Saggerz Skaterz` 145 部、`Xtreme Productions` 78 部）、风味工坊（`Flava Works Inc.` 260 部、`Mix It Up Boy` 195 部）、以及全球顶流独立电影化名厂（`Corbin Fisher` 4,695 部、`ChaosMen` 3,160 部、`BoyFun` 2,613 部、`Active Duty Productions` 2,228 部、`Cocky Boys` 2,078 部、`Randy Blue` 1,868 部、`Crunchboy` 1,664 部、`BoyNapped` 1,240 部、`Men at Play` 1,224 部、`Czech Hunter` 910 部、`French Art` 90 部）；
+  - **庞大独立解耦知识库规模**：全网覆盖集团扩充至 **48 个**，核心收录厂牌节点跃升至 **203 家**，网络连线增至 **218 条**，覆盖关联流转作品突破 **12,203 部**；
+  - **双模交互 Wiki 体验与多维切片**：
+    - **【家谱 Wiki 目录模式】**：集团阵营卡片折叠树、即时全词搜索、旗下子厂牌网格与角色标签（母网、长片制作、独家副线、点播代工），支持按「跨国传媒集团」、「线上点播母网」、「独立顶流生态」多维过滤，点击任意厂牌直接调起客户端原生片商档案弹窗；
     - **【交互拓扑图谱模式】**：基于 ECharts 6 力导向图引擎，节点按作品量自适应缩放，支持鼠标滚轮平滑缩放漫游、悬停一度邻近关系点亮（focusNodeAdjacency）、点击锁定抽屉与一键直达媒体库。
 
 ### Changed

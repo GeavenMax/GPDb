@@ -29,6 +29,7 @@ import type {
   ScraperStatus,
   ScraperMode,
   RuntimeEnvironmentInfo,
+  IndustryAnalyticsData,
 } from './types';
 import { FAVORITE_TYPES } from './types';
 import { pluginsConfig } from './services/pluginManager';
@@ -1455,6 +1456,30 @@ export const api = {
     if (isTauri) {
       await tauriInvoke('install_update_file', { filepath });
     }
+  },
+
+  async getIndustryAnalytics(): Promise<IndustryAnalyticsData> {
+    // 1. First attempt: read from static data directory (zero network latency in browser / Tauri webview)
+    try {
+      const res = await fetch('/data/industry_analytics.json');
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      // Fallback to local server API
+    }
+
+    // 2. Second attempt: read from local HTTP API server
+    try {
+      const res = await fetch('/api/industry/analytics');
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {
+      // Ignore and throw descriptive error
+    }
+
+    throw new Error('行业全景数据暂未生成，请先在终端运行 python3 scripts/build_industry_analytics.py');
   },
 };
 

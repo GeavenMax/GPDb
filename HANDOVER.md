@@ -60,8 +60,13 @@
 | directors / movie_directors | 3,077 / 37,502（导演库入口，见 §4.1） |
 | 片商（distinct `movies.studio_id`） | 2,411（最大 id 8,175 = **站点公司 id 的上限**，见 §4.4） |
 
-**翻译进度（几乎没做）**：`movies.description_zh` 2,367 / 63,238；
-`movies.title_zh` **0**；`episodes.description_zh` 77。
+**翻译进度（已全面突破 540 万字）**：
+- `movies.title_zh`: **6,357** / 63,273（重点大厂片名基本 100% 汉化意译，片名本身严禁带《书名号》，仅在简介内部引用时包裹）
+- `movies.description_zh`: **8,308** / 49,965（核心名厂长篇全覆盖）
+- `episodes.description_zh`: **17,410** / 111,806（突破 1.7 万条分集）
+- `studios.name_zh` & `description_zh`: **2,433 / 2,433（100.0% 全库覆盖）**
+- `translations.db` 独立归档库：**35,905 条**，累计汉化产出 **5,420,208 字符**（纯汉字 **3,564,167** 字）
+- 详情与各厂牌完成明细参见 `TRANSLATION_PROGRESS.md`。
 
 **账本**：`scrape_progress` — company 12,000 行（全部 200，即 id 1..12,000 全覆盖）；
 movie 76,000 行（53,944 完成）；performer 60,701 行（60,692 完成）。
@@ -629,13 +634,61 @@ PNG 368、WebP 151、GIF 3——站点在 `.jpg` 这个 URL 下会回别的格�
 - 桌面端已内置 **纯 Rust 原生 LLM 翻译引擎**（支持 Google Gemini API Key 智能轮换池、OpenAI 兼容协议如 DeepSeek/Moonshot/Ollama/Qwen 等、Claude 原生协议）；
 - 前端支持在影片详情、分集详情中单篇试译/保存，并在设置中心支持用户配置自定义 Key；单条翻译已支持纯文本兼容解析（对齐 Android 端行为）。
 - 离线全量批量翻译：`movies.description_zh` 仍有大量待翻译空间；有需要批量离线翻译时可参考 `translate.py`。跑之前确认 `translate_config.json` 在位（**别提交包含真实 Key 的配置**）。
+- **翻译排版铁律**：
+  - `movies.title_zh`：**纯文本，绝对不要加《书名号》**（已全量清洗，存量残留为 0；引擎入库前自带 `.strip("《》")` 防御）；
+  - `movies.description_zh` / `episodes.description_zh`：**仅在简介正文中提及影片原名并被中译替换时，才加《书名号》**；
+  - 纯化同男（Gay）语境，严禁使用女性化言情词汇。
 
 ### 5.5 已落地与后续关注项
 
 - **片商 Logo 与 Banner**：数据库已在 `studios` 表扩充 `logo_url` 与 `banner_url` 列，前端详情已支持自适应展示片商 Logo 与 Banner，并在 `MovieCard` 与详情页中自适应排布；
 - **双端代码 100% 同步**：`desktop_client` 与 `Windows_client` 共享同一套业务代码，改动任何一方必须同步另一方。
 
-### 5.6 明确不做
+### 5.6 片商官方 Logo & Banner 高清全网深度挖掘与资产自动化管线
+
+针对离线数据库中数千家片商的视觉素材缺失问题，建立了一套全自动、多渠道聚合、多波次深度攻坚的资产挖掘与审查管线：
+
+1. **核心铁律与资产保护体系**：
+   - **🚫 严禁生成流光动效 GIF**：100% 仅采纳并入库官方原版高清静态图片（PNG / JPEG / WebP / 矢量 SVG）；
+   - **🔒 绝对保护既有资产**：以 `approved_assignments.json`（最高权威决策文件）为准绳，绝不覆盖或改动已通过用户审查批准的生产实装文件（`image_cache/Logos/`）；
+   - **📁 审查与归集工作流闭环**：
+     - 新抓取素材统一暂存至候选池 `image_cache/Logos_candidates/`；
+     - 自动同步至候选元数据库 `candidates_metadata.json`；
+     - 运行 `python3 scripts/upgrade_studio_logos_hd.py --render-html` 刷新可视化审查控制台 `studio_logo_review.html`；
+     - 用户在控制台交互审查、切换素材，点击「💾 确认并导出配置方案」生成 `approved_assignments.json`；
+     - 运行 `python3 scripts/upgrade_studio_logos_hd.py` 一键全量同步至生产目录与 SQLite 数据库，并自动安全备份被舍弃素材。
+
+2. **跨源数据宝库矩阵**：
+   - **WayBig Paysite Collection**：全量提取 517+ 家高产厂牌的 800×520 / 960×540 官方高清横幅与原图（覆盖 ID 1~1000+）；
+   - **PBC Wiki (Porn Base Central)**：利用 MediaWiki API（`prop=imageinfo&iiprop=url|size|mime`）精确提取 1,252+ 份官方品牌厂标与透明 PNG；
+   - **AVID Wiki (Audiovisual Identity Database)**：精确匹配官方经典影视片头厂标（如 2884×2160 4K 原版片头 PNG 与 1080P 片头）；
+   - **Wikimedia Commons**：抓取全球开放品牌库中的高清无损与矢量厂标；
+   - **官方实装站点与 Web Archive (Wayback Machine CDX API)**：通过独立域名探测与 CDX 索引提取当前 live 站点及历史官方原版素材。
+
+3. **四波次深度挖掘阶段性战果**：
+   - **当前库中实装生产素材**：已达 **472 个 logo_url** 与 **170 个 banner_url**（生产目录 `image_cache/Logos/` 共 616 个文件）；
+   - **候选池总厂牌收录**：已扩充至 **576 家**；
+   - **审查控制台卡片总数**：已突破 **507 家**；
+   - **各波次核心攻坚名厂**：
+     - **Wave 1（经典大厂）**：HIS Video (425 部)、French Art/Cadinot (90 部)、Studio 2000 (159 部)、Pleasure Productions (151 部)、YMAC Video (134 部)、Metro Home Video (102 部) 等 56 个大厂。
+     - **Wave 2（断层第一梯队）**：Str8Hell.com (1,551 部作品，独立 Logo + Banner 双素材)、French Dudes (742 部作品)、Raw and Rough (303 部)、Sweet and Raw (296 部)、Gay War Games (268 部)、Gangster Fuck (199 部)、Pegasus Studios (124 部)、Out in Public (106 部)、World of Men (54 部)、Bareback Inc. (53 部) 等 25 家超级厂牌。
+     - **Wave 3（修复 Bug 后新出现厂牌与高产大厂）**：
+       - 修复 Bug 后新出现厂牌：**GayBangBoy.com** (PBC 648×136 JPEG 原标)、**Gay Massage Table** (官方实装站点 515×169 透明 PNG)、**Czech Gay Casting** (官方实装站点 512×512 矢量 SVG)、**SuburbanBoys.com** (Web Archive 1934×382 超宽横幅)；
+       - 高产大厂：**Grapik Art Productions** (305 部作品，PBC 509×77 透明 PNG)、**Pantheon Productions** (154 部作品，小熊原标)、**Close-Up Productions (us)** (108 部作品)、**RawFuck** (补齐独立 Logo)、**Peter Fever** (补齐独立 Logo)、**The Big C Men** (WayBig 800×520 Banner) 等 13 个素材。
+     - **Wave 4（历史高产大厂与复古名牌）**：
+       - **B.C. Productions** (340 部作品，库中无 Logo 榜首老厂，PBC 1024×135 超宽超清原标)；
+       - **Sunshine Films, Inc.** (178 部作品，Commons 官方厂标)；
+       - **Sin City Entertainment** (40 部作品，AVID 1440×1080 原标)；
+       - **Locker Room Productions** (37 部作品，PBC 335×53 PNG 原标)；
+       - **Rawboys** (30 部作品，PBC 官方原标)；
+       - **Zane Entertainment** (16 部作品，AVID 2884×2160 4K 超清片头原标)；
+       - **Abused Dude Video** (15 部作品，PBC 283×93 PNG)；
+       - **Alphamale Home Entertainment** (14 部作品，PBC 661×168 PNG)；
+       - **Midnight Video** (7 部作品，AVID 1571×1045 PNG)；
+       - **VCX, Inc.** (3 部作品，AVID 1919×1058 1080P 原标)。
+
+### 5.7 明确不做
+
 
 - 重抓 32,125 条分集页去补 `action_notes`（coep 没有这个字段，分集页实测也多为空）。
 - **导演库不动数据**：不跑 `refresh_director_counts()`、不重抓、不改任何现有行（导演库不读那列，见 §3.6）。
