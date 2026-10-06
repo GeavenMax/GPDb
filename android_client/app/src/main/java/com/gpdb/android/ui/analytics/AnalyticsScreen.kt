@@ -35,25 +35,26 @@ fun AnalyticsScreen(
     val data by repository.analyticsFlow.collectAsState(initial = AnalyticsData())
     var showClearDialog by remember { mutableStateOf(false) }
 
-    val formattedFocusTime = remember(data.totalFocusTimeSeconds) {
+    val currentAppLang = com.gpdb.android.util.LocalAppLanguage.current
+    val formattedFocusTime = remember(data.totalFocusTimeSeconds, currentAppLang) {
         val totalSec = data.totalFocusTimeSeconds
         val hours = totalSec / 3600
         val mins = (totalSec % 3600) / 60
         val secs = totalSec % 60
         if (hours > 0) {
-            "${hours}小时 ${mins}分"
+            com.gpdb.android.util.I18n.t("analytics.timeHoursMins", currentAppLang, mapOf("hours" to hours, "mins" to mins), "${hours}h ${mins}m")
         } else if (mins > 0) {
-            "${mins}分 ${secs}秒"
+            com.gpdb.android.util.I18n.t("analytics.timeMinsSecs", currentAppLang, mapOf("mins" to mins, "secs" to secs), "${mins}m ${secs}s")
         } else {
-            "${secs}秒"
+            com.gpdb.android.util.I18n.t("analytics.timeSecs", currentAppLang, mapOf("secs" to secs), "${secs}s")
         }
     }
 
-    val firstLaunchDateStr = remember(data.firstLaunchTime) {
+    val firstLaunchDateStr = remember(data.firstLaunchTime, currentAppLang) {
         try {
             SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(data.firstLaunchTime))
         } catch (_: Exception) {
-            "今日"
+            com.gpdb.android.util.I18n.t("common.today", currentAppLang, defaultVal = "Today")
         }
     }
 
@@ -123,13 +124,13 @@ fun AnalyticsScreen(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "本地光影漫游纪实",
+                            text = I18n.string("analytics.title"),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "自 $firstLaunchDateStr 启程 · 忠实记录每一次影视交互",
+                            text = I18n.string("analytics.journeySince", mapOf("date" to firstLaunchDateStr)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -145,14 +146,15 @@ fun AnalyticsScreen(
                 StatCard(
                     title = I18n.string("analytics.totalTime"),
                     value = formattedFocusTime,
-                    subtitle = "应用交互活跃时长",
+                    subtitle = I18n.string("analytics.appActiveDwell"),
                     icon = Icons.Default.Schedule,
                     modifier = Modifier.weight(1f)
                 )
+                val moviesUnit = "${data.uniqueMoviesCount} ${I18n.string("analytics.unitMovies")}"
                 StatCard(
-                    title = I18n.string("analytics.moviesExplored"),
-                    value = "${data.uniqueMoviesCount} 部",
-                    subtitle = "累计点击 ${data.movieViewsCount} 次",
+                    title = I18n.string("analytics.exploreFeatureMovies"),
+                    value = moviesUnit,
+                    subtitle = I18n.string("analytics.movieViewsStat", mapOf("count" to data.movieViewsCount.toString())),
                     icon = Icons.Default.Movie,
                     modifier = Modifier.weight(1f)
                 )
@@ -162,17 +164,19 @@ fun AnalyticsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                val episodesUnit = "${data.episodeViewsCount} ${I18n.string("analytics.unitScenes")}"
                 StatCard(
                     title = I18n.string("analytics.episodesViewed"),
-                    value = "${data.episodeViewsCount} 段",
-                    subtitle = "独立分集与片段场景",
+                    value = episodesUnit,
+                    subtitle = I18n.string("analytics.episodeScenesStat"),
                     icon = Icons.Default.Layers,
                     modifier = Modifier.weight(1f)
                 )
+                val performersUnit = "${data.uniquePerformersCount} ${I18n.string("analytics.unitPersons")}"
                 StatCard(
-                    title = I18n.string("analytics.performersKnown"),
-                    value = "${data.uniquePerformersCount} 位",
-                    subtitle = "累计查阅 ${data.performerViewsCount} 次",
+                    title = I18n.string("analytics.performersViewed"),
+                    value = performersUnit,
+                    subtitle = I18n.string("analytics.performerSummary", mapOf("performers" to data.uniquePerformersCount.toString(), "count" to data.performerViewsCount.toString())),
                     icon = Icons.Default.People,
                     modifier = Modifier.weight(1f)
                 )
@@ -182,17 +186,19 @@ fun AnalyticsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                val searchesUnit = "${data.searchesCount} ${I18n.string("analytics.unitTimes")}"
                 StatCard(
-                    title = I18n.string("analytics.searchesCount"),
-                    value = "${data.searchesCount} 次",
-                    subtitle = "全库搜索探索频次",
+                    title = I18n.string("search.history"),
+                    value = searchesUnit,
+                    subtitle = I18n.string("analytics.searchesExecuted"),
                     icon = Icons.Default.Search,
                     modifier = Modifier.weight(1f)
                 )
+                val daysUnit = "${data.activeDaysCount} ${I18n.string("analytics.unitDays")}"
                 StatCard(
-                    title = I18n.string("analytics.activeDays"),
-                    value = "${data.activeDaysCount} 天",
-                    subtitle = "累计活跃打卡天数",
+                    title = I18n.string("analytics.activeDaysTitle"),
+                    value = daysUnit,
+                    subtitle = I18n.string("analytics.activeDaysStat"),
                     icon = Icons.Default.CalendarToday,
                     modifier = Modifier.weight(1f)
                 )
@@ -202,18 +208,20 @@ fun AnalyticsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                val nightOwlUnit = "${data.nightOwlViewsCount} ${I18n.string("analytics.unitTimes")}"
                 StatCard(
-                    title = I18n.string("analytics.nightOwl"),
-                    value = "${data.nightOwlViewsCount} 次",
-                    subtitle = "午夜 23:00~05:00 沉浸探索",
+                    title = I18n.string("analytics.midnightExplorer"),
+                    value = nightOwlUnit,
+                    subtitle = I18n.string("analytics.midnightDesc"),
                     icon = Icons.Default.Bedtime,
                     tint = Color(0xFFA78BFA),
                     modifier = Modifier.weight(1f)
                 )
+                val transUnit = "${data.translationsCount} ${I18n.string("analytics.unitItems")}"
                 StatCard(
-                    title = I18n.string("analytics.translationsCount"),
-                    value = "${data.translationsCount} 篇",
-                    subtitle = "AI 智能翻译生成",
+                    title = I18n.string("analytics.aiTranslationsInvoked"),
+                    value = transUnit,
+                    subtitle = I18n.string("analytics.aiTranslationsDesc"),
                     icon = Icons.Default.Translate,
                     modifier = Modifier.weight(1f)
                 )
@@ -223,18 +231,28 @@ fun AnalyticsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                val favRatingsUnit = com.gpdb.android.util.I18n.string(
+                    "analytics.favsAndRatings",
+                    mapOf("favs" to data.favoritesCount.toString(), "ratings" to data.ratingsCount.toString()),
+                    defaultVal = "${data.favoritesCount} favs / ${data.ratingsCount} rated"
+                )
                 StatCard(
-                    title = "互动收藏与打分",
-                    value = "${data.favoritesCount} 藏 / ${data.ratingsCount} 评",
-                    subtitle = "个人偏好与评分标记",
+                    title = I18n.string("analytics.interactionsTitle"),
+                    value = favRatingsUnit,
+                    subtitle = I18n.string("analytics.interactionsSubtitle"),
                     icon = Icons.Default.Star,
                     tint = Color(0xFFF59E0B),
                     modifier = Modifier.weight(1f)
                 )
+                val dirStudioUnit = com.gpdb.android.util.I18n.string(
+                    "analytics.dirsAndStudios",
+                    mapOf("dirs" to data.directorViewsCount.toString(), "studios" to data.studioViewsCount.toString()),
+                    defaultVal = "${data.directorViewsCount} dir / ${data.studioViewsCount} stu"
+                )
                 StatCard(
-                    title = "导演与片商",
-                    value = "${data.directorViewsCount} 导 / ${data.studioViewsCount} 厂",
-                    subtitle = "深入幕后制作脉络",
+                    title = I18n.string("analytics.directorsStudiosTitle"),
+                    value = dirStudioUnit,
+                    subtitle = I18n.string("analytics.directorsStudiosSubtitle"),
                     icon = Icons.Default.Business,
                     modifier = Modifier.weight(1f)
                 )
@@ -261,13 +279,13 @@ fun AnalyticsScreen(
                     )
                     Column {
                         Text(
-                            text = "100% 本地隐私保证",
+                            text = I18n.string("analytics.privacyGuaranteeTitle"),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "GPDb 坚持绝对纯粹的无网络追踪设计。所有使用统计数据完全存储在手机私有沙盒内，绝无任何第三方埋点探针或远程数据分析，随时可在设置中关闭或一键清空。",
+                            text = I18n.string("analytics.privacyGuaranteeText"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 18.sp

@@ -72,8 +72,10 @@ fun SeriesGridItem(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val filmsUnit = com.gpdb.android.util.I18n.string("common.filmsCount")
+                        val countText = "${series.movieCount} $filmsUnit"
                         Text(
-                            text = "${series.movieCount} 部",
+                            text = countText,
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
                             fontWeight = FontWeight.Bold

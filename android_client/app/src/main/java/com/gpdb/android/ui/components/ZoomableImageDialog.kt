@@ -149,7 +149,7 @@ fun ZoomableImageDialog(
                             .data(imageData)
                             .crossfade(true)
                             .build(),
-                        contentDescription = "全屏查看",
+                        contentDescription = com.gpdb.android.util.I18n.string("zoom.viewFullscreen"),
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .fillMaxSize()
@@ -172,7 +172,7 @@ fun ZoomableImageDialog(
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "关闭",
+                    contentDescription = com.gpdb.android.util.I18n.string("common.close"),
                     tint = Color.White
                 )
             }

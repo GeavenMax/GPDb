@@ -23,13 +23,16 @@ sealed class MountStatus {
 
 enum class HomeTab { ALL_MOVIES, EPISODES, SERIES }
 
-enum class DateFilter(val label: String) {
-    ALL("全部"),
-    LAST_SCRAPED("上次入库"),
-    RECENT_7("最近7天"),
-    RECENT_30("最近30天"),
-    RECENT_90("最近90天"),
-    RECENT_YEAR("本年度")
+enum class DateFilter(val i18nKey: String, val defaultLabel: String) {
+    ALL("common.all", "全部"),
+    LAST_SCRAPED("filter.lastScraped", "上次入库"),
+    RECENT_7("filter.recent7", "最近7天"),
+    RECENT_30("filter.recent30", "最近30天"),
+    RECENT_90("filter.recent90", "最近90天"),
+    RECENT_YEAR("filter.recentYear", "本年度");
+
+    @androidx.compose.runtime.Composable
+    fun getLabel(): String = com.gpdb.android.util.I18n.string(i18nKey, defaultVal = defaultLabel)
 }
 
 data class HomeUiState(

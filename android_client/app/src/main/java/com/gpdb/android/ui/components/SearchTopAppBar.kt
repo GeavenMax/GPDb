@@ -30,7 +30,7 @@ fun SearchTopAppBar(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "在当前列表中搜索...",
+    placeholder: String = com.gpdb.android.util.I18n.string("browse.searchInList"),
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
@@ -83,11 +83,11 @@ fun SearchTopAppBar(
                     isSearching = false
                     onSearchQueryChange("")
                 }) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭搜索")
+                    Icon(Icons.Default.Close, contentDescription = com.gpdb.android.util.I18n.string("browse.closeSearch"))
                 }
             } else {
                 IconButton(onClick = { isSearching = true }) {
-                    Icon(Icons.Default.Search, contentDescription = "搜索")
+                    Icon(Icons.Default.Search, contentDescription = com.gpdb.android.util.I18n.string("common.search"))
                 }
                 actions()
             }

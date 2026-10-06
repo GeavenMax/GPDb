@@ -50,17 +50,17 @@ fun StudioListScreen(
                 title = com.gpdb.android.util.I18n.string("nav.studios"),
                 searchQuery = uiState.searchQuery,
                 onSearchQueryChange = { viewModel.loadStudios(query = it) },
-                placeholder = "搜索片商 (支持中英文)...",
+                placeholder = com.gpdb.android.util.I18n.string("studio.searchPrompt"),
                 actions = {
                     IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "排序")
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = com.gpdb.android.util.I18n.string("common.sort"))
                     }
                     DropdownMenu(
                         expanded = showSortMenu,
                         onDismissRequest = { showSortMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("按作品数排序") },
+                            text = { Text(com.gpdb.android.util.I18n.string("studio.sortByWorks")) },
                             onClick = {
                                 showSortMenu = false
                                 viewModel.loadStudios(sortBy = "works")
@@ -68,7 +68,7 @@ fun StudioListScreen(
                             trailingIcon = { if (uiState.sortBy == "works") Icon(Icons.Default.Check, null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("按拼音/字母排序") },
+                            text = { Text(com.gpdb.android.util.I18n.string("studio.sortByName")) },
                             onClick = {
                                 showSortMenu = false
                                 viewModel.loadStudios(sortBy = "name")
@@ -91,7 +91,7 @@ fun StudioListScreen(
                 )
             } else if (uiState.studios.isEmpty()) {
                 Text(
-                    text = "未找到匹配的片商",
+                    text = com.gpdb.android.util.I18n.string("studio.noStudiosFound"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.Center)
@@ -125,8 +125,9 @@ private fun StudioShelfCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val primaryTitle = studio.nameZh?.takeIf { it.isNotBlank() } ?: studio.name
-    val secondaryTitle = if (studio.nameZh != null && studio.nameZh != studio.name) studio.name else null
+    val isZh = com.gpdb.android.util.LocalAppLanguage.current.isChinese
+    val primaryTitle = if (isZh) (studio.nameZh?.takeIf { it.isNotBlank() } ?: studio.name) else studio.name
+    val secondaryTitle = if (isZh && !studio.nameZh.isNullOrBlank() && studio.nameZh != studio.name) studio.name else null
     val monogram = primaryTitle.firstOrNull()?.uppercase() ?: studio.name.firstOrNull()?.uppercase() ?: "S"
 
     Surface(

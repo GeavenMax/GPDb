@@ -120,6 +120,7 @@ object GlossaryHelper {
     fun trTattoo(raw: String?, isChinese: Boolean = true): String {
         if (raw.isNullOrBlank()) return ""
         if (!isChinese) return raw
+        val sep = if (isChinese) "，" else ", "
         return raw.split(",").map { entry ->
             val trimmed = entry.trim()
             if (trimmed.isEmpty()) return@map ""
@@ -137,40 +138,82 @@ object GlossaryHelper {
                     translatedHead + tail
                 }
             }
-        }.filter { it.isNotBlank() }.joinToString("，")
+        }.filter { it.isNotBlank() }.joinToString(sep)
     }
 
-    fun getCleanLabel(key: String, isChinese: Boolean = true): String {
-        return if (isChinese) {
-            when (key) {
-                "height" -> "身高"
-                "weight" -> "体重"
-                "build", "bodyType" -> "体型"
-                "hair" -> "发色"
-                "eyes" -> "瞳色"
-                "facialHair" -> "胡须"
-                "bodyHair" -> "体毛"
-                "skin" -> "肤色"
-                "dickSize" -> "生理尺寸"
-                "foreskin" -> "包皮"
-                "tattoos" -> "纹身"
-                else -> key
-            }
-        } else {
-            when (key) {
-                "height" -> "Height"
-                "weight" -> "Weight"
-                "build", "bodyType" -> "Build"
-                "hair" -> "Hair"
-                "eyes" -> "Eyes"
-                "facialHair" -> "Facial Hair"
-                "bodyHair" -> "Body Hair"
-                "skin" -> "Skin"
-                "dickSize" -> "Dick Size"
-                "foreskin" -> "Foreskin"
-                "tattoos" -> "Tattoos"
-                else -> key
-            }
+    fun formatAstro(astro: String?, language: AppLanguage): String? {
+        if (astro.isNullOrBlank()) return null
+        val keyName = when (astro.lowercase().trim()) {
+            "aries" -> "Aries"
+            "taurus" -> "Taurus"
+            "gemini" -> "Gemini"
+            "cancer" -> "Cancer"
+            "leo" -> "Leo"
+            "virgo" -> "Virgo"
+            "libra" -> "Libra"
+            "scorpio" -> "Scorpio"
+            "sagittarius" -> "Sagittarius"
+            "capricorn" -> "Capricorn"
+            "aquarius" -> "Aquarius"
+            "pisces" -> "Pisces"
+            else -> null
         }
+        val label = if (keyName != null) I18n.t("astro.$keyName", language, defaultVal = astro) else astro
+        val emoji = when (astro.lowercase().trim()) {
+            "aries" -> "♈"
+            "taurus" -> "♉"
+            "gemini" -> "♊"
+            "cancer" -> "♋"
+            "leo" -> "♌"
+            "virgo" -> "♍"
+            "libra" -> "♎"
+            "scorpio" -> "♏"
+            "sagittarius" -> "♐"
+            "capricorn" -> "♑"
+            "aquarius" -> "♒"
+            "pisces" -> "♓"
+            else -> ""
+        }
+        return if (emoji.isNotBlank()) "$label $emoji" else label
+    }
+
+    fun formatEthnicity(ethnicity: String?, language: AppLanguage): String? {
+        if (ethnicity.isNullOrBlank()) return null
+        val clean = ethnicity.replace(" ", "").replace("/", "").replace("-", "")
+        val mapped = when (clean.lowercase()) {
+            "africanamerican" -> "AfricanAmerican"
+            "asian" -> "Asian"
+            "black" -> "Black"
+            "caucasian", "white" -> "Caucasian"
+            "hispanic" -> "Hispanic"
+            "latin" -> "Latin"
+            "latino" -> "Latino"
+            "middleeastern" -> "MiddleEastern"
+            "mixed" -> "Mixed"
+            else -> clean
+        }
+        return I18n.t("ethnicity.$mapped", language, defaultVal = ethnicity)
+    }
+
+    fun getCleanLabel(key: String, language: AppLanguage = AppLanguage.ZH_CN): String {
+        val facetKey = when (key) {
+            "build", "bodyType" -> "facet.bodyType"
+            "hair" -> "facet.hair"
+            "eyes" -> "facet.eyes"
+            "facialHair" -> "facet.facialHair"
+            "bodyHair" -> "facet.bodyHair"
+            "skin" -> "facet.skin"
+            "dickSize" -> "facet.dickSize"
+            "foreskin" -> "facet.foreskin"
+            "height" -> "performer.height"
+            "weight" -> "performer.weight"
+            "tattoos" -> "performer.tattoos"
+            else -> "facet.$key"
+        }
+        return I18n.t(facetKey, language, defaultVal = key)
+    }
+
+    fun getCleanLabel(key: String, isChinese: Boolean): String {
+        return getCleanLabel(key, if (isChinese) AppLanguage.ZH_CN else AppLanguage.EN)
     }
 }

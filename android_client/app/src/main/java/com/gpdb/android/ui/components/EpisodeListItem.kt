@@ -92,7 +92,7 @@ fun EpisodeListItem(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = title?.takeIf { it.isNotBlank() } ?: "未知分集",
+                    text = title?.takeIf { it.isNotBlank() } ?: com.gpdb.android.util.I18n.string("episode.unknown"),
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis

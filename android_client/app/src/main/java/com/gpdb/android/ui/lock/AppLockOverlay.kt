@@ -48,15 +48,21 @@ fun AppLockOverlay(
         biometricEnabled && BiometricHelper.isBiometricAvailable(context)
     }
 
+    val authTitleText = com.gpdb.android.util.I18n.string("lock.authTitle")
+    val authSubtitleText = com.gpdb.android.util.I18n.string("lock.authSubtitle")
+    val enterPinText = com.gpdb.android.util.I18n.string("lock.enterPin")
+    val cancelText = com.gpdb.android.util.I18n.string("common.cancel")
+    val pinErrorText = com.gpdb.android.util.I18n.string("lock.pinError")
+
     // Auto trigger biometric on start if available
     LaunchedEffect(Unit) {
         if (canUseBiometric && activity != null) {
             delay(300)
             BiometricHelper.showBiometricPrompt(
                 activity = activity,
-                title = "GPDb 身份验证",
-                subtitle = "验证指纹或面容以解锁影库",
-                negativeButtonText = if (correctPin.isNotBlank()) "输入 PIN 码" else "取消",
+                title = authTitleText,
+                subtitle = authSubtitleText,
+                negativeButtonText = if (correctPin.isNotBlank()) enterPinText else cancelText,
                 onSuccess = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onUnlocked()
@@ -72,7 +78,7 @@ fun AppLockOverlay(
             onUnlocked()
         } else {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            errorMessage = "PIN 码错误，请重试"
+            errorMessage = pinErrorText
             shakeError = true
             scope.launch {
                 delay(600)
@@ -120,7 +126,7 @@ fun AppLockOverlay(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "GPDb 隐私安全锁",
+                    text = com.gpdb.android.util.I18n.string("lock.privacyLockTitle"),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -129,7 +135,7 @@ fun AppLockOverlay(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = errorMessage ?: "请输入访问密码以继续",
+                    text = errorMessage ?: com.gpdb.android.util.I18n.string("lock.enterPasswordPrompt"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (errorMessage != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -189,9 +195,9 @@ fun AppLockOverlay(
                                             onClick = {
                                                 BiometricHelper.showBiometricPrompt(
                                                     activity = activity,
-                                                    title = "GPDb 身份验证",
-                                                    subtitle = "验证指纹或面容以解锁影库",
-                                                    negativeButtonText = if (correctPin.isNotBlank()) "输入 PIN 码" else "取消",
+                                                    title = authTitleText,
+                                                    subtitle = authSubtitleText,
+                                                    negativeButtonText = if (correctPin.isNotBlank()) enterPinText else cancelText,
                                                     onSuccess = {
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         onUnlocked()
@@ -202,7 +208,7 @@ fun AppLockOverlay(
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Fingerprint,
-                                                contentDescription = "指纹解锁",
+                                                contentDescription = com.gpdb.android.util.I18n.string("lock.biometricUnlock"),
                                                 tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(36.dp)
                                             )
@@ -225,7 +231,7 @@ fun AppLockOverlay(
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Backspace,
-                                            contentDescription = "删除",
+                                            contentDescription = com.gpdb.android.util.I18n.string("lock.delete"),
                                             tint = MaterialTheme.colorScheme.onSurface,
                                             modifier = Modifier.size(28.dp)
                                         )

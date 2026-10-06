@@ -48,10 +48,10 @@ fun LibraryScreen(
                     title = com.gpdb.android.util.I18n.string("nav.library"),
                     searchQuery = uiState.searchQuery,
                     onSearchQueryChange = { viewModel.updateSearch(it) },
-                    placeholder = "在收藏中搜索...",
+                    placeholder = com.gpdb.android.util.I18n.string("favorites.searchPlaceholder", defaultVal = "在收藏中搜索..."),
                     actions = {
                         IconButton(onClick = onSettingsClick) {
-                            Icon(Icons.Default.Settings, contentDescription = "设置")
+                            Icon(Icons.Default.Settings, contentDescription = com.gpdb.android.util.I18n.string("nav.settings"))
                         }
                     }
                 )
@@ -64,17 +64,18 @@ fun LibraryScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     val tabs = listOf(
-                        LibraryTab.FAV_MOVIES to "收藏影片",
-                        LibraryTab.FAV_PERFORMERS to "收藏演员",
-                        LibraryTab.FAV_SERIES to "收藏系列",
-                        LibraryTab.FAV_EPISODES to "收藏分集",
-                        LibraryTab.FAV_DIRECTORS to "收藏导演"
+                        LibraryTab.FAV_MOVIES to "favorites.favMovies" to "收藏影片",
+                        LibraryTab.FAV_PERFORMERS to "favorites.favPerformers" to "收藏演员",
+                        LibraryTab.FAV_SERIES to "favorites.favSeries" to "收藏系列",
+                        LibraryTab.FAV_EPISODES to "favorites.favEpisodes" to "收藏分集",
+                        LibraryTab.FAV_DIRECTORS to "favorites.favDirectors" to "收藏导演"
                     )
-                    tabs.forEach { (tab, text) ->
+                    tabs.forEach { (pair, defaultText) ->
+                        val (tab, i18nKey) = pair
                         FilterChip(
                             selected = uiState.currentTab == tab,
                             onClick = { viewModel.setTab(tab) },
-                            label = { Text(text) },
+                            label = { Text(com.gpdb.android.util.I18n.string(i18nKey, defaultVal = defaultText)) },
                             shape = RoundedCornerShape(16.dp)
                         )
                     }
@@ -165,8 +166,10 @@ fun LibraryScreen(
                                         )
                                     },
                                     supportingContent = {
+                                        val worksUnit = com.gpdb.android.util.I18n.string("common.works")
+                                        val worksCountText = "${director.worksCount} $worksUnit"
                                         Text(
-                                            text = "${director.worksCount} 部作品",
+                                            text = worksCountText,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.primary
                                         )

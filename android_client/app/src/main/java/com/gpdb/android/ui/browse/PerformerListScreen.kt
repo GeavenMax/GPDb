@@ -32,7 +32,7 @@ fun PerformerListScreen(
                 title = com.gpdb.android.util.I18n.string("nav.performers"),
                 searchQuery = uiState.searchQuery,
                 onSearchQueryChange = { viewModel.loadPerformers(query = it) },
-                placeholder = "搜索演员..."
+                placeholder = com.gpdb.android.util.I18n.string("performer.searchPrompt")
             )
         }
     ) { innerPadding ->

@@ -7,14 +7,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-enum class AppTheme(val id: String, val label: String, val isDark: Boolean) {
-    AUTO("auto", "跟随系统", true),
-    GLASS_DARK("glass-dark", "流体玻璃 · 暗", true),
-    GLASS_LIGHT("glass-light", "流体玻璃 · 浅", false),
-    CLASSIC_DARK("classic-dark", "经典 · 暗", true),
-    CLASSIC_LIGHT("classic-light", "经典 · 浅", false),
-    MY_DARK("my-dark", "Material You · 暗", true),
-    MY_LIGHT("my-light", "Material You · 浅", false);
+enum class AppTheme(val id: String, val i18nKey: String, val defaultLabel: String, val isDark: Boolean) {
+    AUTO("auto", "theme.system", "跟随系统", true),
+    GLASS_DARK("glass-dark", "theme.liquidDark", "流体玻璃 · 暗", true),
+    GLASS_LIGHT("glass-light", "theme.liquidLight", "流体玻璃 · 浅", false),
+    CLASSIC_DARK("classic-dark", "theme.classicDark", "经典 · 暗", true),
+    CLASSIC_LIGHT("classic-light", "theme.classicLight", "经典 · 浅", false),
+    MY_DARK("my-dark", "theme.dynamicDark", "Material You · 暗", true),
+    MY_LIGHT("my-light", "theme.dynamicLight", "Material You · 浅", false);
+
+    @Composable
+    fun getLabel(): String = com.gpdb.android.util.I18n.string(i18nKey, defaultVal = defaultLabel)
 
     companion object {
         fun fromId(id: String?): AppTheme {

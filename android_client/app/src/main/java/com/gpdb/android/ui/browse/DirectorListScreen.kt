@@ -57,17 +57,17 @@ fun DirectorListScreen(
                 title = I18n.string("nav.directors"),
                 searchQuery = uiState.searchQuery,
                 onSearchQueryChange = { viewModel.loadDirectors(query = it) },
-                placeholder = "搜索导演姓名...",
+                placeholder = I18n.string("director.searchPrompt"),
                 actions = {
                     IconButton(onClick = { showSortMenu = true }) {
-                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "排序")
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = I18n.string("common.sort"))
                     }
                     DropdownMenu(
                         expanded = showSortMenu,
                         onDismissRequest = { showSortMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("按执导作品数") },
+                            text = { Text(I18n.string("director.sortByWorks")) },
                             onClick = {
                                 showSortMenu = false
                                 viewModel.loadDirectors(sortBy = "works")
@@ -75,7 +75,7 @@ fun DirectorListScreen(
                             trailingIcon = { if (uiState.sortBy == "works") Icon(Icons.Default.Check, null) }
                         )
                         DropdownMenuItem(
-                            text = { Text("按姓名 A-Z") },
+                            text = { Text(I18n.string("director.sortByName")) },
                             onClick = {
                                 showSortMenu = false
                                 viewModel.loadDirectors(sortBy = "name")

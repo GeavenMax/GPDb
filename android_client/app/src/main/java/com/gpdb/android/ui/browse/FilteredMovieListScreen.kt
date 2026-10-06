@@ -48,7 +48,7 @@ fun FilteredMovieListScreen(
                 title = { Text(displayTitle, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = com.gpdb.android.util.I18n.string("common.back"))
                     }
                 },
                 actions = {
@@ -56,7 +56,7 @@ fun FilteredMovieListScreen(
                         IconButton(onClick = { viewModel.toggleFavorite() }) {
                             Icon(
                                 imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                                contentDescription = "收藏",
+                                contentDescription = if (uiState.isFavorite) com.gpdb.android.util.I18n.string("common.unfavorite") else com.gpdb.android.util.I18n.string("common.favorite"),
                                 tint = if (uiState.isFavorite) Color.Red else MaterialTheme.colorScheme.onSurface
                             )
                         }

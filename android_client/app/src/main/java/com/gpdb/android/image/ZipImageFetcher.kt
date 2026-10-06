@@ -20,6 +20,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.zip.ZipFile
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import androidx.sqlite.db.SimpleSQLiteQuery
+import com.gpdb.android.data.db.DatabaseHolder
 
 // ============================================================
 //  GPDb — ZipImageFetcher
@@ -176,6 +178,20 @@ class ZipImageFetcher(
             }
         }
 
+        // 1.8. 数据库内置 WebP BLOB 直读 (studio_logos 资产表)
+        // 专门处理手动收录、无稳定外部 HTTP URL 的片商 Logo 与 Banner，实现新用户零外部图片依赖即时展示
+        if (relativePath.contains("Logos/", ignoreCase = true) || relativePath.contains("logos/", ignoreCase = true)) {
+            val blobBytes = loadLogoBlobFromDb(relativePath)
+            if (blobBytes != null && blobBytes.isNotEmpty()) {
+                val bufferedSource = blobBytes.inputStream().source().buffer()
+                return@withContext SourceResult(
+                    source = ImageSource(source = bufferedSource, context = options.context),
+                    mimeType = "image/webp",
+                    dataSource = DataSource.DISK
+                )
+            }
+        }
+
         // 2. ZIP Store-Mode O(1) 随机寻址 (如果挂载了 GPDb_Images.zip)
         if (ZipHolder.isReady && relativePath.isNotBlank()) {
             val stream = ZipHolder.getInputStream(relativePath)
@@ -284,6 +300,67 @@ class ZipImageFetcher(
         } catch (e: Exception) {
             Log.w(TAG, "网络拉取图片异常: $remoteUrl", e)
             return null
+        }
+    }
+
+    /**
+     * 从 SQLite 数据库的 studio_logos 资产表读取内置 WebP BLOB
+     * 支持精确匹配与 Slug 模糊匹配，保证手动导入 Logo 的无感显示
+     */
+    private fun loadLogoBlobFromDb(relativePath: String): ByteArray? {
+        return try {
+            val database = DatabaseHolder.db ?: return null
+            val fileName = relativePath.substringAfterLast('/')
+            val isBanner = fileName.contains("banner", ignoreCase = true)
+            val column = if (isBanner) "banner_webp" else "logo_webp"
+
+            // 1. 按文件名精确匹配 studios 表的 logo_url 或 banner_url
+            val query1 = """
+                SELECT sl.$column 
+                FROM studio_logos sl
+                JOIN studios s ON s.id = sl.studio_id
+                WHERE s.logo_url LIKE '%' || ? OR s.banner_url LIKE '%' || ?
+                LIMIT 1;
+            """.trimIndent()
+
+            val blob = database.openHelper.readableDatabase.query(
+                SimpleSQLiteQuery(query1, arrayOf(fileName, fileName))
+            ).use { cursor ->
+                if (cursor.moveToFirst() && !cursor.isNull(0)) {
+                    cursor.getBlob(0)
+                } else {
+                    null
+                }
+            }
+
+            if (blob != null && blob.isNotEmpty()) {
+                return blob
+            }
+
+            // 2. 兜底模糊匹配：去除后缀与 _logo / _banner 标志，按片商名称 slug 匹配
+            val stem = fileName.substringBeforeLast('.')
+            val slug = stem.removeSuffix("_logo").removeSuffix("_banner").replace('-', '_')
+            val query2 = """
+                SELECT sl.$column 
+                FROM studio_logos sl
+                JOIN studios s ON s.id = sl.studio_id
+                WHERE LOWER(REPLACE(REPLACE(s.name, ' ', '_'), '-', '_')) = LOWER(?)
+                   OR LOWER(REPLACE(REPLACE(COALESCE(s.name_zh, ''), ' ', '_'), '-', '_')) = LOWER(?)
+                LIMIT 1;
+            """.trimIndent()
+
+            database.openHelper.readableDatabase.query(
+                SimpleSQLiteQuery(query2, arrayOf(slug, slug))
+            ).use { cursor ->
+                if (cursor.moveToFirst() && !cursor.isNull(0)) {
+                    cursor.getBlob(0)
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "从 studio_logos 读取图片失败: $relativePath (${e.message})")
+            null
         }
     }
 

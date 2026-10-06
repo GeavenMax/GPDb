@@ -36,6 +36,7 @@ fun FakeCalculatorScreen(
     var titleTapCount by remember { mutableStateOf(0) }
 
     val format = remember { DecimalFormat("#,###.########") }
+    val calcErrorText = com.gpdb.android.util.I18n.string("lock.fakeCalculatorError")
 
     fun checkSecretUnlock() {
         val targetPin = if (unlockPin.isNotBlank()) unlockPin else "1234"
@@ -74,7 +75,7 @@ fun FakeCalculatorScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "标准计算器",
+                    text = com.gpdb.android.util.I18n.string("lock.fakeCalculator"),
                     color = Color.Gray.copy(alpha = 0.5f),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
@@ -210,7 +211,7 @@ fun FakeCalculatorScreen(
                                                             "÷" -> if (op2 != 0.0) op1 / op2 else Double.NaN
                                                             else -> op2
                                                         }
-                                                        displayText = if (res.isNaN()) "错误" else format.format(res)
+                                                        displayText = if (res.isNaN()) calcErrorText else format.format(res)
                                                         operand1 = null
                                                         pendingOp = null
                                                         resetOnNextDigit = true

@@ -54,7 +54,7 @@ fun SearchScreen(
                     TextField(
                         value = uiState.query,
                         onValueChange = { viewModel.updateQuery(it) },
-                        placeholder = { Text("搜索影片或演员...") },
+                        placeholder = { Text(com.gpdb.android.util.I18n.string("search.placeholder")) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequester),
@@ -68,7 +68,7 @@ fun SearchScreen(
                         trailingIcon = {
                             if (uiState.query.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.updateQuery("") }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Clear")
+                                    Icon(Icons.Default.Close, contentDescription = com.gpdb.android.util.I18n.string("common.clear"))
                                 }
                             }
                         }
@@ -76,7 +76,7 @@ fun SearchScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = com.gpdb.android.util.I18n.string("common.back"))
                     }
                 }
             )
@@ -99,10 +99,10 @@ fun SearchScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("搜索历史", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(com.gpdb.android.util.I18n.string("search.history"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         TextButton(onClick = { 
                             viewModel.viewModelScope.launch { viewModel.appPreferences.clearSearchHistory() }
-                        }) { Text("清除") }
+                        }) { Text(com.gpdb.android.util.I18n.string("common.clear")) }
                     }
                     @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(
@@ -121,7 +121,7 @@ fun SearchScreen(
 
                 if (uiState.categories.isNotEmpty()) {
                     Text(
-                        "热门分类标签",
+                        com.gpdb.android.util.I18n.string("search.hotCategories"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -142,13 +142,13 @@ fun SearchScreen(
                     }
                 } else if (searchHistory.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("输入关键字开始检索", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(com.gpdb.android.util.I18n.string("search.emptyPrompt"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         } else if (uiState.movies.isEmpty() && uiState.performers.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Text("未找到相关结果", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(com.gpdb.android.util.I18n.string("search.noResults"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             val gridState = rememberSaveable(
@@ -169,7 +169,7 @@ fun SearchScreen(
             ) {
                 if (uiState.performers.isNotEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        Text("演员", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        Text(com.gpdb.android.util.I18n.string("search.performers"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                     }
                     items(
                         items = uiState.performers,
@@ -186,7 +186,7 @@ fun SearchScreen(
 
                 if (uiState.movies.isNotEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        Text("影片", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        Text(com.gpdb.android.util.I18n.string("search.movies"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                     }
                     items(
                         items = uiState.movies,

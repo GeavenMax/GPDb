@@ -165,14 +165,14 @@ fun ShareCardDialog(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = if (cardData.isEpisode) "生成分集卡片" else "生成电影卡片",
+                            text = if (cardData.isEpisode) com.gpdb.android.util.I18n.string("share.badgeEpisode") else com.gpdb.android.util.I18n.string("share.title"),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "关闭", tint = Color.White.copy(alpha = 0.8f))
+                        Icon(Icons.Default.Close, contentDescription = com.gpdb.android.util.I18n.string("common.close"), tint = Color.White.copy(alpha = 0.8f))
                     }
                 }
 
@@ -255,7 +255,7 @@ fun ShareCardDialog(
                                             }
                                         }
                                         Text(
-                                            text = if (cardData.isEpisode) "GPDb · 场景分集档案" else "GPDb · 影视档案",
+                                            text = if (cardData.isEpisode) com.gpdb.android.util.I18n.string("share.episodeCardHeader") else com.gpdb.android.util.I18n.string("share.movieCardHeader"),
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White.copy(alpha = 0.9f),
@@ -324,7 +324,7 @@ fun ShareCardDialog(
                                                         .padding(6.dp)
                                                 ) {
                                                     Text(
-                                                        text = "封面",
+                                                        text = com.gpdb.android.util.I18n.string("movie.frontCover"),
                                                         color = Color.White.copy(alpha = 0.9f),
                                                         style = MaterialTheme.typography.labelSmall,
                                                         fontSize = 9.sp,
@@ -333,7 +333,7 @@ fun ShareCardDialog(
                                                     )
                                                 }
                                             } else {
-                                                Text("🔒 已打码", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                Text("🔒 " + com.gpdb.android.util.I18n.string("share.redacted"), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
 
@@ -350,7 +350,7 @@ fun ShareCardDialog(
                                             if (backCoverBitmap != null) {
                                                 Image(
                                                     bitmap = backCoverBitmap!!.asImageBitmap(),
-                                                    contentDescription = "${cardData.title} 封底",
+                                                    contentDescription = "${cardData.title} ${com.gpdb.android.util.I18n.string("movie.backCover")}",
                                                     contentScale = ContentScale.Crop,
                                                     modifier = Modifier
                                                         .fillMaxSize()
@@ -372,7 +372,7 @@ fun ShareCardDialog(
                                                         .padding(6.dp)
                                                 ) {
                                                     Text(
-                                                        text = "封底",
+                                                        text = com.gpdb.android.util.I18n.string("movie.backCover"),
                                                         color = Color.White.copy(alpha = 0.9f),
                                                         style = MaterialTheme.typography.labelSmall,
                                                         fontSize = 9.sp,
@@ -381,7 +381,7 @@ fun ShareCardDialog(
                                                     )
                                                 }
                                             } else {
-                                                Text("🔒 已打码", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                                Text("🔒 " + com.gpdb.android.util.I18n.string("share.redacted"), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
                                     }
@@ -432,7 +432,7 @@ fun ShareCardDialog(
                                                         modifier = Modifier.size(14.dp)
                                                     )
                                                     Text(
-                                                        text = "封面已安全防窥打码",
+                                                        text = com.gpdb.android.util.I18n.string("share.posterRedacted"),
                                                         color = Color.White,
                                                         style = MaterialTheme.typography.labelSmall,
                                                         fontWeight = FontWeight.Medium
@@ -445,9 +445,16 @@ fun ShareCardDialog(
 
                                 Spacer(modifier = Modifier.height(18.dp))
 
+                                val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+                                val isZh = currentLang.isChinese
+
                                 // 中英双语大标题
-                                val primaryTitle = cardData.titleZh ?: cardData.title
-                                val secondaryTitle = if (cardData.titleZh != null && cardData.title != cardData.titleZh) cardData.title else null
+                                val primaryTitle = if (isZh) {
+                                    cardData.titleZh?.takeIf { it.isNotBlank() } ?: cardData.title
+                                } else {
+                                    cardData.title
+                                }
+                                val secondaryTitle = if (isZh && !cardData.titleZh.isNullOrBlank() && cardData.title != cardData.titleZh) cardData.title else null
 
                                 Text(
                                     text = primaryTitle,
@@ -482,10 +489,10 @@ fun ShareCardDialog(
                                         ShareMetaChip(text = studio)
                                     }
                                     cardData.director?.let { dir ->
-                                        ShareMetaChip(text = "导: $dir")
+                                        ShareMetaChip(text = "${com.gpdb.android.util.I18n.string("common.director")}: $dir")
                                     }
                                     cardData.durationMins?.let { mins ->
-                                        ShareMetaChip(text = "${mins}分")
+                                        ShareMetaChip(text = "$mins ${com.gpdb.android.util.I18n.string("common.minutes")}")
                                     }
                                     cardData.rating?.takeIf { it.isNotBlank() && it != "0" }?.let { rating ->
                                         ShareMetaChip(text = "★ $rating")
@@ -499,7 +506,7 @@ fun ShareCardDialog(
                                 if (cardData.performers.isNotEmpty()) {
                                     Spacer(modifier = Modifier.height(10.dp))
                                     Text(
-                                        text = "主演: " + cardData.performers.joinToString("  "),
+                                        text = "${com.gpdb.android.util.I18n.string("share.castPrefix")}: " + cardData.performers.joinToString(if (isZh) "  " else ", "),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.White.copy(alpha = 0.82f),
                                         lineHeight = 16.sp,
@@ -547,7 +554,7 @@ fun ShareCardDialog(
                                                             modifier = Modifier.size(12.dp)
                                                         )
                                                         Text(
-                                                            text = "剧情简介已安全打码",
+                                                            text = com.gpdb.android.util.I18n.string("share.synopsisRedacted"),
                                                             color = Color.White,
                                                             style = MaterialTheme.typography.labelSmall,
                                                             fontSize = 11.sp
@@ -582,20 +589,20 @@ fun ShareCardDialog(
                                         modifier = Modifier.weight(1f)
                                     ) {
                                         Text(
-                                            text = "GPDb · 个人离线数字影库",
+                                            text = if (cardData.isEpisode) com.gpdb.android.util.I18n.string("share.brandEpisode") else com.gpdb.android.util.I18n.string("share.brandMovie"),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color.White.copy(alpha = 0.85f),
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 11.sp
                                         )
                                         Text(
-                                            text = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date()) + "  ·  本地私有档案",
+                                            text = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date()) + "  ·  " + com.gpdb.android.util.I18n.string("share.watermark"),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color.White.copy(alpha = 0.5f),
                                             fontSize = 9.sp
                                         )
                                         Text(
-                                            text = "📢 官方频道: t.me/gpdbnews",
+                                            text = "📢 " + com.gpdb.android.util.I18n.string("share.officialChannel"),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color(0xFFFCD34D),
                                             fontWeight = FontWeight.Medium,
@@ -621,7 +628,7 @@ fun ShareCardDialog(
                     FilterChip(
                         selected = blurPoster,
                         onClick = { blurPoster = !blurPoster },
-                        label = { Text("模糊海报") },
+                        label = { Text(com.gpdb.android.util.I18n.string("share.blurPoster")) },
                         leadingIcon = {
                             Icon(
                                 imageVector = if (blurPoster) Icons.Default.Check else Icons.Default.BlurOn,
@@ -640,7 +647,7 @@ fun ShareCardDialog(
                     FilterChip(
                         selected = blurText,
                         onClick = { blurText = !blurText },
-                        label = { Text("模糊文字") },
+                        label = { Text(com.gpdb.android.util.I18n.string("share.blurSynopsis")) },
                         leadingIcon = {
                             Icon(
                                 imageVector = if (blurText) Icons.Default.Check else Icons.Default.TextFields,
@@ -662,13 +669,14 @@ fun ShareCardDialog(
                     modifier = Modifier.fillMaxWidth(0.9f),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    val currentLang = com.gpdb.android.util.LocalAppLanguage.current
                     OutlinedButton(
                         onClick = {
                             coroutineScope.launch {
                                 isCapturing = true
                                 try {
                                     val bitmap = graphicsLayer.toImageBitmap().asAndroidBitmap()
-                                    ShareCardHelper.saveBitmapToGallery(context, bitmap, cardData.title)
+                                    ShareCardHelper.saveBitmapToGallery(context, bitmap, cardData.title, currentLang)
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                 } finally {
@@ -683,7 +691,7 @@ fun ShareCardDialog(
                     ) {
                         Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("保存相册")
+                        Text(com.gpdb.android.util.I18n.string("share.saveImage"))
                     }
 
                     Button(
@@ -692,7 +700,7 @@ fun ShareCardDialog(
                                 isCapturing = true
                                 try {
                                     val bitmap = graphicsLayer.toImageBitmap().asAndroidBitmap()
-                                    ShareCardHelper.shareBitmap(context, bitmap, cardData.title)
+                                    ShareCardHelper.shareBitmap(context, bitmap, cardData.title, currentLang)
                                 } catch (e: Exception) {
                                     e.printStackTrace()
                                 } finally {
@@ -706,7 +714,7 @@ fun ShareCardDialog(
                     ) {
                         Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("一键分享")
+                        Text(com.gpdb.android.util.I18n.string("common.share", defaultVal = "Share"))
                     }
                 }
             }

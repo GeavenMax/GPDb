@@ -51,15 +51,15 @@ fun EpisodeDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("分集档案") },
+                title = { Text(com.gpdb.android.util.I18n.string("episode.detailTitle")) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = com.gpdb.android.util.I18n.string("common.back"))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showShareCard = true }) {
-                        Icon(Icons.Default.Share, contentDescription = "卡片分享")
+                        Icon(Icons.Default.Share, contentDescription = com.gpdb.android.util.I18n.string("common.share"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -95,6 +95,9 @@ fun EpisodeDetailScreen(
                     )
                 }
 
+                val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+                val isZh = currentLang.isChinese
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -117,7 +120,7 @@ fun EpisodeDetailScreen(
 
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = episode.title ?: "未知分集",
+                            text = episode.title ?: com.gpdb.android.util.I18n.string("episode.unnamed", defaultVal = "Untitled Episode"),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -125,7 +128,7 @@ fun EpisodeDetailScreen(
 
                         episode.releaseDate?.let { date ->
                             Text(
-                                text = "发布日期: $date",
+                                text = "${com.gpdb.android.util.I18n.string("episode.releaseDate")}: $date",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -147,12 +150,13 @@ fun EpisodeDetailScreen(
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Column {
                                         Text(
-                                            text = "所属影片",
+                                            text = com.gpdb.android.util.I18n.string("episode.jumpToMovie", defaultVal = "Parent Film"),
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                                         )
+                                        val parentTitle = if (isZh) (parentMovie.titleZh?.takeIf { it.isNotBlank() } ?: parentMovie.title) else parentMovie.title
                                         Text(
-                                            text = parentMovie.titleZh ?: parentMovie.title,
+                                            text = parentTitle,
                                             style = MaterialTheme.typography.bodyLarge,
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -163,7 +167,11 @@ fun EpisodeDetailScreen(
                         }
 
                         // 分集简介与 AI 翻译 (统一组件)
-                        val summary = episode.descriptionZh?.takeIf { it.isNotBlank() } ?: episode.description
+                        val summary = if (isZh) {
+                            episode.descriptionZh?.takeIf { it.isNotBlank() } ?: episode.description
+                        } else {
+                            episode.description?.takeIf { it.isNotBlank() } ?: episode.descriptionZh
+                        }
                         if (!summary.isNullOrBlank()) {
                             Spacer(modifier = Modifier.height(20.dp))
                             TranslationSection(
@@ -171,7 +179,7 @@ fun EpisodeDetailScreen(
                                 translatedSummary = uiState.translatedSummary,
                                 isLoading = uiState.translationLoading,
                                 errorMessage = uiState.translationError,
-                                title = "分集简介",
+                                title = com.gpdb.android.util.I18n.string("episode.synopsis", defaultVal = "Scene Synopsis"),
                                 onTranslateClick = { viewModel.translateSummary(it) }
                             )
                         }
@@ -180,7 +188,7 @@ fun EpisodeDetailScreen(
                         episode.actionNotes?.takeIf { it.isNotBlank() }?.let { notes ->
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "动作短评",
+                                text = com.gpdb.android.util.I18n.string("episode.actionNotes", defaultVal = "Scene Notes"),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -196,7 +204,7 @@ fun EpisodeDetailScreen(
                         if (detail.performers.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
-                                text = "参演演员",
+                                text = com.gpdb.android.util.I18n.string("movie.cast", defaultVal = "Cast"),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -254,10 +262,17 @@ fun EpisodeDetailScreen(
         val studio = episode.studioName ?: parentMovie?.studioName
         val releaseYear = episode.releaseDate?.take(4)?.toIntOrNull() ?: parentMovie?.releaseYear
         val performers = detail.performers.map { it.name }
-        val cardData = remember(episode, parentMovie, performers) {
+        val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+        val isZh = currentLang.isChinese
+        val summaryForCard = if (isZh) {
+            episode.descriptionZh?.takeIf { it.isNotBlank() } ?: episode.description ?: episode.actionNotes
+        } else {
+            episode.description?.takeIf { it.isNotBlank() } ?: episode.actionNotes ?: episode.descriptionZh
+        }
+        val cardData = remember(episode, parentMovie, performers, currentLang) {
             ShareCardData(
-                title = episode.title ?: "未知分集",
-                titleZh = parentMovie?.titleZh ?: parentMovie?.title,
+                title = episode.title ?: com.gpdb.android.util.I18n.t("episode.unnamed", currentLang, defaultVal = "Untitled Episode"),
+                titleZh = if (isZh) (parentMovie?.titleZh ?: parentMovie?.title) else null,
                 posterUrl = episode.thumbnailUrl,
                 fallbackEntityId = episode.id,
                 defaultFolder = "Episodes",
@@ -268,7 +283,7 @@ fun EpisodeDetailScreen(
                 rating = parentMovie?.rating,
                 category = parentMovie?.category,
                 performers = performers,
-                description = episode.descriptionZh?.takeIf { it.isNotBlank() } ?: episode.description ?: episode.actionNotes,
+                description = summaryForCard,
                 isEpisode = true
             )
         }

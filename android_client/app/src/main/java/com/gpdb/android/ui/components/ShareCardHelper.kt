@@ -67,7 +67,7 @@ object ShareCardHelper {
     /**
      * 保存 Bitmap 到系统相册 (Pictures/GPDb)
      */
-    fun saveBitmapToGallery(context: Context, bitmap: Bitmap, title: String): Boolean {
+    fun saveBitmapToGallery(context: Context, bitmap: Bitmap, title: String, appLanguage: com.gpdb.android.util.AppLanguage = com.gpdb.android.util.AppLanguage.ZH_CN): Boolean {
         return try {
             val fileName = "GPDb_${System.currentTimeMillis()}.png"
             var outputStream: OutputStream? = null
@@ -108,11 +108,11 @@ object ShareCardHelper {
             }
 
             outputStream?.close()
-            Toast.makeText(context, "已成功保存分享卡片至系统相册", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, com.gpdb.android.util.I18n.t("share.savedToGallery", appLanguage), Toast.LENGTH_SHORT).show()
             true
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "保存卡片失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "${com.gpdb.android.util.I18n.t("share.saveFailed", appLanguage)}: ${e.message}", Toast.LENGTH_SHORT).show()
             false
         }
     }
@@ -120,7 +120,7 @@ object ShareCardHelper {
     /**
      * 通过 FileProvider 唤起系统一键分享
      */
-    fun shareBitmap(context: Context, bitmap: Bitmap, title: String) {
+    fun shareBitmap(context: Context, bitmap: Bitmap, title: String, appLanguage: com.gpdb.android.util.AppLanguage = com.gpdb.android.util.AppLanguage.ZH_CN) {
         try {
             val cacheFolder = File(context.cacheDir, "shared_cards").apply { if (!exists()) mkdirs() }
             val shareFile = File(cacheFolder, "gpdb_share_${System.currentTimeMillis()}.png")
@@ -135,17 +135,18 @@ object ShareCardHelper {
                 shareFile
             )
 
+            val subject = com.gpdb.android.util.I18n.t("share.shareSubject", appLanguage, mapOf("title" to title))
             val shareIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "image/png"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_TEXT, "《$title》- 分享自 GPDb 个人数字影库")
+                putExtra(Intent.EXTRA_TEXT, subject)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
 
-            context.startActivity(Intent.createChooser(shareIntent, "分享电影档案卡片"))
+            context.startActivity(Intent.createChooser(shareIntent, com.gpdb.android.util.I18n.t("share.chooserTitle", appLanguage)))
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "调起分享失败: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "${com.gpdb.android.util.I18n.t("share.shareFailed", appLanguage)}: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }

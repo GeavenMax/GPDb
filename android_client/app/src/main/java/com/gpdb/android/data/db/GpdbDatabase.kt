@@ -589,6 +589,18 @@ abstract class GpdbDatabase : RoomDatabase() {
                     rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
                 } catch (_: Exception) {}
 
+                // 4b. 补齐 studio_logos 二进制资产表
+                rawDb.execSQL("""
+                    CREATE TABLE IF NOT EXISTS studio_logos (
+                        studio_id INTEGER PRIMARY KEY,
+                        logo_webp BLOB,
+                        banner_webp BLOB,
+                        logo_hash TEXT,
+                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(studio_id) REFERENCES studios(id) ON DELETE CASCADE
+                    );
+                """.trimIndent())
+
                 val studioCols = mutableMapOf<String, String>()
                 rawDb.rawQuery("PRAGMA table_info(studios);", null).use { cursor ->
                     val nameIdx = cursor.getColumnIndex("name")
@@ -805,6 +817,16 @@ abstract class GpdbDatabase : RoomDatabase() {
                             try {
                                 db.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
                             } catch (_: Exception) {}
+                            db.execSQL("""
+                                CREATE TABLE IF NOT EXISTS studio_logos (
+                                    studio_id INTEGER PRIMARY KEY,
+                                    logo_webp BLOB,
+                                    banner_webp BLOB,
+                                    logo_hash TEXT,
+                                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                                    FOREIGN KEY(studio_id) REFERENCES studios(id) ON DELETE CASCADE
+                                );
+                            """.trimIndent())
                             Log.i(TAG, "GPDb SQLite 成功就绪 (TRUNCATE mode on FUSE)")
                         } catch (e: Exception) {
                             Log.w(TAG, "配置 PRAGMA 出现警告: ${e.message}", e)

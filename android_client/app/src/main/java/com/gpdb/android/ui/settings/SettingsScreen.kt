@@ -40,17 +40,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-enum class SettingsTab(val label: String, val icon: ImageVector) {
-    ALL("全部", Icons.Default.Settings),
-    APPEARANCE("外观", Icons.Default.Palette),
-    ANALYTICS("统计", Icons.Default.Insights),
-    PRIVACY("隐私", Icons.Default.Security),
-    TRANSLATE("AI翻译", Icons.Default.Translate),
-    SYNC("数据同步", Icons.Default.Storage),
-    ABOUT("关于更新", Icons.Default.Info)
+enum class SettingsTab(val i18nKey: String, val icon: ImageVector) {
+    ALL("common.all", Icons.Default.Settings),
+    APPEARANCE("settings.appearance", Icons.Default.Palette),
+    ANALYTICS("settings.analytics", Icons.Default.Insights),
+    PRIVACY("settings.privacy", Icons.Default.Security),
+    TRANSLATE("settings.translation", Icons.Default.Translate),
+    SYNC("settings.sync", Icons.Default.Storage),
+    ABOUT("update.title", Icons.Default.Info);
+
+    @Composable
+    fun getLabel(): String = I18n.string(i18nKey)
 }
 
-fun changeAppIcon(context: Context, scope: CoroutineScope, newIcon: String) {
+fun changeAppIcon(context: Context, scope: CoroutineScope, newIcon: String, updatedToastMessage: String) {
     val pm = context.packageManager
     val packageName = context.packageName
 
@@ -85,7 +88,7 @@ fun changeAppIcon(context: Context, scope: CoroutineScope, newIcon: String) {
         }
     }
 
-    Toast.makeText(context, "已更新应用图标，桌面图标将在几秒钟后更新", Toast.LENGTH_LONG).show()
+    Toast.makeText(context, updatedToastMessage, Toast.LENGTH_LONG).show()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -146,6 +149,15 @@ fun SettingsScreen(
     var selectedTab by remember { mutableStateOf(SettingsTab.ALL) }
     var isCheckingAppUpdate by remember { mutableStateOf(false) }
     var activeAppUpdateRelease by remember { mutableStateOf<com.gpdb.android.util.AppReleaseInfo?>(null) }
+
+    val appIconUpdatedToast = I18n.string("settings.appIconUpdated")
+    val translationStatsRefreshedToast = I18n.string("settings.translationStatsRefreshed")
+    val alreadyLatestVersionToast = I18n.string("settings.alreadyLatestVersion")
+    val updateCheckFailedToast = I18n.string("update.checkFailed")
+    val pinSavedToast = I18n.string("settings.pinSaved")
+    val pinMinLengthToast = I18n.string("settings.pinMinLength")
+    val aiConfigSavedToast = I18n.string("settings.aiConfigSaved")
+    val currentAppLanguage = com.gpdb.android.util.LocalAppLanguage.current
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
@@ -208,7 +220,7 @@ fun SettingsScreen(
                     FilterChip(
                         selected = isSelected,
                         onClick = { selectedTab = tab },
-                        label = { Text(tab.label, style = MaterialTheme.typography.labelMedium) },
+                        label = { Text(tab.getLabel(), style = MaterialTheme.typography.labelMedium) },
                         leadingIcon = {
                             Icon(
                                 imageVector = tab.icon,
@@ -252,40 +264,40 @@ fun SettingsScreen(
                             val currentTheme = AppTheme.fromId(themeChoice)
                             SettingItemRow(
                                 title = I18n.string("settings.theme"),
-                                subtitle = currentTheme.label,
+                                subtitle = currentTheme.getLabel(),
                                 icon = Icons.Default.Brightness4,
                         onClick = { showThemeDialog = true }
                     ) {
                         ThemeSwatchesMini(theme = currentTheme)
                     }
 
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     val currentAppLang = AppLanguage.fromCode(language)
                     SettingItemRow(
                         title = I18n.string("settings.language"),
-                        subtitle = "${currentAppLang.displayName} (${currentAppLang.nativeName})",
+                        subtitle = "${currentAppLang.getDisplayName()} (${currentAppLang.nativeName})",
                         icon = Icons.Default.Language,
                         onClick = { showLangDialog = true }
                     )
 
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     SettingItemRow(
                         title = I18n.string("settings.appIcon"),
                         subtitle = when (appIcon) {
-                            "D" -> "方案二：黑曜石金 (Scheme D)"
-                            else -> "方案一：经典典藏蓝 (Scheme A · 默认)"
+                            "D" -> I18n.string("settings.iconSchemeD")
+                            else -> I18n.string("settings.iconSchemeA")
                         },
                         icon = Icons.Default.AppShortcut,
                         onClick = { showIconDialog = true }
                     )
 
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
                         SettingSwitchRow(
                             title = I18n.string("settings.dynamicColor"),
-                            subtitle = "壁纸色相智能取色 (Android 12+)",
+                            subtitle = I18n.string("settings.dynamicColorDesc"),
                             icon = Icons.Default.ColorLens,
                             checked = dynamicColor,
                             onCheckedChange = { viewModel.setDynamicColor(it) }
@@ -310,8 +322,8 @@ fun SettingsScreen(
                 Column {
                     if (onNavigateToAnalytics != null) {
                         SettingItemRow(
-                            title = "查看完整使用统计报告",
-                            subtitle = "探索时长、夜猫子指数、作品浏览量与足迹",
+                            title = I18n.string("analytics.title"),
+                            subtitle = I18n.string("analytics.subtitle"),
                             icon = Icons.Default.BarChart,
                             onClick = onNavigateToAnalytics
                         ) {
@@ -325,21 +337,21 @@ fun SettingsScreen(
                     }
 
                     SettingSwitchRow(
-                        title = "记录搜索历史",
-                        subtitle = "保存搜索页快捷检索词，可随时清空",
+                        title = I18n.string("settings.searchHistoryToggle"),
+                        subtitle = I18n.string("settings.searchHistoryDesc"),
                         icon = Icons.Default.History,
                         checked = recordHistory,
                         onCheckedChange = { viewModel.setRecordHistory(it) }
                     )
 
                     SettingItemRow(
-                        title = "清空本地搜索历史",
-                        subtitle = "清除已保存的搜索词推荐",
+                        title = I18n.string("analytics.clearAll"),
+                        subtitle = I18n.string("analytics.clearConfirm"),
                         icon = Icons.Default.DeleteSweep,
                         onClick = {
                             scope.launch {
                                 appPreferences.clearSearchHistory()
-                                Toast.makeText(context, "搜索历史已清空", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, I18n.t("share.copiedNotice"), Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
@@ -362,7 +374,7 @@ fun SettingsScreen(
                 Column {
                     SettingSwitchRow(
                         title = I18n.string("settings.flagSecure"),
-                        subtitle = "多任务视图黑屏模糊遮罩，禁止截图录屏",
+                        subtitle = I18n.string("settings.flagSecureSubtitle"),
                         icon = Icons.Default.ScreenLockPortrait,
                         checked = flagSecureEnabled,
                         onCheckedChange = { viewModel.setFlagSecureEnabled(it) }
@@ -371,8 +383,8 @@ fun SettingsScreen(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     SettingSwitchRow(
-                        title = "防窥模式",
-                        subtitle = if (screenshotPrivacyBlurEnabled) "已开启：所有界面图片与介绍文字高斯模糊" else "未开启：正常显示（主页顶部亦可快捷开关）",
+                        title = I18n.string("settings.privacyBlur"),
+                        subtitle = if (screenshotPrivacyBlurEnabled) I18n.string("settings.privacyBlurActive") else I18n.string("settings.privacyBlurInactive"),
                         icon = Icons.Default.BlurOn,
                         checked = screenshotPrivacyBlurEnabled,
                         onCheckedChange = { viewModel.setScreenshotPrivacyBlurEnabled(it) }
@@ -380,15 +392,15 @@ fun SettingsScreen(
 
                     if (screenshotPrivacyBlurEnabled) {
                         SettingSwitchRow(
-                            title = "高斯模糊所有图片与海报",
-                            subtitle = "全库封面、海报、剧照及演员头像模糊化",
+                            title = I18n.string("settings.privacyBlurImages"),
+                            subtitle = I18n.string("settings.privacyBlurImagesDesc"),
                             icon = Icons.Default.Image,
                             checked = screenshotPrivacyBlurImages,
                             onCheckedChange = { viewModel.setScreenshotPrivacyBlurImages(it) }
                         )
                         SettingSwitchRow(
-                            title = "高斯模糊简介与描述文字",
-                            subtitle = "剧情简介与细节说明文字模糊化防偷窥",
+                            title = I18n.string("settings.privacyBlurText"),
+                            subtitle = I18n.string("settings.privacyBlurTextDesc"),
                             icon = Icons.Default.TextFields,
                             checked = screenshotPrivacyBlurText,
                             onCheckedChange = { viewModel.setScreenshotPrivacyBlurText(it) }
@@ -399,7 +411,7 @@ fun SettingsScreen(
 
                     SettingSwitchRow(
                         title = I18n.string("settings.appLock"),
-                        subtitle = if (appLockEnabled) "已启用 (超时 ${appLockTimeoutSeconds}s)" else "未启用",
+                        subtitle = if (appLockEnabled) I18n.string("settings.appLockEnabledStatus", mapOf("seconds" to appLockTimeoutSeconds.toString())) else I18n.string("settings.appLockDisabledStatus"),
                         icon = Icons.Default.Lock,
                         checked = appLockEnabled,
                         onCheckedChange = { enabled ->
@@ -413,21 +425,21 @@ fun SettingsScreen(
 
                     if (appLockEnabled) {
                         SettingItemRow(
-                            title = "修改安全 PIN 码",
-                            subtitle = if (appLockPin.isNotBlank()) "已设置密码" else "尚未设置",
+                            title = I18n.string("settings.changePin"),
+                            subtitle = if (appLockPin.isNotBlank()) I18n.string("settings.pinConfigured") else I18n.string("settings.pinNotConfigured"),
                             icon = Icons.Default.Pin,
                             onClick = { showPinDialog = true }
                         )
                         SettingSwitchRow(
-                            title = "允许指纹 / 人脸生物识别解锁",
-                            subtitle = "免密快速验证通过安全锁",
+                            title = I18n.string("settings.allowBiometrics"),
+                            subtitle = I18n.string("settings.allowBiometricsDesc"),
                             icon = Icons.Default.Fingerprint,
                             checked = appLockBiometricEnabled,
                             onCheckedChange = { viewModel.setAppLockBiometricEnabled(it) }
                         )
                         SettingItemRow(
-                            title = "锁屏等待超时",
-                            subtitle = "切换后台超过 ${appLockTimeoutSeconds} 秒时自动上锁",
+                            title = I18n.string("settings.lockTimeoutTitle"),
+                            subtitle = I18n.string("settings.lockTimeoutSecondsDesc", mapOf("seconds" to appLockTimeoutSeconds.toString())),
                             icon = Icons.Default.Timer,
                             onClick = { showTimeoutDialog = true }
                         )
@@ -435,9 +447,21 @@ fun SettingsScreen(
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
+                    val panicSubtitle = if (panicSwitchEnabled) {
+                        val actionDesc = when(panicAction) {
+                            "CALCULATOR" -> I18n.string("settings.panicActionCalculator")
+                            "HOME" -> I18n.string("settings.panicActionHome")
+                            "KILL" -> I18n.string("settings.panicActionKill")
+                            else -> I18n.string("settings.panicActionCalculator")
+                        }
+                        "${I18n.string("common.enabled")}: $actionDesc"
+                    } else {
+                        I18n.string("common.disabled")
+                    }
+
                     SettingSwitchRow(
                         title = I18n.string("settings.panicSwitch"),
-                        subtitle = if (panicSwitchEnabled) "已启用: 动作【$panicAction】" else "未启用",
+                        subtitle = panicSubtitle,
                         icon = Icons.Default.WarningAmber,
                         checked = panicSwitchEnabled,
                         onCheckedChange = { viewModel.setPanicSwitchEnabled(it) }
@@ -445,26 +469,26 @@ fun SettingsScreen(
 
                     if (panicSwitchEnabled) {
                         SettingSwitchRow(
-                            title = "翻转手机 (正面朝下扣桌即退)",
-                            subtitle = "利用光感与重力传感器瞬间侦测",
+                            title = I18n.string("settings.panicFaceDown"),
+                            subtitle = I18n.string("settings.panicFaceDownDesc"),
                             icon = Icons.Default.ScreenRotation,
                             checked = panicFaceDownEnabled,
                             onCheckedChange = { viewModel.setPanicFaceDownEnabled(it) }
                         )
                         SettingSwitchRow(
-                            title = "剧烈摇晃手机脱身",
-                            subtitle = "遇紧急情况猛摇手机立即响应",
+                            title = I18n.string("settings.panicShake"),
+                            subtitle = I18n.string("settings.panicShakeDesc"),
                             icon = Icons.Default.Vibration,
                             checked = panicShakeEnabled,
                             onCheckedChange = { viewModel.setPanicShakeEnabled(it) }
                         )
                         SettingItemRow(
-                            title = "脱身响应动作",
+                            title = I18n.string("settings.panicActionTitle"),
                             subtitle = when(panicAction) {
-                                "CALCULATOR" -> "跳转伪装计算器"
-                                "HOME" -> "退回系统桌面"
-                                "KILL" -> "彻底销毁进程并退出"
-                                else -> "跳转伪装计算器"
+                                "CALCULATOR" -> I18n.string("settings.panicActionCalculator")
+                                "HOME" -> I18n.string("settings.panicActionHome")
+                                "KILL" -> I18n.string("settings.panicActionKill")
+                                else -> I18n.string("settings.panicActionCalculator")
                             },
                             icon = Icons.Default.DirectionsRun,
                             onClick = { showPanicActionDialog = true }
@@ -488,7 +512,7 @@ fun SettingsScreen(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "图片缓存已严格锁定在 Linux UID 私有沙盒，系统相册与第三方 App 绝无法扫描窥探。",
+                            text = I18n.string("settings.sandboxSecurityNotice"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -501,8 +525,8 @@ fun SettingsScreen(
         if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.TRANSLATE) {
             SectionHeader(
                 icon = Icons.Default.Translate,
-                title = "AI 智能翻译引擎",
-                subtitle = "配置大模型直白翻译服务 (OpenAI / DeepSeek / Claude / Ollama)"
+                title = I18n.string("settings.aiSectionTitle"),
+                subtitle = I18n.string("settings.aiSectionSubtitle")
             )
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -510,9 +534,10 @@ fun SettingsScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column {
+                    val configuredSuffix = I18n.string("settings.aiConfigured")
                     SettingItemRow(
-                        title = "服务商与模型配置",
-                        subtitle = if (llmApiKey.isNotBlank()) "$llmProvider · $llmModel (已配置)" else "点击配置 API 密钥与端点",
+                        title = I18n.string("settings.aiProviderConfig"),
+                        subtitle = if (llmApiKey.isNotBlank()) "$llmProvider · $llmModel ($configuredSuffix)" else I18n.string("settings.aiClickToConfig"),
                         icon = Icons.Default.SettingsSuggest,
                         onClick = { showLlmDialog = true }
                     )
@@ -528,12 +553,17 @@ fun SettingsScreen(
                     ) {
                         Column {
                             Text(
-                                text = "翻译数据进度",
+                                text = I18n.string("settings.translationProgress"),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
+                            val progressSummary = if (currentAppLanguage.isChinese) {
+                                "长片: $translatedMovies / $translatableMovies · 分集: $translatedEpisodes / $translatableEpisodes"
+                            } else {
+                                "Movies: $translatedMovies / $translatableMovies · Episodes: $translatedEpisodes / $translatableEpisodes"
+                            }
                             Text(
-                                text = "长片: $translatedMovies / $translatableMovies · 分集: $translatedEpisodes / $translatableEpisodes",
+                                text = progressSummary,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -541,12 +571,12 @@ fun SettingsScreen(
                         FilledTonalButton(
                             onClick = {
                                 viewModel.refreshStats()
-                                Toast.makeText(context, "翻译统计已刷新", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, translationStatsRefreshedToast, Toast.LENGTH_SHORT).show()
                             }
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("刷新")
+                            Text(I18n.string("common.refresh"))
                         }
                     }
                 }
@@ -557,8 +587,8 @@ fun SettingsScreen(
         if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.SYNC) {
             SectionHeader(
                 icon = Icons.Default.Storage,
-                title = "同步与数据存储",
-                subtitle = "管理官网增量数据更新及本地库挂载"
+                title = I18n.string("settings.syncSectionTitle"),
+                subtitle = I18n.string("settings.syncSectionSubtitle")
             )
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -571,19 +601,29 @@ fun SettingsScreen(
                     val periodicSyncEnabled by viewModel.periodicSyncEnabled.collectAsState()
 
                     SettingSwitchRow(
-                        title = "启动时后台自动增量同步",
-                        subtitle = "打开应用后在后台静默拉取官网最新长片、分集、演员并缓存海报",
+                        title = I18n.string("settings.autoSyncTitle"),
+                        subtitle = I18n.string("settings.autoSyncSubtitle"),
                         icon = Icons.Default.CloudSync,
                         checked = autoSyncOnLaunchEnabled,
                         onCheckedChange = { viewModel.setAutoSyncOnLaunchEnabled(it) }
                     )
 
                     SettingSwitchRow(
-                        title = "系统定时后台同步",
-                        subtitle = "设备连接 Wi-Fi 网络时每日定时在后台静默增量同步",
+                        title = I18n.string("settings.scheduleSyncTitle"),
+                        subtitle = I18n.string("settings.scheduleSyncSubtitle"),
                         icon = Icons.Default.Sync,
                         checked = periodicSyncEnabled,
                         onCheckedChange = { viewModel.setPeriodicSyncEnabled(it, context) }
+                    )
+
+                    val saveImagesToExternal by viewModel.saveImagesToExternal.collectAsState()
+
+                    SettingSwitchRow(
+                        title = I18n.string("settings.cacheSyncToPublicTitle"),
+                        subtitle = I18n.string("settings.cacheSyncToPublicSubtitle"),
+                        icon = Icons.Default.FolderOpen,
+                        checked = saveImagesToExternal,
+                        onCheckedChange = { viewModel.setSaveImagesToExternal(it) }
                     )
 
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
@@ -598,7 +638,7 @@ fun SettingsScreen(
                                 ) {
                                     Icon(Icons.Default.CloudSync, contentDescription = null)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("检查官方最新条目 (/newm, /newe, /newp)")
+                                    Text(I18n.string("settings.checkNewEntries"))
                                 }
                             }
                             is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Checking -> {
@@ -607,28 +647,34 @@ fun SettingsScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                                    Text("正在检查官网最新数据...", style = MaterialTheme.typography.bodySmall)
+                                    Text(I18n.string("settings.checkingUpdates"), style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                             is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Discovered -> {
                                 val updates = status.updates
                                 if (updates.totalCount == 0) {
-                                    Text("当前本地已是最新，暂无新内容发布。", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                                    Text(I18n.string("settings.alreadyLatestData"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                                 } else {
-                                    Text("发现 ${updates.totalCount} 项待入库 (长片: ${updates.movieIds.size}, 分集: ${updates.episodeIds.size}, 演员: ${updates.performerIds.size})", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                                    val discText = if (currentAppLanguage.isChinese) {
+                                        "发现 ${updates.totalCount} 项待入库 (长片: ${updates.movieIds.size}, 分集: ${updates.episodeIds.size}, 演员: ${updates.performerIds.size})"
+                                    } else {
+                                        "Found ${updates.totalCount} new entries (Movies: ${updates.movieIds.size}, Episodes: ${updates.episodeIds.size}, Performers: ${updates.performerIds.size})"
+                                    }
+                                    Text(discText, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Button(
                                         onClick = { viewModel.startSync(context, updates) },
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        Text("立即入库并后台刮削海报")
+                                        Text(I18n.string("settings.syncNowAndScrape"))
                                     }
                                 }
                             }
                             is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Syncing -> {
                                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text("同步中: ${status.current}/${status.total} · ${status.currentItem}", style = MaterialTheme.typography.bodySmall)
+                                    val syncingLabel = if (currentAppLanguage.isChinese) "同步中" else "Syncing"
+                                    Text("$syncingLabel: ${status.current}/${status.total} · ${status.currentItem}", style = MaterialTheme.typography.bodySmall)
                                     LinearProgressIndicator(
                                         progress = { if (status.total > 0) status.current.toFloat() / status.total else 0f },
                                         modifier = Modifier.fillMaxWidth()
@@ -637,17 +683,23 @@ fun SettingsScreen(
                             }
                             is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Completed -> {
                                 val totalNew = status.result.newMoviesCount + status.result.newEpisodesCount + status.result.newPerformersCount
-                                Text("同步完成！新增 $totalNew 项 (长片: ${status.result.newMoviesCount}, 分集: ${status.result.newEpisodesCount}, 演员: ${status.result.newPerformersCount})，缓存图片: ${status.result.cachedImagesCount}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                                val compText = if (currentAppLanguage.isChinese) {
+                                    "同步完成！新增 $totalNew 项 (长片: ${status.result.newMoviesCount}, 分集: ${status.result.newEpisodesCount}, 演员: ${status.result.newPerformersCount})，缓存图片: ${status.result.cachedImagesCount}"
+                                } else {
+                                    "Sync completed! Added $totalNew items (Movies: ${status.result.newMoviesCount}, Episodes: ${status.result.newEpisodesCount}, Performers: ${status.result.newPerformersCount}), Cached: ${status.result.cachedImagesCount}"
+                                }
+                                Text(compText, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 TextButton(onClick = { viewModel.resetSyncStatus() }) {
-                                    Text("完成")
+                                    Text(I18n.string("settings.syncCompleted"))
                                 }
                             }
                             is com.gpdb.android.data.scraper.GpdbSyncManager.SyncStatus.Error -> {
-                                Text("同步异常: ${status.message}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                val errLabel = if (currentAppLanguage.isChinese) "同步异常" else "Sync error"
+                                Text("$errLabel: ${status.message}", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 TextButton(onClick = { viewModel.resetSyncStatus() }) {
-                                    Text("重试")
+                                    Text(I18n.string("common.retry"))
                                 }
                             }
                         }
@@ -656,8 +708,8 @@ fun SettingsScreen(
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     SettingItemRow(
-                        title = "重新挂载数据库",
-                        subtitle = "断开当前数据库并重新选择存储位置",
+                        title = I18n.string("settings.remountDb"),
+                        subtitle = I18n.string("settings.remountDbSubtitle"),
                         icon = Icons.Default.FolderOpen,
                         onClick = onRemountClick
                     )
@@ -665,8 +717,8 @@ fun SettingsScreen(
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     SettingItemRow(
-                        title = "导出通用配置备份 (JSON)",
-                        subtitle = "导出“收藏”、统计时长与用户个人数据，四端通用",
+                        title = I18n.string("settings.exportUserBackup"),
+                        subtitle = I18n.string("settings.exportUserBackupSubtitle"),
                         icon = Icons.Default.FileDownload,
                         onClick = {
                             val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault())
@@ -678,8 +730,8 @@ fun SettingsScreen(
                     Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
                     SettingItemRow(
-                        title = "导入通用配置恢复 (JSON)",
-                        subtitle = "从 macOS、Windows、iOS 或其他设备备份导入收藏与统计",
+                        title = I18n.string("settings.importUserBackup"),
+                        subtitle = I18n.string("settings.importUserBackupSubtitle"),
                         icon = Icons.Default.FileUpload,
                         onClick = {
                             importLauncher.launch(arrayOf("application/json", "*/*"))
@@ -693,8 +745,8 @@ fun SettingsScreen(
         if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.ABOUT) {
             SectionHeader(
                 icon = Icons.Default.Info,
-                title = "关于与软件更新",
-                subtitle = "当前版本: v${com.gpdb.android.BuildConfig.VERSION_NAME} · 巡检 GitHub Releases 官方版本"
+                title = I18n.string("settings.aboutSectionTitle"),
+                subtitle = "v${com.gpdb.android.BuildConfig.VERSION_NAME} · ${I18n.string("settings.aboutVersionSubtitle")}"
             )
             Card(
                 shape = RoundedCornerShape(16.dp),
@@ -703,8 +755,8 @@ fun SettingsScreen(
             ) {
                 Column {
                     SettingItemRow(
-                        title = "检查新版本更新",
-                        subtitle = if (isCheckingAppUpdate) "正在连接 GitHub 巡检最新版本..." else "点击立即检测官方仓库是否有新版本",
+                        title = I18n.string("settings.checkAppUpdate"),
+                        subtitle = if (isCheckingAppUpdate) I18n.string("settings.checkingAppUpdate") else I18n.string("settings.checkAppUpdatePrompt"),
                         icon = if (isCheckingAppUpdate) Icons.Default.CloudSync else Icons.Default.SystemUpdate,
                         onClick = {
                             if (!isCheckingAppUpdate) {
@@ -717,11 +769,11 @@ fun SettingsScreen(
                                         }
                                         is com.gpdb.android.util.AppUpdateCheckResult.AlreadyLatest -> {
                                             isCheckingAppUpdate = false
-                                            Toast.makeText(context, "当前已是最新版本 (v${res.currentVersion})", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "$alreadyLatestVersionToast (v${res.currentVersion})", Toast.LENGTH_SHORT).show()
                                         }
                                         is com.gpdb.android.util.AppUpdateCheckResult.Error -> {
                                             isCheckingAppUpdate = false
-                                            Toast.makeText(context, "检查更新失败: ${res.message}", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, "$updateCheckFailedToast: ${res.message}", Toast.LENGTH_LONG).show()
                                         }
                                     }
                                 }
@@ -750,7 +802,7 @@ fun SettingsScreen(
                     ) {
                         Column {
                             Text(
-                                text = "开源代码仓库",
+                                text = I18n.string("settings.openRepo"),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -769,7 +821,7 @@ fun SettingsScreen(
                                 context.startActivity(intent)
                             }
                         ) {
-                            Text("访问 ↗")
+                            Text(I18n.string("settings.visitRepo"))
                         }
                     }
                 }
@@ -784,20 +836,20 @@ fun SettingsScreen(
     // ── Dialogs ──────────────────────────────────────────────────
     if (showThemeDialog) {
         val themes = listOf(
-            AppTheme.AUTO to "跟随系统",
-            AppTheme.GLASS_DARK to "流体玻璃 · 暗 (默认)",
-            AppTheme.GLASS_LIGHT to "流体玻璃 · 浅",
-            AppTheme.CLASSIC_DARK to "经典 · 暗",
-            AppTheme.CLASSIC_LIGHT to "经典 · 浅",
-            AppTheme.MY_DARK to "Material You · 暗",
-            AppTheme.MY_LIGHT to "Material You · 浅"
+            AppTheme.AUTO,
+            AppTheme.GLASS_DARK,
+            AppTheme.GLASS_LIGHT,
+            AppTheme.CLASSIC_DARK,
+            AppTheme.CLASSIC_LIGHT,
+            AppTheme.MY_DARK,
+            AppTheme.MY_LIGHT
         )
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
             title = { Text(I18n.string("settings.theme")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    themes.forEach { (theme, label) ->
+                    themes.forEach { theme ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -817,7 +869,7 @@ fun SettingsScreen(
                                 }
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                            Text(theme.getLabel(), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                             ThemeSwatchesMini(theme = theme)
                         }
                     }
@@ -858,7 +910,7 @@ fun SettingsScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
-                                Text(lang.displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text(lang.getDisplayName(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                 Text(lang.nativeName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                             }
                         }
@@ -880,8 +932,8 @@ fun SettingsScreen(
             text = {
                 Column {
                     listOf(
-                        "A" to "方案一：经典典藏蓝 (Scheme A · 默认)",
-                        "D" to "方案二：黑曜石金 / 极简 (Scheme D)"
+                        "A" to I18n.string("settings.iconSchemeA"),
+                        "D" to I18n.string("settings.iconSchemeD")
                     ).forEach { (iconKey, label) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -890,7 +942,7 @@ fun SettingsScreen(
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
                                     viewModel.setAppIcon(iconKey)
-                                    changeAppIcon(context, scope, iconKey)
+                                    changeAppIcon(context, scope, iconKey, appIconUpdatedToast)
                                     showIconDialog = false
                                 }
                                 .padding(vertical = 10.dp)
@@ -899,7 +951,7 @@ fun SettingsScreen(
                                 selected = appIcon == iconKey,
                                 onClick = {
                                     viewModel.setAppIcon(iconKey)
-                                    changeAppIcon(context, scope, iconKey)
+                                    changeAppIcon(context, scope, iconKey, appIconUpdatedToast)
                                     showIconDialog = false
                                 }
                             )
@@ -919,14 +971,14 @@ fun SettingsScreen(
         var inputPin by remember { mutableStateOf(appLockPin) }
         AlertDialog(
             onDismissRequest = { showPinDialog = false },
-            title = { Text("设置安全锁 PIN 码") },
+            title = { Text(I18n.string("settings.securityPinTitle")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("请输入 4~6 位数字应用解锁密码：", style = MaterialTheme.typography.bodySmall)
+                    Text(I18n.string("settings.securityPinPrompt"), style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = inputPin,
                         onValueChange = { if (it.length <= 6 && it.all { c -> c.isDigit() }) inputPin = it },
-                        label = { Text("PIN 码") },
+                        label = { Text(I18n.string("settings.pinLabel")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -939,9 +991,9 @@ fun SettingsScreen(
                             viewModel.setAppLockPin(inputPin)
                             viewModel.setAppLockEnabled(true)
                             showPinDialog = false
-                            Toast.makeText(context, "安全锁密码已设置", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, pinSavedToast, Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(context, "密码至少需 4 位数字", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, pinMinLengthToast, Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) { Text(I18n.string("common.save")) }
@@ -955,10 +1007,16 @@ fun SettingsScreen(
     if (showTimeoutDialog) {
         AlertDialog(
             onDismissRequest = { showTimeoutDialog = false },
-            title = { Text("锁屏等待超时") },
+            title = { Text(I18n.string("settings.lockTimeoutTitle")) },
             text = {
                 Column {
-                    listOf(0 to "立即锁定", 15 to "15 秒", 30 to "30 秒", 60 to "1 分钟", 300 to "5 分钟").forEach { (sec, label) ->
+                    listOf(
+                        0 to I18n.string("settings.timeoutImmediately"),
+                        15 to I18n.string("settings.timeout15s"),
+                        30 to I18n.string("settings.timeout30s"),
+                        60 to I18n.string("settings.timeout1m"),
+                        300 to I18n.string("settings.timeout5m")
+                    ).forEach { (sec, label) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -992,10 +1050,14 @@ fun SettingsScreen(
     if (showPanicActionDialog) {
         AlertDialog(
             onDismissRequest = { showPanicActionDialog = false },
-            title = { Text("脱身响应动作") },
+            title = { Text(I18n.string("settings.panicActionTitle")) },
             text = {
                 Column {
-                    listOf("CALCULATOR" to "跳转伪装计算器 (可输入 PIN 解锁)", "HOME" to "迅速退回系统主屏幕", "KILL" to "直接销毁应用进程").forEach { (action, label) ->
+                    listOf(
+                        "CALCULATOR" to I18n.string("settings.panicCalc"),
+                        "HOME" to I18n.string("settings.panicHome"),
+                        "KILL" to I18n.string("settings.panicKill")
+                    ).forEach { (action, label) ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -1037,7 +1099,7 @@ fun SettingsScreen(
 
         AlertDialog(
             onDismissRequest = { showLlmDialog = false },
-            title = { Text("AI 翻译引擎配置") },
+            title = { Text(I18n.string("settings.aiConfigTitle")) },
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -1046,7 +1108,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = inputProvider,
                         onValueChange = { inputProvider = it },
-                        label = { Text("服务商 (如 OpenAI, DeepSeek)") },
+                        label = { Text(I18n.string("settings.providerPlaceholder")) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
@@ -1064,7 +1126,7 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = inputModel,
                         onValueChange = { inputModel = it },
-                        label = { Text("Model (如 gpt-4o-mini, deepseek-chat)") },
+                        label = { Text(I18n.string("settings.modelPlaceholder")) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Row(
@@ -1072,7 +1134,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("进入详情页自动触发翻译")
+                        Text(I18n.string("settings.autoTranslateDetail"))
                         Switch(checked = inputAutoTranslate, onCheckedChange = { inputAutoTranslate = it })
                     }
                 }
@@ -1090,7 +1152,7 @@ fun SettingsScreen(
                             systemPrompt = inputSystemPrompt
                         )
                         showLlmDialog = false
-                        Toast.makeText(context, "AI 翻译配置已保存", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, aiConfigSavedToast, Toast.LENGTH_SHORT).show()
                     }
                 ) { Text(I18n.string("common.save")) }
             },

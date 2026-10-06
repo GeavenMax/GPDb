@@ -111,8 +111,9 @@ fun MovieGridItem(
                         }
 
                         movie.durationMins?.let { mins ->
+                            val unit = com.gpdb.android.util.I18n.string("common.minutes")
                             Text(
-                                text = "${mins}分",
+                                text = "$mins $unit",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White.copy(alpha = 0.85f)
                             )
@@ -122,22 +123,26 @@ fun MovieGridItem(
             }
 
             // 标题与副标题信息区 (统一固定高度，跑马灯滚动)
+            val isZh = com.gpdb.android.util.LocalAppLanguage.current.isChinese
+            val primaryTitle = if (isZh) (movie.titleZh?.takeIf { it.isNotBlank() } ?: movie.title) else movie.title
+            val secondaryTitle = if (isZh && !movie.titleZh.isNullOrBlank() && movie.title != movie.titleZh) movie.title else null
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp)
             ) {
                 Text(
-                    text = movie.titleZh ?: movie.title,
+                    text = primaryTitle,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     modifier = Modifier.basicMarquee()
                 )
 
-                if (movie.titleZh != null && movie.titleZh != movie.title) {
+                if (secondaryTitle != null) {
                     Text(
-                        text = movie.title,
+                        text = secondaryTitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                         maxLines = 1,

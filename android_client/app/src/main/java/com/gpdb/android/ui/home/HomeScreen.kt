@@ -48,14 +48,14 @@ fun HomeScreen(
                     actions = {
                         var showSortMenu by remember { mutableStateOf(false) }
                         IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "排序")
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = com.gpdb.android.util.I18n.string("filter.sortBy"))
                         }
                         DropdownMenu(
                             expanded = showSortMenu,
                             onDismissRequest = { showSortMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("按收录顺序") },
+                                text = { Text(com.gpdb.android.util.I18n.string("sort.byOrder", defaultVal = "按收录顺序")) },
                                 onClick = {
                                     showSortMenu = false
                                     if (uiState.sortByYear) viewModel.toggleSortOrder()
@@ -63,7 +63,7 @@ fun HomeScreen(
                                 trailingIcon = { if (!uiState.sortByYear) Icon(Icons.Default.Check, null) }
                             )
                             DropdownMenuItem(
-                                text = { Text("按发行年份") },
+                                text = { Text(com.gpdb.android.util.I18n.string("sort.byYear", defaultVal = "按发行年份")) },
                                 onClick = {
                                     showSortMenu = false
                                     if (!uiState.sortByYear) viewModel.toggleSortOrder()
@@ -72,7 +72,7 @@ fun HomeScreen(
                             )
                         }
                         IconButton(onClick = onSearchClick) {
-                            Icon(Icons.Default.Search, contentDescription = "搜索")
+                            Icon(Icons.Default.Search, contentDescription = com.gpdb.android.util.I18n.string("common.search"))
                         }
                     }
                 )
@@ -106,7 +106,7 @@ fun HomeScreen(
                             FilterChip(
                                 selected = uiState.dateFilter == filter,
                                 onClick = { viewModel.setDateFilter(filter) },
-                                label = { Text(filter.label, style = MaterialTheme.typography.labelSmall) },
+                                label = { Text(filter.getLabel(), style = MaterialTheme.typography.labelSmall) },
                                 shape = RoundedCornerShape(16.dp)
                             )
                         }
@@ -128,7 +128,7 @@ fun HomeScreen(
                     ) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
-                        val text = if (status is MountStatus.Mounting) status.stepText else "等待挂载..."
+                        val text = if (status is MountStatus.Mounting) status.stepText else com.gpdb.android.util.I18n.string("common.loading")
                         Text(text = text, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -144,7 +144,7 @@ fun HomeScreen(
                         Text(status.detail, color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = onRemountClick) {
-                            Text("重试")
+                            Text(com.gpdb.android.util.I18n.string("common.retry"))
                         }
                     }
                 }

@@ -61,17 +61,17 @@ fun PerformerDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(uiState.performerDetail?.performer?.name ?: "演员档案") },
+                title = { Text(uiState.performerDetail?.performer?.name ?: com.gpdb.android.util.I18n.string("performer.detailTitle")) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = com.gpdb.android.util.I18n.string("common.back"))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.toggleFavorite() }) {
                         Icon(
                             imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = "收藏",
+                            contentDescription = if (uiState.isFavorite) com.gpdb.android.util.I18n.string("common.unfavorite") else com.gpdb.android.util.I18n.string("common.favorite"),
                             tint = if (uiState.isFavorite) Color.Red else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -114,7 +114,7 @@ fun PerformerDetailScreen(
                 }
 
                 val currentLang = com.gpdb.android.util.LocalAppLanguage.current
-                val isChinese = currentLang == com.gpdb.android.util.AppLanguage.ZH_CN || currentLang == com.gpdb.android.util.AppLanguage.ZH_TW
+                val isChinese = currentLang.isChinese
 
                 val externalLinks = remember(pbc?.socialLinks, pbc?.externalIds) {
                     val links = mutableListOf<Pair<String, String>>()
@@ -145,65 +145,52 @@ fun PerformerDetailScreen(
                     links
                 }
 
-                fun formatAstro(astro: String?): String? {
-                    if (astro.isNullOrBlank()) return null
-                    return when (astro.lowercase()) {
-                        "aries" -> "白羊座 ♈"
-                        "taurus" -> "金牛座 ♉"
-                        "gemini" -> "双子座 ♊"
-                        "cancer" -> "巨蟹座 ♋"
-                        "leo" -> "狮子座 ♌"
-                        "virgo" -> "处女座 ♍"
-                        "libra" -> "天秤座 ♎"
-                        "scorpio" -> "天蝎座 ♏"
-                        "sagittarius" -> "射手座 ♐"
-                        "capricorn" -> "摩羯座 ♑"
-                        "aquarius" -> "水瓶座 ♒"
-                        "pisces" -> "双鱼座 ♓"
-                        else -> astro
-                    }
-                }
-
                 fun formatBirth(birth: String?): String? {
                     if (birth.isNullOrBlank()) return null
                     val match = Regex("""^(\d{4})""").find(birth)
                     val ageSuffix = match?.value?.toIntOrNull()?.let { birthYear ->
                         val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
                         val age = currentYear - birthYear
-                        if (age in 18..99) " (${age}岁)" else ""
+                        if (age in 18..99) {
+                            val ageText = com.gpdb.android.util.I18n.t("performer.ageYears", currentLang, mapOf("age" to age), defaultVal = "$age yrs")
+                            " ($ageText)"
+                        } else ""
                     } ?: ""
                     return "$birth$ageSuffix"
                 }
 
-                val advancedDetails = remember(performer, pbc, isChinese) {
+                val advancedDetails = remember(performer, pbc, currentLang, isChinese) {
                     listOfNotNull(
-                        formatBirth(pbc?.birthDate)?.let { "生日" to it },
-                        formatAstro(pbc?.astrology)?.let { "星座" to it },
-                        pbc?.birthPlace?.takeIf { it.isNotBlank() }?.let { "籍贯" to it },
-                        pbc?.ethnicity?.takeIf { it.isNotBlank() }?.let { "族裔" to it },
-                        performer.hair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("hair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.eyes?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("eyes", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.facialHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("facialHair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.bodyHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("bodyHair", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
-                        performer.skin?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("skin", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        formatBirth(pbc?.birthDate)?.let { com.gpdb.android.util.I18n.t("performer.birthDate", currentLang, defaultVal = "Birth Date") to it },
+                        com.gpdb.android.util.GlossaryHelper.formatAstro(pbc?.astrology, currentLang)?.let { com.gpdb.android.util.I18n.t("performer.astrology", currentLang, defaultVal = "Zodiac") to it },
+                        pbc?.birthPlace?.takeIf { it.isNotBlank() }?.let { com.gpdb.android.util.I18n.t("performer.origin", currentLang, defaultVal = "Origin") to it },
+                        com.gpdb.android.util.GlossaryHelper.formatEthnicity(pbc?.ethnicity, currentLang)?.takeIf { it.isNotBlank() }?.let { com.gpdb.android.util.I18n.t("performer.ethnicity", currentLang, defaultVal = "Ethnicity") to it },
+                        performer.hair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("hair", currentLang) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.eyes?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("eyes", currentLang) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.facialHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("facialHair", currentLang) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.bodyHair?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("bodyHair", currentLang) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
+                        performer.skin?.let { com.gpdb.android.util.GlossaryHelper.getCleanLabel("skin", currentLang) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese) },
                         (performer.dickSize?.takeIf { it.isNotBlank() && it != "none available" }
                             ?: pbc?.dickSize?.takeIf { it.isNotBlank() })?.let {
-                            com.gpdb.android.util.GlossaryHelper.getCleanLabel("dickSize", isChinese) to com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)
+                            com.gpdb.android.util.GlossaryHelper.getCleanLabel("dickSize", currentLang) to com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)
                         },
                         (performer.foreskin?.takeIf { it.isNotBlank() && it != "none available" }
                             ?: pbc?.foreskin?.takeIf { it.isNotBlank() })?.let {
-                            com.gpdb.android.util.GlossaryHelper.getCleanLabel("foreskin", isChinese) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese)
+                            com.gpdb.android.util.GlossaryHelper.getCleanLabel("foreskin", currentLang) to com.gpdb.android.util.GlossaryHelper.translate(it, isChinese)
                         },
                         (performer.tattoos?.takeIf { it.isNotBlank() && it != "none available" }
                             ?: pbc?.tattoos?.takeIf { it.isNotBlank() })?.let {
-                            com.gpdb.android.util.GlossaryHelper.getCleanLabel("tattoos", isChinese) to com.gpdb.android.util.GlossaryHelper.trTattoo(it, isChinese)
+                            com.gpdb.android.util.GlossaryHelper.getCleanLabel("tattoos", currentLang) to com.gpdb.android.util.GlossaryHelper.trTattoo(it, isChinese)
                         }
                     ).filter { it.second.isNotBlank() && it.second != "none available" }
                 }
 
                 var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
-                val tabs = remember(detail.movies.size, uiState.episodes.size) {
-                    listOf("出演影片 (${detail.movies.size})", "出演分集 (${uiState.episodes.size})")
+                val tabs = remember(detail.movies.size, uiState.episodes.size, currentLang) {
+                    listOf(
+                        "${com.gpdb.android.util.I18n.t("studio.movies", currentLang, defaultVal = "Movies")} (${detail.movies.size})",
+                        "${com.gpdb.android.util.I18n.t("studio.episodes", currentLang, defaultVal = "Episodes")} (${uiState.episodes.size})"
+                    )
                 }
 
                 val gridState = rememberLazyGridState()
@@ -251,7 +238,7 @@ fun PerformerDetailScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "暂无出演影片记录",
+                                        text = com.gpdb.android.util.I18n.string("performer.noMovies"),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -311,7 +298,7 @@ fun PerformerDetailScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "暂无出演分集记录",
+                                        text = com.gpdb.android.util.I18n.string("performer.noEpisodes"),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -428,7 +415,7 @@ private fun PerformerProfileHeader(
                             border = androidx.compose.foundation.BorderStroke(1.dp, if (isActive) Color(0xFF10B981) else MaterialTheme.colorScheme.outline)
                         ) {
                             Text(
-                                text = if (isActive) "活跃" else "退役",
+                                text = if (isActive) com.gpdb.android.util.I18n.string("performer.active") else com.gpdb.android.util.I18n.string("performer.retired"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = if (isActive) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -449,14 +436,19 @@ private fun PerformerProfileHeader(
                     )
                     if (!pbc?.birthName.isNullOrBlank() && pbc.birthName != performer.name) {
                         Text(
-                            text = "本名: ${pbc.birthName}",
+                            text = "${com.gpdb.android.util.I18n.string("performer.birthNameLabel")}: ${pbc.birthName}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     if (pbc?.careerStart != null) {
+                        val debutStr = com.gpdb.android.util.I18n.string(
+                            "performer.debutYear",
+                            mapOf("year" to pbc.careerStart.toString()),
+                            defaultVal = "Debut: ${pbc.careerStart}"
+                        )
                         Text(
-                            text = "出道: ${pbc.careerStart}年",
+                            text = debutStr,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -536,7 +528,7 @@ private fun PerformerProfileHeader(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "PBC 维基人物小传",
+                            text = com.gpdb.android.util.I18n.string("performer.pbcBiography"),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFFA78BFA)
@@ -544,7 +536,7 @@ private fun PerformerProfileHeader(
                         val pbcLink = performer.pbcUrl ?: pbc.pbcUrl
                         if (!pbcLink.isNullOrBlank()) {
                             Text(
-                                text = "完整词条 ↗",
+                                text = com.gpdb.android.util.I18n.string("performer.fullWikiEntry"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color(0xFFA78BFA),
                                 modifier = Modifier.clickable { uriHandler.openUri(pbcLink) }
@@ -572,7 +564,7 @@ private fun PerformerProfileHeader(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "互联档案:",
+                    text = "${com.gpdb.android.util.I18n.string("performer.webProfiles")}:",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.align(Alignment.CenterVertically)
@@ -612,7 +604,7 @@ private fun PerformerProfileHeader(
                     Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "BT4G 搜索",
+                        text = com.gpdb.android.util.I18n.string("performer.bt4gSearch"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer,
                     )
@@ -652,7 +644,7 @@ private fun PerformerProfileHeader(
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(
-                            text = "PBC 百科 ↗",
+                            text = com.gpdb.android.util.I18n.string("performer.pbcWiki"),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFC4B5FD),
                             fontWeight = FontWeight.Medium
@@ -724,7 +716,7 @@ private fun PerformerProfileHeader(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "曾用艺名 / 别名 (AKA)",
+                                text = com.gpdb.android.util.I18n.string("performer.aka"),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -733,8 +725,9 @@ private fun PerformerProfileHeader(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceVariant
                             ) {
+                                val totalText = com.gpdb.android.util.I18n.string("performer.totalCount", mapOf("count" to allAliases.size.toString()))
                                 Text(
-                                    text = "共 ${allAliases.size} 个",
+                                    text = totalText,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
@@ -744,7 +737,7 @@ private fun PerformerProfileHeader(
 
                         if (allAliases.size > collapseThreshold) {
                             Text(
-                                text = if (isAliasesExpanded) "收起" else "展开全部",
+                                text = if (isAliasesExpanded) com.gpdb.android.util.I18n.string("performer.collapse") else com.gpdb.android.util.I18n.string("performer.expandAll"),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Medium,
@@ -779,7 +772,7 @@ private fun PerformerProfileHeader(
                                 modifier = Modifier.clickable { isAliasesExpanded = true }
                             ) {
                                 Text(
-                                    text = "+${allAliases.size - collapseThreshold} 更多...",
+                                    text = "+${allAliases.size - collapseThreshold}...",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)

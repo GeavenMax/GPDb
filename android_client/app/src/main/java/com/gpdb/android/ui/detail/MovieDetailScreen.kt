@@ -70,20 +70,20 @@ fun MovieDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("影片详情") },
+                title = { Text(com.gpdb.android.util.I18n.string("movie.detailTitle", defaultVal = "影片详情")) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = com.gpdb.android.util.I18n.string("common.back", defaultVal = "返回"))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showShareCard = true }) {
-                        Icon(Icons.Default.Share, contentDescription = "卡片分享")
+                        Icon(Icons.Default.Share, contentDescription = com.gpdb.android.util.I18n.string("common.share", defaultVal = "卡片分享"))
                     }
                     IconButton(onClick = { viewModel.toggleFavorite() }) {
                         Icon(
                             imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = "收藏",
+                            contentDescription = if (uiState.isFavorite) com.gpdb.android.util.I18n.string("common.unfavorite", defaultVal = "取消收藏") else com.gpdb.android.util.I18n.string("common.favorite", defaultVal = "收藏"),
                             tint = if (uiState.isFavorite) Color.Red else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -269,7 +269,7 @@ fun MovieDetailScreen(
                                         )
                                         Spacer(modifier = Modifier.height(10.dp))
                                         Text(
-                                            text = "暂无海报",
+                                            text = com.gpdb.android.util.I18n.string("movie.posterFallback", defaultVal = "暂无海报"),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = Color.White.copy(alpha = 0.7f)
                                         )
@@ -293,17 +293,21 @@ fun MovieDetailScreen(
                     }
 
                     // 影片元数据区域
+                    val isZh = com.gpdb.android.util.LocalAppLanguage.current.isChinese
+                    val primaryMovieTitle = if (isZh) (movie.titleZh?.takeIf { it.isNotBlank() } ?: movie.title) else movie.title
+                    val secondaryMovieTitle = if (isZh && !movie.titleZh.isNullOrBlank() && movie.title != movie.titleZh) movie.title else null
+
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                         Text(
-                            text = movie.titleZh ?: movie.title,
+                            text = primaryMovieTitle,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold
                         )
 
-                        if (movie.titleZh != null && movie.titleZh != movie.title) {
+                        if (secondaryMovieTitle != null) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = movie.title,
+                                text = secondaryMovieTitle,
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
@@ -325,7 +329,7 @@ fun MovieDetailScreen(
                             movie.durationMins?.let { duration ->
                                 Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
                                     Text(
-                                        text = "$duration 分钟",
+                                        text = "$duration ${com.gpdb.android.util.I18n.string("common.minutes")}",
                                         style = MaterialTheme.typography.bodySmall,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
@@ -339,7 +343,7 @@ fun MovieDetailScreen(
                                     modifier = Modifier.clickable { onDirectorClick(director) }
                                 ) {
                                     Text(
-                                        text = "导演: $director",
+                                        text = "${com.gpdb.android.util.I18n.string("movie.director", defaultVal = "导演")}: $director",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -354,7 +358,7 @@ fun MovieDetailScreen(
                                     modifier = Modifier.clickable { onStudioClick(studio) }
                                 ) {
                                     Text(
-                                        text = "片商: $studio",
+                                        text = "${com.gpdb.android.util.I18n.string("nav.studios", defaultVal = "片商")}: $studio",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -371,7 +375,7 @@ fun MovieDetailScreen(
                                     }
                                 ) {
                                     Text(
-                                        text = "属于 $series 系列",
+                                        text = "${com.gpdb.android.util.I18n.string("nav.series", defaultVal = "系列")}: $series",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -399,7 +403,7 @@ fun MovieDetailScreen(
                                         uriHandler.openUri("https://bt4gprx.com/search?q=$encodedTitle")
                                     }
                                 },
-                                label = { Text("BT 磁链") },
+                                label = { Text(com.gpdb.android.util.I18n.string("movie.btSearch", defaultVal = "BT 磁链")) },
                                 icon = {
                                     Icon(
                                         Icons.Default.OpenInBrowser,
@@ -450,7 +454,7 @@ fun MovieDetailScreen(
                             // 4. 分享卡片
                             SuggestionChip(
                                 onClick = { showShareCard = true },
-                                label = { Text("分享卡片") },
+                                label = { Text(com.gpdb.android.util.I18n.string("movie.shareCard", defaultVal = "分享卡片")) },
                                 icon = {
                                     Icon(
                                         Icons.Default.Share,
@@ -464,7 +468,7 @@ fun MovieDetailScreen(
                             FilterChip(
                                 selected = uiState.isFavorite,
                                 onClick = { viewModel.toggleFavorite() },
-                                label = { Text(if (uiState.isFavorite) "已收藏" else "收藏电影") },
+                                label = { Text(if (uiState.isFavorite) com.gpdb.android.util.I18n.string("movie.favorited", defaultVal = "已收藏") else com.gpdb.android.util.I18n.string("movie.favorite", defaultVal = "收藏电影")) },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
@@ -477,7 +481,11 @@ fun MovieDetailScreen(
                         }
 
                         // ★ 剧情简介板块移至海报与操作组下方通栏展示 (Full-width Synopsis)
-                        val originalSummary = movie.descriptionZh?.takeIf { it.isNotBlank() } ?: movie.description
+                        val originalSummary = if (isZh) {
+                            movie.descriptionZh?.takeIf { it.isNotBlank() } ?: movie.description
+                        } else {
+                            movie.description?.takeIf { it.isNotBlank() } ?: movie.descriptionZh
+                        }
                         if (!originalSummary.isNullOrBlank()) {
                             Spacer(modifier = Modifier.height(16.dp))
                             TranslationSection(
@@ -493,7 +501,7 @@ fun MovieDetailScreen(
                         if (detail.performers.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
-                                text = "出演演员",
+                                text = com.gpdb.android.util.I18n.string("movie.cast", defaultVal = "出演演员"),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -541,7 +549,7 @@ fun MovieDetailScreen(
                         if (uiState.episodes.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
-                                text = "相关分集 (${uiState.episodes.size})",
+                                text = "${com.gpdb.android.util.I18n.string("movie.scenes", defaultVal = "相关分集")} (${uiState.episodes.size})",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -571,10 +579,11 @@ fun MovieDetailScreen(
     if (showShareCard && uiState.movieDetail != null) {
         val movie = uiState.movieDetail!!.movie
         val performers = uiState.movieDetail!!.performers.map { it.name }
-        val cardData = remember(movie, performers) {
+        val isZhLang = com.gpdb.android.util.LocalAppLanguage.current.isChinese
+        val cardData = remember(movie, performers, isZhLang) {
             ShareCardData(
                 title = movie.title,
-                titleZh = movie.titleZh,
+                titleZh = if (isZhLang) movie.titleZh else null,
                 posterUrl = movie.coverFull ?: movie.coverIcon,
                 coverBackUrl = movie.coverBack,
                 fallbackEntityId = movie.id,
@@ -586,7 +595,7 @@ fun MovieDetailScreen(
                 rating = movie.rating,
                 category = movie.category,
                 performers = performers,
-                description = movie.descriptionZh?.takeIf { it.isNotBlank() } ?: movie.description,
+                description = if (isZhLang) (movie.descriptionZh?.takeIf { it.isNotBlank() } ?: movie.description) else (movie.description?.takeIf { it.isNotBlank() } ?: movie.descriptionZh),
                 isEpisode = false
             )
         }

@@ -26,7 +26,7 @@ fun TranslationSection(
     isLoading: Boolean,
     errorMessage: String?,
     modifier: Modifier = Modifier,
-    title: String = "剧情简介",
+    title: String = com.gpdb.android.util.I18n.string("synopsis.title", defaultVal = "剧情简介"),
     onTranslateClick: (String) -> Unit
 ) {
     val summary = originalSummary?.takeIf { it.isNotBlank() } ?: return
@@ -48,11 +48,16 @@ fun TranslationSection(
             if (!isLoading) {
                 if (translatedSummary != null) {
                     TextButton(onClick = { showOriginal = !showOriginal }) {
-                        Text(if (showOriginal) "显示译文" else "显示原文")
+                        val label = if (showOriginal) {
+                            com.gpdb.android.util.I18n.string("synopsis.showTranslation", defaultVal = "显示译文")
+                        } else {
+                            com.gpdb.android.util.I18n.string("synopsis.showOriginal", defaultVal = "显示原文")
+                        }
+                        Text(label)
                     }
                 } else {
                     TextButton(onClick = { onTranslateClick(summary) }) {
-                        Text("🪄 AI 翻译")
+                        Text(com.gpdb.android.util.I18n.string("synopsis.aiTranslate", defaultVal = "🪄 AI 翻译"))
                     }
                 }
             }

@@ -40,7 +40,7 @@ fun AppUpdateDialog(
         if (releaseInfo.apkSize > 0) {
             String.format("%.1f MB", releaseInfo.apkSize / (1024.0 * 1024.0))
         } else {
-            "约 4.5 MB"
+            "~4.5 MB"
         }
     }
 
@@ -87,7 +87,7 @@ fun AppUpdateDialog(
 
                 // 标题
                 Text(
-                    text = "发现新版本 ${releaseInfo.tagName}",
+                    text = com.gpdb.android.util.I18n.string("update.newVersionFound", mapOf("version" to releaseInfo.tagName)),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -105,7 +105,7 @@ fun AppUpdateDialog(
                         color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
                         Text(
-                            text = "当前: v${BuildConfig.VERSION_NAME}",
+                            text = com.gpdb.android.util.I18n.string("update.currentVersionLabel", mapOf("version" to BuildConfig.VERSION_NAME)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -116,7 +116,7 @@ fun AppUpdateDialog(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
                     ) {
                         Text(
-                            text = "体积: $formattedSize",
+                            text = com.gpdb.android.util.I18n.string("update.packageSize", mapOf("size" to formattedSize)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -142,7 +142,7 @@ fun AppUpdateDialog(
                             .verticalScroll(rememberScrollState())
                     ) {
                         Text(
-                            text = "更新说明：",
+                            text = com.gpdb.android.util.I18n.string("update.releaseNotesTitle"),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -183,14 +183,20 @@ fun AppUpdateDialog(
                             trackColor = MaterialTheme.colorScheme.surfaceVariant,
                         )
                         Spacer(modifier = Modifier.height(8.dp))
+                        val progressText = if (progress < 100) {
+                            com.gpdb.android.util.I18n.string("update.downloadProgress", mapOf("progress" to progress.toString()))
+                        } else {
+                            com.gpdb.android.util.I18n.string("update.downloadComplete")
+                        }
                         Text(
-                            text = if (progress < 100) "正在下载更新包... $progress%" else "下载完成，正在唤起安装...",
+                            text = progressText,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 } else {
                     // 操作按钮栏
+                    val updateFailedPattern = com.gpdb.android.util.I18n.string("update.failed")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -200,7 +206,7 @@ fun AppUpdateDialog(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("稍后再说")
+                            Text(com.gpdb.android.util.I18n.string("update.postponeBtn"))
                         }
 
                         Button(
@@ -216,7 +222,7 @@ fun AppUpdateDialog(
                                         )
                                         AppUpdateManager.installApk(context, apkFile)
                                     } catch (e: Exception) {
-                                        errorMessage = "下载失败: ${e.message}"
+                                        errorMessage = "$updateFailedPattern: ${e.message}"
                                         isDownloading = false
                                     }
                                 }
@@ -230,7 +236,7 @@ fun AppUpdateDialog(
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("立即更新")
+                            Text(com.gpdb.android.util.I18n.string("update.updateNowBtn"))
                         }
                     }
                 }

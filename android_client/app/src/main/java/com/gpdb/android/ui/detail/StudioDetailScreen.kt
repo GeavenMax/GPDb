@@ -88,7 +88,9 @@ fun StudioDetailScreen(
                             )
                         }
                         Column {
-                            val mainTitle = uiState.nameZh?.takeIf { it.isNotBlank() } ?: studioName
+                            val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+                            val isZh = currentLang.isChinese
+                            val mainTitle = if (isZh) (uiState.nameZh?.takeIf { it.isNotBlank() } ?: studioName) else studioName
                             Text(
                                 text = mainTitle,
                                 maxLines = 1,
@@ -96,7 +98,7 @@ fun StudioDetailScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            if (!uiState.nameZh.isNullOrBlank() && uiState.nameZh != studioName) {
+                            if (isZh && !uiState.nameZh.isNullOrBlank() && uiState.nameZh != studioName) {
                                 Text(
                                     text = studioName,
                                     maxLines = 1,
@@ -110,14 +112,14 @@ fun StudioDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = com.gpdb.android.util.I18n.string("common.back"))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.toggleFavorite() }) {
                         Icon(
                             imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = "收藏",
+                            contentDescription = if (uiState.isFavorite) com.gpdb.android.util.I18n.string("common.unfavorite") else com.gpdb.android.util.I18n.string("common.favorite"),
                             tint = if (uiState.isFavorite) Color.Red else MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -136,7 +138,9 @@ fun StudioDetailScreen(
                 )
             } else {
                 var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
-                val tabs = listOf("发行作品 (${uiState.movies.size})", "发行分集 (${uiState.episodes.size})")
+                val movieTabLabel = com.gpdb.android.util.I18n.string("studio.releasedMovies", mapOf("count" to uiState.movies.size.toString()))
+                val episodeTabLabel = com.gpdb.android.util.I18n.string("studio.releasedEpisodes", mapOf("count" to uiState.episodes.size.toString()))
+                val tabs: List<String> = listOf(movieTabLabel, episodeTabLabel)
 
                 if (selectedTabIndex == 0) {
                     LazyVerticalGrid(
@@ -179,7 +183,7 @@ fun StudioDetailScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "暂无发行作品记录",
+                                        text = com.gpdb.android.util.I18n.string("studio.noMovies"),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -239,7 +243,7 @@ fun StudioDetailScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "暂无发行分集记录",
+                                        text = com.gpdb.android.util.I18n.string("studio.noEpisodes"),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -279,8 +283,11 @@ private fun StudioHeroHeader(
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
 
-    val primaryTitle = uiState.nameZh?.takeIf { it.isNotBlank() } ?: uiState.studioName
-    val secondaryTitle = if (uiState.nameZh != null && uiState.nameZh != uiState.studioName) uiState.studioName else null
+    val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+    val isZh = currentLang.isChinese
+
+    val primaryTitle = if (isZh) (uiState.nameZh?.takeIf { it.isNotBlank() } ?: uiState.studioName) else uiState.studioName
+    val secondaryTitle = if (isZh && uiState.nameZh != null && uiState.nameZh != uiState.studioName) uiState.studioName else null
     val monogram = primaryTitle.firstOrNull()?.uppercase() ?: uiState.studioName.firstOrNull()?.uppercase() ?: "S"
 
     val hasBanner = !uiState.bannerUrl.isNullOrBlank()
@@ -461,6 +468,7 @@ private fun StudioHeroHeader(
                     }
 
                     val copiedToastText = I18n.string("studio.copiedWebsite")
+                    val cannotOpenBrowserPattern = I18n.string("detail.cannotOpenBrowser")
 
                     Surface(
                         shape = RoundedCornerShape(12.dp),
@@ -472,7 +480,8 @@ private fun StudioHeroHeader(
                                     try {
                                         uriHandler.openUri(targetUrl)
                                     } catch (e: Exception) {
-                                        Toast.makeText(context, "无法打开浏览器: $targetUrl", Toast.LENGTH_SHORT).show()
+                                        val toastMsg = cannotOpenBrowserPattern.replace("{url}", targetUrl)
+                                        Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
                                     }
                                 },
                                 onLongClick = {
@@ -537,7 +546,7 @@ private fun StudioIntroductionCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "厂牌介绍",
+                    text = I18n.string("studio.historyArchive"),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface

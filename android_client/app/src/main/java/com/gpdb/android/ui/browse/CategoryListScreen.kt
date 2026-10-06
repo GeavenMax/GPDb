@@ -26,7 +26,7 @@ fun CategoryListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("分类标签 (Categories)") })
+            TopAppBar(title = { Text(com.gpdb.android.util.I18n.string("browse.categoriesTitle")) })
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {

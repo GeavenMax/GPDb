@@ -67,6 +67,11 @@ fun SetupScreen(
     var errorMessage   by remember { mutableStateOf<String?>(null) }
     var isCreatingSandbox by remember { mutableStateOf(false) }
 
+    val errorNoDirSelectedText = com.gpdb.android.util.I18n.string("setup.errorNoDirSelected")
+    val errorUriParseText = com.gpdb.android.util.I18n.string("setup.errorUriParse")
+    val errorMissingFilesText = com.gpdb.android.util.I18n.string("setup.errorMissingFiles")
+    val errorMissingDbText = com.gpdb.android.util.I18n.string("setup.errorMissingDb")
+
     // ── 重新进入前台时刷新权限状态（用户在系统设置开启权限后返回）
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -84,17 +89,17 @@ fun SetupScreen(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
         if (uri == null) {
-            errorMessage = "未选择任何目录，请重试。"
+            errorMessage = errorNoDirSelectedText
             return@rememberLauncherForActivityResult
         }
 
         // 从 content:// URI 提取树文档 ID，再还原为绝对物理路径
         val treeDocId = DocumentsContract.getTreeDocumentId(uri) ?: run {
-            errorMessage = "无法解析选中的目录 URI，请重试。"
+            errorMessage = errorUriParseText
             return@rememberLauncherForActivityResult
         }
         val absPath = PathResolver.resolve(context, treeDocId) ?: run {
-            errorMessage = "目录路径解析失败（treeDocId: $treeDocId），请确认选择的是内部存储目录。"
+            errorMessage = errorUriParseText
             return@rememberLauncherForActivityResult
         }
 
@@ -104,8 +109,8 @@ fun SetupScreen(
         dbExists      = db
         zipExists     = zip
         errorMessage  = when {
-            !db && !zip -> "❌ 所选目录中未找到 GPDb.db 和 GPDb_Images.zip，请确认路径正确。"
-            !db         -> "⚠️ 未找到 GPDb.db，无法挂载数据库。"
+            !db && !zip -> errorMissingFilesText
+            !db         -> errorMissingDbText
             else        -> null
         }
 
@@ -142,12 +147,12 @@ fun SetupScreen(
                 tint = MaterialTheme.colorScheme.primary,
             )
             Text(
-                text = "欢迎使用 GPDb",
+                text = com.gpdb.android.util.I18n.string("setup.welcome"),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "请选择影库初始化方式，开启你的全景影库体验。",
+                text = com.gpdb.android.util.I18n.string("setup.welcomeDesc"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -176,14 +181,14 @@ fun SetupScreen(
                             modifier = Modifier.size(22.dp)
                         )
                         Text(
-                            text = "新手开箱 / 全新体验",
+                            text = com.gpdb.android.util.I18n.string("setup.onboarding"),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                     Text(
-                        text = "尚未准备电脑端导出的 GPDb.db 或图片包？无需担心！直接在手机专属沙盒内一键创建全新空白影库，无需外部存储权限，即可立即探索全部功能并支持在线刮削更新。",
+                        text = com.gpdb.android.util.I18n.string("setup.onboardingDesc"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -196,7 +201,7 @@ fun SetupScreen(
                                     mountPrefs.saveMountRoot(sandboxDir.absolutePath)
                                     onMountComplete()
                                 } catch (e: Exception) {
-                                    errorMessage = "初始化沙盒影库失败: ${e.message}"
+                                    errorMessage = e.message
                                 } finally {
                                     isCreatingSandbox = false
                                 }
@@ -208,11 +213,11 @@ fun SetupScreen(
                         if (isCreatingSandbox) {
                             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(8.dp))
-                            Text("正在创建本地数据库...")
+                            Text(com.gpdb.android.util.I18n.string("setup.creatingDatabase"))
                         } else {
                             Icon(Icons.Outlined.Bolt, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
-                            Text("一键创建本地沙盒影库", fontWeight = FontWeight.Bold)
+                            Text(com.gpdb.android.util.I18n.string("setup.createSandbox"), fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -225,7 +230,7 @@ fun SetupScreen(
             ) {
                 HorizontalDivider(modifier = Modifier.weight(1f))
                 Text(
-                    text = "或从电脑导入已有影库",
+                    text = com.gpdb.android.util.I18n.string("setup.orImportFromPc"),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -235,8 +240,8 @@ fun SetupScreen(
             // ── 步骤 1：文件访问权限 ─────────────────────────
             SetupStep(
                 step = 1,
-                title = "授予「所有文件访问」权限",
-                description = "GPDb 需要此权限才能直接读取 SQLite 数据库与 15GB 图片包，\n避免系统代理层带来的性能损耗。",
+                title = com.gpdb.android.util.I18n.string("setup.grantStoragePermission"),
+                description = com.gpdb.android.util.I18n.string("setup.grantStoragePermissionDesc"),
                 isDone = hasStoragePerm,
             ) {
                 if (!hasStoragePerm) {
@@ -252,7 +257,7 @@ fun SetupScreen(
                     ) {
                         Icon(Icons.Outlined.OpenInNew, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("前往系统设置开启权限")
+                        Text(com.gpdb.android.util.I18n.string("setup.openSystemSettings"))
                     }
                 }
             }
@@ -260,8 +265,8 @@ fun SetupScreen(
             // ── 步骤 2：选择挂载目录 ─────────────────────────
             SetupStep(
                 step = 2,
-                title = "选择 GPDb 根目录",
-                description = "请选择你存放 GPDb.db 和 GPDb_Images.zip 的文件夹\n（如手机内的 Documents/GPDb/）。",
+                title = com.gpdb.android.util.I18n.string("setup.chooseGpdbFolder"),
+                description = com.gpdb.android.util.I18n.string("setup.chooseGpdbFolderDesc"),
                 isDone = mountRootPath != null && dbExists,
                 isEnabled = hasStoragePerm,
             ) {
@@ -272,7 +277,7 @@ fun SetupScreen(
                     ) {
                         Icon(Icons.Outlined.FolderOpen, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("选择影库目录")
+                        Text(com.gpdb.android.util.I18n.string("setup.chooseFolderButton"))
                     }
                 }
 
@@ -356,7 +361,7 @@ private fun SetupStep(
                 if (isDone) {
                     Icon(
                         Icons.Outlined.CheckCircle,
-                        contentDescription = "已完成",
+                        contentDescription = com.gpdb.android.util.I18n.string("setup.done"),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(28.dp),
                     )

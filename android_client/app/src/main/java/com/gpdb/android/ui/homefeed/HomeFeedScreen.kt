@@ -69,31 +69,37 @@ fun HomeFeedScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Text("GPDb 探索", fontWeight = FontWeight.Black)
+                        Text(com.gpdb.android.util.I18n.string("home.feedTitle", defaultVal = "GPDb 探索"), fontWeight = FontWeight.Black)
                     }
                 },
                 actions = {
+                    val currentAppLang = com.gpdb.android.util.LocalAppLanguage.current
                     IconButton(
                         onClick = {
                             scope.launch {
                                 val nextState = !privacyBlurEnabled
                                 appSettingsRepo.setScreenshotPrivacyBlurEnabled(nextState)
-                                android.widget.Toast.makeText(
-                                    context,
-                                    if (nextState) "防窥模式已开启" else "防窥模式已关闭",
-                                    android.widget.Toast.LENGTH_SHORT
-                                ).show()
+                                val msg = if (nextState) {
+                                    com.gpdb.android.util.I18n.t("home.privacyOn", currentAppLang, defaultVal = "防窥模式已开启")
+                                } else {
+                                    com.gpdb.android.util.I18n.t("home.privacyOff", currentAppLang, defaultVal = "防窥模式已关闭")
+                                }
+                                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
                             }
                         }
                     ) {
                         Icon(
                             imageVector = if (privacyBlurEnabled) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (privacyBlurEnabled) "防窥模式 (已开启)" else "防窥模式 (已关闭)",
+                            contentDescription = if (privacyBlurEnabled) {
+                                com.gpdb.android.util.I18n.string("home.privacyActiveTooltip", defaultVal = "防窥模式 (已开启)")
+                            } else {
+                                com.gpdb.android.util.I18n.string("home.privacyInactiveTooltip", defaultVal = "防窥模式 (已关闭)")
+                            },
                             tint = if (privacyBlurEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(onClick = { viewModel.loadFeed() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = com.gpdb.android.util.I18n.string("common.refresh"))
                     }
                 }
             )
@@ -134,15 +140,15 @@ fun HomeFeedScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
-                            Text("探索发现流尚未加载", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text("数据库正在建立索引或后台挂载中，点击下方按钮立即重新加载", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(com.gpdb.android.util.I18n.string("home.emptyFeed", defaultVal = "探索发现流尚未加载"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                            Text(com.gpdb.android.util.I18n.string("home.emptyFeedDesc", defaultVal = "数据库正在建立索引或后台挂载中，点击下方按钮立即重新加载"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Button(
                                 onClick = { viewModel.loadFeed() },
                                 shape = RoundedCornerShape(20.dp)
                             ) {
                                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("立即刷新发现流")
+                                Text(com.gpdb.android.util.I18n.string("home.reloadFeed", defaultVal = "立即刷新发现流"))
                             }
                         }
                     }
@@ -306,7 +312,7 @@ private fun SpotlightSection(
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    "焦点推荐",
+                                    com.gpdb.android.util.I18n.string("home.spotlight", defaultVal = "焦点推荐"),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary,
@@ -330,8 +336,10 @@ private fun SpotlightSection(
                         }
 
                         // 标题
+                        val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+                        val titlePrimary = if (currentLang.isChinese) (movie.titleZh ?: movie.title) else movie.title
                         Text(
-                            text = movie.titleZh ?: movie.title,
+                            text = titlePrimary,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Black,
                             color = Color.White,
@@ -348,7 +356,7 @@ private fun SpotlightSection(
                         }
 
                         // 剧情简介
-                        val desc = movie.descriptionZh ?: movie.description
+                        val desc = if (currentLang.isChinese) (movie.descriptionZh ?: movie.description) else (movie.description ?: movie.descriptionZh)
                         if (!desc.isNullOrBlank()) {
                             Text(
                                 text = desc,
@@ -370,7 +378,7 @@ private fun SpotlightSection(
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text("立即探索", style = MaterialTheme.typography.labelMedium)
+                                Text(com.gpdb.android.util.I18n.string("home.exploreNow", defaultVal = "立即探索"), style = MaterialTheme.typography.labelMedium)
                             }
 
                             FilledTonalButton(
@@ -385,7 +393,7 @@ private fun SpotlightSection(
                             ) {
                                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("换一部", style = MaterialTheme.typography.labelMedium)
+                                Text(com.gpdb.android.util.I18n.string("home.switchOneMovie", defaultVal = "换一部"), style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
@@ -424,8 +432,11 @@ private fun OnThisDaySection(
     onMovieClick: (Long) -> Unit,
     onEpisodeClick: (Long) -> Unit
 ) {
-    val todayFormatted = remember {
-        val sdf = SimpleDateFormat("MM月dd日", Locale.getDefault())
+    val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+    val todayFormatted = remember(currentLang) {
+        val pattern = if (currentLang.isChinese) "MM月dd日" else "MMM d"
+        val locale = if (currentLang.isChinese) Locale.CHINA else Locale.US
+        val sdf = SimpleDateFormat(pattern, locale)
         sdf.format(Date())
     }
 
@@ -439,7 +450,7 @@ private fun OnThisDaySection(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                Text("往年今日 · 经典首映", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(com.gpdb.android.util.I18n.string("home.onThisDayFull", defaultVal = "往年今日 · 经典首映"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
                     shape = RoundedCornerShape(12.dp)
@@ -488,8 +499,9 @@ private fun OnThisDaySection(
                                     shape = RoundedCornerShape(bottomEnd = 8.dp),
                                     modifier = Modifier.align(Alignment.TopStart)
                                 ) {
+                                    val yearsText = com.gpdb.android.util.I18n.string("home.yearsAgo", mapOf("years" to item.yearsAgo.toString()), defaultVal = "${item.yearsAgo}年前")
                                     Text(
-                                        "${item.yearsAgo}年前",
+                                        yearsText,
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.White,
                                         fontWeight = FontWeight.Bold,
@@ -500,8 +512,14 @@ private fun OnThisDaySection(
                         }
 
                         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            val defaultEpisodeTitle = com.gpdb.android.util.I18n.string("home.episodeScene", defaultVal = "经典场景")
+                            val titleText = if (currentLang.isChinese) {
+                                item.episodeTitle ?: item.movieTitleZh ?: item.movieTitle ?: defaultEpisodeTitle
+                            } else {
+                                item.episodeTitle ?: item.movieTitle ?: item.movieTitleZh ?: defaultEpisodeTitle
+                            }
                             Text(
-                                text = item.episodeTitle ?: item.movieTitleZh ?: item.movieTitle ?: "经典场景",
+                                text = titleText,
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
@@ -512,7 +530,7 @@ private fun OnThisDaySection(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = item.studioName ?: "精选作品",
+                                    text = item.studioName ?: com.gpdb.android.util.I18n.string("common.movie", defaultVal = "精选作品"),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
@@ -545,6 +563,7 @@ private fun StarSpotlightSection(
 ) {
     if (performers.isEmpty()) return
 
+    val currentLang = com.gpdb.android.util.LocalAppLanguage.current
     val brokenAvatarIds = remember { mutableStateListOf<Long>() }
     val displayPerformers = remember(performers, brokenAvatarIds.size) {
         performers.filter { !it.imageUrl.isNullOrBlank() && it.id !in brokenAvatarIds }
@@ -562,10 +581,10 @@ private fun StarSpotlightSection(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Default.People, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
-                Text("今日星光 · 标志面孔", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(com.gpdb.android.util.I18n.string("home.curatedPerformersTitle", defaultVal = "名流演员档案"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             TextButton(onClick = onViewAllClick) {
-                Text("全部", style = MaterialTheme.typography.labelMedium)
+                Text(com.gpdb.android.util.I18n.string("common.all", defaultVal = "全部"), style = MaterialTheme.typography.labelMedium)
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(14.dp))
             }
         }
@@ -617,8 +636,10 @@ private fun StarSpotlightSection(
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         shape = RoundedCornerShape(10.dp)
                     ) {
+                        val filmsUnit = com.gpdb.android.util.I18n.string("common.filmsCount")
+                        val worksUnit = "${perf.worksCount} $filmsUnit"
                         Text(
-                            "${perf.worksCount}部",
+                            worksUnit,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
@@ -640,6 +661,7 @@ private fun SeriesShowcaseSection(
     physicalRootPath: String,
     onSeriesClick: (String) -> Unit
 ) {
+    val currentLang = com.gpdb.android.util.LocalAppLanguage.current
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             modifier = Modifier
@@ -649,7 +671,7 @@ private fun SeriesShowcaseSection(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(Icons.Default.Layers, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text("经典系列大放送", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(com.gpdb.android.util.I18n.string("home.classicSeries", defaultVal = "经典系列大放送"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
 
         LazyRow(
@@ -679,8 +701,10 @@ private fun SeriesShowcaseSection(
                                 shape = RoundedCornerShape(topStart = 8.dp),
                                 modifier = Modifier.align(Alignment.BottomEnd)
                             ) {
+                                val filmsUnit = com.gpdb.android.util.I18n.string("common.filmsCount")
+                                val countText = "${series.movieCount} $filmsUnit"
                                 Text(
-                                    "${series.movieCount}部",
+                                    countText,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold,
@@ -741,7 +765,7 @@ private fun LuckyDiscoverySection(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Default.Casino, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                Text("随心探索 · 盲盒发现", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(com.gpdb.android.util.I18n.string("home.luckyDiscovery", defaultVal = "随心探索 · 盲盒发现"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
 
             OutlinedButton(
@@ -758,7 +782,7 @@ private fun LuckyDiscoverySection(
                     modifier = Modifier.size(16.dp).rotate(animatedRotation)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("换一批", style = MaterialTheme.typography.labelMedium)
+                Text(com.gpdb.android.util.I18n.string("home.luckyShuffle", defaultVal = "换一批"), style = MaterialTheme.typography.labelMedium)
             }
         }
 
@@ -818,7 +842,7 @@ private fun QuickStatsSection(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(Icons.Default.Analytics, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text("影库纵览与快捷探索", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(com.gpdb.android.util.I18n.string("home.quickExploreSection", defaultVal = "影库纵览与快捷探索"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
 
         Row(
@@ -826,7 +850,7 @@ private fun QuickStatsSection(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatCard(
-                title = "影视长片",
+                title = com.gpdb.android.util.I18n.string("home.statMoviesLabel", defaultVal = "影视长片"),
                 count = totalMovies,
                 icon = Icons.Default.Movie,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -835,7 +859,7 @@ private fun QuickStatsSection(
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "独立分集",
+                title = com.gpdb.android.util.I18n.string("home.statEpisodesLabel", defaultVal = "独立分集"),
                 count = totalEpisodes,
                 icon = Icons.Default.VideoLibrary,
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -850,7 +874,7 @@ private fun QuickStatsSection(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             StatCard(
-                title = "入库演员",
+                title = com.gpdb.android.util.I18n.string("home.statPerformersLabel", defaultVal = "入库演员"),
                 count = totalPerformers,
                 icon = Icons.Default.People,
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
@@ -859,7 +883,7 @@ private fun QuickStatsSection(
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "制片厂牌",
+                title = com.gpdb.android.util.I18n.string("home.statStudiosLabel", defaultVal = "收录片商"),
                 count = totalStudios,
                 icon = Icons.Default.Business,
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
