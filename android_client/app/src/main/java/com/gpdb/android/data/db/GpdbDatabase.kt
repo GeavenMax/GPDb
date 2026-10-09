@@ -42,7 +42,7 @@ import androidx.room.migration.Migration
         EpisodePerformerEntity::class,
         StudioEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class GpdbDatabase : RoomDatabase() {
@@ -57,6 +57,31 @@ abstract class GpdbDatabase : RoomDatabase() {
 
     companion object {
         private const val TAG = "GpdbDatabase"
+
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "执行 8->9 平滑迁移: 补齐 episodes.title_zh 与 title_attempts 字段")
+                try { database.execSQL("ALTER TABLE episodes ADD COLUMN title_zh TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE episodes ADD COLUMN title_attempts INTEGER DEFAULT 0;") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_7_9 = object : Migration(7, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_movies_studio_id ON movies(studio_id);") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE episodes ADD COLUMN title_zh TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE episodes ADD COLUMN title_attempts INTEGER DEFAULT 0;") } catch (_: Exception) {}
+            }
+        }
+
+        private val MIGRATION_0_9 = object : Migration(0, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                Log.i(TAG, "检测到外部 GPDb.db (version 0)，已执行 0->9 平滑挂载")
+                try { database.execSQL("CREATE INDEX IF NOT EXISTS idx_movies_studio_id ON movies(studio_id);") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE episodes ADD COLUMN title_zh TEXT;") } catch (_: Exception) {}
+                try { database.execSQL("ALTER TABLE episodes ADD COLUMN title_attempts INTEGER DEFAULT 0;") } catch (_: Exception) {}
+            }
+        }
 
         private val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -697,6 +722,12 @@ abstract class GpdbDatabase : RoomDatabase() {
                 if (!epCols.contains("studio_name")) {
                     try { rawDb.execSQL("ALTER TABLE episodes ADD COLUMN studio_name TEXT;") } catch (_: Exception) {}
                 }
+                if (!epCols.contains("title_zh")) {
+                    try { rawDb.execSQL("ALTER TABLE episodes ADD COLUMN title_zh TEXT;") } catch (_: Exception) {}
+                }
+                if (!epCols.contains("title_attempts")) {
+                    try { rawDb.execSQL("ALTER TABLE episodes ADD COLUMN title_attempts INTEGER DEFAULT 0;") } catch (_: Exception) {}
+                }
                 try {
                     rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_movie_id ON episodes(movie_id);")
                     rawDb.execSQL("CREATE INDEX IF NOT EXISTS idx_episodes_studio ON episodes(studio_name);")
@@ -739,7 +770,8 @@ abstract class GpdbDatabase : RoomDatabase() {
                     MIGRATION_0_5, MIGRATION_1_5, MIGRATION_2_5, MIGRATION_3_5, MIGRATION_4_5,
                     MIGRATION_0_6, MIGRATION_1_6, MIGRATION_2_6, MIGRATION_3_6, MIGRATION_4_6, MIGRATION_5_6,
                     MIGRATION_0_7, MIGRATION_5_7, MIGRATION_6_7,
-                    MIGRATION_0_8, MIGRATION_5_8, MIGRATION_6_8, MIGRATION_7_8
+                    MIGRATION_0_8, MIGRATION_5_8, MIGRATION_6_8, MIGRATION_7_8,
+                    MIGRATION_8_9, MIGRATION_7_9, MIGRATION_0_9
                 )
                 // ★ 关键修复：强制使用 TRUNCATE 日志模式，彻底消除 FUSE 下 WAL 模式的 -shm / -wal ioctl 权限冲突
                 .setJournalMode(JournalMode.TRUNCATE)

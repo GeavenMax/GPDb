@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.18.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.19.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -64,7 +64,7 @@
 - **厂牌 Logo & 横幅 100% 覆盖**：全库 2,490+ 厂牌已 100% 配齐高清 Logo（WebP 离线直传），690+ 厂牌收录官方宽屏 Banner；作品 Logo 覆盖率达 98%。
 - **舒适详情布局**：剧情简介通栏展开易读，核心操作按钮矩阵化收拢。
 
-### 5. 📸 截屏防窥模式与流光分享卡片 (v2.18.0)
+### 5. 📸 截屏防窥模式与流光分享卡片 (v2.19.0)
 - **全局一键截屏防窥**：桌面顶栏眼睛开关 / Android 探索主页顶部快捷开关，瞬间触发海报高斯模糊 (`blur(24px)`) 与剧情文字脱敏 (`blur(7px)`)，杜绝泄露。
 - **流光双封面分享卡片**：
   - 支持正反双封面并排排版、16:9 分集居中裁切防拉伸；
@@ -127,13 +127,13 @@
 
 ### 用户下载安装（推荐）
 
-直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载最新 **`v2.18.0`** 正式安装包：
+直接前往本仓库的 [Releases 页面](https://github.com/GeavenMax/GPDb/releases) 下载最新 **`v2.19.0`** 正式安装包：
 
 | 平台 | 安装包文件名 | 安装方式与说明 |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.18.0.dmg` | 双击挂载后将 `GPDb.app` 拖入 `Applications` 目录即可。<br>*(若提示未公证，可在「系统设置 → 隐私与安全性」点击「仍要打开」)* |
-| **🪟 Windows** | `GPDb-Windows-v2.18.0.exe` | 双击安装程序即可运行。采用 NSIS 免提权单用户架构，无需管理员权限。 |
-| **🤖 Android** | `GPDb-Android-v2.18.0-signed.apk` | 手机下载直接安装（官方正式私钥强签名；若系统提示请允许未知来源安装）。 |
+| ** macOS** | `GPDb-macOS-v2.19.0.dmg` | 双击挂载后将 `GPDb.app` 拖入 `Applications` 目录即可。<br>*(若提示未公证，可在「系统设置 → 隐私与安全性」点击「仍要打开」)* |
+| **🪟 Windows** | `GPDb-Windows-v2.19.0.exe` | 双击安装程序即可运行。采用 NSIS 免提权单用户架构，无需管理员权限。 |
+| **🤖 Android** | `GPDb-Android-v2.19.0-signed.apk` | 手机下载直接安装（官方正式私钥强签名；若系统提示请允许未知来源安装）。 |
 
 ---
 

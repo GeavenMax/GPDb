@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.18.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.19.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -64,7 +64,7 @@
 - **100% Studio Logo & Banner Coverage**: Complete 100% HD WebP logo coverage across 2,490+ studios; 690+ official widescreen banners; 98% movie logo coverage.
 - **Ergonomic Detail Layout**: Full-width synopsis expansion under posters with a consolidated matrix action bar.
 
-### 5. 📸 Screenshot Privacy Blur & Ambient Share Cards (v2.18.0)
+### 5. 📸 Screenshot Privacy Blur & Ambient Share Cards (v2.19.0)
 - **Global One-Tap Privacy Blur**: Eye toggle on desktop header / Android discover top bar instantly applies Gaussian blur to posters (`blur(24px)`) and synopses (`blur(7px)`).
 - **Ambient Dual-Poster Share Cards**:
   - Front/Back dual-poster side-by-side layout and 16:9 distortion-free centered scene cropping;
@@ -127,13 +127,13 @@
 
 ### Download & Install (Recommended)
 
-Download official **`v2.18.0`** release packages directly from the [Releases page](https://github.com/GeavenMax/GPDb/releases):
+Download official **`v2.19.0`** release packages directly from the [Releases page](https://github.com/GeavenMax/GPDb/releases):
 
 | Platform | Package Filename | Installation Notes |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.18.0.dmg` | Double-click to mount and drag `GPDb.app` into `Applications`.<br>*(If prompted about an unverified developer, go to System Settings → Privacy & Security and click "Open Anyway".)* |
-| **🪟 Windows** | `GPDb-Windows-v2.18.0.exe` | Double-click to run. Uses an NSIS single-user architecture requiring no administrator privileges. |
-| **🤖 Android** | `GPDb-Android-v2.18.0-signed.apk` | Download and install directly on your device (officially signed with release key; allow unknown sources if prompted). |
+| ** macOS** | `GPDb-macOS-v2.19.0.dmg` | Double-click to mount and drag `GPDb.app` into `Applications`.<br>*(If prompted about an unverified developer, go to System Settings → Privacy & Security and click "Open Anyway".)* |
+| **🪟 Windows** | `GPDb-Windows-v2.19.0.exe` | Double-click to run. Uses an NSIS single-user architecture requiring no administrator privileges. |
+| **🤖 Android** | `GPDb-Android-v2.19.0-signed.apk` | Download and install directly on your device (officially signed with release key; allow unknown sources if prompted). |
 
 ---
 

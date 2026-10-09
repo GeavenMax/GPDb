@@ -275,7 +275,7 @@ class SettingsViewModel(
                 val rootJson = org.json.JSONObject()
                 rootJson.put("format", "gpdb_universal_backup")
                 rootJson.put("version", 2)
-                rootJson.put("app_version", "2.15.0")
+                rootJson.put("app_version", com.gpdb.android.BuildConfig.VERSION_NAME)
                 rootJson.put("platform", "android")
                 rootJson.put("exported_at", java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).format(java.util.Date()))
 
@@ -323,14 +323,14 @@ class SettingsViewModel(
 
                 // 1. Import favorites
                 var favImported = 0
-                if (rootJson.has("favorites")) {
-                    val favArr = rootJson.getJSONArray("favorites")
+                val favArr = rootJson.optJSONArray("favorites")
+                if (favArr != null) {
                     val favList = mutableListOf<com.gpdb.android.data.repository.FavoriteBackupItem>()
                     for (i in 0 until favArr.length()) {
-                        val obj = favArr.getJSONObject(i)
-                        val type = obj.optString("entity_type", "")
-                        val key = obj.optString("entity_key", "")
-                        val time = if (obj.has("created_at")) obj.getString("created_at") else null
+                        val obj = favArr.optJSONObject(i) ?: continue
+                        val type = obj.optString("entity_type").ifBlank { obj.optString("type", "") }
+                        val key = obj.optString("entity_key").ifBlank { obj.optString("entity_id").ifBlank { obj.optString("key").ifBlank { obj.optString("id", "") } } }
+                        val time = if (obj.has("created_at") && !obj.isNull("created_at")) obj.getString("created_at") else null
                         if (type.isNotBlank() && key.isNotBlank()) {
                             favList.add(com.gpdb.android.data.repository.FavoriteBackupItem(type, key, time))
                         }
@@ -341,15 +341,24 @@ class SettingsViewModel(
 
                 // 2. Import analytics
                 if (rootJson.has("analytics")) {
-                    val analyticsObj = rootJson.getJSONObject("analytics")
-                    val analyticsMap = mutableMapOf<String, Any>()
-                    val keys = analyticsObj.keys()
-                    while (keys.hasNext()) {
-                        val k = keys.next()
-                        analyticsMap[k] = analyticsObj.get(k)
+                    val analyticsObj = rootJson.optJSONObject("analytics")
+                    if (analyticsObj != null) {
+                        val analyticsMap = mutableMapOf<String, Any>()
+                        val keys = analyticsObj.keys()
+                        while (keys.hasNext()) {
+                            val k = keys.next()
+                            analyticsMap[k] = analyticsObj.get(k)
+                        }
+                        val analyticsRepo = com.gpdb.android.data.analytics.UserAnalyticsRepository.getInstance(context)
+                        analyticsRepo.importAnalyticsMap(analyticsMap)
                     }
-                    val analyticsRepo = com.gpdb.android.data.analytics.UserAnalyticsRepository.getInstance(context)
-                    analyticsRepo.importAnalyticsMap(analyticsMap)
+                }
+
+                // 3. Import movie_user_data
+                val mudArr = rootJson.optJSONArray("movie_user_data")
+                if (mudArr != null) {
+                    val userRepo = com.gpdb.android.data.repository.UserRepository(db, db.userActionDao())
+                    userRepo.importMovieUserData(mudArr)
                 }
 
                 withContext(Dispatchers.Main) {

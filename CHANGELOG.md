@@ -3,6 +3,17 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.19.0] - 2026-10-09
+
+### Added
+- **Android 客户端 Room 数据库版本升级至 v9 (`GpdbDatabase.kt`, `EpisodeEntity.kt`)**：
+  - 完整适配底层 `GPDb.db` 的 `episodes` 表分集物理翻译列 `title_zh` 与 `title_attempts`；
+  - 增加 `MIGRATION_8_9`、`MIGRATION_7_9` 与 `MIGRATION_0_9` 迁移逻辑与前置架构自愈检测，实现零拷贝直连挂载。
+- **Android 端全平台通用配置备份 (`gpdb_universal_backup`) 容错恢复增强 (`SettingsViewModel.kt`, `UserRepository.kt`)**：
+  - 兼容历史各版本及各平台导出格式的键名映射（`entity_key` / `entity_id` / `key` / `id`，`entity_type` / `type`）；
+  - 自动创建 `user_favorites` 与 `user_movie_data` 基础物理表并支持事务安全导入；
+  - 补充 `user_movie_data` 评分、状态与私密笔记跨端无损恢复支持。
+
 ## [v2.18.0] - 2026-10-05
 
 ### Fixed

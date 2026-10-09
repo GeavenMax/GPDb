@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.18.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.19.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -64,7 +64,7 @@
 - **スタジオロゴ＆バナー 100% 網羅**：ライブラリ内の 2,490 以上のスタジオに高解像度ロゴ（WebP 形式でオフライン直配）を 100% 完備、690 以上のスタジオに公式ワイドバナーを収録。作品ロゴのカバー率は 98% を達成。
 - **快適な詳細ページレイアウト**：あらすじを全幅展開して読みやすさを向上し、主要操作ボタンをコンパクトなマトリクス状に集約。
 
-### 5. 📸 スクリーンショットプライバシー保護＆ストリーミングシェアカード (v2.18.0)
+### 5. 📸 スクリーンショットプライバシー保護＆ストリーミングシェアカード (v2.19.0)
 - **ワンタップ全体プライバシー保護**：デスクトップ上部の「目」アイコン / Android ホーム上部のトグルスイッチにより、ポスターのガウスぼかし (`blur(24px)`) とテキストのマスキング (`blur(7px)`) を瞬時に適用し、画面の漏洩を防止。
 - **流光デュアルカバーシェアカード**：
   - フロント・バックの両面カバー並列レイアウト、16:9 シーンの中央クロップ（歪み防止）に対応。
@@ -127,13 +127,13 @@
 
 ### アプリのダウンロードとインストール（推奨）
 
-リポジトリの [Releases ページ](https://github.com/GeavenMax/GPDb/releases) から最新の **`v2.18.0`** 正式パッケージをダウンロードしてください：
+リポジトリの [Releases ページ](https://github.com/GeavenMax/GPDb/releases) から最新の **`v2.19.0`** 正式パッケージをダウンロードしてください：
 
 | プラットフォーム | パッケージファイル名 | インストール手順と説明 |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.18.0.dmg` | dmg をマウント後、`GPDb.app` を `Applications` フォルダにドラッグ＆ドロップしてください。<br>*(※ 未確認の開発者警告が表示された場合は、「システム設定 → プライバシーとセキュリティ」から「このまま開く」をクリックしてください)* |
-| **🪟 Windows** | `GPDb-Windows-v2.18.0.exe` | インストーラーをダブルクリックして実行します。NSIS 単一ユーザー設計を採用しており、管理者権限は不要です。 |
-| **🤖 Android** | `GPDb-Android-v2.18.0-signed.apk` | 端末にダウンロードして直接インストールしてください（公式署名済み。必要に応じて提供元不明のアプリのインストールを許可してください）。 |
+| ** macOS** | `GPDb-macOS-v2.19.0.dmg` | dmg をマウント後、`GPDb.app` を `Applications` フォルダにドラッグ＆ドロップしてください。<br>*(※ 未確認の開発者警告が表示された場合は、「システム設定 → プライバシーとセキュリティ」から「このまま開く」をクリックしてください)* |
+| **🪟 Windows** | `GPDb-Windows-v2.19.0.exe` | インストーラーをダブルクリックして実行します。NSIS 単一ユーザー設計を採用しており、管理者権限は不要です。 |
+| **🤖 Android** | `GPDb-Android-v2.19.0-signed.apk` | 端末にダウンロードして直接インストールしてください（公式署名済み。必要に応じて提供元不明のアプリのインストールを許可してください）。 |
 
 ---
 

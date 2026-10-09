@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.18.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.19.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -64,7 +64,7 @@
 - **Cobertura del 100% en logos y banners de productoras**: Las 2.490+ productoras de la base de datos cuentan con logos en alta definición al 100% (formato WebP offline directo), y 690+ disponen de banners panorámicos oficiales; tasa de cobertura de logos en películas del 98%.
 - **Diseño cómodo de detalles**: Sinopsis argumental desplegada a ancho completo para una lectura clara y matriz compacta de botones de acción esenciales.
 
-### 5. 📸 Modo antiespionaje y tarjetas luminosas para compartir (v2.18.0)
+### 5. 📸 Modo antiespionaje y tarjetas luminosas para compartir (v2.19.0)
 - **Modo antiespionaje global con un solo clic**: Interruptor de ojo en la barra superior de escritorio / conmutador rápido en la cabecera de Explorar en Android; aplica al instante desenfoque gaussiano en pósteres (`blur(24px)`) y anonimización de sinopsis (`blur(7px)`), evitando miradas indiscretas.
 - **Tarjetas luminosas de doble carátula para compartir**:
   - Disposición en paralelo de carátula frontal y trasera; recorte centrado inteligente 16:9 sin distorsión para escenas;
@@ -127,13 +127,13 @@
 
 ### Descarga e instalación para usuarios (Recomendado)
 
-Descargue el instalador oficial de la versión **`v2.18.0`** directamente desde la página de [Releases](https://github.com/GeavenMax/GPDb/releases):
+Descargue el instalador oficial de la versión **`v2.19.0`** directamente desde la página de [Releases](https://github.com/GeavenMax/GPDb/releases):
 
 | Plataforma | Archivo de instalación | Instrucciones y notas |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.18.0.dmg` | Haga doble clic para montar el archivo y arrastre `GPDb.app` a la carpeta `Aplicaciones`.<br>*(Si el sistema indica que no está notariado, vaya a «Ajustes del Sistema → Privacidad y seguridad» y haga clic en «Abrir igualmente»)* |
-| **🪟 Windows** | `GPDb-Windows-v2.18.0.exe` | Haga doble clic en el instalador para ejecutar. Utiliza arquitectura NSIS monousuario sin necesidad de privilegios de administrador. |
-| **🤖 Android** | `GPDb-Android-v2.18.0-signed.apk` | Descargue e instale directamente en el dispositivo móvil (firmado oficialmente con clave privada; si el sistema lo solicita, autorice la instalación desde fuentes desconocidas). |
+| ** macOS** | `GPDb-macOS-v2.19.0.dmg` | Haga doble clic para montar el archivo y arrastre `GPDb.app` a la carpeta `Aplicaciones`.<br>*(Si el sistema indica que no está notariado, vaya a «Ajustes del Sistema → Privacidad y seguridad» y haga clic en «Abrir igualmente»)* |
+| **🪟 Windows** | `GPDb-Windows-v2.19.0.exe` | Haga doble clic en el instalador para ejecutar. Utiliza arquitectura NSIS monousuario sin necesidad de privilegios de administrador. |
+| **🤖 Android** | `GPDb-Android-v2.19.0-signed.apk` | Descargue e instale directamente en el dispositivo móvil (firmado oficialmente con clave privada; si el sistema lo solicita, autorice la instalación desde fuentes desconocidas). |
 
 ---
 

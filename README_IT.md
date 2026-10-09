@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.18.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.19.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -64,7 +64,7 @@
 - **Copertura del 100% per loghi e banner degli studi**: Oltre 2.490 case di produzione con loghi HD completi al 100% (formato WebP offline) e oltre 690 banner panoramici ufficiali; copertura dei loghi delle opere al 98%.
 - **Layout dei dettagli confortevole**: Sinossi a tutta larghezza per una lettura agevole e matrice compatta dei pulsanti d'azione rapidi.
 
-### 5. 📸 Modalità privacy dello schermo e schede di condivisione luminose (v2.18.0)
+### 5. 📸 Modalità privacy dello schermo e schede di condivisione luminose (v2.19.0)
 - **Anti-sbirciatina globale con un clic**: Interruttore rapido nella barra superiore desktop e nella schermata di esplorazione di Android per applicare istantaneamente una sfocatura gaussiana alle locandine (`blur(24px)`) e al testo delle trame (`blur(7px)`).
 - **Schede di condivisione luminose a doppia copertina**:
   - Layout affiancato fronte/retro e ritaglio centrato 16:9 senza distorsioni per le scene;
@@ -127,13 +127,13 @@
 
 ### Download e installazione (Consigliato)
 
-Scarica la versione ufficiale più recente **`v2.18.0`** dalla pagina [Releases](https://github.com/GeavenMax/GPDb/releases) del repository:
+Scarica la versione ufficiale più recente **`v2.19.0`** dalla pagina [Releases](https://github.com/GeavenMax/GPDb/releases) del repository:
 
 | Piattaforma | File di installazione | Istruzioni per l'installazione |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.18.0.dmg` | Apri l'immagine disco e trascina `GPDb.app` nella cartella `Applicazioni`.<br>*(Se compare un avviso di mancata notarizzazione, aprilo da «Impostazioni di Sistema → Privacy e sicurezza» cliccando su «Apri comunque»)* |
-| **🪟 Windows** | `GPDb-Windows-v2.18.0.exe` | Fai doppio clic sul file di installazione. Utilizza un'architettura NSIS per singolo utente senza privilegi di amministratore. |
-| **🤖 Android** | `GPDb-Android-v2.18.0-signed.apk` | Scarica e installa direttamente sul dispositivo (firmato con chiave privata ufficiale; abilita l'installazione da origini sconosciute se richiesto). |
+| ** macOS** | `GPDb-macOS-v2.19.0.dmg` | Apri l'immagine disco e trascina `GPDb.app` nella cartella `Applicazioni`.<br>*(Se compare un avviso di mancata notarizzazione, aprilo da «Impostazioni di Sistema → Privacy e sicurezza» cliccando su «Apri comunque»)* |
+| **🪟 Windows** | `GPDb-Windows-v2.19.0.exe` | Fai doppio clic sul file di installazione. Utilizza un'architettura NSIS per singolo utente senza privilegi di amministratore. |
+| **🤖 Android** | `GPDb-Android-v2.19.0-signed.apk` | Scarica e installa direttamente sul dispositivo (firmato con chiave privata ufficiale; abilita l'installazione da origini sconosciute se richiesto). |
 
 ---
 

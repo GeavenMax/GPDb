@@ -97,13 +97,21 @@ class UserRepository(
         var count = 0
         try {
             val wdb = db.openHelper.writableDatabase
+            wdb.execSQL("""
+                CREATE TABLE IF NOT EXISTS user_favorites (
+                    entity_type TEXT NOT NULL,
+                    entity_key TEXT NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (entity_type, entity_key)
+                );
+            """.trimIndent())
             wdb.beginTransaction()
             try {
                 for (item in items) {
                     if (item.entity_type.isNotBlank() && item.entity_key.isNotBlank()) {
                         wdb.execSQL(
                             "INSERT OR IGNORE INTO user_favorites (entity_type, entity_key, created_at) VALUES (?, ?, COALESCE(?, CURRENT_TIMESTAMP))",
-                            arrayOf(item.entity_type, item.entity_key, item.created_at)
+                            arrayOf<Any?>(item.entity_type, item.entity_key, item.created_at)
                         )
                         count++
                     }
@@ -113,9 +121,50 @@ class UserRepository(
                 wdb.endTransaction()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("UserRepository", "导入收藏异常: ${e.message}", e)
         }
         count
+    }
+
+    suspend fun importMovieUserData(arr: org.json.JSONArray) = withContext(Dispatchers.IO) {
+        try {
+            val wdb = db.openHelper.writableDatabase
+            wdb.execSQL("""
+                CREATE TABLE IF NOT EXISTS user_movie_data (
+                    movie_id INTEGER PRIMARY KEY,
+                    rating REAL,
+                    status TEXT,
+                    notes TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """.trimIndent())
+            wdb.beginTransaction()
+            try {
+                for (i in 0 until arr.length()) {
+                    val obj = arr.optJSONObject(i) ?: continue
+                    val mid = obj.optLong("movie_id", -1L)
+                    if (mid > 0) {
+                        val rating = if (obj.has("rating") && !obj.isNull("rating")) obj.getDouble("rating") else null
+                        val status = if (obj.has("status") && !obj.isNull("status")) obj.getString("status") else null
+                        val notes = if (obj.has("notes") && !obj.isNull("notes")) obj.getString("notes") else null
+                        wdb.execSQL("""
+                            INSERT INTO user_movie_data (movie_id, rating, status, notes, updated_at)
+                            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                            ON CONFLICT(movie_id) DO UPDATE SET
+                                rating = excluded.rating,
+                                status = excluded.status,
+                                notes = excluded.notes,
+                                updated_at = CURRENT_TIMESTAMP;
+                        """.trimIndent(), arrayOf<Any?>(mid, rating, status, notes))
+                    }
+                }
+                wdb.setTransactionSuccessful()
+            } finally {
+                wdb.endTransaction()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("UserRepository", "导入 user_movie_data 失败: ${e.message}", e)
+        }
     }
 }
 

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.0] - 2026-10-09
+
+### Added
+- **支持分集中文翻译物理列 (`EpisodeEntity.kt`, `GpdbDatabase.kt`)**：
+  - 适配底层数据库 `episodes` 表的新增物理列 `title_zh` 与 `title_attempts`；
+  - Room 核心数据库升级至 `version = 9`，增加 `MIGRATION_8_9`、`MIGRATION_7_9` 与 `MIGRATION_0_9` 平滑迁移通道与底层前置架构自愈检查。
+- **全平台通用用户配置恢复兼容性增强 (`SettingsViewModel.kt`, `UserRepository.kt`)**：
+  - 支持 `gpdb_universal_backup` 历史备份的多级字段回退映射（`entity_key` / `entity_id` / `key` / `id`，`entity_type` / `type`）；
+  - 增加 `user_movie_data` 评分、状态与私密笔记导入支持；
+  - 强化事务容错与表结构自动建立，确保用户配置 100% 恢复。
+
 ## [2.18.1] - 2026-10-08
 
 ### Added

@@ -21,7 +21,7 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.18.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.19.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
@@ -64,7 +64,7 @@
 - **100% Studio-Logo- & Banner-Abdeckung**: Alle 2.490+ Studios mit verlustfreien WebP-Logos ausgestattet; 690+ Studios verfügen über offizielle Breitbild-Banner; 98% Logo-Abdeckung bei Filmtiteln.
 - **Ergonomisches Detail-Layout**: Vollflächig lesbare Handlungsbeschreibungen und kompakt gruppierte Aktionsschaltflächen.
 
-### 5. 📸 Blickschutzmodus & Ästhetische Sharing-Karten (v2.18.0)
+### 5. 📸 Blickschutzmodus & Ästhetische Sharing-Karten (v2.19.0)
 - **Globaler Ein-Klick-Blickschutz**: Umschalter in der Desktop-Titelleiste und Android-Startansicht; aktiviert sofort Gaußsche Unschärfe auf Covern (`blur(24px)`) und Handlungsbeschreibungen (`blur(7px)`).
 - **Fluide Dual-Cover-Sharing-Karten**:
   - Paralleles Vorder- und Rückseiten-Layout, verzerrungsfreier 16:9-Zuschnitt für Szenenbilder;
@@ -127,13 +127,13 @@
 
 ### Installationspakete (Empfohlen)
 
-Laden Sie das offizielle Installationspaket für **`v2.18.0`** direkt von der [Releases-Seite](https://github.com/GeavenMax/GPDb/releases) herunter:
+Laden Sie das offizielle Installationspaket für **`v2.19.0`** direkt von der [Releases-Seite](https://github.com/GeavenMax/GPDb/releases) herunter:
 
 | Plattform | Dateiname | Installationshinweise |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.18.0.dmg` | DMG öffnen und `GPDb.app` in den Ordner `Programme` (`Applications`) ziehen.<br>*(Falls eine Notarisierungs-Warnung erscheint: „Systemeinstellungen → Datenschutz & Sicherheit“ → „Trotzdem öffnen“)* |
-| **🪟 Windows** | `GPDb-Windows-v2.18.0.exe` | Installationsprogramm per Doppelklick ausführen. NSIS-Einzelbenutzer-Architektur ohne Administratorrechte erforderlich. |
-| **🤖 Android** | `GPDb-Android-v2.18.0-signed.apk` | APK auf das Smartphone herunterladen und direkt installieren (offiziell signiert; ggf. Installation aus unbekannten Quellen erlauben). |
+| ** macOS** | `GPDb-macOS-v2.19.0.dmg` | DMG öffnen und `GPDb.app` in den Ordner `Programme` (`Applications`) ziehen.<br>*(Falls eine Notarisierungs-Warnung erscheint: „Systemeinstellungen → Datenschutz & Sicherheit“ → „Trotzdem öffnen“)* |
+| **🪟 Windows** | `GPDb-Windows-v2.19.0.exe` | Installationsprogramm per Doppelklick ausführen. NSIS-Einzelbenutzer-Architektur ohne Administratorrechte erforderlich. |
+| **🤖 Android** | `GPDb-Android-v2.19.0-signed.apk` | APK auf das Smartphone herunterladen und direkt installieren (offiziell signiert; ggf. Installation aus unbekannten Quellen erlauben). |
 
 ---
 

@@ -52,5 +52,11 @@ data class EpisodeEntity(
     val studioId: Long? = null,
 
     @ColumnInfo(name = "studio_name")
-    val studioName: String? = null
+    val studioName: String? = null,
+
+    @ColumnInfo(name = "title_zh")
+    val titleZh: String? = null,
+
+    @ColumnInfo(name = "title_attempts", defaultValue = "0")
+    val titleAttempts: Int? = 0
 )
