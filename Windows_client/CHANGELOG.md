@@ -463,7 +463,7 @@
 - **分集剧照分享比例拉伸形变修复**：
   - 分集分享卡片自动切换为 16:9 横屏展板；实现纯 Canvas / Compose 版 `object-fit: cover` 居中裁剪算法，确保剧照中人物面部绝无挤压形变。
 - **Android 客户端数据库挂载失败根除 (Room 架构校验与物理列自愈)**：
-  - 在 [`GpdbDatabase.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/data/db/GpdbDatabase.kt) 中将 Room 数据库版本由 3 升级至 4，补全 `MIGRATION_3_4` 以及各历史版本到 4 的完整迁移脚本（补充 `ALTER TABLE performers ADD COLUMN sj_url TEXT`）；
+  - 在 [`GpdbDatabase.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/GPDb 开发/android_client/app/src/main/java/com/gpdb/android/data/db/GpdbDatabase.kt) 中将 Room 数据库版本由 3 升级至 4，补全 `MIGRATION_3_4` 以及各历史版本到 4 的完整迁移脚本（补充 `ALTER TABLE performers ADD COLUMN sj_url TEXT`）；
   - 引入外部数据库挂载前置自愈机制 `ensureSchemaCompatibility`：在 Room 执行 TableInfo 严格校验前，使用原生 SQLite 直连检查并就地无损补齐缺失列（`pbc_url`, `sj_url` 及扩展表 `performer_pbc_profiles`, `performer_sj_profiles`），彻底解决由于缺少 `sj_url` 列导致 `IllegalStateException: Migration didn't properly handle: performers` 挂载失败的缺陷。
 - **Android 收藏系列（LibraryScreen）点击瞬间闪退修复**：
   - 将网格项键值升级为全局复合唯一键，查询语句增加 `SELECT DISTINCT`，彻底根治重名系列触发的闪退崩溃。

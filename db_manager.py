@@ -595,6 +595,79 @@ class DatabaseManager:
         return {"translatable": total, "translated": done,
                 "pending": total - done - failed, "failed": failed}
 
+    # --- Episode title translation (see schema.sql episodes.title_zh) ---
+    def get_untranslated_episode_titles(self, limit: int | None = None, max_attempts: int = 3, studio_name: str | None = None) -> list[dict]:
+        """Distinct episode/scene titles still needing a Chinese name, with synopsis/action_notes as context."""
+        where_studio = "AND (e.studio_name = ? OR m.studio_name = ?)" if studio_name else ""
+        sql = f"""
+            SELECT title, context FROM (
+                SELECT e.title,
+                       CASE
+                           WHEN e.description_zh IS NOT NULL AND trim(e.description_zh) != '' THEN e.description_zh
+                           WHEN e.description IS NOT NULL AND trim(e.description) != '' THEN e.description
+                           WHEN e.action_notes IS NOT NULL AND trim(e.action_notes) != '' THEN e.action_notes
+                           WHEN m.description_zh IS NOT NULL AND trim(m.description_zh) != '' THEN m.description_zh
+                           ELSE m.description
+                       END AS context,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY e.title
+                           ORDER BY (e.description_zh IS NOT NULL AND trim(e.description_zh) != '') DESC,
+                                    length(COALESCE(e.description, '')) DESC, e.id ASC
+                       ) AS rn
+                FROM episodes e
+                LEFT JOIN movies m ON e.movie_id = m.id
+                WHERE e.title IS NOT NULL AND trim(e.title) != ''
+                  AND (e.title_zh IS NULL OR trim(e.title_zh) = '')
+                  AND COALESCE(e.title_attempts, 0) < ?
+                  {where_studio}
+            ) WHERE rn = 1
+            ORDER BY title ASC
+        """
+        args: list[Any] = [max_attempts]
+        if studio_name:
+            args.extend([studio_name, studio_name])
+        if limit and limit > 0:
+            sql += " LIMIT ?"
+            args.append(limit)
+        rows = self.conn.execute(sql, args).fetchall()
+        return [{"title": r[0], "description": r[1]} for r in rows]
+
+    def set_episode_title_translation(self, title: str, title_zh: str | None) -> int:
+        """Store (or record a failed attempt for) one episode title's Chinese name."""
+        with self._write_lock, self.conn:
+            if title_zh:
+                cur = self.conn.execute(
+                    "UPDATE episodes SET title_zh = ?, title_attempts = 0 WHERE title = ?",
+                    (title_zh, title)
+                )
+            else:
+                cur = self.conn.execute(
+                    "UPDATE episodes SET title_attempts = COALESCE(title_attempts, 0) + 1 "
+                    "WHERE title = ?",
+                    (title,)
+                )
+            return cur.rowcount
+
+    def get_episode_title_translation_stats(self) -> dict[str, int]:
+        """Progress over distinct episode titles."""
+        cur = self.conn.cursor()
+        total = cur.execute(
+            "SELECT COUNT(DISTINCT title) FROM episodes WHERE title IS NOT NULL AND trim(title) != ''"
+        ).fetchone()[0]
+        done = cur.execute(
+            "SELECT COUNT(DISTINCT title) FROM episodes "
+            "WHERE title IS NOT NULL AND trim(title) != '' "
+            "AND title_zh IS NOT NULL AND trim(title_zh) != ''"
+        ).fetchone()[0]
+        failed = cur.execute(
+            "SELECT COUNT(DISTINCT title) FROM episodes "
+            "WHERE title IS NOT NULL AND trim(title) != '' "
+            "AND (title_zh IS NULL OR trim(title_zh) = '') "
+            "AND COALESCE(title_attempts, 0) >= 3"
+        ).fetchone()[0]
+        return {"translatable": total, "translated": done,
+                "pending": total - done - failed, "failed": failed}
+
     # --- Category glossary (see schema.sql §12) ---
     def load_category_glossary(self) -> dict[str, str]:
         """The whole category glossary as {english term: chinese}. ~53 rows, cache freely."""

@@ -81,37 +81,60 @@ fun StudioListScreen(
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (uiState.error != null) {
-                Text(
-                    text = uiState.error ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else if (uiState.studios.isEmpty()) {
-                Text(
-                    text = com.gpdb.android.util.I18n.string("studio.noStudiosFound"),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else {
-                LazyVerticalGrid(
-                    state = gridState,
-                    columns = GridCells.Adaptive(minSize = 150.dp),
-                    contentPadding = PaddingValues(10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(uiState.studios, key = { it.name }) { studio ->
-                        StudioShelfCard(
-                            studio = studio,
-                            physicalRootPath = physicalRootPath,
-                            onClick = { onStudioClick(studio.name) }
-                        )
-                    }
+            StudioListContent(
+                physicalRootPath = physicalRootPath,
+                viewModel = viewModel,
+                onStudioClick = onStudioClick
+            )
+        }
+    }
+}
+
+@Composable
+fun StudioListContent(
+    physicalRootPath: String,
+    viewModel: StudioListViewModel,
+    onStudioClick: (String) -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadStudios()
+    }
+
+    val gridState = rememberSaveable(saver = LazyGridState.Saver) { LazyGridState() }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (uiState.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        } else if (uiState.error != null) {
+            Text(
+                text = uiState.error ?: "",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        } else if (uiState.studios.isEmpty()) {
+            Text(
+                text = com.gpdb.android.util.I18n.string("studio.noStudiosFound"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        } else {
+            LazyVerticalGrid(
+                state = gridState,
+                columns = GridCells.Adaptive(minSize = 150.dp),
+                contentPadding = PaddingValues(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(uiState.studios, key = { it.name }) { studio ->
+                    StudioShelfCard(
+                        studio = studio,
+                        physicalRootPath = physicalRootPath,
+                        onClick = { onStudioClick(studio.name) }
+                    )
                 }
             }
         }

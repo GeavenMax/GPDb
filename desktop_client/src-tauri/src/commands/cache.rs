@@ -285,6 +285,75 @@ pub fn resolve_cache_file(url: &str) -> Option<(PathBuf, &'static str)> {
     }
 }
 
+/// Attempts to load studio logo or banner binary WebP data directly from SQLite `studio_logos` table.
+/// Ensures 100% offline logo/banner rendering even if image_cache is not present or unzipped.
+/// Guarantees that logo and banner files strictly correspond to the matching studio.
+pub fn load_logo_from_db(target: &str) -> Option<Vec<u8>> {
+    let lower = target.to_ascii_lowercase();
+    let is_logo = lower.contains("logo");
+    let is_banner = lower.contains("banner");
+
+    if !is_logo && !is_banner {
+        return None;
+    }
+
+    let db_path = db::find_db_path()?;
+    let conn = rusqlite::Connection::open_with_flags(&db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
+
+    // Extract filename from target URL/path, e.g. "images/logos/8teenboy_logo.png" -> "8teenboy_logo.png"
+    let clean_target = target.split('?').next().unwrap_or(target).split('#').next().unwrap_or(target);
+    let filename = Path::new(clean_target)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(clean_target);
+
+    let column = if is_banner { "banner_webp" } else { "logo_webp" };
+
+    // 1. Exact match via studios.logo_url or studios.banner_url
+    let sql_exact = format!(
+        "SELECT sl.{} FROM studio_logos sl JOIN studios s ON s.id = sl.studio_id \
+         WHERE (s.logo_url LIKE '%' || ?1 OR s.banner_url LIKE '%' || ?1) \
+           AND sl.{} IS NOT NULL LIMIT 1",
+        column, column
+    );
+    if let Ok(mut stmt) = conn.prepare(&sql_exact) {
+        if let Ok(bytes) = stmt.query_row([filename], |row| row.get::<_, Vec<u8>>(0)) {
+            if !bytes.is_empty() {
+                return Some(bytes);
+            }
+        }
+    }
+
+    // 2. Fallback match via studio name slug (e.g. "8teenboy_logo.png" -> "8teenboy")
+    let stem = Path::new(filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(filename);
+    let slug = stem
+        .trim_end_matches("_logo")
+        .trim_end_matches("-logo")
+        .trim_end_matches("_banner")
+        .trim_end_matches("-banner")
+        .replace('-', "_");
+
+    let sql_slug = format!(
+        "SELECT sl.{} FROM studio_logos sl JOIN studios s ON s.id = sl.studio_id \
+         WHERE (LOWER(REPLACE(REPLACE(s.name, ' ', '_'), '-', '_')) = LOWER(?1) \
+            OR LOWER(REPLACE(REPLACE(COALESCE(s.name_zh, ''), ' ', '_'), '-', '_')) = LOWER(?1)) \
+           AND sl.{} IS NOT NULL LIMIT 1",
+        column, column
+    );
+    if let Ok(mut stmt) = conn.prepare(&sql_slug) {
+        if let Ok(bytes) = stmt.query_row([&slug], |row| row.get::<_, Vec<u8>>(0)) {
+            if !bytes.is_empty() {
+                return Some(bytes);
+            }
+        }
+    }
+
+    None
+}
+
 /// Custom URI scheme protocol handler for `gpdb-img://` and `http://gpdb-img.localhost/`.
 /// Enables ultra-fast local disk image loading directly from `image_cache/`
 /// with automatic on-demand download & caching for un-cached images.
@@ -319,7 +388,23 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
             .unwrap();
     }
 
-    // 1. If already cached on local disk, serve immediately
+    // 0. Priority 1: Check database studio_logos table for Logo & Banner images
+    // Ensures instant 100% offline rendering for zero-cache users without external image packages.
+    if let Some(bytes) = load_logo_from_db(&target) {
+        return tauri::http::Response::builder()
+            .status(200)
+            .header("Content-Type", "image/webp")
+            .header("Cache-Control", "public, max-age=31536000, immutable")
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+            .header("Access-Control-Allow-Headers", "*")
+            .header("Cross-Origin-Resource-Policy", "cross-origin")
+            .header("Vary", "Origin")
+            .body(bytes)
+            .unwrap();
+    }
+
+    // 1. Priority 2: If already cached on local disk, serve immediately
     if let Some((local_path, mime)) = resolve_cache_file(&target) {
         if let Ok(bytes) = fs::read(&local_path) {
             return tauri::http::Response::builder()
@@ -335,6 +420,7 @@ pub fn handle_image_protocol(req: &tauri::http::Request<Vec<u8>>) -> tauri::http
                 .unwrap();
         }
     }
+
 
     // 2. On-demand download and persistent caching
     let remote_url = if target.starts_with("http://") || target.starts_with("https://") {
@@ -556,5 +642,33 @@ mod tests {
             .unwrap();
         let resp = handle_image_protocol(&req);
         assert!(resp.status() == 200 || resp.status() == 404, "Unexpected status: {}", resp.status());
+    }
+
+    #[test]
+    fn test_load_logo_and_banner_from_db() {
+        // Test loading a real logo imported into studio_logos
+        let logo_bytes = load_logo_from_db("images/logos/kinkmen_logo.png");
+        assert!(logo_bytes.is_some(), "Expected kinkmen_logo.png to be found in studio_logos");
+        let bytes = logo_bytes.unwrap();
+        // WebP magic header: RIFF....WEBP
+        assert!(bytes.len() > 12);
+        assert_eq!(&bytes[0..4], b"RIFF");
+        assert_eq!(&bytes[8..12], b"WEBP");
+
+        // Test loading a banner from studio_logos
+        let banner_bytes = load_logo_from_db("images/logos/8teenboy_banner.jpg");
+        assert!(banner_bytes.is_some(), "Expected 8teenboy_banner.jpg to be found in studio_logos");
+        let b_bytes = banner_bytes.unwrap();
+        assert_eq!(&b_bytes[0..4], b"RIFF");
+        assert_eq!(&b_bytes[8..12], b"WEBP");
+
+        // Test protocol handler returns 200 and image/webp
+        let req = tauri::http::Request::builder()
+            .uri("gpdb-img://localhost/?url=images%2Flogos%2Fkinkmen_logo.png")
+            .body(Vec::new())
+            .unwrap();
+        let resp = handle_image_protocol(&req);
+        assert_eq!(resp.status(), 200);
+        assert_eq!(resp.headers().get("Content-Type").unwrap(), "image/webp");
     }
 }

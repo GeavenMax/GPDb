@@ -36,7 +36,7 @@ GPDb Android 客户端是基于 **GPDb 离线影视数据库系统** 的原生�
   AppUpdateManager (GitHub Releases API 检查与 APK 下载器)
 
 [ 本地数据持久化层 (Data Storage Layer) ]
-  Room 2.6+ (Schema v4, 支持 WAL 并发读模式)
+  Room 2.6+ (Schema v6, 支持 WAL 并发读模式)
   挂载前置自愈机制: GpdbDatabase.ensureSchemaCompatibility (原生 SQLite 直连补列)
   偏好存储: Jetpack DataStore Preferences (防窥模式、排版模式、语言配置等)
   文件系统访问: Storage Access Framework (SAF) + Scoped Storage (持久化 URI 树授权)
@@ -51,8 +51,8 @@ GPDb Android 客户端是基于 **GPDb 离线影视数据库系统** 的原生�
 由于 Android 客户端通过 SAF 动态挂载用户指定的外部 `GPDb.db` 文件，不同时期生成的数据库可能缺少最新扩展字段或表。
 
 #### 架构版本与迁移定义
-- 当前 Room 架构版本为 **`4`**。
-- `MIGRATION_3_4`: 执行 `ALTER TABLE performers ADD COLUMN sj_url TEXT`。
+- 当前 Room 架构版本为 **`6`**。
+- `MIGRATION_5_6`: 执行 `ALTER TABLE studios ADD COLUMN website_url TEXT` 与 `site_id INTEGER` 映射及 `idx_studios_name_nocase` 兼容索引创建。
 
 #### 前置自愈机制 (`ensureSchemaCompatibility`)
 在 Room 执行 `GpdbDatabase.getDatabase(context, uri)` 构建连接与 TableInfo 强制校验之前，必须优先触发 `ensureSchemaCompatibility`：
@@ -166,3 +166,37 @@ cd android_client
 - Gradle 原生输出：`android_client/app/build/outputs/apk/release/app-release.apk`
 - 顶层发布规范文件：根目录下 `GPDb_Android_v2.15.0_release_signed.apk`
 - Release 构建已配置 R8 混淆瘦身与资源压缩，体积稳定保持在 4.5MB 左右极致轻量水平。
+
+---
+
+## 6. 官方频道发布与 Telegram 推送自动化规范 (Release & Broadcast)
+
+向 GPDb 官方 Telegram 频道（[@gpdbnews](https://t.me/gpdbnews)）推送版本日志与统计通报必须严格遵守自动化流水线规范：
+
+- **自动化脚本集中目录**：统一收拢于 `scripts/telegram_push/`（内附说明文档 `README.md` 与密钥配置 `.env`）。
+- **两阶段安全发布流程**：
+  1. **第一阶段：只读预览验证**：运行 `python3 scripts/telegram_push/preview_v2170_post.py`，核验消息排版、下划线 Markdown 转义完整性、字符数是否在 4,096 上限内，以及置顶导览草稿；
+  2. **第二阶段：受控执行推送**：获得人工确认后，方可运行带 `--confirm` 参数的推送脚本（如 `python3 scripts/telegram_push/push_v2170.py --confirm`）。
+- **发布内容约束**：
+  - 更新日志与公告中**暂时排除 iOS 端信息**，聚焦 Windows / macOS / Android 三大客户端；
+  - 必须同步调用 `edit_msg(17, ...)` 维护频道第 17 号置顶导览消息（保持“一句话速览”与历史版本同步）。
+
+---
+
+## 7. 片商超清 Logo & 封套徽章资产系统 (Studio Logos Engine)
+
+Android 客户端采用纯离线海报和厂牌 Logo 显示：
+- **资源共享与存放**：Logo 资源集中于 `image_cache/Logos/*_logo.webp` 与 `image_cache/Logos/*_banner.webp`，Coil 图像加载管线无缝支持 WebP 解码。
+- **全量 100% WebP 规范**：全量 2,492 枚独立厂牌 Logo 与 694 枚 Banner 已 100% 升级为高保真 `.webp` 格式，大幅减轻 APK 离线包与缓存体积。
+- **1:1 方块自适应**：来自实体封套提取的切片与品牌标准字徽标已自适应填充生成 512×512 正方形，完美贴合 Android Material 3 圆形/圆角头像展示。
+- **100% 全覆盖现状**：全库 2,492 家有效独立制片厂牌已实现 100% 专属 Logo 覆盖，全库 97.99% 的影视作品拥有所属厂牌 Logo。
+- **管理与生成工程**：统一收纳于 `studio_logos/`，详见 [`studio_logos/README.md`](../studio_logos/README.md) 与 [`STUDIO_LOGO_PROGRESS.md`](../STUDIO_LOGO_PROGRESS.md)。
+
+---
+
+## 8. Git 管理与自动化发版规范 (Git Tasks & Release Workflow)
+
+项目已建立专用的 Git 管理与发版自动化工作区，脚本与规范收拢于 `git_tasks/`：
+- **工程主路径**：`/Users/joel/iCloud Drive (Archive)/Documents/antigravity/GPDb 开发`。
+- **发版前自动预检**：在根目录下执行 `./git_tasks/pre_release_check.sh`，核验合规性、零绝对路径泄露、无 iOS 描述残留及各端版本号严格对齐。
+- **发布流程参考**：详细发版流程与 CI/CD 自动化构建机制请参阅 [`git_tasks/README.md`](../git_tasks/README.md)。

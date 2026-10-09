@@ -499,7 +499,11 @@ private fun OnThisDaySection(
                                     shape = RoundedCornerShape(bottomEnd = 8.dp),
                                     modifier = Modifier.align(Alignment.TopStart)
                                 ) {
-                                    val yearsText = com.gpdb.android.util.I18n.string("home.yearsAgo", mapOf("years" to item.yearsAgo.toString()), defaultVal = "${item.yearsAgo}年前")
+                                    val yearsText = if (item.yearsAgo == 1) {
+                                        com.gpdb.android.util.I18n.string("home.yearAgo", mapOf("years" to "1"), defaultVal = "1 yr ago")
+                                    } else {
+                                        com.gpdb.android.util.I18n.string("home.yearsAgo", mapOf("years" to item.yearsAgo.toString()), defaultVal = "${item.yearsAgo}年前")
+                                    }
                                     Text(
                                         yearsText,
                                         style = MaterialTheme.typography.labelSmall,
@@ -636,7 +640,7 @@ private fun StarSpotlightSection(
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        val filmsUnit = com.gpdb.android.util.I18n.string("common.filmsCount")
+                        val filmsUnit = if (perf.worksCount == 1) com.gpdb.android.util.I18n.string("common.film") else com.gpdb.android.util.I18n.string("common.filmsCount")
                         val worksUnit = "${perf.worksCount} $filmsUnit"
                         Text(
                             worksUnit,
@@ -701,7 +705,7 @@ private fun SeriesShowcaseSection(
                                 shape = RoundedCornerShape(topStart = 8.dp),
                                 modifier = Modifier.align(Alignment.BottomEnd)
                             ) {
-                                val filmsUnit = com.gpdb.android.util.I18n.string("common.filmsCount")
+                                val filmsUnit = if (series.movieCount == 1) com.gpdb.android.util.I18n.string("common.film") else com.gpdb.android.util.I18n.string("common.filmsCount")
                                 val countText = "${series.movieCount} $filmsUnit"
                                 Text(
                                     countText,

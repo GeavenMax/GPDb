@@ -23,6 +23,9 @@
     <!-- 振动（触觉反馈，可选） -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- 通知权限（Android 13+ 实时后台刮削进度通知） -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".GpdbApplication"
         android:allowBackup="false"

@@ -23,11 +23,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class SearchScope { ALL, MOVIES, EPISODES, PERFORMERS, STUDIOS, DIRECTORS }
+
 data class SearchUiState(
     val query: String = "",
+    val scope: SearchScope = SearchScope.ALL,
     val isSearching: Boolean = false,
     val movies: List<MovieEntity> = emptyList(),
+    val episodes: List<com.gpdb.android.data.db.entities.EpisodeEntity> = emptyList(),
     val performers: List<PerformerEntity> = emptyList(),
+    val studios: List<com.gpdb.android.data.db.entities.StudioEntity> = emptyList(),
+    val directors: List<com.gpdb.android.data.repository.DirectorSummary> = emptyList(),
     val categories: List<com.gpdb.android.data.db.entities.CategoryGlossaryEntity> = emptyList()
 )
 
@@ -67,6 +73,13 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 .collectLatest { query ->
                     performSearch(query)
                 }
+        }
+    }
+
+    fun setSearchScope(scope: SearchScope) {
+        _uiState.update { it.copy(scope = scope) }
+        if (searchQueryFlow.value.isNotBlank()) {
+            viewModelScope.launch { performSearch(searchQueryFlow.value) }
         }
     }
 
@@ -110,7 +123,16 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun performSearch(query: String) {
         val trimmed = query.trim()
         if (trimmed.isBlank()) {
-            _uiState.update { it.copy(movies = emptyList(), performers = emptyList(), isSearching = false) }
+            _uiState.update { 
+                it.copy(
+                    movies = emptyList(), 
+                    episodes = emptyList(),
+                    performers = emptyList(), 
+                    studios = emptyList(),
+                    directors = emptyList(),
+                    isSearching = false
+                ) 
+            }
             return
         }
 
@@ -118,24 +140,54 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
         try {
             val repo = getOrInitRepository()
-            if (repo == null) {
+            val db = DatabaseHolder.db
+            if (repo == null || db == null) {
                 Log.w("SearchViewModel", "Search requested but database/repository is null")
                 _uiState.update { it.copy(isSearching = false) }
                 return
             }
 
-            val movies = repo.searchMovies(trimmed, limit = 50)
-            val performers = repo.searchPerformers(trimmed, limit = 20)
+            val currentScope = _uiState.value.scope
+            var movies = emptyList<MovieEntity>()
+            var episodes = emptyList<com.gpdb.android.data.db.entities.EpisodeEntity>()
+            var performers = emptyList<PerformerEntity>()
+            var studios = emptyList<com.gpdb.android.data.db.entities.StudioEntity>()
+            var directors = emptyList<com.gpdb.android.data.repository.DirectorSummary>()
+
+            when (currentScope) {
+                SearchScope.ALL -> {
+                    movies = repo.searchMovies(trimmed, limit = 40)
+                    performers = repo.searchPerformers(trimmed, limit = 20)
+                }
+                SearchScope.MOVIES -> {
+                    movies = repo.searchMovies(trimmed, limit = 60)
+                }
+                SearchScope.EPISODES -> {
+                    episodes = repo.searchEpisodes(trimmed, limit = 60)
+                }
+                SearchScope.PERFORMERS -> {
+                    performers = repo.searchPerformers(trimmed, limit = 60)
+                }
+                SearchScope.STUDIOS -> {
+                    studios = db.studioDao().searchStudios(trimmed)
+                }
+                SearchScope.DIRECTORS -> {
+                    directors = repo.searchDirectors(trimmed, limit = 60)
+                }
+            }
 
             _uiState.update {
                 it.copy(
                     movies = movies,
+                    episodes = episodes,
                     performers = performers,
+                    studios = studios,
+                    directors = directors,
                     isSearching = false
                 )
             }
 
-            if (movies.isNotEmpty() || performers.isNotEmpty()) {
+            if (movies.isNotEmpty() || episodes.isNotEmpty() || performers.isNotEmpty() || studios.isNotEmpty() || directors.isNotEmpty()) {
                 viewModelScope.launch { appPreferences.addSearchHistory(trimmed) }
             }
         } catch (e: Exception) {

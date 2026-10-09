@@ -412,3 +412,29 @@ CREATE TABLE IF NOT EXISTS studio_websites (
     scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_studio_websites_name ON studio_websites(name);
+
+-- 15. 片商 Logo/Banner 二进制资产表 (Studio Logos)
+--
+-- 独立于 studios 表存放 Logo 与 Banner 的压缩 WebP 二进制数据。
+-- 分离存放而非在 studios 上加 BLOB 列，原因：
+--   * 避免 SELECT * FROM studios 时无谓拉取大量二进制；
+--   * 客户端可按需 JOIN / 独立查询，内存友好；
+--   * 增量更新只需 INSERT/REPLACE 单行，体积可控。
+--
+-- 数据来源：维护端 import_studio_logos.py 脚本从 image_cache/Logos/ 目录
+-- 读取原始图片文件，压缩转换为 WebP 格式后写入此表。Logo 绝大多数是维护者
+-- 手动从各片商官网、Wikipedia 等收集的，没有稳定的第三方 HTTP URL，因此只能
+-- 以 BLOB 形式内嵌在数据库里随 GPDb.db 一起分发给用户。
+--
+-- 客户端读取路径：
+--   Android — ZipImageFetcher 在 Logo 路径命中时优先查此表
+--   Desktop — Tauri 端 asset 协议直接 SELECT
+--   体积预估 — 全部 Logo 压缩后约 8-12 MB（GPDb.db 当前 339 MB，增幅 < 4%）
+CREATE TABLE IF NOT EXISTS studio_logos (
+    studio_id   INTEGER PRIMARY KEY,
+    logo_webp   BLOB,                       -- Logo 图片 (WebP, 宽 ≤ 150px, 通常 5-20 KB)
+    banner_webp BLOB,                       -- Banner 图片 (WebP, 宽 ≤ 400px, 通常 10-30 KB)
+    logo_hash   TEXT,                       -- SHA-256 前 16 位十六进制，供增量更新去重
+    updated_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (studio_id) REFERENCES studios(id) ON DELETE CASCADE
+);

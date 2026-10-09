@@ -9,10 +9,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -31,84 +35,144 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onMovieClick: (Long) -> Unit,
     onStudioClick: (String) -> Unit = {},
+    onDirectorClick: (String) -> Unit = {},
     onPerformerClick: (Long) -> Unit,
     onRemountClick: () -> Unit,
-    onSearchClick: () -> Unit,
+    onSearchClick: (String) -> Unit,
     onSeriesClick: (String) -> Unit,
     onEpisodeClick: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val seriesViewModel: SeriesListViewModel = viewModel()
 
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val isTopExpanded = scrollBehavior.state.collapsedFraction < 0.5f
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             Column {
                 TopAppBar(
+                    scrollBehavior = scrollBehavior,
                     title = { Text(com.gpdb.android.util.I18n.string("nav.movies")) },
                     actions = {
-                        var showSortMenu by remember { mutableStateOf(false) }
-                        IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = com.gpdb.android.util.I18n.string("filter.sortBy"))
+                        // 仅在主长篇电影 Tab 下按需显示排序按钮
+                        if (uiState.homeTab == HomeTab.ALL_MOVIES) {
+                            var showSortMenu by remember { mutableStateOf(false) }
+                            IconButton(onClick = { showSortMenu = true }) {
+                                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = com.gpdb.android.util.I18n.string("filter.sortBy"))
+                            }
+                            DropdownMenu(
+                                expanded = showSortMenu,
+                                onDismissRequest = { showSortMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(com.gpdb.android.util.I18n.string("sort.byOrder", defaultVal = "按收录顺序")) },
+                                    onClick = {
+                                        showSortMenu = false
+                                        if (uiState.sortByYear) viewModel.toggleSortOrder()
+                                    },
+                                    trailingIcon = { if (!uiState.sortByYear) Icon(Icons.Default.Check, null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(com.gpdb.android.util.I18n.string("sort.byYear", defaultVal = "按发行年份")) },
+                                    onClick = {
+                                        showSortMenu = false
+                                        if (!uiState.sortByYear) viewModel.toggleSortOrder()
+                                    },
+                                    trailingIcon = { if (uiState.sortByYear) Icon(Icons.Default.Check, null) }
+                                )
+                            }
                         }
-                        DropdownMenu(
-                            expanded = showSortMenu,
-                            onDismissRequest = { showSortMenu = false }
+
+                        val context = LocalContext.current
+                        var isScraping by remember { mutableStateOf(false) }
+                        IconButton(
+                            enabled = !isScraping,
+                            onClick = {
+                                isScraping = true
+                                viewModel.triggerManualScrape(context) { resultMsg ->
+                                    isScraping = false
+                                    Toast.makeText(context, resultMsg, Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text(com.gpdb.android.util.I18n.string("sort.byOrder", defaultVal = "按收录顺序")) },
-                                onClick = {
-                                    showSortMenu = false
-                                    if (uiState.sortByYear) viewModel.toggleSortOrder()
-                                },
-                                trailingIcon = { if (!uiState.sortByYear) Icon(Icons.Default.Check, null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(com.gpdb.android.util.I18n.string("sort.byYear", defaultVal = "按发行年份")) },
-                                onClick = {
-                                    showSortMenu = false
-                                    if (!uiState.sortByYear) viewModel.toggleSortOrder()
-                                },
-                                trailingIcon = { if (uiState.sortByYear) Icon(Icons.Default.Check, null) }
-                            )
+                            if (isScraping) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.CloudDownload,
+                                    contentDescription = com.gpdb.android.util.I18n.string("home.scrapeLatest", defaultVal = "刮削最新影片")
+                                )
+                            }
                         }
-                        IconButton(onClick = onSearchClick) {
+                        IconButton(onClick = {
+                            val scopeStr = when (uiState.homeTab) {
+                                HomeTab.ALL_MOVIES -> "MOVIES"
+                                HomeTab.EPISODES -> "EPISODES"
+                                HomeTab.SERIES -> "MOVIES"
+                                HomeTab.STUDIOS -> "STUDIOS"
+                                HomeTab.DIRECTORS -> "DIRECTORS"
+                            }
+                            onSearchClick(scopeStr)
+                        }) {
                             Icon(Icons.Default.Search, contentDescription = com.gpdb.android.util.I18n.string("common.search"))
                         }
                     }
                 )
-                TabRow(selectedTabIndex = uiState.homeTab.ordinal) {
-                    Tab(
-                        selected = uiState.homeTab == HomeTab.ALL_MOVIES,
-                        onClick = { viewModel.setHomeTab(HomeTab.ALL_MOVIES) },
-                        text = { Text(com.gpdb.android.util.I18n.string("nav.featureMovies")) }
-                    )
-                    Tab(
-                        selected = uiState.homeTab == HomeTab.EPISODES,
-                        onClick = { viewModel.setHomeTab(HomeTab.EPISODES) },
-                        text = { Text(com.gpdb.android.util.I18n.string("nav.episodes")) }
-                    )
-                    Tab(
-                        selected = uiState.homeTab == HomeTab.SERIES,
-                        onClick = { viewModel.setHomeTab(HomeTab.SERIES) },
-                        text = { Text(com.gpdb.android.util.I18n.string("nav.series")) }
-                    )
-                }
 
-                // 快速时间/入库筛选胶囊条
-                if (uiState.homeTab == HomeTab.ALL_MOVIES || uiState.homeTab == HomeTab.EPISODES) {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(DateFilter.entries) { filter ->
-                            FilterChip(
-                                selected = uiState.dateFilter == filter,
-                                onClick = { viewModel.setDateFilter(filter) },
-                                label = { Text(filter.getLabel(), style = MaterialTheme.typography.labelSmall) },
-                                shape = RoundedCornerShape(16.dp)
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isTopExpanded,
+                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                ) {
+                    Column {
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val tabs = listOf(
+                                HomeTab.ALL_MOVIES to "nav.featureMovies",
+                                HomeTab.EPISODES to "nav.episodes",
+                                HomeTab.SERIES to "nav.series",
+                                HomeTab.STUDIOS to "nav.studios",
+                                HomeTab.DIRECTORS to "nav.directors"
                             )
+                            tabs.forEach { (tab, key) ->
+                                FilterChip(
+                                    selected = uiState.homeTab == tab,
+                                    onClick = { viewModel.setHomeTab(tab) },
+                                    label = { Text(com.gpdb.android.util.I18n.string(key)) },
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                            }
+                        }
+
+                        // 快速时间/入库筛选胶囊条
+                        if (uiState.homeTab == HomeTab.ALL_MOVIES || uiState.homeTab == HomeTab.EPISODES) {
+                            LazyRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(DateFilter.entries) { filter ->
+                                    FilterChip(
+                                        selected = uiState.dateFilter == filter,
+                                        onClick = { viewModel.setDateFilter(filter) },
+                                        label = { Text(filter.getLabel(), style = MaterialTheme.typography.labelSmall) },
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -128,7 +192,15 @@ fun HomeScreen(
                     ) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
-                        val text = if (status is MountStatus.Mounting) status.stepText else com.gpdb.android.util.I18n.string("common.loading")
+                        val text = if (status is MountStatus.Mounting) {
+                            if (status.i18nKey != null) {
+                                com.gpdb.android.util.I18n.string(status.i18nKey, defaultVal = status.stepText)
+                            } else {
+                                status.stepText
+                            }
+                        } else {
+                            com.gpdb.android.util.I18n.string("common.loading")
+                        }
                         Text(text = text, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -139,9 +211,19 @@ fun HomeScreen(
                             .padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(status.title, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleLarge)
+                        val errorTitle = if (status.titleKey != null) {
+                            com.gpdb.android.util.I18n.string(status.titleKey, defaultVal = status.title)
+                        } else {
+                            status.title
+                        }
+                        Text(errorTitle, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.titleLarge)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(status.detail, color = MaterialTheme.colorScheme.error)
+                        val errorDetail = if (status.detailKey != null) {
+                            com.gpdb.android.util.I18n.string(status.detailKey, defaultVal = status.detail)
+                        } else {
+                            status.detail
+                        }
+                        Text(errorDetail, color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = onRemountClick) {
                             Text(com.gpdb.android.util.I18n.string("common.retry"))
@@ -241,6 +323,21 @@ fun HomeScreen(
                                 viewModel = seriesViewModel,
                                 onSeriesClick = onSeriesClick,
                                 physicalRootPath = uiState.physicalRootPath
+                            )
+                        }
+                        HomeTab.STUDIOS -> {
+                            val studioViewModel: com.gpdb.android.ui.browse.StudioListViewModel = viewModel()
+                            com.gpdb.android.ui.browse.StudioListContent(
+                                physicalRootPath = uiState.physicalRootPath,
+                                viewModel = studioViewModel,
+                                onStudioClick = onStudioClick
+                            )
+                        }
+                        HomeTab.DIRECTORS -> {
+                            val directorViewModel: com.gpdb.android.ui.browse.DirectorListViewModel = viewModel()
+                            com.gpdb.android.ui.browse.DirectorListContent(
+                                viewModel = directorViewModel,
+                                onDirectorClick = onDirectorClick
                             )
                         }
                     }

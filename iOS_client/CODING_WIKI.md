@@ -217,3 +217,14 @@ swift build
 
 - SPM 库产物：`.build/release/libGPDbCore.a` 或目标 Xcode 应用程序工程包；
 - 设计严格遵循苹果 iOS Human Interface Guidelines (HIG)，支持深色模式 (Dark Mode)、动态字体 (Dynamic Type)、iPadOS 分栏多任务、以及 Face ID 安全认证。
+
+---
+
+## 6. 片商超清 Logo & 封套徽章资产系统 (Studio Logos Engine)
+
+iOS 客户端基于纯离线海报和厂牌 Logo 规范呈现：
+- **资源共享与存放**：Logo 资源统一存放于 `image_cache/Logos/*_logo.webp` 与 `image_cache/Logos/*_banner.webp`，通过 `ZipImageProvider` 或本地文件路径快速渲染。
+- **全量 100% WebP 规范**：全量 2,492 枚独立厂牌 Logo 与 694 枚 Banner 已 100% 升级为高保真 `.webp` 格式，原生 Kingfisher 与 SwiftUI 高速解码无内存抖动。
+- **1:1 方块自适应**：全量封套包装切片与品牌标准字徽标统一生成 512×512 正方形版本，完美贴合 iOS SwiftUI 圆形/圆角头像展示。
+- **100% 全覆盖现状**：全库 2,492 家有效独立制片厂牌已实现 100% 专属 Logo 覆盖，全库 97.99% 的影视作品拥有所属厂牌 Logo。
+- **管理与生成工程**：收录于专用子目录 `studio_logos/`，详见 [`studio_logos/README.md`](../studio_logos/README.md) 与 [`STUDIO_LOGO_PROGRESS.md`](../STUDIO_LOGO_PROGRESS.md)。

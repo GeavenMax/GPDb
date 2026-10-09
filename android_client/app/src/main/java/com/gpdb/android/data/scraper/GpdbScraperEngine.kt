@@ -99,7 +99,7 @@ class GpdbScraperEngine(
         // 1. 抓取 /newm (最新影片)
         val htmlNewm = fetchHtml("$BASE_URL/newm")
         if (!htmlNewm.isNullOrBlank()) {
-            val matcher = Pattern.compile("""href=['"](?:/)?video/(\d+)['"]""").matcher(htmlNewm)
+            val matcher = Pattern.compile("""(?:href=['"]?(?:/)?(?:video/|video\.php\?id=)(\d+))""", Pattern.CASE_INSENSITIVE).matcher(htmlNewm)
             while (matcher.find()) {
                 matcher.group(1)?.toLongOrNull()?.let { remoteMovieIds.add(it) }
             }
@@ -108,7 +108,7 @@ class GpdbScraperEngine(
         // 2. 抓取 /newp (最新演员)
         val htmlNewp = fetchHtml("$BASE_URL/newp")
         if (!htmlNewp.isNullOrBlank()) {
-            val matcher = Pattern.compile("""href=['"](?:/)?performer/(\d+)['"]""").matcher(htmlNewp)
+            val matcher = Pattern.compile("""(?:href=['"]?(?:/)?(?:performer/|performer\.php\?id=)(\d+))""", Pattern.CASE_INSENSITIVE).matcher(htmlNewp)
             while (matcher.find()) {
                 matcher.group(1)?.toLongOrNull()?.let { remotePerformerIds.add(it) }
             }
@@ -117,7 +117,7 @@ class GpdbScraperEngine(
         // 3. 抓取 /newe (最新分集)
         val htmlNewe = fetchHtml("$BASE_URL/newe")
         if (!htmlNewe.isNullOrBlank()) {
-            val matcher = Pattern.compile("""href=['"](?:/)?episode/(\d+)['"]""").matcher(htmlNewe)
+            val matcher = Pattern.compile("""(?:href=['"]?(?:/)?(?:episode/|episode\.php\?id=)(\d+))""", Pattern.CASE_INSENSITIVE).matcher(htmlNewe)
             while (matcher.find()) {
                 matcher.group(1)?.toLongOrNull()?.let { remoteEpisodeIds.add(it) }
             }
@@ -127,6 +127,29 @@ class GpdbScraperEngine(
         val localMovieIds = database.movieDao().getAllMovieIds().toSet()
         val localEpisodeIds = database.episodeDao().getAllEpisodeIds().toSet()
         val localPerformerIds = database.performerDao().getAllPerformerIds().toSet()
+
+        // 5. 【前向 ID 探针 (Probe Depth = 50)】对齐桌面端 sync_gpdb.py
+        // 探查本地 MAX(id) 之上的递增 ID 序列，确保即便未被 /newm 推荐首页展现的新影片也能即时自动搜刮入库
+        val maxMovieId = localMovieIds.maxOrNull() ?: 0L
+        if (maxMovieId > 0) {
+            for (i in (maxMovieId + 1)..(maxMovieId + 50)) {
+                remoteMovieIds.add(i)
+            }
+        }
+
+        val maxPerformerId = localPerformerIds.maxOrNull() ?: 0L
+        if (maxPerformerId > 0) {
+            for (i in (maxPerformerId + 1)..(maxPerformerId + 50)) {
+                remotePerformerIds.add(i)
+            }
+        }
+
+        val maxEpisodeId = localEpisodeIds.maxOrNull() ?: 0L
+        if (maxEpisodeId > 0) {
+            for (i in (maxEpisodeId + 1)..(maxEpisodeId + 50)) {
+                remoteEpisodeIds.add(i)
+            }
+        }
 
         val deltaMovies = remoteMovieIds.filter { it !in localMovieIds }
         val deltaEpisodes = remoteEpisodeIds.filter { it !in localEpisodeIds }
@@ -249,6 +272,10 @@ class GpdbScraperEngine(
             onProgress(completed, total, "演员 #$perfId")
         }
 
+        if (savedMovies > 0) {
+            refreshSeriesIndex()
+        }
+
         SyncResult(
             newMoviesCount = savedMovies,
             newEpisodesCount = savedEpisodes,
@@ -256,6 +283,36 @@ class GpdbScraperEngine(
             cachedImagesCount = cachedImages,
             message = "同步完成！新增 $savedMovies 部长片, $savedEpisodes 个分集, $savedPerformers 位演员。"
         )
+    }
+
+    private fun refreshSeriesIndex() {
+        try {
+            val db = database.openHelper.writableDatabase
+            db.execSQL("""
+                INSERT OR REPLACE INTO series_collections (root_title, studio_name, movie_count, cover_url, year_start, year_end, sample_movie_ids, sample_covers)
+                SELECT 
+                    CASE 
+                        WHEN INSTR(title, ':') > 0 THEN TRIM(SUBSTR(title, 1, INSTR(title, ':') - 1))
+                        WHEN INSTR(title, ' Part ') > 0 THEN TRIM(SUBSTR(title, 1, INSTR(title, ' Part ') - 1))
+                        WHEN INSTR(title, ' Vol') > 0 THEN TRIM(SUBSTR(title, 1, INSTR(title, ' Vol') - 1))
+                        WHEN INSTR(title, ' #') > 0 THEN TRIM(SUBSTR(title, 1, INSTR(title, ' #') - 1))
+                        ELSE TRIM(title)
+                    END AS root_title,
+                    studio_name,
+                    COUNT(*) AS movie_count,
+                    MIN(cover_full) AS cover_url,
+                    MIN(release_year) AS year_start,
+                    MAX(release_year) AS year_end,
+                    '[' || GROUP_CONCAT(id) || ']' AS sample_movie_ids,
+                    '[' || GROUP_CONCAT('"' || IFNULL(cover_full, '') || '"') || ']' AS sample_covers
+                FROM movies
+                WHERE studio_name IS NOT NULL AND TRIM(studio_name) != ''
+                GROUP BY studio_name, root_title
+                HAVING movie_count >= 2
+            """.trimIndent())
+        } catch (e: Exception) {
+            Log.w(TAG, "刷新系列专题索引异常", e)
+        }
     }
 
     private data class ParsedMovie(
@@ -650,6 +707,29 @@ class GpdbScraperEngine(
     private suspend fun downloadAndCacheImageSync(url: String): Boolean {
         try {
             val cleanUrl = if (url.startsWith("http")) url else "$BASE_URL/${url.trimStart('/')}"
+            val folder = when {
+                cleanUrl.contains("/Covers/") -> "Covers"
+                cleanUrl.contains("/Episodes/") -> "Episodes"
+                cleanUrl.contains("/Stars/") -> "Stars"
+                else -> "misc"
+            }
+            val filename = cleanUrl.substringAfterLast("/")
+            val relPath = "image_cache/$folder/$filename"
+
+            val iFile = File(context.filesDir, relPath)
+            if (iFile.exists() && iFile.length() > 100) {
+                return true // 已经存在于私有沙盒中，跳过重复下载
+            }
+
+            val appSettings = com.gpdb.android.data.settings.AppSettingsRepository(context)
+            val allowExternal = appSettings.saveImagesToExternalFlow.firstOrNull() ?: false
+            if (allowExternal && physicalRootPath.isNotBlank()) {
+                val pFile = File(physicalRootPath, relPath)
+                if (pFile.exists() && pFile.length() > 100) {
+                    return true // 已经存在于外部存储目录中，跳过重复下载
+                }
+            }
+
             val request = Request.Builder()
                 .url(cleanUrl)
                 .header("User-Agent", USER_AGENT)
@@ -662,19 +742,7 @@ class GpdbScraperEngine(
                 val bytes = response.body?.bytes() ?: return false
                 if (bytes.size < 100) return false
 
-                val folder = when {
-                    cleanUrl.contains("/Covers/") -> "Covers"
-                    cleanUrl.contains("/Episodes/") -> "Episodes"
-                    cleanUrl.contains("/Stars/") -> "Stars"
-                    else -> "misc"
-                }
-                val filename = cleanUrl.substringAfterLast("/")
-                val relPath = "image_cache/$folder/$filename"
-
                 // 1. 外部存储写回（若用户在设置中开启允许写回外部）
-                val appSettings = com.gpdb.android.data.settings.AppSettingsRepository(context)
-                val allowExternal = appSettings.saveImagesToExternalFlow.firstOrNull() ?: false
-
                 if (allowExternal && physicalRootPath.isNotBlank()) {
                     try {
                         val pFile = File(physicalRootPath, relPath)
@@ -688,7 +756,6 @@ class GpdbScraperEngine(
                 }
 
                 // 2. 应用内部私有沙盒文件目录 (/data/user/0/.../files/image_cache)
-                val iFile = File(context.filesDir, relPath)
                 iFile.parentFile?.mkdirs()
                 com.gpdb.android.util.PrivacyHelper.ensureNoMedia(iFile.parentFile)
                 iFile.writeBytes(bytes)

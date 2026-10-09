@@ -115,6 +115,21 @@ function getGroupColor(groupId: string): string {
   return GROUP_COLORS[groupId] || DEFAULT_COLOR;
 }
 
+function getStudioRelationLabel(rel?: string, defaultLabel: string = ''): string {
+  if (!rel) return defaultLabel;
+  const key = `genealogy.rel_${rel}`;
+  const translated = t(key);
+  if (translated !== key) return translated;
+  return defaultLabel;
+}
+
+function getStudioBadge(studio: { relation?: string; badge?: string }): string {
+  if (currentLocale.value.startsWith('zh')) {
+    return studio.badge || getStudioRelationLabel(studio.relation);
+  }
+  return getStudioRelationLabel(studio.relation, studio.badge || '');
+}
+
 async function loadData() {
   loading.value = true;
   error.value = null;
@@ -208,7 +223,7 @@ function initGraphChart() {
   }));
 
   const categoryIndexMap = new Map<string, number>();
-  categories.forEach((c, idx) => categoryIndexMap.set(c.name, idx));
+  Array.from(groupMap.keys()).forEach((id, idx) => categoryIndexMap.set(id, idx));
 
   // Build graph nodes
   const graphNodes = rawNodes.map(node => {
@@ -216,7 +231,7 @@ function initGraphChart() {
     const isHybrid = node.type === 'hybrid';
     const weightSum = node.works_count + node.episodes_count;
     const symbolSize = Math.max(18, Math.min(65, Math.log10(weightSum + 10) * 18));
-    const catIdx = categoryIndexMap.get(node.group_name_zh) ?? 0;
+    const catIdx = categoryIndexMap.get(node.group_id) ?? 0;
     const nodeColor = getGroupColor(node.group_id);
 
     return {
@@ -227,7 +242,7 @@ function initGraphChart() {
       category: catIdx,
       label: {
         show: symbolSize > 25,
-        formatter: node.name_zh ? `${node.name_zh}\n(${node.name})` : node.name,
+        formatter: (currentLocale.value.startsWith('zh') && node.name_zh) ? `${node.name_zh}\n(${node.name})` : node.name,
         fontSize: 10,
         color: '#e2e8f0',
         lineHeight: 12,
@@ -280,14 +295,15 @@ function initGraphChart() {
               <span>${t('genealogy.featureWorksShort', { count: n.works_count })}</span>
               <span>${t('genealogy.episodesShort', { count: n.episodes_count })}</span>
             </div>
-            ${n.badge ? `<div style="display:inline-block;padding:2px 6px;border-radius:4px;background:rgba(56,189,248,0.15);color:#38bdf8;font-size:10px;">${n.badge}</div>` : ''}
+            ${getStudioBadge(n) ? `<div style="display:inline-block;padding:2px 6px;border-radius:4px;background:rgba(56,189,248,0.15);color:#38bdf8;font-size:10px;">${getStudioBadge(n)}</div>` : ''}
             <div style="margin-top:6px;font-size:10px;color:#64748b;">${t('genealogy.clickToInspect')}</div>
           `;
         } else if (params.dataType === 'edge') {
           const e = params.data.rawEdge;
+          const relLabel = getStudioRelationLabel(e.relation, e.relation_label);
           return `
             <div style="font-size:12px;font-weight:bold;margin-bottom:2px;">${e.source} ➔ ${e.target}</div>
-            <div style="color:#38bdf8;font-size:11px;">${t('genealogy.relation', { rel: e.relation_label })}</div>
+            <div style="color:#38bdf8;font-size:11px;">${t('genealogy.relation', { rel: relLabel })}</div>
             <div style="color:#94a3b8;font-size:10px;">${t('genealogy.linkedWorks', { count: e.weight })}</div>
           `;
         }
@@ -545,7 +561,7 @@ onUnmounted(() => {
                 <h3 class="text-base md:text-lg font-black text-fg tracking-tight">
                   {{ currentLocale.startsWith('zh') ? group.name_zh : group.name }}
                 </h3>
-                <span class="text-xs text-fg-4 font-mono font-medium">({{ currentLocale.startsWith('zh') ? group.name : group.name_zh }})</span>
+                <span v-if="currentLocale.startsWith('zh')" class="text-xs text-fg-4 font-mono font-medium">({{ group.name }})</span>
 
                 <span
                   class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
@@ -603,11 +619,11 @@ onUnmounted(() => {
                   </div>
 
                   <span
-                    v-if="studio.badge"
+                    v-if="getStudioBadge(studio)"
                     class="px-2 py-0.5 rounded-md text-[10px] font-bold text-accent-text bg-accent-fill/10 border border-accent-fill/20 truncate max-w-[150px]"
-                    :title="studio.badge"
+                    :title="getStudioBadge(studio)"
                   >
-                    {{ studio.badge }}
+                    {{ getStudioBadge(studio) }}
                   </span>
                 </div>
 
@@ -615,9 +631,10 @@ onUnmounted(() => {
                 <div class="font-bold text-sm text-fg group-hover:text-accent-text transition line-clamp-1">
                   {{ currentLocale.startsWith('zh') ? (studio.name_zh || studio.name) : studio.name }}
                 </div>
-                <div class="text-[11px] text-fg-4 font-mono truncate mb-2">
+                <div v-if="currentLocale.startsWith('zh') && studio.name_zh" class="text-[11px] text-fg-4 font-mono truncate mb-2">
                   {{ studio.name }}
                 </div>
+                <div v-else class="mb-2"></div>
               </div>
 
               <!-- Bottom Row: Work Counts & Link Icon -->
@@ -677,7 +694,7 @@ onUnmounted(() => {
             </div>
             <div>
               <div class="font-black text-sm text-fg">{{ currentLocale.startsWith('zh') ? (selectedGraphNode.name_zh || selectedGraphNode.name) : selectedGraphNode.name }}</div>
-              <div class="text-[10px] text-fg-4 font-mono">{{ selectedGraphNode.name }}</div>
+              <div v-if="currentLocale.startsWith('zh') && selectedGraphNode.name_zh" class="text-[10px] text-fg-4 font-mono">{{ selectedGraphNode.name }}</div>
             </div>
           </div>
           <button @click="selectedGraphNode = null" class="text-fg-4 hover:text-fg text-sm cursor-pointer">✕</button>
@@ -687,7 +704,7 @@ onUnmounted(() => {
           <div>{{ t('genealogy.parentGroup') }}: <span class="font-bold text-fg">{{ currentLocale.startsWith('zh') ? selectedGraphNode.group_name_zh : selectedGraphNode.group_name }}</span></div>
           <div>{{ t('genealogy.moviesCountDrawer', { count: selectedGraphNode.works_count }) }}</div>
           <div>{{ t('genealogy.episodesCountDrawer', { count: selectedGraphNode.episodes_count }) }}</div>
-          <div v-if="selectedGraphNode.badge" class="text-accent-text font-bold">{{ t('genealogy.positioning', { role: selectedGraphNode.badge }) }}</div>
+          <div v-if="getStudioBadge(selectedGraphNode)" class="text-accent-text font-bold">{{ t('genealogy.positioning', { role: getStudioBadge(selectedGraphNode) }) }}</div>
         </div>
 
         <p v-if="selectedGraphNode.description_zh" class="text-fg-4 line-clamp-3 text-[11px] leading-relaxed">

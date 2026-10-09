@@ -151,6 +151,19 @@ pub fn resolve_python() -> String {
     return "python3".to_string();
 }
 
+/// 规范化文件路径，剥除 Windows 环境下 `canonicalize()` 产生的 `\\?\` UNC 前缀，
+/// 避免传递给 Python 子进程时报「文件名或卷标语法错误」。
+pub fn normalize_path(path: PathBuf) -> PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        let s = path.to_string_lossy();
+        if s.starts_with(r"\\?\") {
+            return PathBuf::from(&s[4..]);
+        }
+    }
+    path
+}
+
 /// 寻找指定的 Python 刮削脚本路径 (支持源码相对路径、数据库同级、Tauri资源包及程序祖先目录)
 pub fn find_script(app: Option<&AppHandle>, name: &str) -> Option<PathBuf> {
     let candidates = [
@@ -161,9 +174,9 @@ pub fn find_script(app: Option<&AppHandle>, name: &str) -> Option<PathBuf> {
     for c in candidates {
         if c.exists() {
             if let Ok(abs) = c.canonicalize() {
-                return Some(abs);
+                return Some(normalize_path(abs));
             }
-            return Some(c);
+            return Some(normalize_path(c));
         }
     }
 
@@ -171,7 +184,7 @@ pub fn find_script(app: Option<&AppHandle>, name: &str) -> Option<PathBuf> {
         if let Some(parent) = db_path.parent() {
             let candidate = parent.join(name);
             if candidate.exists() {
-                return Some(candidate);
+                return Some(normalize_path(candidate));
             }
         }
     }
@@ -180,7 +193,7 @@ pub fn find_script(app: Option<&AppHandle>, name: &str) -> Option<PathBuf> {
         if let Ok(res_dir) = handle.path().resource_dir() {
             let candidate = res_dir.join(name);
             if candidate.exists() {
-                return Some(candidate);
+                return Some(normalize_path(candidate));
             }
         }
     }
@@ -190,7 +203,7 @@ pub fn find_script(app: Option<&AppHandle>, name: &str) -> Option<PathBuf> {
         while let Some(dir) = cur {
             let candidate = dir.join(name);
             if candidate.exists() {
-                return Some(candidate);
+                return Some(normalize_path(candidate));
             }
             cur = dir.parent();
         }
@@ -199,9 +212,10 @@ pub fn find_script(app: Option<&AppHandle>, name: &str) -> Option<PathBuf> {
     None
 }
 
-/// 从流中读取以 '\n' 或 '\r' 结尾的非空行，实现无延迟即时流式解析
+/// 从流中读取以 '\n' 或 '\r' 结尾的非空行，支持正确的 UTF-8 多字节字符解析（防止 Windows 终端中文乱码）
 fn read_line_or_cr<R: Read>(reader: &mut R, buf: &mut String) -> std::io::Result<bool> {
     buf.clear();
+    let mut raw_bytes: Vec<u8> = Vec::with_capacity(256);
     let mut byte = [0u8; 1];
     let mut has_data = false;
 
@@ -209,17 +223,24 @@ fn read_line_or_cr<R: Read>(reader: &mut R, buf: &mut String) -> std::io::Result
         has_data = true;
         let c = byte[0];
         if c == b'\n' || c == b'\r' {
-            if !buf.trim().is_empty() {
+            let text = String::from_utf8_lossy(&raw_bytes).trim().to_string();
+            if !text.is_empty() {
+                *buf = text;
                 return Ok(true);
             }
-            // empty line, continue
-            buf.clear();
+            raw_bytes.clear();
         } else {
-            buf.push(c as char);
+            raw_bytes.push(c);
         }
     }
 
-    Ok(has_data && !buf.trim().is_empty())
+    let text = String::from_utf8_lossy(&raw_bytes).trim().to_string();
+    if !text.is_empty() {
+        *buf = text;
+        Ok(true)
+    } else {
+        Ok(has_data)
+    }
 }
 
 #[tauri::command]
@@ -404,6 +425,8 @@ pub fn start_scraper(
         .arg(&script_path)
         .args(&args)
         .env("PYTHONUNBUFFERED", "1")
+        .env("PYTHONIOENCODING", "utf-8")
+        .env("PYTHONUTF8", "1")
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
 
@@ -654,7 +677,10 @@ pub fn run_sync(app: AppHandle) -> Result<SyncResult, String> {
         .arg("--db")
         .arg(&db_path)
         .arg("--probe")
-        .arg("30");
+        .arg("30")
+        .env("PYTHONUNBUFFERED", "1")
+        .env("PYTHONIOENCODING", "utf-8")
+        .env("PYTHONUTF8", "1");
 
     #[cfg(target_os = "windows")]
     {

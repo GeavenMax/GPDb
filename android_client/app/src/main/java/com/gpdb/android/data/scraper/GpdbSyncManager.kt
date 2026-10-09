@@ -69,6 +69,7 @@ object GpdbSyncManager {
         try {
             Log.i(TAG, "启动后台无感增量检查...")
             _syncStatus.value = SyncStatus.Checking
+            com.gpdb.android.util.ScraperNotificationHelper.showCheckingNotification(context)
 
             val engine = GpdbScraperEngine(context, database, physicalRoot)
             val updates = engine.checkForUpdates()
@@ -77,10 +78,15 @@ object GpdbSyncManager {
             if (updates.totalCount > 0) {
                 Log.i(TAG, "发现官网新内容: 待同步 ${updates.totalCount} 项")
                 _syncStatus.value = SyncStatus.Syncing(0, updates.totalCount, "准备中...")
+                com.gpdb.android.util.ScraperNotificationHelper.updateProgressNotification(context, 0, updates.totalCount, "准备中...")
+
                 val result = engine.syncUpdates(updates) { current, total, name ->
                     _syncStatus.value = SyncStatus.Syncing(current, total, name)
+                    com.gpdb.android.util.ScraperNotificationHelper.updateProgressNotification(context, current, total, name)
                 }
                 _syncStatus.value = SyncStatus.Completed(result)
+                com.gpdb.android.util.ScraperNotificationHelper.showCompletedNotification(context, result.newMoviesCount, result.newEpisodesCount)
+
                 val totalNew = result.newMoviesCount + result.newEpisodesCount + result.newPerformersCount
                 if (totalNew > 0) {
                     onNewContentAdded?.invoke(totalNew)
@@ -88,10 +94,12 @@ object GpdbSyncManager {
             } else {
                 Log.i(TAG, "本地已是最新，无待同步项")
                 _syncStatus.value = SyncStatus.Idle
+                com.gpdb.android.util.ScraperNotificationHelper.cancelNotification(context)
             }
         } catch (e: Exception) {
             Log.e(TAG, "启动后台同步异常", e)
             _syncStatus.value = SyncStatus.Error("后台同步异常: ${e.message}")
+            com.gpdb.android.util.ScraperNotificationHelper.cancelNotification(context)
         } finally {
             syncMutex.unlock()
         }
@@ -110,12 +118,18 @@ object GpdbSyncManager {
         }
         try {
             _syncStatus.value = SyncStatus.Checking
+            com.gpdb.android.util.ScraperNotificationHelper.showCheckingNotification(context)
+
             val engine = GpdbScraperEngine(context, database, physicalRoot)
             val updates = engine.checkForUpdates()
             _syncStatus.value = SyncStatus.Discovered(updates)
+            if (updates.totalCount == 0) {
+                com.gpdb.android.util.ScraperNotificationHelper.cancelNotification(context)
+            }
             updates
         } catch (e: Exception) {
             _syncStatus.value = SyncStatus.Error(e.message ?: "检查更新失败")
+            com.gpdb.android.util.ScraperNotificationHelper.cancelNotification(context)
             throw e
         } finally {
             syncMutex.unlock()
@@ -138,11 +152,16 @@ object GpdbSyncManager {
         try {
             val engine = GpdbScraperEngine(context, database, physicalRoot)
             _syncStatus.value = SyncStatus.Syncing(0, updates.totalCount, "准备中...")
+            com.gpdb.android.util.ScraperNotificationHelper.updateProgressNotification(context, 0, updates.totalCount, "准备中...")
+
             val result = engine.syncUpdates(updates) { current, total, name ->
                 _syncStatus.value = SyncStatus.Syncing(current, total, name)
+                com.gpdb.android.util.ScraperNotificationHelper.updateProgressNotification(context, current, total, name)
             }
             lastStartupSyncTime = System.currentTimeMillis()
             _syncStatus.value = SyncStatus.Completed(result)
+            com.gpdb.android.util.ScraperNotificationHelper.showCompletedNotification(context, result.newMoviesCount, result.newEpisodesCount)
+
             val totalNew = result.newMoviesCount + result.newEpisodesCount + result.newPerformersCount
             if (totalNew > 0) {
                 onNewContentAdded?.invoke(totalNew)
@@ -150,6 +169,7 @@ object GpdbSyncManager {
             result
         } catch (e: Exception) {
             _syncStatus.value = SyncStatus.Error(e.message ?: "同步中断")
+            com.gpdb.android.util.ScraperNotificationHelper.cancelNotification(context)
             throw e
         } finally {
             syncMutex.unlock()

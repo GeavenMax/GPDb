@@ -224,6 +224,9 @@ fun ShareCardDialog(
                             )
 
                             // 3. 卡片前景排版内容
+                            val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+                            val isZh = currentLang.isChinese
+
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -263,13 +266,16 @@ fun ShareCardDialog(
                                         )
                                     }
 
+                                    val categoryText = com.gpdb.android.util.GlossaryHelper.trCategory(cardData.category, isZh).ifBlank {
+                                        if (cardData.isEpisode) com.gpdb.android.util.I18n.string("share.badgeEpisode") else com.gpdb.android.util.I18n.string("share.badgeMovie")
+                                    }
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
                                         color = Color.White.copy(alpha = 0.12f),
                                         border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f))
                                     ) {
                                         Text(
-                                            text = "COLLECTION",
+                                            text = categoryText,
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color.White.copy(alpha = 0.7f),
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -315,24 +321,7 @@ fun ShareCardDialog(
                                                     strokeWidth = 2.dp
                                                 )
                                             }
-                                            if (!blurPoster) {
-                                                Surface(
-                                                    shape = RoundedCornerShape(6.dp),
-                                                    color = Color.Black.copy(alpha = 0.65f),
-                                                    modifier = Modifier
-                                                        .align(Alignment.TopStart)
-                                                        .padding(6.dp)
-                                                ) {
-                                                    Text(
-                                                        text = com.gpdb.android.util.I18n.string("movie.frontCover"),
-                                                        color = Color.White.copy(alpha = 0.9f),
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    )
-                                                }
-                                            } else {
+                                            if (blurPoster) {
                                                 Text("🔒 " + com.gpdb.android.util.I18n.string("share.redacted"), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
@@ -363,24 +352,7 @@ fun ShareCardDialog(
                                                     strokeWidth = 2.dp
                                                 )
                                             }
-                                            if (!blurPoster) {
-                                                Surface(
-                                                    shape = RoundedCornerShape(6.dp),
-                                                    color = Color.Black.copy(alpha = 0.65f),
-                                                    modifier = Modifier
-                                                        .align(Alignment.TopStart)
-                                                        .padding(6.dp)
-                                                ) {
-                                                    Text(
-                                                        text = com.gpdb.android.util.I18n.string("movie.backCover"),
-                                                        color = Color.White.copy(alpha = 0.9f),
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    )
-                                                }
-                                            } else {
+                                            if (blurPoster) {
                                                 Text("🔒 " + com.gpdb.android.util.I18n.string("share.redacted"), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                             }
                                         }
@@ -445,9 +417,6 @@ fun ShareCardDialog(
 
                                 Spacer(modifier = Modifier.height(18.dp))
 
-                                val currentLang = com.gpdb.android.util.LocalAppLanguage.current
-                                val isZh = currentLang.isChinese
-
                                 // 中英双语大标题
                                 val primaryTitle = if (isZh) {
                                     cardData.titleZh?.takeIf { it.isNotBlank() } ?: cardData.title
@@ -488,7 +457,7 @@ fun ShareCardDialog(
                                     cardData.studio?.let { studio ->
                                         ShareMetaChip(text = studio)
                                     }
-                                    cardData.director?.let { dir ->
+                                    cardData.director?.takeIf { it.isNotBlank() }?.let { dir ->
                                         ShareMetaChip(text = "${com.gpdb.android.util.I18n.string("common.director")}: $dir")
                                     }
                                     cardData.durationMins?.let { mins ->

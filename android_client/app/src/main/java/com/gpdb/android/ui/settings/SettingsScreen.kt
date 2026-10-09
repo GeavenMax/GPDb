@@ -39,18 +39,25 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-enum class SettingsTab(val i18nKey: String, val icon: ImageVector) {
-    ALL("common.all", Icons.Default.Settings),
-    APPEARANCE("settings.appearance", Icons.Default.Palette),
-    ANALYTICS("settings.analytics", Icons.Default.Insights),
-    PRIVACY("settings.privacy", Icons.Default.Security),
-    TRANSLATE("settings.translation", Icons.Default.Translate),
-    SYNC("settings.sync", Icons.Default.Storage),
-    ABOUT("update.title", Icons.Default.Info);
+enum class SettingsTab(val labelZh: String, val labelZhTw: String, val labelEn: String, val icon: ImageVector) {
+    ALL("全部", "全部", "All", Icons.Default.Settings),
+    APPEARANCE("外观", "外觀", "Appearance", Icons.Default.Palette),
+    PRIVACY("隐私安全", "隱私安全", "Privacy", Icons.Default.Security),
+    TRANSLATE("AI 翻译", "AI 翻譯", "Translation", Icons.Default.Translate),
+    SYNC("同步存储", "同步儲存", "Sync & Storage", Icons.Default.Storage),
+    ABOUT("关于与更新", "關於與更新", "About & Updates", Icons.Default.Info);
 
     @Composable
-    fun getLabel(): String = I18n.string(i18nKey)
+    fun getLabel(): String {
+        val lang = com.gpdb.android.util.LocalAppLanguage.current
+        return when {
+            lang == com.gpdb.android.util.AppLanguage.ZH_CN -> labelZh
+            lang == com.gpdb.android.util.AppLanguage.ZH_TW -> labelZhTw
+            else -> labelEn
+        }
+    }
 }
 
 fun changeAppIcon(context: Context, scope: CoroutineScope, newIcon: String, updatedToastMessage: String) {
@@ -97,8 +104,7 @@ fun SettingsScreen(
     appPreferences: AppPreferences,
     appSettingsRepository: AppSettingsRepository,
     onRemountClick: () -> Unit,
-    onBackClick: (() -> Unit)? = null,
-    onNavigateToAnalytics: (() -> Unit)? = null
+    onBackClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val mountPreferences = remember { MountPreferences(context) }
@@ -206,14 +212,13 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // 顶部二级胶囊分类切换栏 (仿照 macOS SettingsSubTab)
-            Row(
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 SettingsTab.entries.forEach { tab ->
                     val isSelected = selectedTab == tab
@@ -307,59 +312,7 @@ fun SettingsScreen(
             }
         }
 
-        // ── Section 2: 本地使用统计 ─────────────────────────────────
-        if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.ANALYTICS) {
-            SectionHeader(
-                icon = Icons.Default.Insights,
-                title = I18n.string("settings.analytics"),
-                subtitle = I18n.string("settings.analyticsDesc")
-            )
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column {
-                    if (onNavigateToAnalytics != null) {
-                        SettingItemRow(
-                            title = I18n.string("analytics.title"),
-                            subtitle = I18n.string("analytics.subtitle"),
-                            icon = Icons.Default.BarChart,
-                            onClick = onNavigateToAnalytics
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.outline
-                            )
-                        }
-                        Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
-                    }
-
-                    SettingSwitchRow(
-                        title = I18n.string("settings.searchHistoryToggle"),
-                        subtitle = I18n.string("settings.searchHistoryDesc"),
-                        icon = Icons.Default.History,
-                        checked = recordHistory,
-                        onCheckedChange = { viewModel.setRecordHistory(it) }
-                    )
-
-                    SettingItemRow(
-                        title = I18n.string("analytics.clearAll"),
-                        subtitle = I18n.string("analytics.clearConfirm"),
-                        icon = Icons.Default.DeleteSweep,
-                        onClick = {
-                            scope.launch {
-                                appPreferences.clearSearchHistory()
-                                Toast.makeText(context, I18n.t("share.copiedNotice"), Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    )
-                }
-            }
-        }
-
-        // ── Section 3: 隐私与安全 ─────────────────────────────────
+        // ── Section 2: 隐私与安全 ─────────────────────────────────
         if (selectedTab == SettingsTab.ALL || selectedTab == SettingsTab.PRIVACY) {
             SectionHeader(
                 icon = Icons.Default.Security,
@@ -372,6 +325,28 @@ fun SettingsScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column {
+                    SettingSwitchRow(
+                        title = I18n.string("settings.searchHistoryToggle"),
+                        subtitle = I18n.string("settings.searchHistoryDesc"),
+                        icon = Icons.Default.History,
+                        checked = recordHistory,
+                        onCheckedChange = { viewModel.setRecordHistory(it) }
+                    )
+
+                    val searchClearedToast = I18n.string("common.searchHistoryCleared", defaultVal = "Search history cleared")
+                    SettingItemRow(
+                        title = I18n.string("settings.clearSearchHistory"),
+                        subtitle = I18n.string("settings.searchHistoryDesc"),
+                        icon = Icons.Default.DeleteSweep,
+                        onClick = {
+                            scope.launch {
+                                appPreferences.clearSearchHistory()
+                                Toast.makeText(context, searchClearedToast, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
                     SettingSwitchRow(
                         title = I18n.string("settings.flagSecure"),
                         subtitle = I18n.string("settings.flagSecureSubtitle"),
@@ -1089,6 +1064,16 @@ fun SettingsScreen(
     }
 
     if (showLlmDialog) {
+        data class LlmPreset(val name: String, val provider: String, val baseUrl: String, val model: String)
+        val presets = listOf(
+            LlmPreset("DeepSeek V3", "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat"),
+            LlmPreset("OpenAI (GPT-4o Mini)", "OpenAI", "https://api.openai.com/v1", "gpt-4o-mini"),
+            LlmPreset("Claude 3.5 Haiku", "Anthropic / Claude", "https://api.anthropic.com/v1", "claude-3-5-haiku-20241022"),
+            LlmPreset("Google Gemini 2.5 Flash", "Gemini", "https://generativelanguage.googleapis.com/v1beta", "gemini-2.5-flash"),
+            LlmPreset("SiliconFlow 硅基流动", "SiliconFlow", "https://api.siliconflow.cn/v1", "deepseek-ai/DeepSeek-V3"),
+            LlmPreset("Ollama 本地守护进程", "Ollama (Local)", "http://127.0.0.1:11434/v1", "qwen2.5:7b")
+        )
+
         var inputProvider by remember { mutableStateOf(llmProvider) }
         var inputApiKey by remember { mutableStateOf(llmApiKey) }
         var inputBaseUrl by remember { mutableStateOf(llmBaseUrl) }
@@ -1105,28 +1090,170 @@ fun SettingsScreen(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    Text(
+                        text = "选择预设服务商（快速填入 Base URL 与推荐模型）：",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        presets.forEach { preset ->
+                            FilterChip(
+                                selected = inputBaseUrl == preset.baseUrl,
+                                onClick = {
+                                    inputProvider = preset.provider
+                                    inputBaseUrl = preset.baseUrl
+                                    inputModel = preset.model
+                                },
+                                label = { Text(preset.name, style = MaterialTheme.typography.labelSmall) },
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
+
+                    OutlinedTextField(
+                        value = inputApiKey,
+                        onValueChange = { inputApiKey = it },
+                        label = { Text("API Key (密钥)") },
+                        placeholder = { Text("sk-...") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // 智能模型自动拉取与下拉选择器
+                    var detectedModels by remember { mutableStateOf<List<String>>(emptyList()) }
+                    var isDetectingModels by remember { mutableStateOf(false) }
+                    var detectError by remember { mutableStateOf<String?>(null) }
+                    var showModelDropdown by remember { mutableStateOf(false) }
+
+                    val coroutineScope = rememberCoroutineScope()
+
+                    fun fetchAvailableModels() {
+                        if (inputBaseUrl.isBlank()) return
+                        isDetectingModels = true
+                        detectError = null
+                        coroutineScope.launch(Dispatchers.IO) {
+                            try {
+                                val urlStr = if (inputBaseUrl.endsWith("/")) "${inputBaseUrl}models" else "${inputBaseUrl}/models"
+                                val url = java.net.URL(urlStr)
+                                val conn = url.openConnection() as java.net.HttpURLConnection
+                                conn.requestMethod = "GET"
+                                conn.connectTimeout = 8000
+                                conn.readTimeout = 8000
+                                if (inputApiKey.isNotBlank()) {
+                                    conn.setRequestProperty("Authorization", "Bearer ${inputApiKey.trim()}")
+                                }
+                                if (conn.responseCode in 200..299) {
+                                    val stream = conn.inputStream
+                                    val text = stream.bufferedReader().use { it.readText() }
+                                    val json = org.json.JSONObject(text)
+                                    val dataArray = json.optJSONArray("data")
+                                    val modelsList = mutableListOf<String>()
+                                    if (dataArray != null) {
+                                        for (i in 0 until dataArray.length()) {
+                                            val obj = dataArray.getJSONObject(i)
+                                            val id = obj.optString("id")
+                                            if (!id.isNullOrBlank()) {
+                                                modelsList.add(id)
+                                            }
+                                        }
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        detectedModels = modelsList.sorted()
+                                        isDetectingModels = false
+                                        if (modelsList.isNotEmpty() && (inputModel.isBlank() || !modelsList.contains(inputModel))) {
+                                            inputModel = modelsList.first()
+                                        }
+                                    }
+                                } else {
+                                    withContext(Dispatchers.Main) {
+                                        isDetectingModels = false
+                                        detectError = "HTTP ${conn.responseCode}"
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    isDetectingModels = false
+                                    detectError = e.message ?: "无法连接"
+                                }
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = { fetchAvailableModels() },
+                            enabled = !isDetectingModels && inputBaseUrl.isNotBlank()
+                        ) {
+                            if (isDetectingModels) {
+                                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("正在拉取模型库...", style = MaterialTheme.typography.labelSmall)
+                            } else {
+                                Text("🔍 自动检测可用模型列表", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        if (detectError != null) {
+                            Text(detectError!!, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+
+                    ExposedDropdownMenuBox(
+                        expanded = showModelDropdown && detectedModels.isNotEmpty(),
+                        onExpandedChange = { showModelDropdown = !showModelDropdown }
+                    ) {
+                        OutlinedTextField(
+                            value = inputModel,
+                            onValueChange = { inputModel = it },
+                            label = { Text(I18n.string("settings.modelPlaceholder")) },
+                            trailingIcon = {
+                                if (detectedModels.isNotEmpty()) {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = showModelDropdown)
+                                }
+                            },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        if (detectedModels.isNotEmpty()) {
+                            ExposedDropdownMenu(
+                                expanded = showModelDropdown,
+                                onDismissRequest = { showModelDropdown = false }
+                            ) {
+                                detectedModels.forEach { modelId ->
+                                    DropdownMenuItem(
+                                        text = { Text(modelId, style = MaterialTheme.typography.bodySmall) },
+                                        onClick = {
+                                            inputModel = modelId
+                                            showModelDropdown = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = inputProvider,
                         onValueChange = { inputProvider = it },
                         label = { Text(I18n.string("settings.providerPlaceholder")) },
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = inputBaseUrl,
                         onValueChange = { inputBaseUrl = it },
-                        label = { Text("Base URL") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = inputApiKey,
-                        onValueChange = { inputApiKey = it },
-                        label = { Text("API Key") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = inputModel,
-                        onValueChange = { inputModel = it },
-                        label = { Text(I18n.string("settings.modelPlaceholder")) },
+                        label = { Text("Base URL (接口基址)") },
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Row(
@@ -1134,7 +1261,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(I18n.string("settings.autoTranslateDetail"))
+                        Text(I18n.string("settings.autoTranslateDetail"), style = MaterialTheme.typography.bodyMedium)
                         Switch(checked = inputAutoTranslate, onCheckedChange = { inputAutoTranslate = it })
                     }
                 }

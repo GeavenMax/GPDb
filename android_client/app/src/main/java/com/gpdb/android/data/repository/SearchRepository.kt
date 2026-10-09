@@ -173,4 +173,35 @@ class SearchRepository(
             emptyList()
         }
     }
+
+    suspend fun searchEpisodes(query: String, limit: Int = 50, offset: Int = 0): List<com.gpdb.android.data.db.entities.EpisodeEntity> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return emptyList()
+        val likeQuery = "%$trimmed%"
+        return try {
+            val sql = """
+                SELECT e.* FROM episodes e 
+                WHERE e.title LIKE ? OR e.studio_name LIKE ? OR e.action_notes LIKE ? OR e.description_zh LIKE ?
+                ORDER BY e.release_date DESC, e.id DESC 
+                LIMIT ? OFFSET ?
+            """.trimIndent()
+            searchDao.searchEpisodesFts(SimpleSQLiteQuery(sql, arrayOf(likeQuery, likeQuery, likeQuery, likeQuery, limit, offset)))
+        } catch (e: Exception) {
+            Log.e("SearchRepository", "分集检索失败: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    suspend fun searchDirectors(query: String, limit: Int = 50, offset: Int = 0): List<DirectorSummary> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return emptyList()
+        return try {
+            val db = com.gpdb.android.data.db.DatabaseHolder.db ?: return emptyList()
+            val repo = BrowseRepository(db.browseDao())
+            repo.getDirectorsPaged(sortBy = "works", limit = limit, offset = offset, search = trimmed)
+        } catch (e: Exception) {
+            Log.e("SearchRepository", "导演检索失败: ${e.message}", e)
+            emptyList()
+        }
+    }
 }

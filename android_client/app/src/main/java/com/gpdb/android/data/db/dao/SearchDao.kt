@@ -19,4 +19,10 @@ interface SearchDao {
      */
     @RawQuery
     suspend fun searchPerformersFts(query: SupportSQLiteQuery): List<PerformerEntity>
+
+    /** 
+     * 全局搜分集
+     */
+    @RawQuery
+    suspend fun searchEpisodesFts(query: SupportSQLiteQuery): List<com.gpdb.android.data.db.entities.EpisodeEntity>
 }

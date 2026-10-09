@@ -4,7 +4,7 @@ import { analytics, resetAllAnalytics } from '../services/analytics';
 import {
   deepInsights, loadDeepInsights, exportUserDataBundle, isInsightsLoading
 } from '../services/userAnalytics';
-import { t, currentLocale } from '../i18n';
+import { t } from '../i18n';
 import IndustryPanoramaView from './IndustryPanoramaView.vue';
 import StudioGenealogyView from './StudioGenealogyView.vue';
 import {
@@ -45,9 +45,9 @@ const formattedFocusTime = computed(() => {
   const hours = Math.floor(sec / 3600);
   const mins = Math.floor((sec % 3600) / 60);
   if (hours > 0) {
-    return currentLocale.value.startsWith('zh') ? `${hours} 小时 ${mins} 分钟` : `${hours}h ${mins}m`;
+    return t('analytics.timeHoursMins', { hours, mins });
   }
-  return currentLocale.value.startsWith('zh') ? `${mins} 分钟 ${sec % 60} 秒` : `${mins}m ${sec % 60}s`;
+  return t('analytics.timeMinsSecs', { mins, secs: sec % 60 });
 });
 
 const firstLaunchFormatted = computed(() => {

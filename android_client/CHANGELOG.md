@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.1] - 2026-10-08
+
+### Added
+- **分集档案页支持收藏与取消收藏 (`EpisodeDetailScreen.kt`, `EpisodeDetailViewModel.kt`)**：
+  - 在分集详情页 TopAppBar 头部新增收藏按钮 (`IconButton`)；
+  - 点击可实时切换该分集的收藏状态，并更新数据库 `user_favorites` 表 (`entity_type = 'episode'`)；
+  - 动态显示红心高亮状态 (`Icons.Default.Favorite` vs `Icons.Default.FavoriteBorder`)。
+
+- **分集档案页新增片商跳转芯片 (`EpisodeDetailScreen.kt`, `GpdbNavigation.kt`)**：
+  - 在分集详情页上映日期旁新增可点击的片商 FilterChip 徽章，点击即可直接跳转至对应片商详情页。
+- **AI 翻译设置简化与一键预设 (`SettingsScreen.kt`)**：
+  - 简化 AI 翻译配置，内置主流服务商（DeepSeek V3、OpenAI GPT-4o Mini、Claude 3.5 Haiku、Gemini 2.5 Flash、SiliconFlow、Ollama 本地）一键预设选项，用户仅需输入 API Key 即可快速使用。
+- **设置页顶栏 Tab 标签自适应多行换行 (`SettingsScreen.kt`)**：
+  - 将设置页顶部的横向滚动 Row 重构为 `FlowRow` 多行自适应换行胶囊切片布局；
+  - 规范并修正设置 Tab 标签的中英文及繁体多语言名称。
+
+### Changed
+- **底部导航栏分类命名规范对齐 (`LocaleZhCn.kt`, `LocaleZhTw.kt`)**：
+  - 将底部 Tab 的「影片库」重命名为「影片」，「演员库」重命名为「演员」，保持导航栏干练对齐。
+- **系列专题抓取规则规范强化 (`GpdbScraperEngine.kt`)**：
+  - 明确同片商智能索引约束：系列专题仅限于同一个片商/厂牌内部的影片集合 (`GROUP BY studio_name, root_title`)，防止跨厂牌同名标题误混入同一系列。
+- **HomeScreen 多行换行 TabBar 与纯内容组件提取 (`HomeScreen.kt`, `StudioListScreen.kt`, `DirectorListScreen.kt`)**：
+  - 将 HomeScreen 顶部的 `ScrollableTabRow` 重构为自适应多行 `FlowRow` 胶囊切片布局；
+  - 提取 `StudioListContent` 与 `DirectorListContent`，解决 HomeScreen 嵌套 Scaffold 导致的冗余顶栏与白边间隙问题。
+
 ## [2.18.0] - 2026-10-04
 
 ### Added
@@ -107,15 +132,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 采用 Jetpack Compose 规范的单流滚动架构，将完整的演员人物档案板块（头像、生理特征、PBC 维基人物小传、互联档案、外链检索按钮、AKA 艺名）与「出演影片」「出演分集」分类 TabRow 作为顶置 Item 直接嵌入 `LazyVerticalGrid` 与 `LazyColumn`；
   - 彻底解决了进入演员档案页时人物信息板块和出演影片/出演分集按钮被掩盖在网格后面或折叠消失、界面只显示孤立影片网格的严重交互 Bug。
 - **P0 级外部数据库挂载失败根治（Room 架构迁移与物理表自愈）**：
-  - 在 [`GpdbDatabase.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/data/db/GpdbDatabase.kt) 中将 Room 数据库版本由 3 升级至 4，补全 `MIGRATION_3_4` 及所有历史版本到 4 的迁移脚本（`ALTER TABLE performers ADD COLUMN sj_url TEXT`）；
+  - 在 [`GpdbDatabase.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/GPDb 开发/android_client/app/src/main/java/com/gpdb/android/data/db/GpdbDatabase.kt) 中将 Room 数据库版本由 3 升级至 4，补全 `MIGRATION_3_4` 及所有历史版本到 4 的迁移脚本（`ALTER TABLE performers ADD COLUMN sj_url TEXT`）；
   - 实现挂载前置自愈机制 `ensureSchemaCompatibility`：在 Room 建立连接与执行架构校验之前，使用原生 SQLite 直连检查并就地无损补齐缺失列（`pbc_url`, `sj_url` 以及扩展表 `performer_pbc_profiles`, `performer_sj_profiles`）；
   - 彻底解决了由于外部数据库缺乏 `sj_url` 列触发 `IllegalStateException: Migration didn't properly handle: performers` 导致数据库挂载失败的严重缺陷。
 - **P0 级致命闪退根治：收藏系列（LibraryScreen）点击瞬间 Crash 修复**：
-  - 在 [`LibraryScreen.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/ui/library/LibraryScreen.kt) 中将 `LazyVerticalGrid` 网格项键值由原有的 `it.rootTitle` 升级为全局复合唯一键：`key = { it.id ?: "${it.studioName}_${it.rootTitle}_${it.hashCode()}" }`；
-  - 在 [`BrowseRepository.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/data/repository/BrowseRepository.kt) 查询语句中补充 `SELECT DISTINCT s.*`，防止由于关联匹配条件产生重复数据项；
+  - 在 [`LibraryScreen.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/GPDb 开发/android_client/app/src/main/java/com/gpdb/android/ui/library/LibraryScreen.kt) 中将 `LazyVerticalGrid` 网格项键值由原有的 `it.rootTitle` 升级为全局复合唯一键：`key = { it.id ?: "${it.studioName}_${it.rootTitle}_${it.hashCode()}" }`；
+  - 在 [`BrowseRepository.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/GPDb 开发/android_client/app/src/main/java/com/gpdb/android/data/repository/BrowseRepository.kt) 查询语句中补充 `SELECT DISTINCT s.*`，防止由于关联匹配条件产生重复数据项；
   - 彻底根治了底层数据库中不同厂牌存在重名系列（如 `Auditions`、`Bad Boys`、`Bareback` 等）时触发 `IllegalArgumentException: Key was already used` 闪退崩溃的重大缺陷。
 - **系列路由标题解析格式化优化**：
-  - 在 [`FilteredMovieListScreen.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/游戏库管理App/GEVI_Offline_Database/android_client/app/src/main/java/com/gpdb/android/ui/browse/FilteredMovieListScreen.kt) 中对复合系列标题进行正则拆分与格式化，剔除 `|||` 内部标记，友好展示为「系列名称（厂牌名）」。
+  - 在 [`FilteredMovieListScreen.kt`](file:///Users/joel/iCloud%20Drive%20(Archive)/Documents/antigravity/GPDb 开发/android_client/app/src/main/java/com/gpdb/android/ui/browse/FilteredMovieListScreen.kt) 中对复合系列标题进行正则拆分与格式化，剔除 `|||` 内部标记，友好展示为「系列名称（厂牌名）」。
 
 ### Added
 - **全平台统一通用用户配置与数据备份/恢复机制 (`UserRepository.kt` & `UserAnalyticsRepository.kt` & `SettingsViewModel.kt` & `SettingsScreen.kt`)**：

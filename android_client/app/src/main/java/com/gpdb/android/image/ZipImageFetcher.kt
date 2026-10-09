@@ -307,6 +307,7 @@ class ZipImageFetcher(
      * 从 SQLite 数据库的 studio_logos 资产表读取内置 WebP BLOB
      * 支持精确匹配与 Slug 模糊匹配，保证手动导入 Logo 的无感显示
      */
+    @Synchronized
     private fun loadLogoBlobFromDb(relativePath: String): ByteArray? {
         return try {
             val database = DatabaseHolder.db ?: return null

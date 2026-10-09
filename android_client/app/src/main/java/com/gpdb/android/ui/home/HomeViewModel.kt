@@ -16,12 +16,21 @@ import com.gpdb.android.data.db.entities.MovieEntity
 
 sealed class MountStatus {
     object Idle : MountStatus()
-    data class Mounting(val stepText: String) : MountStatus()
+    data class Mounting(
+        val stepText: String,
+        val i18nKey: String? = null,
+        val i18nParams: Map<String, String> = emptyMap()
+    ) : MountStatus()
     object Ready : MountStatus()
-    data class Error(val title: String, val detail: String) : MountStatus()
+    data class Error(
+        val title: String,
+        val detail: String,
+        val titleKey: String? = null,
+        val detailKey: String? = null
+    ) : MountStatus()
 }
 
-enum class HomeTab { ALL_MOVIES, EPISODES, SERIES }
+enum class HomeTab { ALL_MOVIES, EPISODES, SERIES, STUDIOS, DIRECTORS }
 
 enum class DateFilter(val i18nKey: String, val defaultLabel: String) {
     ALL("common.all", "全部"),
@@ -71,7 +80,10 @@ class HomeViewModel : ViewModel() {
             _uiState.update {
                 it.copy(
                     physicalRootPath = mountRoot,
-                    mountStatus = MountStatus.Mounting(stepText = "正在连接 GPDb.db 数据库 (TRUNCATE FUSE 模式)...")
+                    mountStatus = MountStatus.Mounting(
+                        stepText = "正在连接 GPDb.db 数据库 (TRUNCATE FUSE 模式)...",
+                        i18nKey = "mount.connectingDb"
+                    )
                 )
             }
 
@@ -83,7 +95,8 @@ class HomeViewModel : ViewModel() {
                     it.copy(
                         mountStatus = MountStatus.Error(
                             title = "数据库挂载失败",
-                            detail = errorDetail
+                            detail = errorDetail,
+                            titleKey = "mount.failedTitle"
                         )
                     )
                 }
@@ -96,7 +109,10 @@ class HomeViewModel : ViewModel() {
             if (zipPath != null && File(zipPath).exists()) {
                 _uiState.update {
                     it.copy(
-                        mountStatus = MountStatus.Mounting(stepText = "正在解析 GPDb_Images.zip 图片索引 (23万+ 条目)...")
+                        mountStatus = MountStatus.Mounting(
+                            stepText = "正在解析 GPDb_Images.zip 图片索引 (23万+ 条目)...",
+                            i18nKey = "mount.indexingZip"
+                        )
                     )
                 }
 
@@ -108,7 +124,10 @@ class HomeViewModel : ViewModel() {
 
             _uiState.update {
                 it.copy(
-                    mountStatus = MountStatus.Mounting(stepText = "正在加载影视元数据列表...")
+                    mountStatus = MountStatus.Mounting(
+                        stepText = "正在加载影视元数据列表...",
+                        i18nKey = "mount.loadingMetadata"
+                    )
                 )
             }
 
@@ -154,9 +173,42 @@ class HomeViewModel : ViewModel() {
                     it.copy(
                         mountStatus = MountStatus.Error(
                             title = "加载影库数据异常",
-                            detail = "${e.javaClass.simpleName}: ${e.message}"
+                            detail = "${e.javaClass.simpleName}: ${e.message}",
+                            titleKey = "mount.loadErrorTitle"
                         )
                     )
+                }
+            }
+        }
+    }
+
+    fun triggerManualScrape(context: Context, onFinished: (String) -> Unit) {
+        val db = DatabaseHolder.db ?: return
+        val rootPath = _uiState.value.physicalRootPath
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val updates = com.gpdb.android.data.scraper.GpdbSyncManager.checkForUpdates(context, db, rootPath)
+                if (updates.totalCount > 0) {
+                    val result = com.gpdb.android.data.scraper.GpdbSyncManager.startManualSync(
+                        context = context,
+                        database = db,
+                        physicalRoot = rootPath,
+                        updates = updates,
+                        onNewContentAdded = { refreshSilently() }
+                    )
+                    refreshSilently()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        onFinished(result.message)
+                    }
+                } else {
+                    val msg = com.gpdb.android.util.I18n.t("sync.alreadyLatest", defaultVal = "本地数据库已是最新，无待增量项")
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        onFinished(msg)
+                    }
+                }
+            } catch (e: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    onFinished(e.message ?: "Scrape failed")
                 }
             }
         }
@@ -171,11 +223,18 @@ class HomeViewModel : ViewModel() {
                 currentOffset = 0
                 val list = queryMoviesByFilter(db, state.dateFilter, state.sortByYear, pageSize, 0)
                 currentOffset = list.size
+
+                episodesOffset = 0
+                val episodesList = queryEpisodesByFilter(db, state.dateFilter, pageSize, 0)
+                episodesOffset = episodesList.size
+
                 _uiState.update {
                     it.copy(
                         totalCount = totalCount,
                         movies = list,
-                        hasMore = list.size >= pageSize
+                        hasMore = list.size >= pageSize,
+                        episodes = episodesList,
+                        episodesHasMore = episodesList.size >= pageSize
                     )
                 }
             } catch (e: Exception) {

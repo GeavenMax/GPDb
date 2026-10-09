@@ -12,40 +12,71 @@ export type SupportedLocale = 'zh-CN' | 'en' | 'it' | 'zh-TW' | 'ja' | 'es' | 'd
 
 export interface LanguageOption {
   code: SupportedLocale;
-  label: string;
+  i18nKey: string;
   native: string;
 }
 
 export const SUPPORTED_LANGUAGES: LanguageOption[] = [
-  { code: 'zh-CN', label: '简体中文', native: '简体中文' },
-  { code: 'zh-TW', label: '繁体中文', native: '繁體中文' },
-  { code: 'en', label: '英语', native: 'English' },
-  { code: 'ja', label: '日语', native: '日本語' },
-  { code: 'it', label: '意大利语', native: 'Italiano' },
-  { code: 'es', label: '西班牙语', native: 'Español' },
-  { code: 'de', label: '德语', native: 'Deutsch' },
+  { code: 'zh-CN', i18nKey: 'lang.zhCN', native: '简体中文' },
+  { code: 'zh-TW', i18nKey: 'lang.zhTW', native: '繁體中文' },
+  { code: 'en', i18nKey: 'lang.en', native: 'English' },
+  { code: 'ja', i18nKey: 'lang.ja', native: '日本語' },
+  { code: 'it', i18nKey: 'lang.it', native: 'Italiano' },
+  { code: 'es', i18nKey: 'lang.es', native: 'Español' },
+  { code: 'de', i18nKey: 'lang.de', native: 'Deutsch' },
 ];
 
 export const TARGET_TRANSLATION_LANGUAGES = [
-  { code: 'zh-CN', label: '中文 (简体)' },
-  { code: 'zh-TW', label: '中文 (繁體)' },
-  { code: 'en', label: 'English' },
-  { code: 'ja', label: '日本語' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'es', label: 'Español' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'fr', label: 'Français' },
+  { code: 'zh-CN', i18nKey: 'lang.zhCN', native: '中文 (简体)' },
+  { code: 'zh-TW', i18nKey: 'lang.zhTW', native: '中文 (繁體)' },
+  { code: 'en', i18nKey: 'lang.en', native: 'English' },
+  { code: 'ja', i18nKey: 'lang.ja', native: '日本語' },
+  { code: 'it', i18nKey: 'lang.it', native: 'Italiano' },
+  { code: 'es', i18nKey: 'lang.es', native: 'Español' },
+  { code: 'de', i18nKey: 'lang.de', native: 'Deutsch' },
+  { code: 'fr', i18nKey: 'lang.fr', native: 'Français' },
 ];
 
-const STORAGE_KEY = 'gpdb_ui_locale';
-const savedLocale = (localStorage.getItem(STORAGE_KEY) as SupportedLocale) || 'zh-CN';
+export function detectSystemLocale(): SupportedLocale {
+  if (typeof navigator === 'undefined' || !navigator.language) {
+    return 'en';
+  }
+  const tag = navigator.language.toLowerCase();
+  if (tag.startsWith('zh-tw') || tag.startsWith('zh-hk') || tag.startsWith('zh-mo') || tag.startsWith('zh-hant')) {
+    return 'zh-TW';
+  }
+  if (tag.startsWith('zh')) {
+    return 'zh-CN';
+  }
+  if (tag.startsWith('ja')) {
+    return 'ja';
+  }
+  if (tag.startsWith('it')) {
+    return 'it';
+  }
+  if (tag.startsWith('es')) {
+    return 'es';
+  }
+  if (tag.startsWith('de')) {
+    return 'de';
+  }
+  return 'en';
+}
 
-export const currentLocale = ref<SupportedLocale>(savedLocale);
+const STORAGE_KEY = 'gpdb_ui_locale';
+const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+const initialLocale: SupportedLocale = (stored as SupportedLocale) || detectSystemLocale();
+
+export const currentLocale = ref<SupportedLocale>(initialLocale);
 
 export function setLocale(locale: SupportedLocale) {
   currentLocale.value = locale;
-  localStorage.setItem(STORAGE_KEY, locale);
-  document.documentElement.lang = locale;
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY, locale);
+  }
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = locale;
+  }
   try {
     recordLangSwitch();
   } catch {}

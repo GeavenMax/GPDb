@@ -216,4 +216,74 @@ object GlossaryHelper {
     fun getCleanLabel(key: String, isChinese: Boolean): String {
         return getCleanLabel(key, if (isChinese) AppLanguage.ZH_CN else AppLanguage.EN)
     }
+
+    private val CATEGORIES: Map<String, String> = mapOf(
+        "Animation" to "动画",
+        "Art Film" to "艺术片",
+        "Ass Play" to "肛门玩弄",
+        "B/D" to "绑缚调教",
+        "Behind the Scenes" to "幕后花絮",
+        "Bisexual" to "双性恋",
+        "Bondage" to "绑缚",
+        "Boxing" to "拳击",
+        "Cum Shots" to "射精镜头",
+        "Dildos" to "假阳具",
+        "Documentary" to "纪录片",
+        "Educational" to "教育片",
+        "Erotica" to "情色",
+        "Exercise" to "健身",
+        "Fetish" to "恋物",
+        "Fisting" to "拳交",
+        "GangBang" to "群交",
+        "Gay & Straight" to "同性与异性",
+        "General Hardcore" to "普通硬核",
+        "Hidden Camera" to "偷拍",
+        "Humor" to "幽默",
+        "Interactive Game" to "互动游戏",
+        "Interracial" to "跨种族",
+        "Interviews" to "访谈",
+        "J/O" to "自慰",
+        "Kink" to "性癖",
+        "Leather" to "皮革",
+        "Naturist" to "天体",
+        "Oral Sex" to "口交",
+        "Outtakes" to "NG片段",
+        "PG Rated" to "PG级",
+        "Physique" to "健美",
+        "Posing" to "摆姿势",
+        "Previews" to "预览",
+        "Rimming" to "舔肛",
+        "S/M" to "性虐",
+        "Safe Sex" to "安全性爱",
+        "Shaving" to "剃毛",
+        "Soft & Hardcore Versions" to "软核与硬核版本",
+        "Softcore" to "软核",
+        "Solos" to "单人秀",
+        "Spanking" to "打屁股",
+        "Stills" to "照片",
+        "Straight" to "异性恋",
+        "Straight Baiting" to "直男诱惑",
+        "Strap-On" to "穿戴式假阳具",
+        "Tickling" to "挠痒",
+        "Trailers" to "预告片",
+        "Transgendered" to "跨性别",
+        "Transsexual" to "变性人",
+        "Watersports" to "尿浴",
+        "Wrestling" to "摔角",
+        "unknown" to "未知"
+    )
+
+    private val BR_RE = Regex("(?i)<br\\s*/?>")
+
+    fun trCategory(raw: String?, isChinese: Boolean = true): String {
+        if (raw.isNullOrBlank()) return ""
+        val terms = raw.split(BR_RE).map { it.trim() }.filter { it.isNotEmpty() }
+        if (!isChinese) {
+            return terms.joinToString(", ")
+        }
+        return terms.joinToString("、") { term ->
+            CATEGORIES[term] ?: TERMS[term] ?: term
+        }
+    }
 }
+

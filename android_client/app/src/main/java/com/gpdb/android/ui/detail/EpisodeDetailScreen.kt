@@ -7,9 +7,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -39,7 +43,8 @@ fun EpisodeDetailScreen(
     viewModel: EpisodeDetailViewModel,
     onBackClick: () -> Unit,
     onPerformerClick: (Long) -> Unit,
-    onMovieClick: (Long) -> Unit
+    onMovieClick: (Long) -> Unit,
+    onStudioClick: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showShareCard by remember { mutableStateOf(false) }
@@ -58,6 +63,13 @@ fun EpisodeDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.toggleFavorite() }) {
+                        Icon(
+                            imageVector = if (uiState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = com.gpdb.android.util.I18n.string("common.favorite"),
+                            tint = if (uiState.isFavorite) Color.Red else LocalContentColor.current
+                        )
+                    }
                     IconButton(onClick = { showShareCard = true }) {
                         Icon(Icons.Default.Share, contentDescription = com.gpdb.android.util.I18n.string("common.share"))
                     }
@@ -126,12 +138,35 @@ fun EpisodeDetailScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        episode.releaseDate?.let { date ->
-                            Text(
-                                text = "${com.gpdb.android.util.I18n.string("episode.releaseDate")}: $date",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        val studioName = episode.studioName ?: parentMovie?.studioName
+                        if (episode.releaseDate != null || !studioName.isNullOrBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (!studioName.isNullOrBlank()) {
+                                    FilterChip(
+                                        selected = false,
+                                        onClick = { onStudioClick(studioName) },
+                                        label = { Text(studioName, style = MaterialTheme.typography.labelMedium) },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = Icons.Default.Business,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        },
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                }
+                                episode.releaseDate?.let { date ->
+                                    Text(
+                                        text = "${com.gpdb.android.util.I18n.string("episode.releaseDate")}: $date",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
                         }
 
                         // 所属影片卡片
@@ -167,16 +202,20 @@ fun EpisodeDetailScreen(
                         }
 
                         // 分集简介与 AI 翻译 (统一组件)
-                        val summary = if (isZh) {
+                        val originalSummary = if (isZh) {
                             episode.descriptionZh?.takeIf { it.isNotBlank() } ?: episode.description
                         } else {
                             episode.description?.takeIf { it.isNotBlank() } ?: episode.descriptionZh
                         }
-                        if (!summary.isNullOrBlank()) {
+                        val initialTranslation = if (!isZh && !episode.descriptionZh.isNullOrBlank()) {
+                            episode.descriptionZh
+                        } else null
+
+                        if (!originalSummary.isNullOrBlank()) {
                             Spacer(modifier = Modifier.height(20.dp))
                             TranslationSection(
-                                originalSummary = summary,
-                                translatedSummary = uiState.translatedSummary,
+                                originalSummary = originalSummary,
+                                translatedSummary = uiState.translatedSummary ?: initialTranslation,
                                 isLoading = uiState.translationLoading,
                                 errorMessage = uiState.translationError,
                                 title = com.gpdb.android.util.I18n.string("episode.synopsis", defaultVal = "Scene Synopsis"),

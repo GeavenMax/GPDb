@@ -60,6 +60,13 @@ class MainActivity : FragmentActivity() {
             handlePanicTriggered()
         }
 
+        // 1.5 动态申请 Android 13+ 后台刮削进度通知权限
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1002)
+            }
+        }
+
         // 2. 动态响应 FLAG_SECURE 防截屏与多任务防窥
         lifecycleScope.launch {
             appSettingsRepository.flagSecureEnabledFlow.collect { enabled ->
@@ -300,7 +307,9 @@ class MainActivity : FragmentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         panicSensorManager.stopListening()
-        DatabaseHolder.release()
-        ZipHolder.release()
+        if (isFinishing) {
+            DatabaseHolder.release()
+            ZipHolder.release()
+        }
     }
 }

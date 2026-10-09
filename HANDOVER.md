@@ -1,10 +1,10 @@
 # GPDb 离线影视库 — 项目交接说明
 
-> 最后更新：2026-10-03。写给接手的人或模型：先读这一份，再动代码。
+> 最后更新：2026-10-07。写给接手的人或模型：先读这一份，再动代码。
 > 文中所有数字都是当时实测值，不是估计值。
-> 当前版本：**v2.17.0**。全端通过 `vue-tsc -b`、`npm run build`、`cargo test`（69 项全部通过）。
+> 当前版本：**v2.18.0**。全端通过 `vue-tsc -b`、`npm run build`、`cargo test`（69 项全部通过）。
 > macOS Release 产物已自动构建并覆盖安装至 `/Applications/GPDb.app`。
-> 本轮核心修复：浅色主题可读性/对比度修复、Windows 11 Mica/Acrylic 材质深色变量隔离、片商详情轻量化与秒开防卡顿、前三排首屏海报白块修复、演员详情右侧按钮单列排布、影视分享卡片官方频道链接修正 (`t.me/gpdbnews`) 等。
+> 本轮核心整改：客户端多语言（i18n）架构全面重构、7 语言包模块化拆分（1,096 键完全对齐）、菜单语言与数据库内容双向联动同步、分享卡片中英自动感知排版、全景洞察图表国际化动态重绘，并建立专项 `docs/i18n/` 规范文档体系。
 > 项目代码架构与最新状态详见 §4.0 与 §5。
 
 ---
@@ -14,7 +14,7 @@
 把 `gayeroticvideoindex.com` 的影片, 演员, 分集数据刮下来, 存进本地 SQLite,
 配一个**完全离线**可用的桌面客户端（GPDb）。
 
-- 项目根：`<project_root>/GPDb_Offline_Database`
+- 项目根：`/Users/joel/iCloud Drive (Archive)/Documents/antigravity/GPDb 开发`
 - 主库：`GPDb.db`（约 313 MB）
 - 分支：`gpdb-plus`。最新提交序列见 §5.1。
 - 后端：Python 3 **纯标准库**，`python3 server.py` 起在 **8787** 端口
@@ -60,13 +60,22 @@
 | directors / movie_directors | 3,077 / 37,502（导演库入口，见 §4.1） |
 | 片商（distinct `movies.studio_id`） | 2,411（最大 id 8,175 = **站点公司 id 的上限**，见 §4.4） |
 
-**翻译进度（已全面突破 629 万字 / 4.65 万条归档）**：
-- `movies.title_zh`: **12,782** / 63,273（突破 1.27 万部，片名本身严禁带《书名号》，仅在简介内部引用时包裹）
-- `movies.description_zh`: **10,583** / 49,965（突破万部大关，核心大厂长篇全面覆盖）
-- `episodes.description_zh`: **19,910** / 111,806（逼近 2 万条分集大关，已达 19,910 条）
-- `studios.name_zh` & `description_zh`: **2,433 / 2,433（100.0% 全库覆盖）**
-- `translations.db` 独立归档库：**46,513 条**，累计汉化产出 **6,297,196 字符**（纯汉字突破 **415 万字**）
-- 详情与各厂牌完成明细参见 `TRANSLATION_PROGRESS.md`。
+**翻译进度（已全面突破 737 万字 / 5.92 万条归档，模块位于 `translations/`）**：
+- `movies.title_zh`: **16,670** / 63,291（26.3%，突破 1.66 万部，片名本身严禁带《书名号》，仅在简介内部引用时包裹）
+- `movies.description_zh`: **11,974** / 49,977（24.0%，突破 1.19 万部，主流核心大厂长篇全面覆盖）
+- `episodes.description_zh`: **19,910** / 111,806（逼近 2 万条分集大关）
+- `performer_pbc_profiles.bio_zh`: **1,195 / 1,195（100.0% 全量覆盖）**
+- `performer_pbc_profiles.origin_zh`: **1,194 / 1,194（100.0% 全量覆盖）**
+- `studios.name_zh` & `description_zh`: **2,494 / 2,494（100.0% 全库覆盖）**
+- `translations.db` 独立归档库：**59,290 条**，累计汉化产出 **7,377,700 字符**（纯汉字突破 **490 万字**）
+- 详情与运行流水记录参见 `TRANSLATION_PROGRESS.md` 及 `translations/README.md`。
+
+**片商超清 Logo & 封套徽章工程（模块独立于 `studio_logos/`）**：
+- 生产环境生效 Logo: **2,492** 枚（**100.00% WebP**，2,492/2,492 家有效独立片商已 **100% 全覆盖**）
+- 生产环境生效 Banner: **694** 枚（**100.00% WebP**，超清宽幅横幅，已入库生产缓存 `image_cache/Logos/`）
+- 全库有效作品 Logo 覆盖率: **97.99%**（**62,021 / 63,291** 部作品拥有专属 Logo，剩余未覆盖仅为原盘未知厂牌作品）
+- 全库独立分集 Logo 覆盖率: **100.00%**（全量独立单集已完美归属所属厂标）
+- 详情与执行指南参见 `STUDIO_LOGO_PROGRESS.md` 及 `studio_logos/README.md`。
 
 **账本**：`scrape_progress` — company 12,000 行（全部 200，即 id 1..12,000 全覆盖）；
 movie 76,000 行（53,944 完成）；performer 60,701 行（60,692 完成）。
@@ -161,7 +170,33 @@ INSERT 时留 NULL，`ON CONFLICT` 的 UPDATE 里**根本没有 `movie_id` 这�
 
 ## 4. 已完成的工作
 
-### 4.0 最新（2026-10-03）：v2.17.0 性能调优、浅色主题对比度修复与 Windows 11 Fluent 材质原生化
+### 4.0 最新（2026-10-07）：v2.18.0 客户端多语言（i18n）架构全面重构与双向联动规范化
+
+**1. 语言包模块化拆分与 100% 键位完全对称**：
+- 废弃原先的单文件大字典，拆分为独立维护的 7 大语言文件（`desktop_client/src/i18n/locales/{zh-CN,zh-TW,en,ja,it,es,de}.ts`）；
+- 全量词条扩充至 **1,096 个**，并通过自动化交叉校验脚本检测，保证 7 种语言间 0 缺失、0 悬挂键；
+- 建立智能多级回退链：`目标语言 -> 英文 (小语种时) -> 简体中文 -> 键名`，杜绝小语种缺失词条时突兀呈现中文。
+
+**2. 菜单语言与数据库内容语言双向联动同步 (`App.vue`)**：
+- **诊断根因**：App 维护了 `currentLocale` 与 `descLang`（`auto`/`bilingual`/`original`）两套状态。此前在设置切到英文后，在资料库点击了 `[中文]`，导致菜单语言仍为 `en`，产生状态脱节。
+- **正向联动**：
+  - 设置中切换菜单语言（`onSelectLocale`）自动同步重置 `descLang` 并复位 `contentLangMode = 'auto'`；
+  - 资料库顶部点击 `[中文]` / `[原文]`（`setDescLang`）双向联动切换 `currentLocale`（切中文联动 `zh-CN`，切原文联动 `en`），杜绝状态脱节。
+
+**3. 分享卡片自动中英感知与排版优化 (`ShareCardModal.vue`, `MovieDetailModal.vue`, `EpisodeDetailModal.vue`)**：
+- `ShareCardData` 显式增加 `lang?: 'zh' | 'en'`；
+- 详情弹窗根据 `(props.lang === 'zh' || currentLocale.startsWith('zh')) && !showOriginal` 精确计算并注入 `lang`；
+- 中文简介优先透传当前展示的 `zhDescription.value`（动态翻译结果）与 `props.movie.description_zh`；
+- 卡片根据 `isZh` 自动切换中文/英文主副标题排布、简介语言及分隔符（中文用顿号 `、`，西文用逗号 `, `）；西文模式下彻底隐藏中文译名副标题。
+
+**4. 全景洞察与厂牌谱系 ECharts 动态国际化 (`IndustryPanoramaView.vue`, `StudioGenealogyView.vue`)**：
+- 时代分期、年代卡片、全部 Tab 栏位与 ECharts 双 Y 轴、Theme River、集中度图例等全面接入 `t()`；
+- 注入 `watch(currentLocale, () => renderCharts())` 监听，语言切换时无缝重绘画布文本。
+
+**5. 建立专项规范文档体系与子目录归档**：
+- 建立独立子目录与权威文档：`docs/i18n/UI_I18N_SPEC.md`。
+
+### 4.1 历史里程碑（2026-10-03）：v2.17.0 性能调优、浅色主题对比度修复与 Windows 11 Fluent 材质原生化
 
 **1. 浅色主题背景与文字对比度与可读性彻底修复 (`theme.css`, `App.vue`)**：
 - **根因排查**：在新增 Windows 11 Fluent Mica / Acrylic 材质支持时，在 `theme.css` 末尾全局写入了 `html[data-window-material='...']` 的深色变量覆盖（`--app: oklch(14.1% ... / 0.78)` 与 `--surface: oklch(18% ... / 0.75)`）。由于 `App.vue` 默认给 `<html>` 打上了 `data-window-material="mica"`，无论在哪个平台和哪个主题下，背景均被强制变黑。浅色主题（`classic-light`、`glass-light`、`my-light`）下的文字主色是深色 zinc-900，深色文字在深色背景下对比度崩溃，导致可读性极差。
@@ -857,4 +892,17 @@ cd desktop_client && npx vue-tsc --noEmit
     - **FUSE / TRUNCATE 写锁让渡**：写入条目时采用单项短事务配合 40~50ms 让渡 delay，杜绝与前台 UI 查询锁竞争；同步完成后通过 `HomeViewModel` 无感刷新前台列表；
     - **DNS 劫持弹性回退 (`GpdbDns.kt`)**：特定公共 Wi-Fi 或带有广告拦截的 DNS（如 AdGuard Family DNS 将成人站点解析为 `94.140.14.35` 导致 TLS 握手终止）会自动被过滤并安全回退至官方 Cloudflare Anycast 节点，保障同步永不失联；
     - **设置页开关解耦**：设置页「同步与数据存储」板块拆分为「启动时后台自动增量同步」与「系统定时后台同步」独立开关，实时联动全局同步状态。
+21. **项目目录迁移与 Telegram 官方频道推送运维规范**：
+    - **项目根目录变更**：文档与主工程全量迁移至 `/Users/joel/iCloud Drive (Archive)/Documents/antigravity/GPDb 开发`。
+    - **推送运维套件目录 (`scripts/telegram_push/`)**：版本日志发布、主库发布及统计生成工具已集中收纳于该目录（内附 `README.md` 与 `.env` 配置文件）。
+    - **推送四项铁律**：
+      1. **强制先预览**：必须先运行 `python3 scripts/telegram_push/preview_v2170_post.py` 等预览脚本生成完整排版与字数检查；
+      2. **显式确认后发送**：得到人工明确确认后，方可运行带 `--confirm` 参数的推送脚本（如 `push_v2170.py --confirm`）；
+      3. **平台排除政策**：当前所有更新公告与推送文档**暂时排除 iOS 端信息**，聚焦 Windows / macOS / Android 三端；
+      4. **置顶导览联动**：发版后必须同步调用 `edit_msg(17, ...)` 更新频道第 17 号置顶导览消息的一句话速览与历史列表。
+22. **Git 管理、多端版本同步与发版自动化规范 (`git_tasks/`)**：
+    - **独立工作目录**：Git 预检脚本、发布规范说明集中收纳于 `git_tasks/`；
+    - **发版前强制预检**：在根目录下执行 `./git_tasks/pre_release_check.sh`，自动核验工作路径匹配、零隐私路径泄露、无 iOS 残留及三端核心版本号对齐；
+    - **签名 APK 追踪政策**：仓库仅追踪当前发布版本签名 APK（`git add -f android_client/GPDb_Android_v<版本号>_release_signed.apk`），旧版必须 `git rm --cached` 移出暂存；
+    - **发版指南**：详细步骤与 GitHub Actions 校验见 `git_tasks/README.md`。
 

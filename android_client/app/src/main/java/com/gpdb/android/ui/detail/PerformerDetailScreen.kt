@@ -375,10 +375,11 @@ private fun PerformerProfileHeader(
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // 头像与基本名号
+        // 1. 头像与基本名号 (姓名、工作状态)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 12.dp),
+                .padding(horizontal = 4.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
@@ -423,68 +424,50 @@ private fun PerformerProfileHeader(
                         }
                     }
                 }
+            }
+        }
 
-                Row(
-                    modifier = Modifier.padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "ID: #${performer.id}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (!pbc?.birthName.isNullOrBlank() && pbc.birthName != performer.name) {
-                        Text(
-                            text = "${com.gpdb.android.util.I18n.string("performer.birthNameLabel")}: ${pbc.birthName}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (pbc?.careerStart != null) {
-                        val debutStr = com.gpdb.android.util.I18n.string(
-                            "performer.debutYear",
-                            mapOf("year" to pbc.careerStart.toString()),
-                            defaultVal = "Debut: ${pbc.careerStart}"
-                        )
-                        Text(
-                            text = debutStr,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                val basicDetails = listOfNotNull(
-                    (performer.height?.takeIf { it.isNotBlank() && it != "none available" }
-                        ?: pbc?.height?.takeIf { it.isNotBlank() })?.let {
-                        "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("height", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
-                    },
-                    (performer.weight?.takeIf { it.isNotBlank() && it != "none available" }
-                        ?: pbc?.weight?.takeIf { it.isNotBlank() })?.let {
-                        "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("weight", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
-                    },
-                    performer.build?.takeIf { it.isNotBlank() && it != "none available" }?.let {
-                        "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("build", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.translate(it, isChinese)}"
-                    }
+        // 2. 基础体征与身份标识胶囊条 (ID、本名、出道年份、身高、体重、体型全宽展示)
+        val basicDetails = listOfNotNull(
+            "ID: #${performer.id}",
+            pbc?.birthName?.takeIf { it.isNotBlank() && it != performer.name }?.let {
+                "${com.gpdb.android.util.I18n.string("performer.birthNameLabel")}: $it"
+            },
+            pbc?.careerStart?.let {
+                com.gpdb.android.util.I18n.string(
+                    "performer.debutYear",
+                    mapOf("year" to it.toString()),
+                    defaultVal = "Debut: $it"
                 )
+            },
+            (performer.height?.takeIf { it.isNotBlank() && it != "none available" }
+                ?: pbc?.height?.takeIf { it.isNotBlank() })?.let {
+                "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("height", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
+            },
+            (performer.weight?.takeIf { it.isNotBlank() && it != "none available" }
+                ?: pbc?.weight?.takeIf { it.isNotBlank() })?.let {
+                "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("weight", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.trMeasure(it, isChinese)}"
+            },
+            performer.build?.takeIf { it.isNotBlank() && it != "none available" }?.let {
+                "${com.gpdb.android.util.GlossaryHelper.getCleanLabel("build", isChinese)}: ${com.gpdb.android.util.GlossaryHelper.translate(it, isChinese)}"
+            }
+        )
 
-                if (basicDetails.isNotEmpty()) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        basicDetails.forEach { detailText ->
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
-                                Text(
-                                    text = detailText,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
+        if (basicDetails.isNotEmpty()) {
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                basicDetails.forEach { detailText ->
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant) {
+                        Text(
+                            text = detailText,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
                     }
                 }
             }

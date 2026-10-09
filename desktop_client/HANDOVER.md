@@ -119,4 +119,5 @@ npm run tauri build
 
 - **维护团队**：GPDb 核心工程组
 - **代码规范文档**：`desktop_client/CODING_WIKI.md`
-- **界面多语言规范**：`desktop_client/docs/UI_I18N_SPEC.md`
+- **界面多语言规范**：`docs/i18n/UI_I18N_SPEC.md`
+- **Git 管理与发版规范**：`git_tasks/README.md`（发版前请运行 `./git_tasks/pre_release_check.sh`）

@@ -1,11 +1,11 @@
-# GPDb · Gestore di database per cinema gay per adulti ad alte prestazioni e massima privacy
+# GPDb · Database manager per cinema gay per adulti ad alte prestazioni e massima privacy
 
 <p align="center">
   <img src="./desktop_client/src/assets/icons/scheme-a.svg" alt="GPDb Logo" width="120" height="120" />
 </p>
 
 <p align="center">
-  <strong>Un client moderno di gestione offline ad alte prestazioni, schedatura dettagliata, riservatezza assoluta e zero tracciamento su cloud, creato per appassionati e collezionisti di cinema gay per adulti.</strong>
+  <strong>Client multipiattaforma moderno, ad alte prestazioni, con schedatura completa, privacy assoluta e zero tracciamento cloud, progettato per appassionati di cinema gay per adulti</strong>
 </p>
 
 <p align="center">
@@ -21,150 +21,85 @@
 <p align="center">
   <a href="https://t.me/gpdbnews" target="_blank"><img src="https://img.shields.io/badge/Telegram-Channel%20%40gpdbnews-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel" /></a>
   <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Android-blue?style=for-the-badge" alt="Platform" />
-  <img src="https://img.shields.io/badge/Version-v2.17.0-orange?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Version-v2.18.0-orange?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/Category-Gay%20Adult%20Video%20Manager-ff69b4?style=for-the-badge" alt="Category" />
   <img src="https://img.shields.io/badge/Privacy-100%25%20Offline%20First-green?style=for-the-badge" alt="Privacy" />
 </p>
 
-> 📢 **Canale Telegram Ufficiale**: Iscriviti al [Canale Telegram Ufficiale di GPDb (https://t.me/gpdbnews)](https://t.me/gpdbnews) per ricevere in tempo reale le ultime novità sulle release, le notifiche sugli aggiornamenti incrementali del database e i consigli d'uso!
+> 📢 **Canale Ufficiale**: Iscriviti al [Canale Telegram Ufficiale (@gpdbnews)](https://t.me/gpdbnews) per ricevere in tempo reale annunci sulle release, aggiornamenti incrementali del database e suggerimenti d'uso!
 
 ---
 
-## 📖 Informazioni sul progetto (About GPDb)
+## 📖 Posizionamento del progetto (About GPDb)
 
-**GPDb** (Gay Pornography Database Manager) è un gestore avanzato e completo di **database offline per media gay per adulti (Gay Adult Media)**, sviluppato specificamente per appassionati, collezionisti digitali e studiosi di cinematografia.
+**GPDb** (Gay Pornography Database Manager) è un **moderno sistema completo di gestione database offline** progettato per appassionati e collezionisti di **cinema gay per adulti (Gay Adult Media)**.
 
-Nell'ambito dei contenuti per adulti, la cronologia di visione, i segnalibri e le preferenze personali rappresentano **i dati personali più sensibili e riservati**. I servizi commerciali in streaming e le piattaforme cloud comportano rischi costanti di profilazione, fughe di dati e cancellazioni arbitrarie per scadenza dei diritti.
-
-**GPDb è progettato attorno alla filosofia "100% Offline-First e privacy assoluta senza tracce"**:
-- **Nessuna dipendenza dal cloud**: Tutti i metadati, i profili fisici degli attori, la cache di poster e fotogrammi, le annotazioni personali e i tag risiedono unicamente sul disco fisico del vostro dispositivo.
-- **Architettura locale pura**: Nessuna registrazione di account, nessuna telemetria, nessun tracciamento di utilizzo e zero connessioni verso server esterni.
-- **Prestazioni senza compromessi**: Sviluppato con il motore nativo **Rust (`gpdb-core`)** e architettura moderna **Tauri v2 + Vue 3** (client desktop macOS / Windows) e **Kotlin + Jetpack Compose + Room** (app Android nativa), gestisce con estrema fluidità **oltre 60.000 film integrali, 100.000 singole scene, 6.000 schede di modelli e 1.300 case di produzione classiche e moderne** a 60 fps con ricerche istantanee in millisecondi.
+**Filosofia 100% locale (Offline-First) e privacy assoluta senza tracce**:
+- **Zero dipendenza dal cloud**: Metadati multimediali, profili fisici degli attori, cache delle locandine e annotazioni personali sono memorizzati esclusivamente sul disco locale;
+- **Architettura stand-alone pura**: Nessun account utente, nessuna telemetria o tracciamento dati, nessun caricamento verso server esterni;
+- **Prestazioni native eccezionali**: Basato sul **core ad alte prestazioni in Rust (`gpdb-core`)** + **Tauri v2 + Vue 3** (macOS / Windows) e **Kotlin + Jetpack Compose + Room** (Android nativo). Gestisce oltre **63.000 film, 134.000 scene, 108.000 attori e 2.400 case di produzione** con rendering fluido a 60 fps e ricerche istantanee in pochi millisecondi.
 
 ---
 
-## ✨ Caratteristiche specializzate (Domain-Specific Features)
+## ✨ Caratteristiche salienti (Core Highlights)
 
-### 1. Ricerca approfondita per caratteristiche fisiche e attributi degli attori
-- **Filtri anatomici e somatici ad alta precisione**:
-  Filtrate i performer per **Corporatura (Build)** (Muscle / Twink / Bear / Hunk, ecc.), **Colore dei capelli**, **Colore degli occhi**, **Densità di barba e peli corporei (Facial Hair / Body Hair)**, **Altezza e peso (Height / Weight)**, **Carnagione (Skin)**, **Dimensioni e stato del prepuzio (Dick Size / Foreskin)**, **Tatuaggi e piercing (Tattoos)** e molti altri attributi combinabili.
-- **Unificazione olografica degli pseudonimi (Aliases)**:
-  Riconcilia automaticamente i vari nomi d'arte utilizzati dallo stesso modello in diverse epoche e case di produzione, evitando di perdere filmografie per via di variazioni nel nome d'arte.
-- **Distinzione accurata tra film completi (Films) e singole scene (Scenes)**:
-  Consultate separatamente le pellicole in cui il modello è protagonista rispetto alle partecipazioni in singole scene ed episodi, con una panoramica completa di ogni apparizione.
-- **Motore di ricerca multi-campo ad alta tolleranza agli errori**:
-  - FTS5 ad alta velocità → fallback automatico a ricerca SQL multi-campo → Room / SQLite come rete di sicurezza: nessun risultato vuoto causato da tokenizzazione o tabelle virtuali mancanti.
-  - Una singola ricerca copre contemporaneamente il titolo originale in inglese (`title`), il titolo in cinese (`title_zh`), il nome dello studio (`studio_name`), il nome del regista (`director_name`), la sinossi in cinese (`description_zh`) e il cast completo.
-- **Filtri temporali e per data di inserimento multi-dimensionali**:
-  - Supporta «Tutti», «Ultimo inserimento (per data di scraping)», «Ultimi 7 giorni», «Ultimi 30 giorni», «Ultimi 90 giorni» e «Anno corrente».
-  - Granularità temporale separata per film (per anno) e scene (per data specifica).
-  - I nuovi inserimenti mostrano un badge dinamico `NEW` con sfumatura animata.
-- **Integrazione wiki PBC — Scheda attore arricchita**:
-  Ogni profilo attore include i dati estratti dall'enciclopedia wiki Porn Base Central: **nome di nascita**, **anno di debutto**, **badge di stato attivo/ritirato**, **segno zodiacale ed etnia**, **tag di stile**, **scheda biografica wiki** in formato testo completo, e **link ai profili collegati** su IAFD, IMDb, X (Twitter), OnlyFans e Instagram per ricerche incrociate approfondite.
+### 1. Profili fisici completi degli attori e ricerca avanzata ad alta tolleranza
+- **Filtri somatici granulari**: Filtraggio combinato per corporatura (Build), colore di capelli e occhi, pelosità corporea, altezza e peso, tonalità della pelle, dimensioni e prepuzio (Dick Size / Foreskin), tatuaggi e piercing.
+- **Aggregazione intelligente degli pseudonimi (AKA)**: Riconciliazione automatica dei molteplici nomi d'arte utilizzati tra studi ed epoche diverse, azzerando le omissioni.
+- **Disaccoppiamento accurato tra film e scene**: Chiara distinzione tra pellicole da protagonista e singole scene o apparizioni secondarie.
+- **Ricerca combinata ad alta tolleranza agli errori**: Indice FTS5 ad alta velocità con fallback SQL multi-campo; ricerca combinata su titoli bilingui, studi, registi, sinossi e cast.
+- **Integrazione completa dell'enciclopedia PBC**: Dati biografici da Porn Base Central (nome reale, anno di debutto, stato di attività, biografia completa e collegamenti a IAFD, IMDb, X).
 
-### 2. Home immersiva stile piattaforma streaming e galleria di poster multipli affiancati
-- **Cinque flussi di scoperta**:
-  - **Carosello gigante panoramico (Hero Carousel)**: Scorrimento fluido ad alta definizione dei poster principali con raffinati effetti di parallasse interattiva.
-  - **Accadde oggi · Prime storiche (On This Day)**: Confronto intelligente con il calendario storico per rivivere le anteprime classiche dello stesso giorno (anni '80, '90, 2000).
-  - **Stelle di oggi · Volti iconici (Star Spotlight)**: Verifica rigorosa dei file poster sul disco locale, mettendo in evidenza solo i volti iconici dotati di autentiche immagini ad alta definizione ed escludendo qualsiasi segnaposto privo di foto.
-  - **Grandi saghe cinematografiche (Iconic Series)**: Selezione ad estrazione casuale delle saghe storiche composte da decine di episodi, con pratico pulsante per estrarre una nuova selezione con un tocco.
-  - **Bussola della scoperta · Tesori nascosti (Lucky Discovery)**: Un tocco per lanciare i dadi e scovare gemme nascoste tra oltre 60.000 opere in archivio.
-- **Galleria di poster multipli affiancati e lightbox a schermo intero con zoom**:
-  - **Visualizzazione orizzontale affiancata e adattiva di poster multipli**: Per le opere dotate di locandina frontale, retro o versioni alternative, le immagini vengono mostrate contemporaneamente e affiancate in orizzontale, complete di etichette «Front» e «Back» e apertura immediata del lightbox ad alta risoluzione.
-  - **Lightbox a schermo intero con zoom (`ImageLightbox.vue` / Compose)**: Supporta lo zoom fluido con rotella del mouse (1.0x ~ 5.0x), trascinamento per panoramica, doppio clic per zoom/reset intelligente, scorciatoie da tastiera (+/-/0/Esc) e gesture pinch-to-zoom fluide su dispositivi mobili.
+### 2. Feed immersivo stile streaming e galleria multilocandina
+- **5 flussi di scoperta**: Carosello gigante panoramico in primo piano, «Accadde oggi» con prime storiche, «Stelle di oggi» con volti iconici, grandi saghe cinematografiche ed esplorazione casuale a sorpresa.
+- **Galleria multilocandina affiancata**: Copertina frontale, retro e locandine alternative disposte orizzontalmente con etichette dinamiche Front/Back.
+- **Lightbox a schermo intero con zoom**: Zoom fluido con rotellina del mouse (1.0x ~ 5.0x), panoramica a trascinamento, doppio clic e supporto completo ai gesti touch pinch-to-zoom.
 
-### 3. Raggruppamento intelligente di serie e copertine a collage (Smart Series & Collage Covers)
-- **Algoritmo di clustering automatico**: Tecnologia integrata di riconoscimento di numeri romani e sottotitoli, che raggruppa automaticamente i capitoli dispersi di una serie (*Part I, Part II, Part III*) in raccolte tematiche coerenti.
-- **Copertine artistiche a collage adattivo**: Genera automaticamente copertine composte da 1 poster singolo, 2 metà simmetriche, 3 livelli scalati o una griglia a 4 riquadri, con effetto vignetta perimetrale e rendering offline immediato.
-- **Collezione dedicata alle serie**: Aggiungete con un solo tocco le serie preferite ai «Preferiti Serie» come segnalibri indipendenti per seguirle con facilità.
+### 3. Saghe cinematografiche intelligenti e copertine a collage
+- **Algoritmo di clustering automatico**: Riconoscimento intelligente di numeri romani e sottotitoli per raggruppare automaticamente le serie a episodi.
+- **Copertine artistiche a collage adattivo**: Generazione automatica di poster a collage (1-4 immagini) con composizione simmetrica o a matrice, renderizzati all'istante offline.
 
-### 4. Schede registi e archivio approfondito di oltre 180 case di produzione
-- **Filmografia dedicata al regista**: Apertura istantanea della scheda regista dalla pagina del film, con l'elenco completo delle opere dirette e la possibilità di filtrare direttamente l'archivio per regista.
-- **Archivio approfondito e catalogo delle case di produzione**:
-  - **Archivio storico e panoramica dettagliata di 181 case di produzione fondamentali**: Raccolta completa della storia dei marchi classici e moderni, anno di fondazione, profilo dei fondatori, canoni estetici ed evoluzione culturale;
-  - **Acquisizione e rendering ad alta risoluzione di 74 loghi e banner ufficiali**: Copertura dei marchi principali con banner ufficiali e loghi nitidi a grande formato, con fallback elegante a badge con sfumatura per gli studi sprovvisti di logo;
-  - **Ristrutturazione della pagina dettagli del film**: La sinossi della trama è riposizionata a tutta larghezza sotto la locandina per una lettura ariosa e confortevole; i pulsanti operativi principali sono organizzati in una matrice compatta ed efficiente.
+### 4. Schede registi e 100% loghi ufficiali per oltre 2.400 studi
+- **Curriculum dedicato ai registi**: Accesso immediato alla filmografia del regista con filtraggio rapido dell'intero catalogo.
+- **Copertura del 100% per loghi e banner degli studi**: Oltre 2.490 case di produzione con loghi HD completi al 100% (formato WebP offline) e oltre 690 banner panoramici ufficiali; copertura dei loghi delle opere al 98%.
+- **Layout dei dettagli confortevole**: Sinossi a tutta larghezza per una lettura agevole e matrice compatta dei pulsanti d'azione rapidi.
 
-### 5. 📸 Modalità privacy dello schermo e schede di condivisione luminose (v2.17.0 Ottimizzato)
-- **Modalità privacy globale con interruttore rapido**:
-  - Interruttore a forma di occhio nella barra di navigazione superiore, con scorciatoie da tastiera e commutazione immediata tra visualizzazione normale e protetta;
-  - **Interruttore rapido nella schermata Home di Android**: Icona a forma di occhio posizionata stabilmente nella barra superiore per desensibilizzare l'intera interfaccia con un solo tocco;
-  - **Controllo granulare della desensibilizzazione**:
-    - `Oscura poster e fotogrammi`: sfocatura gaussiana globale (`blur(24px)`) su tutte le locandine, scene e ritratti dei modelli per impedire la visione involontaria di immagini esplicite durante la navigazione o la cattura dello schermo;
-    - `Oscura sinossi e testo sensibile`: sfocatura gaussiana (`blur(7px)`) su trame e descrizioni con inibizione della selezione del testo, prevenendo spoiler o fughe di dettagli confidenziali.
-  - Su Android mobile, il rendering protettivo è gestito in modo reattivo dallo state flow `LocalPrivacyBlur`, con effetto immediato sull'intero schermo.
-- **Generatore di schede di condivisione luminose stile Apple Music / Spotify**:
-  - Creazione con un clic dalle pagine di film e scene;
-  - **Doppia locandina affiancata fronte e retro (Front / Back)**: Per i film completi, visualizzazione affiancata di copertina e retro per una resa visiva ricca e da collezione;
-  - **Condivisione pulita con accesso diretto al canale ufficiale**: Codice QR ufficiale Telegram (`t.me/gpdbnews`) posizionato con eleganza nell'angolo inferiore destro, rimozione della data di generazione ridondante dal fondo per focalizzare l'attenzione sul codice identificativo dell'opera;
-  - **Sfocatura bilineare offscreen affidabile e ritaglio 16:9 senza distorsioni**: Rendering dell'alone di sfondo tramite algoritmo offscreen puro; ritaglio intelligente centrato in rapporto 16:9 per fotogrammi e singole scene, eliminando qualsiasi deformazione o stiramento;
-  - Alone luminoso di sfondo estratto automaticamente dalle tinte dominanti della locandina con sfocatura gaussiana ad ampio raggio (`blur(45px~60px)`), con 3 preset dedicati: «Vibrante (Vibrant)», «Scuro (Dark)» e «Mezzanotte (Midnight)»;
-  - **Desensibilizzazione di sicurezza prima della condivisione**: Opzioni indipendenti per applicare la sfocatura su poster e testi prima di condividere le schede su canali o social network;
-  - **Esportazione senza perdite su entrambe le piattaforme**:
-    - **Desktop**: Motore Canvas 2D offline con rasterizzazione a risoluzione 2x Retina, copia PNG negli appunti con un clic (pronto da incollare su Telegram, Discord, X, ecc.) o salvataggio su file;
-    - **Mobile**: Motore hardware-accelerated Compose 1.8, salvataggio nella galleria di sistema (`MediaStore`) e condivisione nativa tramite `FileProvider`.
+### 5. 📸 Modalità privacy dello schermo e schede di condivisione luminose (v2.18.0)
+- **Anti-sbirciatina globale con un clic**: Interruttore rapido nella barra superiore desktop e nella schermata di esplorazione di Android per applicare istantaneamente una sfocatura gaussiana alle locandine (`blur(24px)`) e al testo delle trame (`blur(7px)`).
+- **Schede di condivisione luminose a doppia copertina**:
+  - Layout affiancato fronte/retro e ritaglio centrato 16:9 senza distorsioni per le scene;
+  - Alone luminoso adattivo offscreen con sfocatura bilineare (preset Flusso luminoso, Scuro, Mezzanotte);
+  - Codice QR del canale Telegram ufficiale integrato (`t.me/gpdbnews`);
+  - Esportazione desktop Canvas a risoluzione 2x Retina e acquisizione bitmap nativa su Android per condivisione immediata.
 
-### 6. 🛡️ Suite completa di sicurezza e privacy (Enterprise-Grade Privacy & Security)
-- **Desktop snellito e focalizzato sull'archiviazione**:
-  - Rimozione totale della vecchia calcolatrice di emergenza finta sui client desktop, focalizzando l'applicazione sulla gestione pura, ordinata ed essenziale del patrimonio multimediale offline.
-- **Blocco con PIN e autenticazione biometrica su mobile**:
-  - Supporto per codice PIN numerico (4~6 cifre) e sblocco tramite impronta digitale o riconoscimento facciale su Android, con schermata di blocco in vetro smerigliato che compare automaticamente all'uscita dal focus o dopo un intervallo di inattività (1/5/15/30 minuti).
-  - Schermatura protettiva immediata con effetto satinato non appena la finestra perde il focus o si passa a un'altra applicazione.
-- **Isolamento fisico a livello di sistema operativo su mobile**:
-  - Integrazione con il flag nativo Android `FLAG_SECURE` per impedire screenshot, registrazioni dello schermo e anteprime nelle miniature del multitasking.
-  - Isolamento in sandbox con file `.nomedia` posizionati ricorsivamente in tutte le cartelle per precludere la scansione da parte di app galleria esterne.
+### 6. 🛡️ Suite di sicurezza e riservatezza completa
+- **Desktop essenziale ed efficiente**: Rimozione di mascheramenti superflui per concentrarsi sulla gestione pura e sicura della cineteca.
+- **Autenticazione biometrica e blocco di sicurezza mobile**: Supporto a codice PIN, impronta digitale e riconoscimento facciale con sfocatura protettiva istantanea alla perdita del focus.
+- **Isolamento fisico a livello di sistema**: Flag nativo `FLAG_SECURE` su Android contro screenshot e registrazioni; iniezione ricorsiva di `.nomedia` nella sandbox locale per schermare completamente i file dalle app galleria di terze parti.
 
-### 7. Motore nativo di traduzione LLM in-process e confronto bilingue
-- **Motore multi-LLM puro Rust nativo in-process**:
-  - Completa eliminazione della dipendenza da servizi HTTP esterni in Python; implementazione nel core desktop di canali asincroni concorrenti TLS per traduzioni di singole frasi o in blocco fulminee.
-  - Supporto nativo per Google Gemini, ecosistema protocollo OpenAI (DeepSeek, Moonshot, Qwen, Zhipu, SiliconFlow, Ollama locale) e Anthropic Claude.
-- **Pool di rotazione chiavi API Google Gemini e protezione delle quote**:
-  - Pool atomico integrato di rotazione delle chiavi API: se una chiave raggiunge il limite di quota (errore 429), il sistema commuta in millisecondi a una chiave di riserva; se tutte le chiavi sono esaurite, passa al fornitore alternativo configurato.
-- **Confronto bilingue scene/film e tolleranza al testo semplice**:
-  - Traduzione con un clic tramite IA per trame di film completi e singole scene con scrittura nel database locale e possibilità di alternare istantaneamente il testo originale e la traduzione.
-  - Ottimizzato per chiavi API personalizzate: tolleranza automatica del testo in output diretto senza errori bloccanti di parsing JSON; normalizzazione automatica dell'endpoint con autocompletamento di `/v1`.
-- **Persistenza e migrazione dei dati di traduzione**:
-  - Esportazione e importazione bidirezionale e senza perdite dei dati di traduzione su tutte le piattaforme (macOS / Windows / Android) in formato JSON standard.
+### 7. Motore di traduzione LLM in-process nativo in Rust
+- **Core asincrono TLS in puro Rust**: Zero dipendenze esterne da Python; anteprime di singole frasi e traduzioni in blocco ad altissima velocità.
+- **Supporto multi-modello e pool di rotazione chiavi**: Integrazione nativa con Google Gemini (commutazione automatica in millisecondi in caso di superamento quota) e protocollo compatibile OpenAI (DeepSeek, Claude, Moonshot, Ollama, ecc.).
+- **Tolleranza e standardizzazione**: Gestione fluida di risposte in testo semplice senza interruzioni di parsing JSON; importazione ed esportazione standard JSON per migrazione senza perdite.
 
-### 8. Ricerca risorse ed estensioni v2.0
-- **Accesso rapido con layout a matrice compatto**:
-  - Pulsanti esterni raggruppati in una matrice compatta sulle schede di film e attori per raggiungere con un solo clic BoyfriendTV, Google e database autorevoli, senza bisogno di digitare nuovamente il titolo.
-- **Integrazione della ricerca magnet BT**: Combinazione automatica del titolo originale e del nome dello studio in una formula di ricerca standard, collegandosi direttamente ai motori di ricerca esterni.
-- **Interruttori modulari indipendenti**: Il centro plugin consente di attivare o disattivare singolarmente ogni sorgente di collegamento esterno.
-- **Motore di scraping e sincronizzazione incrementale**: Supporta l'aggiornamento dei metadati via rete su richiesta e la memorizzazione locale nella cache di poster e fotogrammi.
-- **Motore di scraping wiki PBC (Porn Base Central)** (`scrape_pbc_actors.py`):
-  - Oltre **1.200 profili attori** indicizzati tramite crawl completo delle pagine MediaWiki API;
-  - Meccanismo di **rilevamento delle revisioni incrementali** per sincronizzare unicamente le voci modificate, riducendo al minimo il consumo di banda;
-  - Confronto dettagliato su **oltre 25 campi** (nome reale, anno di debutto, etnia, segno zodiacale, stato di attività, link esterni ai profili, ecc.);
-  - Precisione di corrispondenza dei nomi verificata al **97,3%**.
-- **Motore di scraping SmutJunkies** (`scrape_smutjunkies_actors.py`):
-  - Oltre **6.700 attori gay per adulti** indicizzati con copertura completa dell'intero archivio sulle **26 lettere dell'alfabeto**;
-  - Algoritmo di allineamento a **4 livelli ad alta tolleranza** (corrispondenza esatta → fuzzy matching normalizzato → verifica incrociata degli pseudonimi → coda di revisione manuale);
-  - **Sincronizzazione incrementale bidirezionale**: inserimento automatico delle nuove schede e aggiornamento differenziale a livello di campo per i record esistenti, salvaguardando i dati memorizzati localmente.
+### 8. Ricerca risorse ed ecosistema plugin (v2.0)
+- **Matrice di collegamenti rapidi**: Apertura diretta con un clic verso BoyfriendTV, Google, database del settore e motori di ricerca torrent magnetici.
+- **Scraper enciclopedico PBC**: Indicizzazione profonda di oltre 1.200 attori, rilevamento delle modifiche incrementali e confronto su oltre 25 attributi (precisione del 97,3%).
+- **Scraper SmutJunkies**: Catalogo completo di oltre 6.700 attori, algoritmo di allineamento a 4 livelli ad alta tolleranza e sincronizzazione incrementale bidirezionale.
 
-### 9. Internazionalizzazione completa ed esperienza snella (Internationalization & Streamlined UX)
-- **7 lingue selezionabili per l'intera interfaccia**: Cinese semplificato (`zh-CN`), Cinese tradizionale (`zh-TW`), Inglese (`en`), Italiano (`it`), Giapponese (`ja`), Spagnolo (`es`) e Tedesco (`de`).
-- **Architettura estremamente snella e focalizzata**:
-  - Rimozione totale del sistema di trofei PlayStation, azzerando calcoli superflui e codice non necessario;
-  - Rimozione del plugin sperimentale di analisi estetica IA (AI Persona Insights), per concentrare le estensioni sui tre pilastri essenziali: ricerca torrent, scraping dei dati e traduzione con modelli LLM;
-  - Eliminazione del sistema di valutazione a 5 stelle e delle complesse carte 3D ribaltabili per minimizzare l'impegno di memoria RAM e il carico sulla GPU.
+### 9. Internazionalizzazione in 7 lingue ed esperienza snella
+- **Supporto nativo a 7 lingue**: Cinese semplificato, Cinese tradizionale, English, Italiano, 日本語, Español, Deutsch.
+- **Allineamento al 100% e fallback multilivello**: 1.096 stringhe per ciascuna lingua con fallback multilivello intelligente per evitare caratteri mancanti.
+- **Sincronizzazione di stato e architettura snella**: Separazione e sincronizzazione bidirezionale tra lingua dell'interfaccia e lingua dei contenuti; eliminazione di achievement fittizi e plugin superflui per ridurre al minimo l'uso di memoria.
 
-### 10. Backup universale dei dati utente e aggiornamenti integrati (Cross-Platform Backup & Seamless Update)
-- **Backup e migrazione universale dei dati utente (`GPDb_Backup.json`)**:
-  - Architettura JSON standard unificata per esportare e importare con un solo tocco preferiti, cronologia di visualizzazione, tag, note personali, configurazioni API dei modelli LLM e preferenze di sistema.
-  - Abbattimento definitivo dei silos di dati tra macOS, Windows e Android: il cambio di dispositivo o la reinstallazione del sistema richiede solo un singolo file di backup, con migrazione istantanea e senza perdite.
-- **Verifica aggiornamenti in-app e download riprendibili**:
-  - Modulo di controllo automatico o manuale della versione integrato su desktop e mobile, con confronto in tempo reale con le release su GitHub e visualizzazione delle note di rilascio.
-  - Motore di download ad alta velocità integrato con supporto alla ripresa automatica dei download interrotti (resumable downloads) e procedura guidata di installazione per mantenere l'applicazione costantemente aggiornata.
+### 10. Backup universale dei dati e aggiornamenti multipiattaforma
+- **Backup universale (`GPDb_Backup.json`)**: Esportazione e importazione con un clic di preferiti, cronologia, note personali e configurazioni, consentendo migrazioni immediate tra macOS, Windows e Android.
+- **Verifica integrata degli aggiornamenti con ripresa del download**: Integrazione con l'API GitHub Releases per confronto delle versioni e download incrementale ad alta velocità.
 
-### 11. Personalizzazione profonda del sistema operativo (macOS / Windows / Android)
-- **Client desktop macOS nativo (`desktop_client/`)**: Architettura Tauri v2 + Rust con supporto universale ad Apple Silicon e Intel, trasparenze native in vetro satinato e scorciatoie da tastiera.
-- **Client desktop Windows nativo con integrazione profonda (`Windows_client/`)**:
-  - **Materiali di finestra Mica e Acrylic nativi con Fluent Design**: Trasparenze che si fondono con lo sfondo del desktop, 4 livelli di materiale configurabili e isolamento dedicato della modalità scura per garantire contrasto elevato nei temi chiari ed evitare scurimenti anomali;
-  - **Barra delle applicazioni, System Tray e Jump List**: Riduzione a icona nella barra delle applicazioni alla chiusura, attivazione rapida della modalità privacy dal menu contestuale della tray e scorciatoie Jump List per accedere direttamente alle sezioni principali;
-  - **Indicatore di avanzamento sulla barra delle applicazioni (Taskbar Progress)**: Durante lo scraping di rete completo o incrementale, l'icona della barra mostra nativamente una barra verde e la percentuale di completamento;
-  - **Accelerazione hardware WebView2 ottimizzata**: Parametri di rasterizzazione GPU per frequenze di aggiornamento elevate a 120Hz/144Hz con estrema fluidità.
-- **App Android nativa (`android_client/`)**: Costruita nativamente con lo stack moderno Kotlin + Jetpack Compose + Room, perfettamente allineata al modello dati del client desktop per una consultazione e catalogazione offline comoda e immediata ovunque ci si trovi.
+### 11. Ottimizzazione profonda nativa per ogni sistema operativo
+- **macOS**: Architettura Tauri v2 + Rust, supporto nativo Apple Silicon e Intel, effetti di sfocatura di sistema e scorciatoie integrate.
+- **Windows**: Materiali Mica e Acrylic nativi di Windows 11, contrasto elevato per i temi chiari, icona nella barra delle applicazioni con Jump List, avanzamento dello scraping sulla taskbar e accelerazione GPU WebView2.
+- **Android**: Sviluppata nativamente in Kotlin + Jetpack Compose + Room per controlli touch fluidi e consultazione offline ovunque.
 
 ---
 
@@ -181,8 +116,8 @@ Nell'ambito dei contenuti per adulti, la cronologia di visione, i segnalibri e l
                    └──────────────────────────────────────────┴──────────────────────────────────────────┘
                                                               │
                                    ┌──────────────────────────▼──────────────────────────┐
-                                   │           Archiviazione Persistente (Storage)        │
-                                   │      GPDb.db (SQLite 3 WAL) + image_cache/          │
+                                   │         Archiviazione persistente (Storage)         │
+                                   │        GPDb.db (SQLite 3 WAL) + image_cache/        │
                                    └─────────────────────────────────────────────────────┘
 ```
 
@@ -190,89 +125,52 @@ Nell'ambito dei contenuti per adulti, la cronologia di visione, i segnalibri e l
 
 ## 🚀 Guida rapida e download (Quick Start)
 
-### Per utenti finali (Consigliato)
+### Download e installazione (Consigliato)
 
-Scaricate il pacchetto di installazione ufficiale più recente **`v2.17.0`** direttamente dalla pagina delle [Releases](https://github.com/GeavenMax/GPDb/releases) di questo repository:
+Scarica la versione ufficiale più recente **`v2.18.0`** dalla pagina [Releases](https://github.com/GeavenMax/GPDb/releases) del repository:
 
-| Piattaforma | File di installazione | Modalità di installazione e note |
+| Piattaforma | File di installazione | Istruzioni per l'installazione |
 | :--- | :--- | :--- |
-| ** macOS** | `GPDb-macOS-v2.17.0.dmg` | Aprite l'immagine disco e trascinate `GPDb.app` nella cartella `Applicazioni`.<br>*(Al primo avvio, se viene segnalato come non notarizzato, andate su «Impostazioni di Sistema → Privacy e sicurezza» e fate clic su «Apri comunque», oppure eseguite nel Terminale `sudo xattr -cr /Applications/GPDb.app`)* |
-| **🪟 Windows** | `GPDb-Windows-v2.17.0.exe` | Fate doppio clic sul programma di installazione per completare l'installazione. Utilizza l'architettura NSIS per singolo utente senza privilegi elevati: nessun permesso di amministratore richiesto, pronto all'uso immediatamente. |
-| **🤖 Android** | `GPDb-Android-v2.17.0-signed.apk` | Scaricate sul dispositivo e fate tap per installare (firmato con chiave pubblica ufficiale; se il sistema chiede di consentire l'installazione da origini sconosciute, confermate l'autorizzazione). |
+| ** macOS** | `GPDb-macOS-v2.18.0.dmg` | Apri l'immagine disco e trascina `GPDb.app` nella cartella `Applicazioni`.<br>*(Se compare un avviso di mancata notarizzazione, aprilo da «Impostazioni di Sistema → Privacy e sicurezza» cliccando su «Apri comunque»)* |
+| **🪟 Windows** | `GPDb-Windows-v2.18.0.exe` | Fai doppio clic sul file di installazione. Utilizza un'architettura NSIS per singolo utente senza privilegi di amministratore. |
+| **🤖 Android** | `GPDb-Android-v2.18.0-signed.apk` | Scarica e installa direttamente sul dispositivo (firmato con chiave privata ufficiale; abilita l'installazione da origini sconosciute se richiesto). |
 
 ---
 
-### 💻 Guida alla compilazione locale per sviluppatori (Developer Guide)
+### 💻 Guida alla compilazione per sviluppatori (Developer Guide)
 
-#### Requisiti di sistema
-- **Node.js**: 20+ e npm
-- **Rust**: 1.78+ (`rustup`, `cargo`)
-- **Android SDK** (solo per il client Android): Android Studio Hedgehog+ oppure JDK 17+
-
-#### 1. Client desktop macOS — Sviluppo e compilazione
 ```bash
-# 1. Clonare il repository
-git clone https://github.com/GeavenMax/GPDb.git
-cd GPDb
+# 1. Client desktop macOS
+cd desktop_client && npm install && npm run tauri dev      # Debug locale
+npm run tauri build                                         # Pacchetto di produzione (.app / .dmg)
 
-# 2. Accedere alla cartella del client desktop
-cd desktop_client
+# 2. Client desktop Windows
+cd Windows_client && npm install && npm run tauri dev      # Debug locale
+npm run tauri build                                         # Pacchetto di produzione (.exe)
 
-# 3. Installare le dipendenze frontend
-npm install
+# 3. Client Android nativo
+cd android_client && ./gradlew assembleRelease              # Compilazione dell'APK Release firmato
 
-# 4. Avviare in modalità sviluppo
-npm run tauri dev
-
-# 5. Generare il pacchetto di distribuzione finale (pacchetti .app e .dmg automatici)
-npm run tauri build
+# 4. Verifica automatica di pre-rilascio
+./git_tasks/pre_release_check.sh                            # Controllo di conformità dei percorsi, privacy e allineamento versione
 ```
 
-#### 2. Client desktop Windows — Sviluppo e compilazione
-```powershell
-# 1. Accedere alla cartella del client Windows indipendente
-cd Windows_client
-
-# 2. Installare le dipendenze frontend
-npm install
-
-# 3. Avviare in modalità sviluppo
-npm run tauri dev
-
-# 4. Generare il pacchetto di installazione finale (programma di installazione NSIS .exe)
-npm run tauri build
-
-# Oppure eseguite direttamente lo script di packaging pronto all'uso:
-.\build_windows.ps1
-```
-
-#### 3. App Android nativa — Compilazione
-```bash
-# 1. Accedere alla cartella del client Android nativo
-cd android_client
-
-# 2. Compilare il pacchetto Debug per i test
-./gradlew assembleDebug
-
-# 3. Compilare l'APK Release firmato ufficialmente
-./gradlew assembleRelease
-```
+> 💡 Riferimenti per i sottosistemi:
+> - Specifiche di internazionalizzazione dell'interfaccia: [`docs/i18n/UI_I18N_SPEC.md`](docs/i18n/UI_I18N_SPEC.md)
+> - Sistema dei loghi HD degli studi: [`studio_logos/README.md`](studio_logos/README.md)
+> - Procedura completa di rilascio automatizzato: [`git_tasks/README.md`](git_tasks/README.md)
 
 ---
 
-## ⚖️ Note legali e clausola di esclusione della responsabilità (Disclaimer)
+## ⚖️ Note legali ed esclusione di responsabilità (Disclaimer)
 
-1. **Finalità del software**:
-   GPDb (Gay Pornography Database Manager) è esclusivamente uno **strumento open-source generico per l'indicizzazione offline di metadati e la gestione locale di database per collezioni multimediali personali (Universal Offline Adult Media Metadata & Library Management Tool)**.
-2. **Nessun file ospitato**:
-   Il codice sorgente e le versioni compilate distribuite **non contengono, non ospitano e non distribuiscono alcun file video, audio, torrent o immagine protetto da copyright**. I campi di esempio mostrati nel software sono utilizzati esclusivamente per la verifica tecnica del database e il test dell'interfaccia grafica.
-3. **Responsabilità dell'utente**:
-   L'utente finale è l'unico responsabile di tutte le azioni compiute nella gestione dei propri file di database locali e nell'utilizzo delle funzioni di collegamento esterno, nonché della conformità al diritto d'autore; lo sviluppatore del software e i contributori open-source non hanno alcuna responsabilità al riguardo.
-4. **Maggiore età e conformità normativa**:
-   Il software è riservato esclusivamente a utenti che abbiano raggiunto la maggiore età legale nella propria giurisdizione. Si prega di utilizzare questo strumento open-source in modo ragionevole e legale, nel rispetto delle leggi e dei regolamenti del proprio paese e della propria regione.
+1. **Finalità del software**: GPDb è esclusivamente uno **strumento open-source universale per l'indicizzazione locale di metadati e la gestione offline di database di contenuti multimediali per adulti**.
+2. **Esclusione di contenuti**: Il codice sorgente e le release distribuite **non contengono, non ospitano e non distribuiscono alcun file audio, video, torrent o immagine protetto da copyright**. I campi e i dati dimostrativi mostrati servono unicamente a scopi di verifica tecnica del database e di layout grafico.
+3. **Responsabilità dell'utente**: Tutte le operazioni di gestione dei file del database locale e l'eventuale utilizzo di collegamenti di ricerca esterni sono sotto l'esclusiva responsabilità dell'utente finale.
+4. **Conformità normativa**: Il software è destinato esclusivamente a utenti maggiorenni secondo le normative vigenti. Si invita a utilizzarlo in modo conforme alle leggi e ai regolamenti locali.
 
 ---
 
 ## 📄 Licenza (License)
 
-Il progetto è distribuito sotto [Licenza MIT](LICENSE). Siete liberi di esaminare, modificare, distribuire o integrare il codice di questo progetto, a condizione che vengano mantenute le indicazioni di copyright originali dell'autore e la presente clausola di esclusione di responsabilità in tutte le copie.
+Questo progetto è rilasciato sotto licenza [MIT](LICENSE).

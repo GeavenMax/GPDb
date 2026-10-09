@@ -166,7 +166,7 @@ fun LibraryScreen(
                                         )
                                     },
                                     supportingContent = {
-                                        val worksUnit = com.gpdb.android.util.I18n.string("common.works")
+                                        val worksUnit = if (director.worksCount == 1) com.gpdb.android.util.I18n.string("common.work") else com.gpdb.android.util.I18n.string("common.works")
                                         val worksCountText = "${director.worksCount} $worksUnit"
                                         Text(
                                             text = worksCountText,

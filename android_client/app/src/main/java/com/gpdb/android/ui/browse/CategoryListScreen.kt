@@ -35,11 +35,13 @@ fun CategoryListScreen(
             } else if (uiState.error != null) {
                 Text(text = uiState.error ?: "", color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
             } else {
+                val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+                val isZh = currentLang.isChinese
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(uiState.categories, key = { it.term }) { cat ->
                         ListItem(
-                            headlineContent = { Text(cat.zh) },
-                            supportingContent = { Text(cat.term) },
+                            headlineContent = { Text(if (isZh) cat.zh else cat.term) },
+                            supportingContent = { Text(if (isZh) cat.term else cat.zh) },
                             leadingContent = { Icon(Icons.Default.Label, contentDescription = null) },
                             modifier = Modifier.clickable { onCategoryClick(cat.term) }
                         )

@@ -32,6 +32,16 @@ fun TranslationSection(
     val summary = originalSummary?.takeIf { it.isNotBlank() } ?: return
     var showOriginal by rememberSaveable { mutableStateOf(false) }
 
+    val currentLang = com.gpdb.android.util.LocalAppLanguage.current
+    val effectiveLang = com.gpdb.android.util.AppLanguage.resolveEffective(currentLang)
+    val isEnglish = effectiveLang == com.gpdb.android.util.AppLanguage.EN
+
+    val displayText = if (!isEnglish && translatedSummary != null && !showOriginal) {
+        translatedSummary
+    } else {
+        summary
+    }
+
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -45,19 +55,19 @@ fun TranslationSection(
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            if (!isLoading) {
+            if (!isEnglish && !isLoading) {
                 if (translatedSummary != null) {
                     TextButton(onClick = { showOriginal = !showOriginal }) {
                         val label = if (showOriginal) {
-                            com.gpdb.android.util.I18n.string("synopsis.showTranslation", defaultVal = "显示译文")
+                            com.gpdb.android.util.I18n.t("synopsis.showTranslation", effectiveLang, defaultVal = "显示译文")
                         } else {
-                            com.gpdb.android.util.I18n.string("synopsis.showOriginal", defaultVal = "显示原文")
+                            com.gpdb.android.util.I18n.t("synopsis.showOriginal", effectiveLang, defaultVal = "显示原文")
                         }
                         Text(label)
                     }
                 } else {
                     TextButton(onClick = { onTranslateClick(summary) }) {
-                        Text(com.gpdb.android.util.I18n.string("synopsis.aiTranslate", defaultVal = "🪄 AI 翻译"))
+                        Text(com.gpdb.android.util.I18n.t("synopsis.aiTranslate", effectiveLang, defaultVal = "🪄 AI 翻译"))
                     }
                 }
             }
@@ -82,12 +92,6 @@ fun TranslationSection(
                     color = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            val displayText = if (translatedSummary != null && !showOriginal) {
-                translatedSummary
-            } else {
-                summary
             }
 
             Text(

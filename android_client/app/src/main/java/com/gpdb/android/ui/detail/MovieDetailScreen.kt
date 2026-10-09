@@ -196,7 +196,7 @@ fun MovieDetailScreen(
                                 AdaptivePosterCard(
                                     url = effectiveCovers[0],
                                     physicalRootPath = physicalRootPath,
-                                    contentDescription = "${movie.title} - 海报",
+                                    contentDescription = "${movie.title} - ${com.gpdb.android.util.I18n.string("movie.poster", defaultVal = "Poster")}",
                                     fallbackEntityId = movie.id,
                                     maxHeight = 340.dp,
                                     maxWidth = 260.dp,
@@ -225,7 +225,7 @@ fun MovieDetailScreen(
                                         AdaptivePosterCard(
                                             url = url,
                                             physicalRootPath = physicalRootPath,
-                                            contentDescription = "${movie.title} - 封面 ${index + 1}",
+                                            contentDescription = "${movie.title} - ${com.gpdb.android.util.I18n.string("movie.cover", defaultVal = "Cover")} ${index + 1}",
                                             fallbackEntityId = if (index == 0) movie.id else null,
                                             maxHeight = 280.dp,
                                             maxWidth = null,
@@ -358,7 +358,7 @@ fun MovieDetailScreen(
                                     modifier = Modifier.clickable { onStudioClick(studio) }
                                 ) {
                                     Text(
-                                        text = "${com.gpdb.android.util.I18n.string("nav.studios", defaultVal = "片商")}: $studio",
+                                        text = "${com.gpdb.android.util.I18n.string("common.studio", defaultVal = "Studio")}: $studio",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onTertiaryContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -380,6 +380,22 @@ fun MovieDetailScreen(
                                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
+                                }
+                            }
+                            movie.category?.takeIf { it.isNotBlank() }?.let { cat ->
+                                val catLabel = com.gpdb.android.util.GlossaryHelper.trCategory(cat, isZh)
+                                if (catLabel.isNotBlank()) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                                    ) {
+                                        Text(
+                                            text = catLabel,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -486,11 +502,15 @@ fun MovieDetailScreen(
                         } else {
                             movie.description?.takeIf { it.isNotBlank() } ?: movie.descriptionZh
                         }
+                        val initialTranslation = if (!isZh && !movie.descriptionZh.isNullOrBlank()) {
+                            movie.descriptionZh
+                        } else null
+
                         if (!originalSummary.isNullOrBlank()) {
                             Spacer(modifier = Modifier.height(16.dp))
                             TranslationSection(
                                 originalSummary = originalSummary,
-                                translatedSummary = uiState.translatedSummary,
+                                translatedSummary = uiState.translatedSummary ?: initialTranslation,
                                 isLoading = uiState.translationLoading,
                                 errorMessage = uiState.translationError,
                                 onTranslateClick = { viewModel.translateSummary(it) }

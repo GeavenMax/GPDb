@@ -534,7 +534,7 @@ onMounted(() => {
                     : 'bg-surface-2/80 text-fg-3 border-line hover:bg-surface-3 hover:text-fg'
                 ]"
               >
-                {{ l.label }}
+                {{ t(l.i18nKey) }}
               </button>
             </div>
           </div>

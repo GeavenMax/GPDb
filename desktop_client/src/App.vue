@@ -3451,7 +3451,7 @@ onUnmounted(() => {
                     : 'bg-surface border-line hover:border-line-strong text-fg-3 hover:text-fg-2'"
                 >
                   <div class="flex flex-col text-left">
-                    <span class="text-[11px]">{{ lang.label }}</span>
+                    <span class="text-[11px]">{{ t(lang.i18nKey) }}</span>
                     <span class="text-[10px] text-fg-4">{{ lang.native }}</span>
                   </div>
                   <Check v-if="currentLocale === lang.code" class="w-3.5 h-3.5 text-accent" />

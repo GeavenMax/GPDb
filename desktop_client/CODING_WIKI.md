@@ -215,11 +215,51 @@ npm run tauri build
 ## 6. 客户端界面国际化与多语言规范 (i18n Spec)
 
 项目具备高规格的 7 语言本地化支持体系与二元解耦架构，严禁任何硬编码中文字符。
-详细规则与开发准则请参阅专用文档：
-👉 **[UI_I18N_SPEC.md](file:///Users/joel/iCloud%20Drive%20%28Archive%29/Documents/antigravity/GPDb%20开发/desktop_client/docs/UI_I18N_SPEC.md)**
+详细规则、语言包结构、智能回退链与开发准则请参阅专用文档：
+👉 **[UI_I18N_SPEC.md](../docs/i18n/UI_I18N_SPEC.md)**
 
 ### 核心开发准则速记：
-1. **严格 1:1 键位完全对齐**：7 种支持语言（`zh-CN`, `zh-TW`, `en`, `ja`, `it`, `es`, `de`）所有字典键必须 100% 镜像对称。每次增改均须通过自动化键位校验检测。
+1. **严格 1:1 键位完全对齐**：7 种支持语言（`zh-CN`, `zh-TW`, `en`, `ja`, `it`, `es`, `de`）所有字典键必须 100% 镜像对称（当前 1,096 键）。每次增改均须通过自动化键位校验检测。
 2. **严禁在模板中硬编码中文兜底参数**：统一使用 `t('key')` 或 `t('key', { param })`，杜绝 `t('key', '中文')` 造成的英文模式中文污染。
 3. **二元解耦**：系统菜单/控制层文本严格跟随 `currentLocale`；数据库实体（影视标题、简介、演职员生平）由 `bilingual.ts` 结合呈现模式统一调度。
-4. **编译与质量闸口**：提交前必须执行 `cd desktop_client && npm run build`（包含 `vue-tsc -b` 全量类型检查）。
+4. **状态双向联动同步**：设置中切换菜单语言自动同步重置内容语言为 `auto`；资料库顶部切换中文/原文自动联动同步菜单语言，杜绝状态脱节。
+5. **编译与质量闸口**：提交前必须执行 `cd desktop_client && npm run build`（包含 `vue-tsc -b` 全量类型检查）。
+
+---
+
+## 7. 官方频道发布与 Telegram 推送自动化规范 (Release & Broadcast)
+
+向 GPDb 官方 Telegram 频道（[@gpdbnews](https://t.me/gpdbnews)）推送版本日志与统计通报必须严格遵守自动化流水线规范：
+
+- **自动化脚本集中目录**：统一收拢于 `scripts/telegram_push/`（内附说明文档 `README.md` 与密钥配置 `.env`）。
+- **两阶段安全发布流程**：
+  1. **第一阶段：只读预览验证**：运行 `python3 scripts/telegram_push/preview_v2170_post.py`，核验消息排版、下划线 Markdown 转义完整性、字符数是否在 4,096 上限内，以及置顶导览草稿；
+  2. **第二阶段：受控执行推送**：获得人工确认后，方可运行带 `--confirm` 参数的推送脚本（如 `python3 scripts/telegram_push/push_v2170.py --confirm`）。
+- **发布内容约束**：
+  - 更新日志与公告中**暂时排除 iOS 端信息**，聚焦 Windows / macOS / Android 三大客户端；
+  - 必须同步调用 `edit_msg(17, ...)` 维护频道第 17 号置顶导览消息（保持“一句话速览”与历史版本同步）。
+
+---
+
+## 8. 片商超清 Logo & 封套徽章资产系统 (Studio Logos Engine)
+
+桌面客户端深度集成了全离线的片商 Logo 与 Banner 体系，资源管理位于 `studio_logos/`：
+- **资源寻址协议**：`gpdb-img://` 协议自动定位 `image_cache/Logos/*_logo.webp` 与 `image_cache/Logos/*_banner.webp`。
+- **全量 WebP 规范**：全量 2,492 枚厂牌 Logo 与 694 枚横幅已 100% 升级为高保真 `.webp` 格式（保留透明通道与多帧动画），显著降低客户端解压与内存开销。
+- **自适应居中正方形规范**：实体封套截取的徽标均经过 `RapidOCR` 高精定位与色调拓展为 512×512 正方形，杜绝客户端头像框内的空旷留白。
+- **100% 全覆盖现状**：全库 2,492 家有效独立制片厂牌已实现 100% 专属 Logo 覆盖，全库 97.99% 的影视作品拥有所属厂牌 Logo。
+- 详细架构与最新指标请参阅 [`studio_logos/README.md`](../studio_logos/README.md) 与 [`STUDIO_LOGO_PROGRESS.md`](../STUDIO_LOGO_PROGRESS.md)。
+
+---
+
+## 9. Git 管理与自动化发版规范 (Git Tasks & Release Workflow)
+
+项目已建立专用的 Git 管理与发版自动化工作区，脚本与规范收拢于 `git_tasks/`：
+- **工程主路径**：`/Users/joel/iCloud Drive (Archive)/Documents/antigravity/GPDb 开发`。
+- **发版前自动预检**：在根目录下执行 `./git_tasks/pre_release_check.sh`，自动核验：
+  1. 当前工作路径是否准确；
+  2. 公开文档中是否存在开发者本地绝对路径泄露；
+  3. 全语言文档是否严格排除 iOS 相关描述；
+  4. 三端核心工程版本号是否严格一致；
+  5. 检查并确认当前签名版 Android APK 就绪。
+- **发版全流程**：详细指南与 CI/CD 产物规范请参阅 [`git_tasks/README.md`](../git_tasks/README.md)。

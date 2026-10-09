@@ -428,8 +428,9 @@ private fun StudioHeroHeader(
                                 shape = RoundedCornerShape(8.dp),
                                 color = if (hasBanner) Color.White.copy(alpha = 0.18f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
                             ) {
+                                val worksUnit = if (uiState.movies.size == 1) I18n.string("common.work") else I18n.string("common.works")
                                 Text(
-                                    text = "${uiState.movies.size} ${I18n.string("common.works")}",
+                                    text = "${uiState.movies.size} $worksUnit",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Medium,
                                     color = if (hasBanner) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,

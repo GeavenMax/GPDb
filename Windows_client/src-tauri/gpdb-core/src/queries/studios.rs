@@ -106,11 +106,19 @@ pub fn get_studio_library(
              GROUP BY studio_name \
          ) m ON m.studio_name = s.name \
          LEFT JOIN ( \
-             SELECT COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) AS eff_studio, count(*) AS cnt \
-             FROM episodes e \
-             LEFT JOIN movies m ON e.movie_id = m.id \
-             GROUP BY eff_studio \
-         ) e ON e.eff_studio = s.name \
+             SELECT studio, count(DISTINCT episode_id) AS cnt \
+             FROM ( \
+                 SELECT e.id AS episode_id, e.studio_name AS studio \
+                 FROM episodes e \
+                 WHERE e.studio_name IS NOT NULL AND trim(e.studio_name) != '' \
+                 UNION ALL \
+                 SELECT e.id AS episode_id, m.studio_name AS studio \
+                 FROM episodes e \
+                 JOIN movies m ON e.movie_id = m.id \
+                 WHERE m.studio_name IS NOT NULL AND trim(m.studio_name) != '' \
+             ) \
+             GROUP BY studio \
+         ) e ON e.studio = s.name \
          {} ORDER BY {} LIMIT ? OFFSET ?",
         where_clause, sort_clause
     );
@@ -142,37 +150,72 @@ pub fn get_studio_library(
 
 /// One studio's complete works, matching `/api/studios/<name>/works`.
 pub fn get_studio_works(conn: &Connection, studio_name: String) -> Result<StudioWorks> {
-    let (studio_name_zh, description_zh, logo_url, banner_url, website_url): (
+    let (studio_name_zh, description_zh, logo_url, banner_url, website_url, site_id): (
         Option<String>,
         Option<String>,
         Option<String>,
         Option<String>,
         Option<String>,
+        Option<i64>,
     ) = conn
         .query_row(
-            "SELECT name_zh, description_zh, logo_url, banner_url, website_url FROM studios WHERE name = ?1 COLLATE NOCASE OR name_zh = ?1 LIMIT 1",
+            "SELECT name_zh, description_zh, logo_url, banner_url, website_url, site_id FROM studios WHERE name = ?1 COLLATE NOCASE OR name_zh = ?1 LIMIT 1",
             params![studio_name],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
         )
-        .unwrap_or((None, None, None, None, None));
+        .unwrap_or((None, None, None, None, None, None));
 
-    let mut m_stmt = conn.prepare(&format!(
-        "SELECT {} FROM movies m \
-         WHERE m.studio_name = ?1 \
-         ORDER BY m.release_year DESC, m.id DESC",
-        MOVIE_COLUMNS
-    )).map_err(|e| e.to_string())?;
+    let (m_sql, m_params): (String, Vec<Box<dyn rusqlite::ToSql>>) = if let Some(sid) = site_id {
+        (
+            format!(
+                "SELECT {} FROM movies m \
+                 WHERE (m.studio_name = ?1 OR m.studio_id = ?2) \
+                 ORDER BY m.release_year DESC, m.id DESC",
+                MOVIE_COLUMNS
+            ),
+            vec![Box::new(studio_name.clone()), Box::new(sid)],
+        )
+    } else {
+        (
+            format!(
+                "SELECT {} FROM movies m \
+                 WHERE m.studio_name = ?1 \
+                 ORDER BY m.release_year DESC, m.id DESC",
+                MOVIE_COLUMNS
+            ),
+            vec![Box::new(studio_name.clone())],
+        )
+    };
 
-    let m_iter = m_stmt.query_map(params![studio_name], map_movie_row)
+    let mut m_stmt = conn.prepare(&m_sql).map_err(|e| e.to_string())?;
+    let m_slice: Vec<&dyn rusqlite::ToSql> = m_params.iter().map(|p| p.as_ref()).collect();
+    let m_iter = m_stmt.query_map(&m_slice[..], map_movie_row)
         .map_err(|e| e.to_string())?;
     let movies: Vec<Movie> = m_iter.filter_map(|r| r.ok()).collect();
 
-    let mut e_stmt = conn.prepare(&format!(
-        "{} WHERE COALESCE(NULLIF(trim(e.studio_name), ''), m.studio_name) = ?1 \
-         ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC, e.id DESC",
-        EPISODE_SQL
-    )).map_err(|e| e.to_string())?;
-    let e_iter = e_stmt.query_map(params![studio_name], map_episode_row)
+    let (e_sql, e_params): (String, Vec<Box<dyn rusqlite::ToSql>>) = if let Some(sid) = site_id {
+        (
+            format!(
+                "{} WHERE (e.studio_name = ?1 OR m.studio_name = ?1 OR e.studio_id = ?2 OR m.studio_id = ?2) \
+                 ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC, e.id DESC",
+                EPISODE_SQL
+            ),
+            vec![Box::new(studio_name.clone()), Box::new(sid)],
+        )
+    } else {
+        (
+            format!(
+                "{} WHERE (e.studio_name = ?1 OR m.studio_name = ?1) \
+                 ORDER BY COALESCE(m.release_year, CAST(substr(e.release_date, 1, 4) AS INTEGER)) DESC, e.id DESC",
+                EPISODE_SQL
+            ),
+            vec![Box::new(studio_name.clone())],
+        )
+    };
+
+    let mut e_stmt = conn.prepare(&e_sql).map_err(|e| e.to_string())?;
+    let e_slice: Vec<&dyn rusqlite::ToSql> = e_params.iter().map(|p| p.as_ref()).collect();
+    let e_iter = e_stmt.query_map(&e_slice[..], map_episode_row)
         .map_err(|e| e.to_string())?;
     let episodes: Vec<Episode> = e_iter.filter_map(|r| r.ok()).collect();
 
