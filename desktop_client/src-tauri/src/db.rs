@@ -441,4 +441,28 @@ mod tests {
         }
         assert!(is_valid_gpdb_db(&valid_db));
     }
+
+    #[test]
+    fn test_mount_real_database_and_query_episodes() {
+        let db_candidates = [
+            PathBuf::from("../../GPDb.db"),
+            PathBuf::from("../GPDb.db"),
+            PathBuf::from("GPDb.db"),
+        ];
+        let found = db_candidates.iter().find(|p| p.is_file() && is_valid_gpdb_db(p));
+        if let Some(path) = found {
+            let conn = open_existing(path).expect("open real db");
+            gpdb_core::migrate::ensure_schema(&conn).expect("ensure_schema");
+
+            let lib = gpdb_core::queries::episodes::get_episode_library(
+                &conn, None, None, None, None, None, None, Some(1), Some(10),
+            ).expect("get_episode_library");
+            assert!(!lib.items.is_empty(), "Episode library should return items");
+
+            let with_zh = gpdb_core::queries::episodes::get_episode_library(
+                &conn, None, None, None, Some(true), None, None, Some(1), Some(10),
+            ).expect("get_episode_library with_zh");
+            assert!(with_zh.total > 0, "Should have episodes with Chinese");
+        }
+    }
 }

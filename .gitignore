@@ -18,6 +18,8 @@ GPDb.db.backup-*
 GPDb*.db*
 GPDb*.gz
 gevi.db*
+GEVI_Database.db*
+GEVI_Offline_Database
 test_schema.db*
 translations.db
 translations.db-shm

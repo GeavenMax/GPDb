@@ -1,6 +1,6 @@
 # GPDb Windows 客户端开发规范与技术架构 Wiki (Coding Wiki)
 
-> **当前工程基线**：`v2.18.0`（2026-10，Windows 10/11 平台专属深度适配）  
+> **当前工程基线**：`v2.19.0`（2026-10，Windows 10/11 平台专属深度适配）  
 > **双端状态**：与 `desktop_client`（macOS 桌面端）在业务逻辑、数据接口、组件模型及多语言词条上保持 1:1 双向镜像。
 
 ---
@@ -113,6 +113,20 @@ Windows 环境在处理路径时存在反斜杠 `\`、驱动器盘符（如 `D:\
 在全屏沉浸式阅读与多层模态弹窗（例如影片详情 -> 演员详情 -> 片商详情 -> 分集详情）交互中：
 - 模态窗消费 Esc 键时统一注入 `e.preventDefault()` 与 `e.stopPropagation()`；
 - `App.vue` 顶层注册捕获阶段（Capture Phase）按键守卫 `onGlobalEscapeGuard`，当存在打开的详情模态、系列大放送、筛选抽屉或图片灯箱时，第一时间拦截事件，优先退出顶层浮层，杜绝系统直接退出全屏模式。
+
+### 3.5 分集双语架构与 12 列自愈迁移引擎 (Episode Bilingual Architecture & Schema Self-Healing)
+
+`episodes` 数据表在最新基线中物理扩充至 12 列（新增 `title_zh` 与 `title_attempts`）：
+1. **数据库轻量化自愈迁移 (`gpdb-core/src/migrate.rs`)**：
+   - `EPISODE_COLUMNS` 常量声明包含 `title_zh` 与 `title_attempts`；
+   - `ensure_schema` 在应用启动时以 `BEGIN IMMEDIATE` 事务排他探测 `PRAGMA table_info(episodes)`，动态补全缺失列，保证旧版或外部生成的数据库文件平滑自愈；
+2. **多语言标题渲染与智能判据 (`src/utils/episode.ts`)**：
+   - 过滤无意义站源占位符：通过正则 `/^Episode\s*#\d+$/i` 判定 `isSpecificEpisodeTitle`；
+   - 标题级联优先队列：在中文呈现模式下优先显示 `title_zh`，在原名模式下显示英文原名；
+   - 复合排版生成：`episodeHeading` 与 `episodeLabel` 针对携带有效片段名的分集自动拼接 `《片名》· 第 X 集 / 共 Y 集 · 片段名`，并在副标题呈现原始标题；
+3. **全栈检索与筛选下沉**：
+   - `get_episodes` 关键字搜索下沉覆盖 `e.title_zh` 与 `m.title_zh`；
+   - 「含中文」过滤器联动 `e.title_zh`，只要分集简介或分集标题任一具备中文即被收录。
 
 ---
 

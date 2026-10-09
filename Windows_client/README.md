@@ -44,6 +44,12 @@
    - 默认采用 `installMode: "currentUser"`，安装无需 UAC 管理员提权，随装随用；
    - 内置高质量多分辨率矢量转换图标 (`icons/icon.ico`)。
 
+9. **分集多语言译名生态与自愈迁移 (Episode Bilingual Titles & Auto-Migration)**：
+   - 适配最新 12 列物理表结构（新增 `title_zh` 中文分集名与 `title_attempts` 翻译计数器）；
+   - 内核 `migrate.rs` 支持无缝自愈迁移，即使挂载历史版本数据库亦能秒级对齐列定义；
+   - 分集列表行（`EpisodeRow`）、大网格卡片（`EpisodeCard`）、独立详情弹窗（`EpisodeDetailModal`）及片商分集双模视图（`StudioDetailModal`）全域贯通，智能识别非占位符分集名并渲染双语副标题；
+   - 综合搜索与「含中文」过滤器全面覆盖分集原名与中译名。
+
 ---
 
 ## 🛠️ 本地开发与环境准备

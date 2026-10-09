@@ -1,9 +1,9 @@
 # GPDb Windows 客户端 — 项目交接说明与工程文档 (HANDOVER.md)
 
-> **文档状态**：已根据 `v2.18.0` 最新架构与发布状态全量更新。  
+> **文档状态**：已根据 `v2.19.0` 最新架构与发布状态全量更新。  
 > **面向对象**：后续接手维护、开发新功能或修复 Bug 的工程师或 AI Assistant。**先完整通读本文档，再动手修改代码。**  
-> **当前版本**：`v2.18.0`（2026-10，与 macOS/桌面端基线 100% 镜像对齐）。  
-> **代码健康度**：全端通过 `vue-tsc -b` 严格类型检查、`vite build` 生产构建、`Windows_client/scripts/test_parity.py` 7 语种 931 键 100% 校验、`cargo test` 后端单元测试（26/26 测例全部通过，零失败零告警）。
+> **当前版本**：`v2.19.0`（2026-10，与 macOS/桌面端基线 100% 镜像对齐）。  
+> **代码健康度**：全端通过 `vue-tsc -b` 严格类型检查、`vite build` 生产构建、`Windows_client/scripts/test_parity.py` 7 语种 931 键 100% 校验、`cargo test` 后端单元测试（26/26 Tauri 测例 + 35/35 gpdb-core 测例全部通过，零失败零告警）。
 
 ---
 
@@ -19,6 +19,7 @@
   - [3.6 Python 刮削器静默调度、UNC 路径剥离与无黑框控制台抑制](#36-python-刮削器静默调度unc-路径剥离与无黑框控制台抑制)
   - [3.7 全局 Esc 键层级捕获守卫与全屏保护](#37-全局-esc-键层级捕获守卫与全屏保护)
   - [3.8 WebView2 高刷新率 (120Hz/144Hz) 与 GPU 硬件渲染](#38-webview2-高刷新率-120hz144hz-与-gpu-硬件渲染)
+  - [3.9 分集多语言实体映射与 12 列表自愈迁移](#39-分集多语言实体映射与-12-列表自愈迁移)
 - [4. 代码目录与模块分工](#4-代码目录与模块分工)
 - [5. 7 国语言国际化 (i18n) 对齐规范](#5-7-国语言国际化-i18n-对齐规范)
 - [6. 本地开发、测试与验证工作流](#6-本地开发测试与验证工作流)
@@ -64,7 +65,7 @@ GPDb Windows 客户端是基于 **Tauri v2 + Rust + Vue 3 (Composition API) + Ta
    - 翻译设置中的 Key 仅存放在本地配置文件或环境变量中，测试时使用打码虚拟占位符（如 `sk-test...`）。
 2. **Windows_client 与 desktop_client 必须保持 1:1 双端同步**：
    - 本项目与 `desktop_client`（macOS 客户端）在业务逻辑、i18n 词条、组件能力上保持完全镜像；
-   - 对 `Windows_client/src/` 或 `Windows_client/src-tauri/` 做出改动时，应评估并同步至 `desktop_client/`，且版本号必须严格一致（当前均为 `v2.18.0`）。
+   - 对 `Windows_client/src/` 或 `Windows_client/src-tauri/` 做出改动时，应评估并同步至 `desktop_client/`，且版本号必须严格一致（当前均为 `v2.19.0`）。
 3. **i18n 7 语种 100% 镜像绝对对齐**：
    - 字典文件位于 `src/i18n/index.ts`，涵盖 `zh-CN`, `zh-TW`, `en`, `ja`, `it`, `es`, `de`；
    - 增删任何翻译键后，**必须**运行 `python3 Windows_client/scripts/test_parity.py`，确保 7 大语种的键集合完全一致（当前各 931 键），零缺失零多余。
@@ -73,6 +74,9 @@ GPDb Windows 客户端是基于 **Tauri v2 + Rust + Vue 3 (Composition API) + Ta
 5. **Windows 路径与 UNC 前缀剥除 (`normalize_path`)**：
    - Windows 上的文件路径包含盘符与反斜杠（如 `C:\Users\...`）。在 Rust 侧处理路径时必须使用 `std::path::Path` / `PathBuf`；
    - 调用 `canonicalize()` 规范化路径后，Windows 会自动补充 `\\?\` 前缀。**在将路径传递给 Python 子进程时，必须调用 `normalize_path()` 剥除该前缀**，否则会触发 WinError 123 卷标语法错误。
+6. **分集 12 列表结构与译名判据 (`title_zh`, `title_attempts`)**：
+   - `episodes` 表包含 12 列物理字段；新增字段在 `sql.rs` 的 `EPISODE_SQL` 与映射器必须追加在最末尾，确保与现有列索引严格向后兼容；
+   - 统一使用 `src/utils/episode.ts` 的 `isSpecificEpisodeTitle` 判据屏蔽 `Episode #\d+` 站源无意义占位符。
 
 ---
 
@@ -160,6 +164,16 @@ GPDb Windows 客户端是基于 **Tauri v2 + Rust + Vue 3 (Composition API) + Ta
   ```
   彻底解决多显示器与高刷屏滚动卡顿问题。
 
+### 3.9 分集多语言实体映射与 12 列表自愈迁移
+- **实现位置**：
+  - 后端：`Windows_client/src-tauri/gpdb-core/src/migrate.rs` (`ensure_schema`)、`models.rs`、`sql.rs`、`queries/episodes.rs`
+  - 前端：`Windows_client/src/types.ts`、`Windows_client/src/utils/episode.ts`、`EpisodeRow.vue`、`EpisodeCard.vue`、`EpisodeDetailModal.vue`、`StudioDetailModal.vue`
+- **机制与规范**：
+  - **12 列表物理结构**：`episodes` 表包含 `id, movie_id, title, thumbnail_url, description, action_notes, description_zh, release_date, studio_id, studio_name, title_zh, title_attempts`。
+  - **自愈迁移**：`migrate.rs` 的 `ensure_schema()` 会自动检测并安全执行 `ALTER TABLE episodes ADD COLUMN title_zh TEXT;` 与 `ALTER TABLE episodes ADD COLUMN title_attempts INTEGER DEFAULT 0;`。
+  - **列索引向后兼容**：在 `sql.rs` 的 `EPISODE_SQL` 中，`e.title_zh`（索引 12）和 `e.title_attempts`（索引 13）严格追加在查询尾部，确保既有列索引不发生偏移。
+  - **占位标题智能屏蔽**：通过 `isSpecificEpisodeTitle` 正则匹配 `/^Episode\s*#\d+$/i`，过滤掉站源中机械占位无实质含义的假分集名，保障前台仅展现有价值的副标题与多语言译名。
+
 ---
 
 ## 4. 代码目录与模块分工
@@ -169,7 +183,7 @@ Windows_client/
 ├── CHANGELOG.md                         # 严格遵循 Keep a Changelog 规范的更新日志
 ├── CODING_WIKI.md                       # 开发规范与技术架构 Wiki
 ├── README.md                            # 快速上手与工程简介
-├── package.json                         # 当前版本 2.18.0
+├── package.json                         # 当前版本 2.19.0
 ├── vite.config.ts                       # Vite 8 配置
 ├── scripts/
 │   └── test_parity.py                   # 7 语种 i18n 100% 校验脚本 (931 键)
@@ -192,12 +206,13 @@ Windows_client/
 │   │   ├── escape.ts                    # 全局 Esc 捕获堆栈
 │   │   └── scraper.ts                   # 刮削状态机与任务栏进度驱动
 │   └── utils/
+│       ├── episode.ts                   # 分集标题多语言格式化与占位符过滤
 │       └── prefs.ts                     # 用户偏好持久化（材质、托盘等）
 └── src-tauri/
-    ├── Cargo.toml                       # gpdb 2.18.0
+    ├── Cargo.toml                       # gpdb 2.19.0
     ├── tauri.conf.json                  # Windows 客户端 Tauri 配置
     ├── gpdb-core/                       # 数据库查询引擎（独立 Crate）
-    │   ├── Cargo.toml                   # gpdb-core 2.18.0
+    │   ├── Cargo.toml                   # gpdb-core 2.19.0
     │   └── src/
     │       ├── lib.rs
     │       ├── db.rs

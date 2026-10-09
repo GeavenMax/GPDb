@@ -1,6 +1,6 @@
 # GPDb 客户端界面国际化（i18n）技术规范
 
-> 最后更新：2026-10-07。本文档是 macOS / Windows 桌面客户端界面多语言体系的唯一权威规范。
+> 最后更新：2026-10-09。本文档是 macOS / Windows 桌面客户端界面多语言体系的唯一权威规范。
 
 ---
 
@@ -13,8 +13,8 @@ GPDb 客户端中存在**两套完全独立的语言体系**，开发者必须�
 | **控制变量** | `currentLocale`（`i18n/index.ts`） | `descLang` + `contentLangMode`（`App.vue`） |
 | **存储键** | `gpdb_ui_locale` | `gpdb_desc_lang` + `gpdb_content_lang_mode` |
 | **切换入口** | 设置 → 语言与本地化 | 资料库顶部 `[中文]` / `[原文]` 快捷按钮 |
-| **覆盖范围** | 顶栏、侧边栏、弹窗标题、筛选面板、全景洞察图表坐标轴、分享卡片模板文案等一切客户端自有 UI 文字 | 影片标题/简介、分集剧情、演员生平（数据库 `title_zh`、`description_zh` 等字段） |
-| **总则** | 严格跟随 `currentLocale`，100% 通过 `t('key')` 调用 | 由 `bilingual.ts` 根据呈现模式统一调度，绝不直接写入 i18n 字典 |
+| **覆盖范围** | 顶栏、侧边栏、弹窗标题、筛选面板、全景洞察图表坐标轴、分享卡片模板文案等一切客户端自有 UI 文字 | 影片标题/简介、分集剧情与标题、演员生平（数据库 `title_zh`、`description_zh` 等字段） |
+| **总则** | 严格跟随 `currentLocale`，100% 通过 `t('key')` 调用 | 由 `bilingual.ts` 与 `episode.ts` 统一调度，绝不直接写入 i18n 字典 |
 
 ### 1.1 双向联动同步机制（v2.18.0+）
 
@@ -22,6 +22,12 @@ GPDb 客户端中存在**两套完全独立的语言体系**，开发者必须�
 
 - **设置切换菜单语言** → `onSelectLocale(locale)` 自动同步重置 `descLang` 并将 `contentLangMode` 复位为 `'auto'`
 - **资料库顶部快捷切换** → `setDescLang(lang)` 联动同步 `currentLocale`（切中文联动 `zh-CN`，切原文联动 `en`）
+
+### 1.2 原生英文优先与系统语言感知（v2.19.0+）
+
+由于底层数据库原始内容为英文，客户端界面在架构上视作原生英文菜单环境，并根据用户操作系统的系统语言自动匹配最佳初始界面语言：
+- `detectSystemLocale()` 读取 `navigator.languages` 与系统偏好，优先匹配最符合的语种（若系统为非中文环境则自动默认英文 `en`）。
+- **分集标题双语呈现**：`episodes` 表新增 `title_zh` 与 `title_attempts` 字段，支持独立及从属场景的中文翻译展现。`utils/episode.ts` 结合 `episodeDisplayTitle` 与 `episodeOrdinalLabel`，保证在英文模式下原生展现英文标题、在中文模式下展现中文译名及双语副标题。
 
 ---
 
@@ -42,7 +48,7 @@ desktop_client/src/i18n/
     └── de.ts                   # 德语
 ```
 
-- 当前词条总数：**1,096 个**（每语种完全对齐）
+- 当前词条总数：**1,369 个**（每语种完全对齐）
 - 每个语言包导出一个扁平化键值对对象，键名采用 `module.key` 点分命名法
 
 ### 2.2 智能多级回退链
@@ -59,18 +65,24 @@ $$\text{目标语言字典} \longrightarrow \text{英文字典（非中文语系
 
 ```bash
 # 自动化交叉校验（在 desktop_client/ 目录下）
-npx tsx scripts/check-i18n-keys.ts
+python3 -c "
+import glob, re
+key_map = {f.split('/')[-1]: set(re.findall(r'[\'\"]([a-zA-Z0-9_.]+)[\'\"]\s*:', open(f).read())) for f in glob.glob('src/i18n/locales/*.ts')}
+for loc, keys in key_map.items():
+    diff = key_map['zh-CN.ts'] ^ keys
+    print(f'{loc}: {len(keys)} keys, diff with zh-CN: {len(diff)}')
+"
 ```
 
 预期输出：
 ```
-zh-CN: 1096 keys
-zh-TW: 1096 keys (missing compared to zh-CN: 0)
-en:    1096 keys (missing compared to zh-CN: 0)
-ja:    1096 keys (missing compared to zh-CN: 0)
-it:    1096 keys (missing compared to zh-CN: 0)
-es:    1096 keys (missing compared to zh-CN: 0)
-de:    1096 keys (missing compared to zh-CN: 0)
+zh-CN.ts: 1369 keys, diff with zh-CN: 0
+zh-TW.ts: 1369 keys, diff with zh-CN: 0
+en.ts:    1369 keys, diff with zh-CN: 0
+ja.ts:    1369 keys, diff with zh-CN: 0
+it.ts:    1369 keys, diff with zh-CN: 0
+es.ts:    1369 keys, diff with zh-CN: 0
+de.ts:    1369 keys, diff with zh-CN: 0
 ```
 
 ---
@@ -148,3 +160,4 @@ cd desktop_client && npm run build
 |---|---|---|
 | v2.18.0 | 2026-10-05 | 语言包模块化拆分（7 文件 × 1,096 键）、智能回退链、术语降级修复、分享卡片中英联动、全景洞察/厂牌谱系图表国际化、轮播标题语言感知、移除 Random Picks 板块 |
 | v2.18.0 | 2026-10-05 | 菜单语言与数据库内容语言双向联动同步、分享卡片 `lang` 参数注入、`zhDescription` 透传修复 |
+| v2.19.0 | 2026-10-09 | 原生英文菜单基准与系统语言自适应检测（`detectSystemLocale`）、设置与插件界面多语言名称接入；支持分集标题翻译架构（`title_zh` / `title_attempts`），分集卡片、行组件、详情弹窗与分享卡片双语动态呈现；7 语种词条扩充至 1,369 键 100% 对齐；全景洞察图表英文与暗黑模式适配修复 |
