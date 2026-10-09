@@ -4,9 +4,12 @@ import { ArrowDownCircle, Sparkles, X, AlertCircle } from 'lucide-vue-next';
 import { type AppReleaseInfo, CURRENT_VERSION, downloadAndInstallUpdate } from '../services/appUpdater';
 import { t } from '../i18n';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   release: AppReleaseInfo;
-}>();
+  currentVersion?: string;
+}>(), {
+  currentVersion: CURRENT_VERSION,
+});
 
 const emit = defineEmits<{
   (e: 'close'): void;
@@ -69,7 +72,7 @@ async function startUpdate() {
             </span>
           </div>
           <div class="flex items-center gap-2 text-xs text-fg-3 mt-0.5">
-            <span>{{ t('update.current', { version: CURRENT_VERSION }) }}</span>
+            <span>{{ t('update.current', { version: currentVersion }) }}</span>
             <span>·</span>
             <span>{{ t('update.packageSize', { size: formattedSize }) }}</span>
           </div>

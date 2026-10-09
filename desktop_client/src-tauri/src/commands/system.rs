@@ -480,6 +480,11 @@ pub fn setup_tray(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
+#[tauri::command]
+pub fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -498,5 +503,11 @@ mod tests {
         assert!(should_close_to_tray());
         set_close_to_tray(false).unwrap();
         assert!(!should_close_to_tray());
+    }
+
+    #[test]
+    fn test_get_app_version() {
+        let version = get_app_version();
+        assert_eq!(version, "2.19.0");
     }
 }

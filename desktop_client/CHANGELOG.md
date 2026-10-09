@@ -3,6 +3,24 @@
 本项目严格遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/) 规范与语义化版本号管理。
 本项目记录了每次迭代的更新详情，便于直接同步至 GitHub Releases 与提交历史。
 
+## [v2.19.0] - 2026-10-09
+
+### Fixed
+- **macOS / 桌面端客户端版本号硬编码与更新检测误报问题彻底修复 (`system.rs`, `lib.rs`, `vite.config.ts`, `appUpdater.ts`, `AppUpdateModal.vue`, `App.vue`, `api.ts`)**：
+  - **根本原因排查与定位**：设置页面“关于”板块硬编码了 `{ version: '2.15.0' }`，通用备份导出函数中硬编码了 `app_version: '2.15.0'`，且更新检查服务 `appUpdater.ts` 硬编码了 `CURRENT_VERSION = '2.17.0'`；在检测到远端 GitHub 最新 Release `v2.19.0` 时，因 `2.19.0 > 2.17.0` 导致即使用户运行最新版客户端仍误报有新版本，且弹窗显示当前版本为 `2.17.0`；
+  - **Tauri 原生运行时动态版本命令**：在原生 Rust 层 `commands::system::get_app_version` 暴露基于 `env!("CARGO_PKG_VERSION")` 的版本查询命令并注册至系统调度，补充完整单元测试保证版本真实性；
+  - **构建期全局宏注入与类型声明**：通过 `vite.config.ts` 从 `package.json` 动态注入 `__APP_VERSION__` 常量，补充 `env.d.ts` 强类型声明；
+  - **前端状态响应式联动**：`appUpdater.ts` 动态初始化 `APP_VERSION`，`checkAppUpdateDetailed` 优先基于运行时真实版本比对；`App.vue` 统一绑定响应式 `currentAppVersion`，彻底根除各组件硬编码版本号问题，消除误提示更新。
+
+### Added
+- **Android 客户端 Room 数据库版本升级至 v9 (`GpdbDatabase.kt`, `EpisodeEntity.kt`)**：
+  - 完整适配底层 `GPDb.db` 的 `episodes` 表分集物理翻译列 `title_zh` 与 `title_attempts`；
+  - 增加 `MIGRATION_8_9`、`MIGRATION_7_9` 与 `MIGRATION_0_9` 迁移逻辑与前置架构自愈检测，实现零拷贝直连挂载。
+- **Android 端全平台通用配置备份 (`gpdb_universal_backup`) 容错恢复增强 (`SettingsViewModel.kt`, `UserRepository.kt`)**：
+  - 兼容历史各版本及各平台导出格式的键名映射（`entity_key` / `entity_id` / `key` / `id`，`entity_type` / `type`）；
+  - 自动创建 `user_favorites` 与 `user_movie_data` 基础物理表并支持事务安全导入；
+  - 补充 `user_movie_data` 评分、状态与私密笔记跨端无损恢复支持。
+
 ## [v2.18.0] - 2026-10-04
 
 ### Added
