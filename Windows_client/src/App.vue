@@ -18,7 +18,7 @@ import FilterDrawer from './components/FilterDrawer.vue';
 import ActiveFilterBar from './components/ActiveFilterBar.vue';
 import AppLockOverlay from './components/AppLockOverlay.vue';
 import AppUpdateModal from './components/AppUpdateModal.vue';
-import { checkForAppUpdate, checkAppUpdateDetailed, type AppReleaseInfo } from './services/appUpdater';
+import { checkForAppUpdate, checkAppUpdateDetailed, type AppReleaseInfo, CURRENT_VERSION } from './services/appUpdater';
 import { defineAsyncComponent } from 'vue';
 const SyncModal = defineAsyncComponent(() => import('./components/plugins/SyncModal.vue'));
 import PaginationBar from './components/PaginationBar.vue';
@@ -98,6 +98,8 @@ import {
 } from './services/analytics';
 import { initScraperService, onScraperDataChange } from './services/scraper';
 import { initAutoSyncSchedule } from './services/autoSync';
+
+const currentAppVersion = ref(CURRENT_VERSION);
 
 type SettingsSubTab = 'all' | 'appearance' | 'localization' | 'data' | 'privacy' | 'about';
 const settingsSubTab = ref<SettingsSubTab>('all');
@@ -801,7 +803,7 @@ async function handleExportUserData() {
     const universalBackup = {
       format: 'gpdb_universal_backup',
       version: 2,
-      app_version: '2.15.0',
+      app_version: currentAppVersion.value,
       exported_at: new Date().toISOString(),
       platform: typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows') ? 'windows' : 'macos',
       favorites: dbUserData?.favorites || [],
@@ -1822,6 +1824,11 @@ onMounted(async () => {
       });
     }).catch(() => {});
   }
+
+  // Fetch actual app version from runtime if available
+  api.getAppVersion().then((ver) => {
+    if (ver) currentAppVersion.value = ver;
+  }).catch(() => {});
 
   // Check for GitHub Release update after 3 seconds
   setTimeout(async () => {
@@ -4154,7 +4161,7 @@ onUnmounted(() => {
                 <Info class="w-5 h-5 text-accent" />
                 <div>
                   <div class="text-sm font-bold text-fg">{{ t('settings.aboutTitle') }}</div>
-                  <div class="text-xs text-fg-3">{{ t('settings.currentVersionDesc', { version: '2.15.0' }) }}</div>
+                  <div class="text-xs text-fg-3">{{ t('settings.currentVersionDesc', { version: currentAppVersion }) }}</div>
                 </div>
               </div>
               <button
@@ -4359,6 +4366,7 @@ onUnmounted(() => {
     <AppUpdateModal
       v-if="appReleaseInfo"
       :release="appReleaseInfo"
+      :current-version="currentAppVersion"
       @close="appReleaseInfo = null"
     />
 

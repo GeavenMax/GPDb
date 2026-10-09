@@ -1456,6 +1456,17 @@ export const api = {
       await tauriInvoke('install_update_file', { filepath });
     }
   },
+
+  async getAppVersion(): Promise<string> {
+    if (isTauri) {
+      try {
+        return await tauriInvoke<string>('get_app_version');
+      } catch (e) {
+        console.warn('Native get_app_version failed:', e);
+      }
+    }
+    return typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '2.19.0';
+  },
 };
 
 

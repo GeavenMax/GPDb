@@ -12,7 +12,8 @@ export interface AppReleaseInfo {
 }
 
 const GITHUB_REPO = 'GeavenMax/GPDb';
-export const CURRENT_VERSION = '2.17.0';
+export const APP_VERSION: string = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '2.19.0';
+export const CURRENT_VERSION: string = APP_VERSION;
 
 /**
  * 对比远程语义化版本号与当前客户端版本号
@@ -48,6 +49,14 @@ export interface CheckUpdateDetailedResult {
  * 细粒度检测更新，供设置页手动触发与即时反馈
  */
 export async function checkAppUpdateDetailed(): Promise<CheckUpdateDetailedResult> {
+  let activeVersion = CURRENT_VERSION;
+  try {
+    const v = await api.getAppVersion();
+    if (v) activeVersion = v;
+  } catch {
+    // Fall back to CURRENT_VERSION
+  }
+
   try {
     const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
       headers: {
@@ -55,14 +64,14 @@ export async function checkAppUpdateDetailed(): Promise<CheckUpdateDetailedResul
       }
     });
     if (!res.ok) {
-      return { hasUpdate: false, release: null, currentVersion: CURRENT_VERSION, error: t('update.apiFailed', { status: res.status }) };
+      return { hasUpdate: false, release: null, currentVersion: activeVersion, error: t('update.apiFailed', { status: res.status }) };
     }
     const json = await res.json();
     const tagName = json.tag_name || '';
     const remoteVersion = tagName.replace(/^v/i, '');
 
-    if (!isNewerVersion(remoteVersion, CURRENT_VERSION)) {
-      return { hasUpdate: false, release: null, remoteVersion, currentVersion: CURRENT_VERSION };
+    if (!isNewerVersion(remoteVersion, activeVersion)) {
+      return { hasUpdate: false, release: null, remoteVersion, currentVersion: activeVersion };
     }
 
     const assets = json.assets || [];
@@ -82,7 +91,7 @@ export async function checkAppUpdateDetailed(): Promise<CheckUpdateDetailedResul
     }
 
     if (!targetAsset) {
-      return { hasUpdate: false, release: null, remoteVersion, currentVersion: CURRENT_VERSION, error: t('update.noPackage') };
+      return { hasUpdate: false, release: null, remoteVersion, currentVersion: activeVersion, error: t('update.noPackage') };
     }
 
     const release: AppReleaseInfo = {
@@ -95,9 +104,9 @@ export async function checkAppUpdateDetailed(): Promise<CheckUpdateDetailedResul
       assetSize: targetAsset.size || 0
     };
 
-    return { hasUpdate: true, release, remoteVersion, currentVersion: CURRENT_VERSION };
+    return { hasUpdate: true, release, remoteVersion, currentVersion: activeVersion };
   } catch (e: any) {
-    return { hasUpdate: false, release: null, currentVersion: CURRENT_VERSION, error: e?.message || t('update.networkTimeout') };
+    return { hasUpdate: false, release: null, currentVersion: activeVersion, error: e?.message || t('update.networkTimeout') };
   }
 }
 
